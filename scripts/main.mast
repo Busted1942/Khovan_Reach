@@ -2,37 +2,78 @@
 # This is active bootstrap code only; Act I gameplay starts in later slices.
 
 import scripts/systems/bootstrap_state.mast
+import scripts/systems/playable_bootstrap.mast
 import scripts/systems/audio_runtime.mast
 import scripts/systems/debug_runtime.mast
+
+shared artemis_id = 0
 
 @map/khovan_reach "Khovan Reach"
 " TSN training mission bootstrap shell.
 " Slice 01 initializes mission state and reaches Scene 1 without gameplay gates.
+    script.write_khovan_startup_trace("[KHOVAN ROUTE 001] map selected")
     jump khovan_reach_slice01_entry
 
 === khovan_reach_slice01_entry ===
+    script.write_khovan_startup_trace("[KHOVAN BOOT 001] scripts/main.mast entered")
     await task_schedule(khovan_reach_slice01_bootstrap)
-    jump khovan_reach_slice01_runtime_idle
+    jump khovan_reach_slice01_server_playable
 
 === khovan_reach_slice01_client_entry ===
-    jump khovan_reach_slice01_runtime_idle
+    script.write_khovan_startup_trace("[KHOVAN CLIENT 001] client StoryPage entered")
+    jump khovan_reach_slice01_client_main
 
 === khovan_reach_slice01_bootstrap ===
+    script.write_khovan_startup_trace("[KHOVAN BOOT 002] before state defaults")
     await task_schedule(khovan_reach_initialize_bootstrap_state)
+    script.write_khovan_startup_trace("[KHOVAN BOOT 003] after state defaults")
+    script.write_khovan_startup_trace("[KHOVAN BOOT 004] before playable_bootstrap")
+    await task_schedule(khovan_reach_initialize_playable_bootstrap)
     await task_schedule(khovan_reach_initialize_debug_runtime)
     await task_schedule(khovan_reach_stub_dillon_clip_1)
+    script.write_khovan_startup_trace("[KHOVAN BOOT 009] mission_phase=act_1 current_scene=1")
     current_beat = "scene_1_bootstrap"
-    sbs.send_story_dialog(0, "Khovan Reach", "Khovan Reach Slice 01 bootstrap loaded. Scene 1 initialized. Dillon Clip 1 text stub active. Artemis/player ship spawn is not initialized; BOOT-006 needs a reference-backed API spike.", "", "#444")
     logger("mast.runtime")
-    log("Khovan Reach Slice 01 bootstrap loaded. Scene 1 initialized. mission_phase = act_1; current_scene = 1; dillon_clip_1_status = stubbed; artemis_player_ship_status = not_initialized_api_uncertainty.", "mast.runtime")
-    log("Khovan Reach Slice 01 bootstrap complete: mission_phase act_1, current_scene 1.", "mast.runtime")
+    log("Khovan Reach Slice 01A playable bootstrap loaded. Scene 1 initialized. mission_phase = act_1; current_scene = 1; dillon_clip_1_status = stubbed; artemis_player_ship_status = initialized.", "mast.runtime")
+    log("Khovan Reach Slice 01A playable bootstrap complete: mission_phase act_1, current_scene 1.", "mast.runtime")
+    script.write_khovan_startup_trace("[KHOVAN BOOT 010] playable bootstrap complete")
     ->END
 
-=== khovan_reach_slice01_runtime_idle ===
+=== khovan_reach_slice01_server_playable ===
+    script.write_khovan_startup_trace("[KHOVAN ROUTE 002] player ship initialized")
+    sim_resume()
+    assign_client_to_ship(0, artemis_id)
+    link(artemis_id, "consoles", client_id)
+    add_role(client_id, "console, mainscreen")
+    gui_console("mainscreen")
+    script.write_khovan_startup_trace("[KHOVAN ROUTE 003] playable bridge transition reached")
+    script.write_slice01_live_smoke_marker(0)
+    await gui()
+
+=== khovan_reach_slice01_client_main ===
+    console_select = "helm"
+    script.write_khovan_startup_trace("[KHOVAN BOOT 007A] before client/page playable transition")
     gui_section(style="area:2,20,80,35;")
-    """Khovan Reach Slice 01 bootstrap loaded. Scene 1 initialized.
-Dillon Clip 1 text stub active.
-Artemis/player ship spawn not initialized; BOOT-006 needs a reference-backed API spike.
-Mission shell active. No Act I gameplay systems loaded."""
-    await gui(timeout=delay_sim(10))
-    jump khovan_reach_slice01_runtime_idle
+    """Khovan Reach Slice 01A playable bootstrap loaded. Scene 1 initialized.
+Select a bridge console for Artemis."""
+    gui_section(style="area: 85,50, 99,90;")
+    gui_vradio("helm,weapons,comms,science,engineering,mainscreen", var="console_select")
+    gui_row("row-height:40px;")
+
+    on gui_message(gui_button("accept")):
+        -> khovan_reach_slice01_console_selected
+
+    script.write_khovan_startup_trace("[KHOVAN BOOT 007B] after client/page playable transition")
+    await gui():
+        + "Accept":
+            -> khovan_reach_slice01_console_selected
+    ->END
+
+=== khovan_reach_slice01_console_selected ===
+    script.write_khovan_startup_trace("[KHOVAN ROUTE 004] console selected")
+    script.write_khovan_startup_trace("[KHOVAN BOOT 007C] before player/client assignment confirmation")
+    assign_client_to_ship(client_id, artemis_id)
+    gui_console(console_select)
+    script.write_khovan_startup_trace("[KHOVAN ROUTE 005] client assigned to Artemis")
+    script.write_khovan_startup_trace("[KHOVAN BOOT 007D] after player/client assignment confirmation")
+    await gui()

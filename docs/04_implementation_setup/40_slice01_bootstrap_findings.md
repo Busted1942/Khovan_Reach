@@ -259,6 +259,53 @@ Do not claim Slice 01 complete on static tests alone while live runtime behavior
 
 ---
 
+## 7A. MAST compile/preflight is a middle evidence class
+
+### Finding
+
+During Slice 01A, the local installed SBS Utils package exposed a usable MAST compile/preflight path. The repo quick suite now includes:
+
+```text
+tests/test_mast_compile_or_preflight.py
+```
+
+That test extracts the installed `artemis-sbs.sbs_utils.v1.3.0.sbslib`, registers SBS/GUI MAST nodes, points the MAST filesystem at the Khovan mission root, and compiles the active entry chain beginning at:
+
+```text
+story.mast
+```
+
+This is stronger than text-only static checking because it asks the MAST compiler/preflight path to load the active imports.
+
+### Limit
+
+MAST compile/preflight is still not live Cosmos smoke.
+
+It does not prove:
+
+- runtime variable values after scheduled tasks
+- whether a bare identifier is available in a later route
+- player ship assignment behavior
+- renderer/shader behavior
+- GUI/page lifecycle behavior in the live app
+- whether a connected client can enter a usable bridge console
+
+The Slice 01A `artemis_id` failure is the example: preflight and quick checks passed, then live Cosmos exposed a runtime variable-scope error when `assign_client_to_ship(..., artemis_id)` evaluated.
+
+### Rule
+
+Future Cosmos/MAST implementation work should preserve three separate statements in verification notes and handoffs:
+
+```text
+static/source checks:
+MAST compile/preflight checks:
+live Cosmos smoke:
+```
+
+If compile/preflight is unavailable locally, quick may skip it with an explicit reason. If it is available, quick should run it. In both cases, acceptance criteria that depend on live runtime behavior still require live Cosmos smoke.
+
+---
+
 ## 8. Live failure to regression loop
 
 Every live Cosmos failure should produce one of:
@@ -334,6 +381,108 @@ Durable lesson:
 - after merge-back, quick tests and branch status must be rechecked before returning to runtime work
 
 This is a workflow/process finding. It does not change scenario design or mission runtime requirements.
+
+---
+
+## Route-smoke breadcrumb trace lesson from Slice 01A
+
+During Slice 01A, `python run_tests.py quick`, MAST compile/preflight checks, and static load-path checks passed, but live Cosmos still crashed during Khovan mission load.
+
+The normal local logs were not enough:
+
+- `mast.compile.log` was empty or did not identify the live failure
+- `mast.runtime.log` was empty or did not identify the live failure
+- `tests/live_smoke_last_bootstrap.txt` remained the last-success audit and did not update during the crash
+
+The useful evidence came from an append-only route-smoke breadcrumb trace:
+
+```text
+tests/live_startup_trace.txt
+```
+
+The trace brackets each startup handoff and risky runtime step:
+
+```text
+[KHOVAN EARLY 001] script.py entered
+[KHOVAN EARLY 002] before sbs_utils import
+[KHOVAN EARLY 003] after sbs_utils import
+[KHOVAN EARLY 004] before ClientSelectPage setup
+[KHOVAN EARLY 005] after ClientSelectPage setup
+[KHOVAN EARLY 006] before story.mast load/handoff
+[KHOVAN BOOT 001] scripts/main.mast entered
+[KHOVAN BOOT 002] before state defaults
+[KHOVAN BOOT 003] after state defaults
+[KHOVAN BOOT 004] before playable_bootstrap
+[KHOVAN BOOT 005] playable_bootstrap entered
+[KHOVAN BOOT 006] before Artemis/player ship init or confirmation
+```
+
+The trace narrowed the crash to the Artemis/player ship init block. This converted a vague Khovan-only hard crash into a precise startup-route failure.
+
+### Rule
+
+For future Cosmos/MAST startup or route failures, add route-smoke breadcrumbs before guessing at runtime fixes when:
+
+- quick/static/preflight checks pass but live Cosmos crashes
+- `mast.compile.log` and `mast.runtime.log` are empty or unhelpful
+- the last-success audit marker does not update
+- the active entry chain is in doubt
+- a risky API boundary is being crossed, such as player spawn, client page setup, GUI lifecycle, map handoff, or StoryPage handoff
+
+Use separate files for separate evidence classes:
+
+- `tests/live_smoke_last_bootstrap.txt` records the last successful bootstrap audit
+- `tests/live_startup_trace.txt` records append-only crash breadcrumbs
+
+If the trace does not update at all, the active startup path is earlier or different than assumed. If the trace stops at a marker, the next line or API call after that marker becomes the first suspect.
+
+This is a troubleshooting and test-evidence pattern. It does not change scenario design or mission runtime requirements.
+
+---
+
+## Slice 01A live-smoke finding: minimum playable bootstrap reached, ordnance unsafe
+
+Matt's Slice 01A live smoke confirmed the minimum playable bootstrap:
+
+- mission launches
+- server reaches playable/ready state
+- two clients can connect
+- console selection works
+- Helm console can move Artemis
+- Dillon Clip 1 text stub is active
+- `mission_phase = act_1`
+- `current_scene = 1`
+
+This is sufficient for Slice 01A as a minimum playable bootstrap. It is not Act I gameplay acceptance and does not prove Weapons/ordnance readiness.
+
+Observed known issue after the Slice 01A smoke:
+
+```text
+Microsoft Visual C++ Runtime Library
+Assertion failed!
+Program: ...\Cosmos\Artemis3-x64-release.exe
+File: D:\PaxDev\Artemis3\Artemis3\imguiArt3.cpp
+Line: 1482
+Expression: '!list.empty() && "uiDropDownList; list is empty."'
+```
+
+Trigger:
+
+- Weapons client attempts to load a torpedo.
+
+Finding:
+
+- Minimum playable bootstrap reached; ordnance UI/loadout is not yet safe.
+- Attempting torpedo load on Weapons client triggers Artemis3 `imguiArt3.cpp` line 1482 `uiDropDownList` empty assertion.
+- Likely cause is missing or invalid torpedo inventory / player ship ordnance configuration.
+
+Decision:
+
+- Do not treat this as a Slice 01A blocker unless Slice 01A acceptance is expanded to include Weapons/torpedo gameplay.
+- Defer to an ordnance/Tarsis/Act I setup spike unless a tiny reference-backed loadout initialization is added.
+- Resolve before Act I Weapons/Tarsis/ordnance/drone slices depend on torpedo loading.
+
+This finding does not change scenario design. It records a runtime implementation boundary discovered during Slice 01A smoke.
 
 ---
 

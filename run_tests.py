@@ -116,6 +116,7 @@ def check_slice01_bootstrap_files() -> list[str]:
         "story.mast",
         "scripts/main.mast",
         "scripts/systems/bootstrap_state.mast",
+        "scripts/systems/playable_bootstrap.mast",
         "scripts/systems/audio_runtime.mast",
         "scripts/systems/debug_runtime.mast",
         "tests/test_bootstrap_static.py",
@@ -151,21 +152,31 @@ def check_clone_contents_not_tracked() -> list[str]:
     return [f"external clone content is tracked: {line}" for line in tracked]
 
 
-def run_static_unittests() -> tuple[list[str], int]:
-    test_file = ROOT / "tests" / "test_bootstrap_static.py"
-    spec = importlib.util.spec_from_file_location("test_bootstrap_static", test_file)
-    if spec is None or spec.loader is None:
-        return [f"could not load static test file: {rel(test_file)}"], 0
+def run_static_unittests() -> tuple[list[str], int, list[str]]:
+    test_files = [
+        ROOT / "tests" / "test_bootstrap_static.py",
+        ROOT / "tests" / "test_mast_compile_or_preflight.py",
+    ]
+    suite = unittest.TestSuite()
+    for test_file in test_files:
+        spec = importlib.util.spec_from_file_location(test_file.stem, test_file)
+        if spec is None or spec.loader is None:
+            return [f"could not load static test file: {rel(test_file)}"], 0, []
 
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    suite = unittest.defaultTestLoader.loadTestsFromModule(module)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        suite.addTests(unittest.defaultTestLoader.loadTestsFromModule(module))
+
     result = unittest.TextTestRunner(stream=StringIO(), verbosity=1).run(suite)
     failures = []
     for test_case, traceback_text in result.failures + result.errors:
         last_line = traceback_text.strip().splitlines()[-1]
         failures.append(f"{test_case.id()}: {last_line}")
-    return failures, result.testsRun
+    skips = [
+        f"{test_case.id()}: skipped - {reason}"
+        for test_case, reason in result.skipped
+    ]
+    return failures, result.testsRun, skips
 
 
 def run_pytest_doc_checks() -> tuple[list[str], int]:
@@ -260,8 +271,9 @@ def run_quick() -> int:
     failures.extend(check_slice01_bootstrap_files())
     harness_checks_run += 1
     failures.extend(check_clone_contents_not_tracked())
-    static_failures, static_tests_run = run_static_unittests()
+    static_failures, static_tests_run, static_warnings = run_static_unittests()
     failures.extend(static_failures)
+    warnings.extend(static_warnings)
     harness_checks_run += 1
 
     pytest_failures, _ = run_pytest_doc_checks()

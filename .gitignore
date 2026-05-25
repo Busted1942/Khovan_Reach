@@ -22,8 +22,13 @@ Thumbs.db
 # Local Cosmos/MAST runtime artifacts
 *.log
 tests/live_smoke_last_bootstrap.txt
+tests/live_startup_trace.txt
 
 # Local branch-lifecycle / docs workflow files
 slice00_repo_intake.txt
 before_rollback_*.txt
 before_rollback_*.patch
+
+tests/live_smoke_last_bootstrap.txt
+
+tests/live_startup_trace.txt
