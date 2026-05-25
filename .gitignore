@@ -10,3 +10,8 @@ tests/live_smoke_last_bootstrap.txt
 # Guard against Tier 2 reference clones being staged inside the live mission root.
 docs_external/_local_clones/
 reference_missions/_local_clones/
+
+# Local Cosmos/MAST runtime artifacts
+mast.runtime.log
+mast.compile.log
+tests/live_smoke_last_bootstrap.txt
