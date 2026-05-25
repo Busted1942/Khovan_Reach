@@ -1,7 +1,7 @@
 # KHOVAN REACH — IMPLEMENTATION SLICE PLAN
 *Coding-project slicing plan based on merged architecture docs.*
 
-Version: 1.3 repo-consolidated
+Version: 1.5 repo-consolidated branch-lifecycle + operator-test-expectation update
 Status: Canonical implementation planning aid  
 Pair with: docs/01_design/10_mast_requirements.md, docs/01_design/40_admin_testing_plan.md, docs/01_design/00_scenario_play_guide.md
 
@@ -32,9 +32,19 @@ Source docs:
 Files to modify:
 Runtime owner model:
 State variables needed:
+Branch type:
+Starting branch:
+Expected return branch:
+Branch lifecycle plan:
+Runtime/live-smoke allowed from this branch:
+Merge-back required:
 Implementation tasks:
 Tests required:
 Acceptance criteria:
+Expected observations:
+Failure/ambiguous observations:
+What remains unproven:
+Next action by result:
 Known risks:
 Do not implement:
 ```
@@ -98,7 +108,7 @@ Acceptance:
 - Quick/static checks pass.
 - Active runtime load-path checks pass where implemented.
 - Live Cosmos mission load reaches Scene 1 without manual recovery.
-- If live Cosmos still fails, the branch may be checkpointed only as a blocker/investigation checkpoint, not as completed Slice 01.
+- If live Cosmos still fails, the checkpoint must be explicitly labeled as a blocker/investigation checkpoint, not as completed Slice 01.
 
 ---
 
@@ -530,6 +540,75 @@ For each slice:
 - Run slice acceptance tests before proceeding.
 - Log bugs and implementation decisions.
 - If implementation reveals design conflict, route it back to architecture rather than silently mutating design.
+
+---
+
+
+## Branch lifecycle discipline
+
+Each implementation slice must declare its branch type and expected return branch.
+
+Use these branch types:
+
+- implementation
+- docs/governance
+- architecture feedback
+- spike/experiment
+- emergency fix
+
+Before starting a slice, confirm:
+
+```text
+git status --short --branch
+git log --oneline -5
+```
+
+Before switching branches or closing the slice branch, run:
+
+```text
+python run_tests.py quick
+git status --short --branch
+git diff --stat
+```
+
+If a docs/governance or architecture-feedback branch is created during a slice, merge it intentionally back into the active implementation branch before runtime work resumes.
+
+Before live-smoke prompts or Cosmos tests, confirm the current branch is the intended implementation branch and contains the latest merged docs/governance updates.
+
+Completion or checkpoint reporting must include:
+
+```text
+Starting branch:
+Ending branch:
+Branch type:
+Commits created:
+Merge performed:
+Tests run:
+Files changed:
+Remaining uncommitted changes:
+Next safe branch/action:
+```
+
+---
+
+## Operator test expectation discipline
+
+Each implementation slice must make its acceptance gate operator-readable.
+
+When a slice asks the human operator to run quick tests, live Cosmos smoke, a UI check, a generated-artifact review, a branch workflow check, a documentation review, or a negative-control test, the slice packet or handoff must include:
+
+```text
+What changed:
+What to run or do:
+Expected observation:
+Failure/ambiguous observation:
+What remains unproven:
+Next action by result:
+```
+
+Manual or live tests must always include `Expected observation` and `Failure/ambiguous observation`.
+
+Static quick checks should not be described as proving live Cosmos behavior. A smoke marker should not be described as proving full feature behavior. Negative-control tests must state when an expected failure means the control passed.
 
 ---
 

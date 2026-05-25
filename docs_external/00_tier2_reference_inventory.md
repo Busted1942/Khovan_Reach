@@ -22,7 +22,7 @@ These setup files guide implementation restart, source transfer, and known-risk 
 Tier 2 materials may be used only to answer implementation questions such as:
 
 - mission bootstrap file layout
-- `story.json` / `script.py` / `story.mast` / `scripts/main.mast` patterns
+- story.json / script.py / story.mast / scripts/main.mast patterns
 - MAST include/import syntax
 - sbs_utils API syntax
 - Comms route/menu syntax
@@ -35,8 +35,6 @@ Tier 2 materials may be used only to answer implementation questions such as:
 
 Do not import scenario design, pacing, story structure, factions, objectives, or player-facing behavior from reference missions.
 
-Local clones must not become active runtime dependencies.
-
 ---
 
 ## Original user-provided source roots
@@ -46,7 +44,7 @@ Local clones must not become active runtime dependencies.
 - https://github.com/astrolamb-gaming
 - https://artemis-sbs.github.io/sbs_utils/
 
-`artemis-sbs` and `astrolamb-gaming` are organization/root sources. The fetch script may use selected concrete repositories from those roots, but selected clone targets are not exhaustive.
+artemis-sbs and astrolamb-gaming are organization/root sources. The fetch script may use selected concrete repositories from those roots, but selected clone targets are not exhaustive.
 
 If Slice 01 or later work needs an API not covered by the selected repositories, revisit the root sources and document any newly selected reference repo before using it.
 
@@ -64,16 +62,13 @@ The active mission path is expected to be:
 C:\Users\buste\OneDrive\Desktop\Cosmos\data\missions\khovan_reach
 ```
 
-Reference folders that are ignored by Git can still be runtime-visible to Cosmos if they sit under that active mission root. In particular, `_local_clones` folders may contain `.mastlib`, `.sbslib`, `.zip`, `__init__.mast`, or other files that the MAST loader can discover even though Git ignores them.
+Therefore:
 
-Active runtime files must not reference:
-
-- `docs_external/_local_clones`
-- `reference_missions/_local_clones`
-- `archive/old_build_reference`
-- `old_mast`
-
-Tier 2 clones should live outside the active mission package when running live Cosmos smoke tests.
+- ignored _local_clones folders are convenient for coding agents but may be runtime-visible to Cosmos/MAST
+- active runtime files must never reference _local_clones
+- active runtime files must never reference archive/old_build_reference
+- active runtime files must never reference old_mast
+- local reference clones should be moved outside the live mission root if live smoke tests show Cosmos/MAST scans or loads them unexpectedly
 
 Preferred long-term reference-cache pattern:
 
@@ -83,11 +78,13 @@ C:\Users\buste\OneDrive\Desktop\Cosmos\data\mission_references\khovan_reach_refs
 
 or another sibling/outside folder that is not part of the loadable mission package.
 
+If references remain under the live mission root, every Slice 01+ quick test must verify that no active runtime file references them.
+
 ---
 
 ## Required local inventory check
 
-Before Slice 01 coding or live-load troubleshooting, run:
+Before Slice 01 coding, run:
 
 ```powershell
 Get-ChildItem docs_external -Recurse -File | Select-Object FullName
@@ -124,97 +121,205 @@ reference_missions/_local_clones/
 
 Rules:
 
-- `docs_external/cosmos`, `docs_external/mast`, and `docs_external/sbs_utils` may contain curated notes or snapshots if deliberately committed.
-- `_local_clones` folders are local-only reference caches.
-- `_local_clones` folders must be ignored by Git.
-- `_local_clones` folders must not be referenced from active runtime files.
-- `archive/old_build_reference/old_mast` is old Khovan implementation-history evidence only.
-- `scripts/` is active runtime code only and must not receive old MAST files.
+- docs_external/cosmos, docs_external/mast, and docs_external/sbs_utils may contain curated notes or snapshots if deliberately committed.
+- _local_clones folders are local-only reference caches.
+- _local_clones folders must be ignored by Git.
+- _local_clones folders must not be referenced from active runtime files.
+- archive/old_build_reference/old_mast is old Khovan implementation-history evidence only.
+- scripts/ is active runtime code only and must not receive old MAST files.
 
 ---
 
 ## Online Tier 2 reference sources
 
-### sbs_utils documentation
+### 1. sbs_utils documentation
 
 Category: official/primary documentation  
 URL: https://artemis-sbs.github.io/sbs_utils/  
-Expected local folder: `docs_external/sbs_utils/` or external reference cache  
-Slice 01 relevance: required
+Expected local folder: docs_external/sbs_utils/ or external reference cache  
+Slice 01 relevance: required  
+Inspect for:
 
-Inspect for MAST/Cosmos/sbs_utils API syntax, mission startup, task scheduling, GUI/route helpers, and Comms/Science/spawn examples where documented.
+- MAST/Cosmos/sbs_utils API syntax
+- mission startup
+- task scheduling
+- GUI/route helpers
+- Comms/Science/spawn examples where documented
 
-### artemis-sbs/sbs_utils
+Do not import:
+
+- Khovan design behavior
+- unsupported assumptions
+- sample scenario pacing
+
+### 2. artemis-sbs/sbs_utils
 
 Category: official/primary source repo  
 URL: https://github.com/artemis-sbs/sbs_utils  
-Expected local folder: `docs_external/_local_clones/sbs_utils/` or external reference cache  
-Slice 01 relevance: required
+Expected local folder: docs_external/_local_clones/sbs_utils/ or external reference cache  
+Slice 01 relevance: required  
+Inspect for:
 
-Inspect for `script.py` patterns, MAST examples, package layout, tests, docs source, and API examples.
+- script.py patterns
+- MAST examples
+- package layout
+- tests
+- docs source
+- API examples
 
-### artemis-sbs/mast_starter
+Do not import:
+
+- unrelated sample scenario design
+- cloned repo paths into active runtime files
+
+### 3. artemis-sbs/mast_starter
 
 Category: official/reference bootstrap repo  
 URL: https://github.com/artemis-sbs/mast_starter  
-Expected local folder: `docs_external/_local_clones/mast_starter/` or external reference cache  
-Slice 01 relevance: required
+Expected local folder: docs_external/_local_clones/mast_starter/ or external reference cache  
+Slice 01 relevance: required  
+Inspect for:
 
-Inspect for minimal mission bootstrap, `story.json`, `script.py`, `story.mast`, `__lib__.json`, and startup/lifecycle patterns.
+- minimal mission bootstrap
+- story.json
+- script.py
+- story.mast
+- __lib__.json
+- startup and lifecycle pattern
 
-### artemis-sbs/tutorial_runner
+Do not import:
+
+- sample mission story/pacing
+- sample map labels unless adapted to Khovan bootstrap
+
+### 4. artemis-sbs/tutorial_runner
 
 Category: official/reference mission/tooling repo  
 URL: https://github.com/artemis-sbs/tutorial_runner  
-Expected local folder: `docs_external/_local_clones/tutorial_runner/` or external reference cache  
-Slice 01 relevance: high-value
+Expected local folder: docs_external/_local_clones/tutorial_runner/ or external reference cache  
+Slice 01 relevance: high-value  
+Inspect for:
 
-Inspect for mission startup, tutorial sequencing, UI/message examples, task scheduling, and tests.
+- mission startup
+- tutorial sequencing
+- UI/message examples
+- task scheduling
+- tests
 
-### artemis-sbs reference missions
+Do not import:
 
-Use these as reference missions only:
+- tutorial content as Khovan design
 
-- https://github.com/artemis-sbs/LegendaryMissions
-- https://github.com/artemis-sbs/SecretMeeting
-- https://github.com/artemis-sbs/WalkTheLine
+### 5. artemis-sbs/LegendaryMissions
 
-Expected local folder: `reference_missions/_local_clones/` or external reference cache.
+Category: reference missions  
+URL: https://github.com/artemis-sbs/LegendaryMissions  
+Expected local folder: reference_missions/_local_clones/LegendaryMissions/ or external reference cache  
+Slice 01 relevance: useful after bootstrap  
+Inspect for:
 
-Inspect for known-good mission structure, MAST packaging conventions, task lifecycle patterns, and root mission packaging. Do not import scenario design, story flow, gameplay pacing, objectives, factions, or player-facing behavior.
+- known-good mission structure
+- MAST packaging conventions
+- task lifecycle patterns
 
-### Cosmos Bridge Tools / Armidale Software
+Do not import:
+
+- scenario design
+- story flow
+- gameplay pacing
+
+### 6. artemis-sbs/SecretMeeting
+
+Category: reference mission  
+URL: https://github.com/artemis-sbs/SecretMeeting  
+Expected local folder: reference_missions/_local_clones/SecretMeeting/ or external reference cache  
+Slice 01 relevance: useful after bootstrap  
+Inspect for:
+
+- story progression
+- Comms/menu/timer examples if present
+- root mission packaging
+
+Do not import:
+
+- story design
+- player-facing behavior
+
+### 7. artemis-sbs/WalkTheLine
+
+Category: reference mission  
+URL: https://github.com/artemis-sbs/WalkTheLine  
+Expected local folder: reference_missions/_local_clones/WalkTheLine/ or external reference cache  
+Slice 01 relevance: useful after bootstrap  
+Inspect for:
+
+- mission package structure
+- runtime lifecycle patterns
+- story.mast / script.py startup flow
+
+Do not import:
+
+- story design
+- scenario objectives
+
+### 8. Cosmos Bridge Tools / Armidale Software
 
 Category: supplemental tooling/documentation  
 URL: https://www.armidalesoftware.com/Artemis/CosmosBridgeTools.htm  
-Expected local folder: `docs_external/cosmos/` or external reference cache
+Expected local folder: docs_external/cosmos/ or external reference cache  
+Slice 01 relevance: supplemental  
+Inspect for:
 
-Inspect for Cosmos tooling, launch/setup notes, and mission setup assumptions. Do not import obsolete launch assumptions unless verified.
+- Cosmos tooling
+- launch/setup notes
+- mission setup assumptions
 
-### Astrolamb Gaming GitHub organization
+Do not import:
+
+- obsolete launch assumptions unless verified
+
+### 9. Astrolamb Gaming GitHub organization
 
 Category: secondary candidate reference source  
 URL: https://github.com/astrolamb-gaming  
-Expected local folder: `reference_missions/_local_clones/astrolamb-gaming/` or external reference cache
+Expected local folder: reference_missions/_local_clones/astrolamb-gaming/ or external reference cache  
+Slice 01 relevance: optional  
+Inspect for:
 
-Inspect only if needed for known-good mission examples. Do not import design or scenario behavior.
+- known-good mission examples only if needed
+
+Do not import:
+
+- design
+- scenario behavior
 
 ---
 
 ## Approved clone targets
 
-The fetch script uses selected concrete repositories from the source roots. These targets are not exhaustive.
+The fetch script may use these targets as selected concrete references:
 
-| Target | Expected local folder | Upstream |
-| --- | --- | --- |
-| sbs_utils | `docs_external/_local_clones/sbs_utils` | `https://github.com/artemis-sbs/sbs_utils.git` |
-| mast_starter | `docs_external/_local_clones/mast_starter` | `https://github.com/artemis-sbs/mast_starter.git` |
-| tutorial_runner | `docs_external/_local_clones/tutorial_runner` | `https://github.com/artemis-sbs/tutorial_runner.git` |
-| LegendaryMissions | `reference_missions/_local_clones/LegendaryMissions` | `https://github.com/artemis-sbs/LegendaryMissions.git` |
-| SecretMeeting | `reference_missions/_local_clones/SecretMeeting` | `https://github.com/artemis-sbs/SecretMeeting.git` |
-| WalkTheLine | `reference_missions/_local_clones/WalkTheLine` | `https://github.com/artemis-sbs/WalkTheLine.git` |
+```text
+docs_external/_local_clones/sbs_utils:
+https://github.com/artemis-sbs/sbs_utils.git
 
-If any expected local folder is empty or missing, mark it as not yet populated and use the next available reference level. Do not commit external clone contents.
+docs_external/_local_clones/mast_starter:
+https://github.com/artemis-sbs/mast_starter.git
+
+docs_external/_local_clones/tutorial_runner:
+https://github.com/artemis-sbs/tutorial_runner.git
+
+reference_missions/_local_clones/LegendaryMissions:
+https://github.com/artemis-sbs/LegendaryMissions.git
+
+reference_missions/_local_clones/SecretMeeting:
+https://github.com/artemis-sbs/SecretMeeting.git
+
+reference_missions/_local_clones/WalkTheLine:
+https://github.com/artemis-sbs/WalkTheLine.git
+```
+
+These targets are not exhaustive.
 
 ---
 
@@ -226,48 +331,62 @@ If any expected local folder is empty or missing, mark it as not yet populated a
 - Do not commit external repo clones unless explicitly approved.
 - If committing snapshots later, commit only curated notes or extracted examples with attribution.
 - Prefer external/sibling reference caches outside the live mission root when Cosmos/MAST runtime behavior is uncertain.
-- If `_local_clones` remain inside the live mission root, require quick tests that reject runtime references to them.
+- If _local_clones remain inside the live mission root, require quick tests that reject runtime references to them.
 
 ---
 
 ## Slice 01 minimum reference check
 
-Before changing the Slice 01 bootstrap, inspect the active entry chain and compare it to known-good references:
+Before implementing or repairing Slice 01, inspect:
 
-- `story.json`
-- `script.py`
-- `story.mast`
-- `scripts/main.mast`
-- `__lib__.json`
-- whether the entry chain leaves a yielding or long-running GUI/story task alive
+- docs_external/TIER2_REFERENCE_INVENTORY.md
+- sbs_utils docs home/API index, if locally available or web-accessible
+- sbs_utils repo root, if cloned
+- mast_starter root, if cloned
+- tutorial_runner root, if cloned
+- any story.json, script.py, story.mast, main.mast, or __lib__.json examples found locally
+- archive/old_build_reference/old_mast/main.mast only as old implementation evidence
 
-Reference missions may answer syntax, API, bootstrap, file-layout, and known-good implementation-pattern questions. They must not change Khovan story, pacing, factions, objectives, or player-facing behavior.
+Answer these Slice 01 bootstrap questions:
+
+1. What files are required for a Cosmos/MAST mission package?
+2. Where should Khovan's root story.mast live?
+3. Does Cosmos expect story.json at repo root?
+4. Does Cosmos expect script.py at repo root?
+5. How should root story.mast reach scripts/main.mast?
+6. How should script.py initialize, if needed?
+7. How should a minimal mission initialize state?
+8. How can Dillon Clip 1 be queued, played, or safely stubbed?
+9. How can the mission leave a valid yielding/long-running GUI/story task alive?
+10. What can be checked statically versus only inside live Cosmos?
 
 ---
 
-## API uncertainty format
+## API uncertainty rule
 
-When Cosmos/MAST/sbs_utils behavior is unclear, document:
+If local Tier 2 material does not clearly answer a required API or file-layout question, document the uncertainty instead of inventing syntax.
 
-- the API or runtime behavior in question
-- active files inspected
-- reference files inspected
-- observed live Cosmos error, if any
-- static test coverage added or why it is not practical
-- live smoke step still required
-- next recommended spike or verification action
+Use this format:
 
-Static tests can protect source hygiene, load-path shape, and known regression patterns. Static tests cannot claim live mission load by themselves; BOOT-001 and BOOT-012 require live Cosmos smoke evidence or a documented blocker.
+```text
+API uncertainty:
+Question:
+Sources checked:
+What appears documented:
+What appears inferred:
+Risk:
+Recommended spike or next action:
+```
 
 ---
 
 ## Known current gaps
 
-- `docs_external/cosmos` may not be populated.
-- `docs_external/mast` may not be populated.
-- `docs_external/sbs_utils` may not be populated.
-- `reference_missions` may not be populated except ignored local clones.
+- docs_external/cosmos may not be populated.
+- docs_external/mast may not be populated.
+- docs_external/sbs_utils may not be populated.
+- reference_missions may not be populated except ignored local clones.
 - Old Khovan archive is populated but archive-only.
-- `_local_clones` may be runtime-visible if placed under the live mission root.
-- Slice 01 agents must not claim Tier 2 resources are locally available until inventory commands prove it.
-- Slice 01 agents must not claim live mission load from static tests alone.
+- _local_clones may be runtime-visible if placed under the live mission root.
+- Slice 01 agent must not claim Tier 2 resources are locally available until inventory commands prove it.
+- Slice 01 agent must not claim live mission load from static tests alone.

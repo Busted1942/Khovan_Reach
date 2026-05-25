@@ -1,7 +1,7 @@
 # KHOVAN REACH — ADMIN CONTROL AND TESTING PLAN
 *Merged Scenario Control Panel and testing/regression architecture.*
 
-Version: 2.3 repo-consolidated
+Version: 2.4 repo-consolidated branch-lifecycle update
 Status: Canonical admin/testing specification  
 Supersedes: `khovan_reach_scenario_control_panel_architecture.md` and `khovan_reach_testing_regression_architecture.md`
 
@@ -355,38 +355,6 @@ Khovan Reach testing uses six layers:
 6. Full playtests
 
 Full playtests remain necessary, but they should not carry the full testing burden.
-
----
-
-## 7.1 Evidence classes
-
-Testing evidence is not interchangeable. Record which class of evidence each acceptance item has.
-
-Static/source hygiene checks:
-- verify file presence, repo structure, forbidden active filenames, and source authority
-
-Parser/schema/package/import checks:
-- verify JSON shape, Python parseability, package metadata, and statically discoverable imports
-
-Runtime load-path checks:
-- verify active runtime files do not reference missing `.mast` files, external reference clone paths, archive paths, or forbidden old module names
-
-Live Cosmos smoke checks:
-- verify the actual Cosmos/MAST runtime can load the mission package, run startup, keep required StoryPage/GUI tasks alive, and reach the expected scene
-
-UI/manual acceptance checks:
-- verify GM-only controls, player-facing visibility, console behavior, and manual fallback workflows
-
-Full playtests:
-- verify pacing, operator workload, GM workflow, and end-to-end scenario resilience
-
-Static tests do not prove live/runtime behavior unless the runtime was actually exercised. Live Cosmos failures after static success must be captured as one of:
-
-- a targeted regression/static check, if feasible
-- a live-smoke checklist item, if Cosmos is required to prove the behavior
-- a documented blocker with exact next action
-
-Do not weaken BOOT, story-jump, golden-path, or pre-session acceptance tests when adding evidence-class notes.
 
 ---
 
@@ -991,3 +959,91 @@ Do not begin the full Act I stationary-drone drill until:
 - JUMP-SAFE tests pass
 - KT route stability tests pass
 - DRONE-SPIKE tests pass or a documented fallback gate is approved
+
+
+---
+
+# 23. Branch lifecycle evidence
+
+Branch lifecycle checks are workflow evidence, not mission runtime tests.
+
+For implementation and live-smoke work, the verification record should include:
+
+```text
+starting branch:
+ending branch:
+branch type:
+tests run:
+merge-back performed:
+runtime/live-smoke branch confirmed:
+remaining uncommitted changes:
+next safe action:
+```
+
+A live-smoke result is not accepted as final runtime evidence when it was accidentally run from a docs-only, governance, or architecture-feedback branch unless the branch state and merge state are explicitly reviewed and accepted.
+
+# 24. Branch lifecycle acceptance checks
+
+```text
+BRANCH-001 Branch opening report includes current branch, branch type, task purpose, expected return branch, and runtime/live-smoke allowance.
+BRANCH-002 Branch transition report includes quick-test result, git status, and diff stat before switching.
+BRANCH-003 Docs/governance branch closing confirms no mission code changed unintentionally.
+BRANCH-004 Docs/governance branch merge-back is performed intentionally into the active implementation branch.
+BRANCH-005 Quick tests are rerun after merge-back before implementation resumes.
+BRANCH-006 Return-to-work check blocks live-smoke or Cosmos testing from docs/governance or architecture-feedback branches.
+BRANCH-007 Completion report includes starting branch, ending branch, commits, merge status, tests, changed files, uncommitted changes, and next safe action.
+```
+
+---
+
+# 25. Operator test expectation evidence
+
+Operator test expectation checks are workflow evidence, not mission runtime tests.
+
+When implementation, live-smoke, UI/manual, generated-artifact, branch, documentation-review, or negative-control work requires the human operator to verify something, the handoff must include:
+
+```text
+What changed:
+What to run or do:
+Expected observation:
+Failure/ambiguous observation:
+What remains unproven:
+Next action by result:
+```
+
+Manual or live tests must always include `Expected observation` and `Failure/ambiguous observation`.
+
+For Khovan live game smoke, expected observations should name the visible or logged Khovan-specific marker and any runtime state that proves the intended route ran. Example:
+
+```text
+Khovan Reach Slice 01 bootstrap loaded. Scene 1 initialized.
+mission_phase=act_1
+current_scene=1
+```
+
+Failure or ambiguous observations include:
+
+```text
+blank screen with no marker
+empty mast.runtime.log or mast.compile.log when a marker was expected
+default server screen appears but no Khovan marker appears
+no error appears but there is also no proof the Khovan route ran
+quick tests pass but live Cosmos acceptance is still required
+```
+
+Negative-control tests must identify which failure is expected. If a deliberate broken import is supposed to make quick tests fail, then the quick-test failure is the expected observation for that phase. The restored phase should return the quick suite to passing.
+
+# 26. Operator test expectation acceptance checks
+
+```text
+OTE-001 Manual/live test requests include an Expected observation block.
+OTE-002 Manual/live test requests include a Failure/ambiguous observation block.
+OTE-003 Artifact-changing responses identify what changed and whether the change is documentation-only/no-op/runtime-affecting.
+OTE-004 Test instructions include exact command, UI action, app launch, or manual check plus branch/location assumptions.
+OTE-005 The response states what remains unproven, especially static-vs-live and smoke-vs-full-feature gaps.
+OTE-006 The response gives next action by result: success, failure, ambiguous.
+OTE-007 Negative-control tests clearly state when an expected failure means the control passed.
+OTE-008 Completion reports do not claim live/runtime success from static tests.
+OTE-009 If a result has no error but also no marker/log/UI/file/runtime evidence, the assistant classifies it as ambiguous rather than success.
+```
+

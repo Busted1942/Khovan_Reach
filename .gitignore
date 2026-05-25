@@ -1,17 +1,29 @@
-﻿.venv/
+﻿# Python
 __pycache__/
-*.pyc
-*.log
-slice00_repo_intake.txt
-before_rollback_*.txt
-before_rollback_*.patch
-tests/live_smoke_last_bootstrap.txt
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
 
-# Guard against Tier 2 reference clones being staged inside the live mission root.
+# Local reference clones
+_local_clones/
 docs_external/_local_clones/
 reference_missions/_local_clones/
 
+# Generated archives
+*.zip
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
 # Local Cosmos/MAST runtime artifacts
-mast.runtime.log
-mast.compile.log
+*.log
 tests/live_smoke_last_bootstrap.txt
+
+# Local branch-lifecycle / docs workflow files
+slice00_repo_intake.txt
+before_rollback_*.txt
+before_rollback_*.patch

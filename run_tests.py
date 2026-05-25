@@ -168,6 +168,31 @@ def run_static_unittests() -> tuple[list[str], int]:
     return failures, result.testsRun
 
 
+def run_pytest_doc_checks() -> tuple[list[str], int]:
+    if importlib.util.find_spec("pytest") is None:
+        return [], 0
+
+    test_paths = [
+        ROOT / "tests" / "test_branch_lifecycle_docs.py",
+        ROOT / "tests" / "test_operator_test_expectation_docs.py",
+    ]
+    missing = [f"missing pytest doc test: {rel(path)}" for path in test_paths if not path.is_file()]
+    if missing:
+        return missing, 0
+
+    result = subprocess.run(
+        [sys.executable, "-m", "pytest", str(test_paths[0]), str(test_paths[1])],
+        cwd=ROOT,
+        text=True,
+        capture_output=True,
+    )
+    if result.returncode == 0:
+        return [], 0
+
+    output = result.stdout.strip() or result.stderr.strip()
+    return [f"pytest doc checks failed: {output}"], 0
+
+
 def conflict_tokens(path: Path) -> set[str]:
     return {
         token
@@ -238,6 +263,11 @@ def run_quick() -> int:
     static_failures, static_tests_run = run_static_unittests()
     failures.extend(static_failures)
     harness_checks_run += 1
+
+    pytest_failures, _ = run_pytest_doc_checks()
+    failures.extend(pytest_failures)
+    harness_checks_run += 1
+
     warnings.extend(check_old_mast_archive_warning())
     total_checks_run = harness_checks_run + static_tests_run
 

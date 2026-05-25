@@ -1,92 +1,178 @@
 # KHOVAN REACH — IMPLEMENTATION PROJECT START PROMPT
 
-Revision: repo-consolidated baseline
-Status: Prompt for separate implementation/vibe-coding project
-Purpose: Keep the implementation project focused on building from the stable repo-consolidated architecture without redesigning the scenario accidentally.
+Version: 1.2 branch-lifecycle + operator-test-expectation update
+Status: Implementation-project startup prompt
+Purpose: Start or resume coding work from the active repo-consolidated source set without source drift, branch drift, false completion claims, or ambiguous operator test handoffs.
 
 ---
 
-You are assisting with the Khovan Reach Implementation project.
+# 1. Role
 
-This project consumes the Khovan Reach Architecture project's active stable handoff docs and turns them into Cosmos/MAST mission code.
+You are implementing Khovan Reach in the Cosmos/MAST implementation repo.
 
-Do not redesign the scenario casually. If implementation reveals a design problem, create an implementation finding and propose an architecture change rather than silently changing mission intent.
+Do not redesign the scenario. Do not treat old Pass files, old MAST files, patch bundles, archived notes, or reference missions as current scenario authority.
 
-# Active source authority
+Use the active repo docs as the source of truth.
 
-Use these as the current source of truth:
+---
 
-- docs/00_project/00_source_index.md
-- docs/01_design/00_scenario_play_guide.md
-- docs/01_design/10_mast_requirements.md
-- docs/01_design/20_gm_operational_notes.md
-- docs/01_design/30_qualification_cards.md
-- docs/01_design/40_admin_testing_plan.md
-- docs/01_design/50_implementation_slice_plan.md
-- docs/02_content/00_hessler_voice_mode.md
-- docs/02_content/10_pirate_dialogue.md
-- docs/02_content/20_damcon_reports.md
-- docs/02_content/30_anderson_clips.md
-- docs/02_content/40_dillon_clips.md
-- docs/02_content/50_debrief_script.md
-- docs/03_game_resources/comms/00_tsn_cultural_comms_playbook.md
-- docs/04_implementation_setup/00_transfer_from_old_build.md
-- docs/04_implementation_setup/10_mast_file_lessons.md
-- docs/04_implementation_setup/20_current_objective_display_spike.md
+# 2. Active source authority
 
-Treat older outlines, Pass covers, v2.0/v2.1/v2.2/v2.3 patch files, old Act I addenda, and old implementation handoffs as archived unless the user explicitly asks for historical comparison.
+Start by identifying the active sources for the task:
 
-# Core runtime rule
+- `docs/00_project/00_source_index.md`
+- `docs/00_project/10_repo_structure.md`
+- `docs/00_project/20_build_start_checklist.md`
+- `docs/01_design/00_scenario_play_guide.md`
+- `docs/01_design/10_mast_requirements.md`
+- `docs/01_design/40_admin_testing_plan.md`
+- `docs/01_design/50_implementation_slice_plan.md`
+- relevant `docs/02_content/*` files
+- relevant `docs/04_implementation_setup/*` files
+- `AGENTS.md` for implementation-agent workflow rules
 
-Runtime drives normal flow.
-Players drive decisions.
-GM supervises ambiguity.
-GM overrides failure.
+If sources conflict, stop and report the conflict before implementing.
 
-# Build discipline
+---
 
-- Build in small slices.
-- Do not start with the full Act I drill.
-- Start with repo setup, mission skeleton, state initialization, Scenario Control Panel shell, story-jump framework, and message routing wrapper.
-- Prefer automatic gates where Cosmos exposes reliable state.
-- Use Comms/captain confirmation for non-observable in-fiction actions.
-- Use GM manual marks only as fallback.
-- Keep Test Mode and Live GM Recovery Mode separate.
-- Hide debug/admin controls from player consoles.
-- Add tests or acceptance checks for every slice.
-- Do not claim a slice complete until tests or smoke checks are run.
+# 3. Branch lifecycle gate
 
-# Prior build lessons
+Before running implementation prompts, live-smoke prompts, or Cosmos tests, perform the branch lifecycle check.
 
-Read `docs/04_implementation_setup/00_transfer_from_old_build.md` before coding.
+Opening check:
 
-Preserve useful lessons:
-- real Cosmos mission path
-- baseline Kestrel/Tarsis primitives
-- dev jump harness concept as Scenario Control Panel
-- neutral helper modules
-- checkpoint separation
-- run_id / generation_id stale-task protection
-- regression workflow
+```text
+git status --short --branch
+git log --oneline -5
+```
 
-Do not preserve:
-- old design authority
-- tangled Drill Two experiment branch
-- weak-frequency relay as hard gate
-- regular-hostile target substitution without proof
-- GM-confirmed checks as default when runtime gates are available
+Identify:
 
-# For every implementation slice, produce
+```text
+current branch:
+branch type: implementation | docs/governance | architecture feedback | spike/experiment | emergency fix
+task purpose:
+expected return branch:
+runtime/live-smoke allowed from this branch:
+```
 
-1. Goal
-2. Source sections used
-3. Files to touch
-4. State variables
-5. Runtime flow
-6. GM controls
-7. Player-facing behavior
-8. Test/jump presets
-9. Acceptance criteria
-10. Known risks or API uncertainties
+Runtime implementation and live-smoke prompts should run from the active implementation branch, not from temporary docs/governance or architecture-feedback branches.
 
-If a Cosmos/MAST API capability is uncertain, create a spike before building the feature around it.
+If on a docs-only, governance, or architecture-feedback branch, stop and switch back before runtime testing unless the user explicitly approves that branch for runtime work.
+
+---
+
+# 4. Branch transition and return-to-work routine
+
+Before switching branches:
+
+```text
+python run_tests.py quick
+git status --short --branch
+git diff --stat
+```
+
+If `python run_tests.py quick` is unavailable, document that directly.
+
+Before switching branches, commit, stash, or intentionally discard local changes after review. Do not leave unresolved docs/test/governance changes mixed with runtime implementation work.
+
+After completing a docs/governance or architecture-feedback branch:
+
+1. close the temporary branch intentionally
+2. merge it into the active implementation branch
+3. rerun `python run_tests.py quick` if available
+4. confirm `git status --short --branch`
+5. only then resume runtime implementation work
+
+---
+
+# 5. Test-first slice discipline
+
+Before implementation, define:
+
+```text
+slice/task goal:
+source docs:
+files expected to change:
+acceptance criteria:
+existing tests to preserve:
+new checks to add:
+what each check proves:
+what each check does not prove:
+live Cosmos smoke required:
+stop condition:
+```
+
+Do not claim live runtime success from static tests.
+
+If live Cosmos fails after quick tests pass, treat the live failure as stronger evidence. Add a regression/static check where feasible or document why not.
+
+---
+
+# 6. Operator Test Expectation
+
+Before asking the human operator to run a command, manual check, live smoke, UI/runtime check, generated-artifact review, branch workflow check, documentation review, or negative-control test, provide the expected observation.
+
+Required blocks for operator action requests:
+
+```text
+What changed:
+What to run or do:
+Expected observation:
+Failure/ambiguous observation:
+What remains unproven:
+Next action by result:
+```
+
+Manual or live tests must always include:
+
+```text
+Expected observation:
+Failure/ambiguous observation:
+```
+
+Do not treat "no error" as proof when the acceptance criterion requires a visible marker, UI state, log line, file output, runtime variable, or game behavior. If the expected marker is absent, classify the result as failure or ambiguous and give the next diagnostic step.
+
+For negative-control tests, state clearly when the expected failure means the negative control passed.
+
+Examples:
+
+```text
+Quick tests expected observation:
+- python run_tests.py quick exits 0
+- summary says PASS or equivalent
+- prior test count does not unexpectedly drop
+- no external clone contents appear as tracked files
+
+Live game smoke expected observation:
+- no SBS Utils error
+- visible marker or log marker appears: Khovan Reach Slice 01 bootstrap loaded. Scene 1 initialized.
+- mission_phase=act_1
+- current_scene=1
+
+Negative-control expected observation:
+- deliberate broken import causes quick tests to fail
+- restoring the file makes quick tests pass again
+- if the broken import is caught, the negative-control phase passed
+```
+
+---
+
+# 7. Completion report
+
+Every implementation or branch lifecycle operation must report:
+
+```text
+Starting branch:
+Ending branch:
+Branch type:
+Commits created:
+Merge performed: yes/no
+Tests run:
+Files changed:
+Remaining uncommitted changes:
+Live Cosmos smoke run: yes/no
+Next safe branch/action:
+```
+
+Do not claim a file was edited, tested, committed, pushed, merged, or live-smoked unless that action actually occurred.
