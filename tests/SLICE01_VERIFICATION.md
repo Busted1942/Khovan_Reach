@@ -30,6 +30,22 @@ Live Cosmos smoke remains required for:
 
 The live-smoke marker file is `tests/live_smoke_last_bootstrap.txt`.
 
+### VS Code MAST extension `__init__.mast` warning
+
+The VS Code MAST extension may warn:
+
+```text
+No '__init__.mast' file found in this folder.
+```
+
+This is classified as a tooling/convenience warning for the current Slice 01 runtime, not a live Cosmos blocker. Live Slice 01 startup uses:
+
+```text
+story.json -> script.py -> story.mast -> scripts/main.mast -> khovan_reach_slice01_entry
+```
+
+Current active runtime files do not import or load `__init__.mast`, and live Cosmos has already displayed the Slice 01 bootstrap marker without a missing-`__init__.mast` runtime error. Do not create an active `__init__.mast` only to silence the editor warning, and do not copy the archived old-build `__init__.mast` into active runtime.
+
 ### Live failure: missing old MAST dependency
 
 Observed error:
@@ -115,4 +131,3 @@ no error but no proof the Khovan startup route ran
 ```
 
 If the check is a negative control, state which failure is expected and when that expected failure means the control passed.
-
