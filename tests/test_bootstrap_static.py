@@ -25,7 +25,9 @@ REQUIRED_STATE = {
     "shakedown_mode": "\"unset\"",
     "training_overlay_active": "True",
     "comms_archive_enabled": "True",
-    "artemis_player_ship_status": "\"not_initialized_api_uncertainty\"",
+    "artemis_player_ship_status": "\"pending_playable_bootstrap\"",
+    "scene_1_runtime_presence": "\"pending_playable_bootstrap\"",
+    "player_console_select_status": "\"client_select_page_enabled\"",
 }
 
 LEGACY_MAST_NAMES = {
@@ -89,6 +91,21 @@ class BootstrapStaticTests(unittest.TestCase):
     def test_script_py_static_bootstrap_shape(self) -> None:
         script = read("script.py")
         ast.parse(script)
+        self.assertIn("KHOVAN_STARTUP_TRACE_PATH", script)
+        self.assertIn("tests\" / \"live_startup_trace.txt", script)
+        self.assertIn("def write_khovan_startup_trace(message):", script)
+        self.assertIn("[KHOVAN EARLY 001] script.py entered", script)
+        self.assertIn("[KHOVAN EARLY 002] before sbs_utils import", script)
+        self.assertIn("[KHOVAN EARLY 003] after sbs_utils import", script)
+        self.assertIn("[KHOVAN EARLY 004] before client StoryPage setup", script)
+        self.assertIn("[KHOVAN EARLY 005] after client StoryPage setup", script)
+        self.assertIn("[KHOVAN EARLY 006] before story.mast load/handoff", script)
+        self.assertIn("[KHOVAN EARLY 007] after story.mast load/handoff", script)
+        self.assertIn("[KHOVAN EARLY EXCEPTION]", script)
+        self.assertIn("traceback.format_exc()", script)
+        self.assertIn("from sbs_utils.mast.mast_globals import MastGlobals", script)
+        self.assertIn('MastGlobals.globals["script"] = sys.modules.get("script")', script)
+        self.assertNotIn("ClientSelectPage", script)
         self.assertIn("class KhovanReachStoryPage(StoryPage):", script)
         self.assertIn('story_file = "story.mast"', script)
         self.assertIn('main_server = "khovan_reach_slice01_entry"', script)
@@ -98,18 +115,20 @@ class BootstrapStaticTests(unittest.TestCase):
         self.assertIn("def write_slice01_live_smoke_marker(client_id):", script)
         self.assertIn("def start_story(self, client_id):", script)
         self.assertIn("super().start_story(client_id)", script)
-        self.assertIn("write_slice01_live_smoke_marker(client_id)", script)
+        self.assertNotIn("            write_slice01_live_smoke_marker(client_id)", script)
         self.assertIn("mission_phase=act_1", script)
         self.assertIn("current_scene=1", script)
         self.assertIn("dillon_clip_1_status=stubbed", script)
-        self.assertIn("artemis_player_ship_status=not_initialized_api_uncertainty", script)
-        self.assertIn("scene_1_runtime_presence=bootstrap_marker_and_dillon_stub", script)
+        self.assertIn("artemis_player_ship_status=initialized_by_reference_pattern", script)
+        self.assertIn("scene_1_runtime_presence=artemis_player_ship_and_dillon_stub", script)
+        self.assertIn("client_start_page=KhovanReachStoryPage", script)
         self.assertIn("Gui.server_start_page_class(KhovanReachStoryPage)", script)
         self.assertIn("Gui.client_start_page_class(KhovanReachStoryPage)", script)
 
     def test_live_smoke_marker_file_is_gitignored(self) -> None:
         gitignore = read(".gitignore")
         self.assertIn("tests/live_smoke_last_bootstrap.txt", gitignore)
+        self.assertIn("tests/live_startup_trace.txt", gitignore)
 
     def test_story_mast_imports_active_main(self) -> None:
         story = read("story.mast")
@@ -118,31 +137,53 @@ class BootstrapStaticTests(unittest.TestCase):
     def test_active_main_bootstrap_imports_systems(self) -> None:
         main = read("scripts/main.mast")
         self.assertIn("import scripts/systems/bootstrap_state.mast", main)
+        self.assertIn("import scripts/systems/playable_bootstrap.mast", main)
         self.assertIn("import scripts/systems/audio_runtime.mast", main)
         self.assertIn("import scripts/systems/debug_runtime.mast", main)
+        self.assertRegex(main, r"(?m)^\s*shared\s+artemis_id\s*=\s*0\s*$")
         self.assertIn("@map/khovan_reach", main)
         self.assertIn("=== khovan_reach_slice01_entry ===", main)
         self.assertIn("=== khovan_reach_slice01_client_entry ===", main)
+        self.assertIn("=== khovan_reach_slice01_client_main ===", main)
+        self.assertIn("=== khovan_reach_slice01_console_selected ===", main)
         self.assertIn("khovan_reach_slice01_bootstrap", main)
-        self.assertIn("jump khovan_reach_slice01_runtime_idle", main)
-        self.assertIn("=== khovan_reach_slice01_runtime_idle ===", main)
+        self.assertIn("jump khovan_reach_slice01_server_playable", main)
+        self.assertIn("=== khovan_reach_slice01_server_playable ===", main)
         self.assertIn(
-            "Khovan Reach Slice 01 bootstrap loaded. Scene 1 initialized.",
+            "Khovan Reach Slice 01A playable bootstrap loaded. Scene 1 initialized.",
             main,
         )
-        self.assertIn("sbs.send_story_dialog(0", main)
-        self.assertIn("Dillon Clip 1 text stub active.", main)
-        self.assertIn("Artemis/player ship spawn not initialized", main)
-        self.assertIn("BOOT-006 needs a reference-backed API spike", main)
+        self.assertIn("khovan_reach_initialize_playable_bootstrap", main)
+        self.assertIn("[KHOVAN BOOT 001] scripts/main.mast entered", main)
+        self.assertIn("[KHOVAN BOOT 002] before state defaults", main)
+        self.assertIn("[KHOVAN BOOT 003] after state defaults", main)
+        self.assertIn("[KHOVAN BOOT 004] before playable_bootstrap", main)
+        self.assertIn("[KHOVAN BOOT 007A] before client/page playable transition", main)
+        self.assertIn("[KHOVAN BOOT 007B] after client/page playable transition", main)
+        self.assertIn("[KHOVAN BOOT 007C] before player/client assignment confirmation", main)
+        self.assertIn("[KHOVAN BOOT 007D] after player/client assignment confirmation", main)
+        self.assertIn("[KHOVAN BOOT 009] mission_phase=act_1 current_scene=1", main)
+        self.assertIn("[KHOVAN BOOT 010] playable bootstrap complete", main)
+        self.assertIn("[KHOVAN ROUTE 001] map selected", main)
+        self.assertIn("[KHOVAN ROUTE 002] player ship initialized", main)
+        self.assertIn("[KHOVAN ROUTE 003] playable bridge transition reached", main)
+        self.assertIn("[KHOVAN ROUTE 004] console selected", main)
+        self.assertIn("[KHOVAN ROUTE 005] client assigned to Artemis", main)
+        self.assertIn("script.write_slice01_live_smoke_marker(0)", main)
         self.assertIn('logger("mast.runtime")', main)
         self.assertIn('"mast.runtime"', main)
         self.assertIn("mission_phase = act_1; current_scene = 1", main)
         self.assertIn("dillon_clip_1_status = stubbed", main)
-        self.assertIn("artemis_player_ship_status = not_initialized_api_uncertainty", main)
-        self.assertIn("await gui(timeout=delay_sim(10))", main)
-        self.assertIn("jump khovan_reach_slice01_runtime_idle", main)
+        self.assertIn("artemis_player_ship_status = initialized", main)
+        self.assertIn("sim_resume()", main)
+        self.assertIn("assign_client_to_ship(0, artemis_id)", main)
+        self.assertIn('link(artemis_id, "consoles", client_id)', main)
+        self.assertIn('add_role(client_id, "console, mainscreen")', main)
+        self.assertIn('gui_console("mainscreen")', main)
+        self.assertIn("assign_client_to_ship(client_id, artemis_id)", main)
+        self.assertIn("gui_console(console_select)", main)
 
-    def test_map_route_continues_directly_into_idle_task(self) -> None:
+    def test_map_route_enters_reference_backed_playable_server_route(self) -> None:
         main = read("scripts/main.mast")
         match = re.search(
             r"@map/khovan_reach\b(?P<body>.*?)^=== khovan_reach_slice01_entry ===",
@@ -151,8 +192,9 @@ class BootstrapStaticTests(unittest.TestCase):
         )
         self.assertIsNotNone(match)
         map_body = match.group("body")
+        self.assertIn("[KHOVAN ROUTE 001] map selected", map_body)
         self.assertIn("jump khovan_reach_slice01_entry", map_body)
-        self.assertNotIn("task_schedule(khovan_reach_slice01_runtime_idle)", map_body)
+        self.assertNotIn("task_schedule(khovan_reach_slice01_server_playable)", map_body)
         self.assertNotIn("->END", map_body)
 
     def test_storypage_entry_labels_are_defined_and_persistent(self) -> None:
@@ -169,7 +211,7 @@ class BootstrapStaticTests(unittest.TestCase):
         self.assertIsNotNone(server_match)
         server_body = server_match.group("body")
         self.assertIn("await task_schedule(khovan_reach_slice01_bootstrap)", server_body)
-        self.assertIn("jump khovan_reach_slice01_runtime_idle", server_body)
+        self.assertIn("jump khovan_reach_slice01_server_playable", server_body)
         self.assertNotIn("->END", server_body)
 
         client_match = re.search(
@@ -179,7 +221,7 @@ class BootstrapStaticTests(unittest.TestCase):
         )
         self.assertIsNotNone(client_match)
         client_body = client_match.group("body")
-        self.assertIn("jump khovan_reach_slice01_runtime_idle", client_body)
+        self.assertIn("jump khovan_reach_slice01_client_main", client_body)
         self.assertNotIn("->END", client_body)
 
     def test_required_bootstrap_system_files_exist(self) -> None:
@@ -187,6 +229,7 @@ class BootstrapStaticTests(unittest.TestCase):
             "__lib__.json",
             "scripts/main.mast",
             "scripts/systems/bootstrap_state.mast",
+            "scripts/systems/playable_bootstrap.mast",
             "scripts/systems/audio_runtime.mast",
             "scripts/systems/debug_runtime.mast",
         ]:
@@ -198,12 +241,46 @@ class BootstrapStaticTests(unittest.TestCase):
             pattern = rf"(?m)^\s*{re.escape(name)}\s*=\s*{re.escape(value)}\s*$"
             self.assertRegex(state, pattern, name)
 
+    def test_slice01a_playable_bootstrap_uses_reference_spawn_pattern(self) -> None:
+        playable = read("scripts/systems/playable_bootstrap.mast")
+        self.assertIn("=== khovan_reach_initialize_playable_bootstrap ===", playable)
+        self.assertIn("[KHOVAN BOOT 005] playable_bootstrap entered", playable)
+        self.assertIn("[KHOVAN BOOT 006] before Artemis/player ship init or confirmation", playable)
+        self.assertIn("[KHOVAN BOOT 006A] before sim_create", playable)
+        self.assertIn("[KHOVAN BOOT 006B] after sim_create", playable)
+        self.assertIn("[KHOVAN BOOT 006E] before ship spawn call", playable)
+        self.assertIn("[KHOVAN BOOT 006F] after ship spawn call", playable)
+        self.assertIn("[KHOVAN BOOT 006J] before client/player assignment", playable)
+        self.assertIn("[KHOVAN BOOT 006K] after client/player assignment", playable)
+        self.assertIn("[KHOVAN BOOT 007] after Artemis/player ship init or confirmation", playable)
+        self.assertNotIn("artemis_ship_name", playable)
+        self.assertIn("sim_create()", playable)
+        self.assertIn("shared artemis_id = to_id(player_spawn(0, 0, 0, \"Artemis\", \"tsn\", \"tsn_battle_cruiser\"))", playable)
+        self.assertIn("assign_client_to_ship(0, artemis_id)", playable)
+        self.assertIn('if player_ship.name == "Artemis":', playable)
+        self.assertIn('artemis_object.name = "Artemis"', playable)
+        self.assertIn('role("__player__") & role("tsn")', playable)
+        self.assertIn('add_role(artemis_id, "default_player_ship")', playable)
+        self.assertIn('artemis_player_ship_status = "initialized"', playable)
+        self.assertIn('scene_1_runtime_presence = "artemis_player_ship_and_dillon_stub"', playable)
+        self.assertIn('player_console_select_status = "client_select_page_enabled"', playable)
+
+    def test_artemis_id_is_shared_before_assignment_routes_use_it(self) -> None:
+        main = read("scripts/main.mast")
+        playable = read("scripts/systems/playable_bootstrap.mast")
+        self.assertRegex(main, r"(?m)^\s*shared\s+artemis_id\s*=\s*0\s*$")
+        self.assertIn("shared artemis_id = to_id(player_spawn", playable)
+        self.assertIn("shared artemis_id = artemis_object.id", playable)
+        self.assertIn("assign_client_to_ship(0, artemis_id)", main)
+        self.assertIn("assign_client_to_ship(client_id, artemis_id)", main)
+
     def test_dillon_clip_1_is_stubbed(self) -> None:
         audio = read("scripts/systems/audio_runtime.mast")
         self.assertIn("shared dillon_clip_1_stub_text", audio)
         self.assertIn("=== khovan_reach_stub_dillon_clip_1 ===", audio)
         self.assertIn('dillon_clip_1_status = "stubbed"', audio)
         self.assertIn("Dillon Clip 1 text stub active", audio)
+        self.assertIn("[KHOVAN BOOT 008] Dillon Clip 1 stub/queue reached", audio)
         self.assertIn("sbs.send_story_dialog(0", audio)
 
     def test_debug_runtime_is_stubbed(self) -> None:
@@ -334,6 +411,26 @@ class BootstrapStaticTests(unittest.TestCase):
             "salvager_arrival.mast",
             "edge case",
             "gui/task lifecycle",
+            "mast compile/preflight",
+            "middle evidence class",
+            "tests/test_mast_compile_or_preflight.py",
+            "route-smoke breadcrumb trace",
+            "tests/live_startup_trace.txt",
+            "last-success audit",
+        ]:
+            self.assertIn(phrase, text)
+
+    def test_admin_testing_plan_records_testing_evidence_classes(self) -> None:
+        text = read("docs/01_design/40_admin_testing_plan.md").lower()
+        for phrase in [
+            "testing evidence classes",
+            "static/source checks",
+            "mast compile/preflight checks",
+            "runtime load-path checks",
+            "route-smoke breadcrumb traces",
+            "live cosmos smoke",
+            "tests/test_mast_compile_or_preflight.py",
+            "live failures outrank green quick tests",
         ]:
             self.assertIn(phrase, text)
 
@@ -341,8 +438,13 @@ class BootstrapStaticTests(unittest.TestCase):
         text = read("AGENTS.md").lower()
         self.assertIn("runtime load and gui lifecycle testing", text)
         self.assertIn("runtime load path", text)
+        self.assertIn("compile-preflight", text)
+        self.assertIn("middle evidence class", text)
         self.assertIn("git-ignored folders are not runtime-ignored", text)
         self.assertIn("live cosmos smoke remains required", text)
+        self.assertIn("route-smoke breadcrumb trace", text)
+        self.assertIn("tests/live_startup_trace.txt", text)
+        self.assertIn("last-success audit", text)
         self.assertIn("boot-001", text)
         self.assertIn("boot-012", text)
 
@@ -350,6 +452,8 @@ class BootstrapStaticTests(unittest.TestCase):
         text = read("tests/SLICE01_VERIFICATION.md").lower()
         self.assertIn("live cosmos smoke evidence and runtime blockers", text)
         self.assertIn("quick tests are necessary but not sufficient", text)
+        self.assertIn("mast compile/preflight", text)
+        self.assertIn("middle evidence class", text)
         self.assertIn("boot-001", text)
         self.assertIn("boot-012", text)
         self.assertIn("salvager_arrival.mast", text)

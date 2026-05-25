@@ -154,6 +154,8 @@ Quick tests should fail when active runtime files reference:
 
 Git-ignored folders are not runtime-ignored. If external reference clones live under the active Cosmos mission root, active runtime files must not reference them.
 
+When available, quick should also run the installed SBS Utils / MAST compile-preflight path. Treat this as a middle evidence class: stronger than text-only static checks because it compiles `story.mast` and imported active MAST files, but weaker than live Cosmos smoke because it does not prove runtime values, GUI/page lifecycle, player assignment, renderer behavior, or server/client playability.
+
 When live Cosmos reports a missing load file, add a targeted regression check so the same class of failure is caught by `quick` before the next live run.
 
 For SBS Utils / MAST bootstrap work, quick tests should also check the lifecycle contract where practical:
@@ -166,6 +168,15 @@ For SBS Utils / MAST bootstrap work, quick tests should also check the lifecycle
 Static tests cannot fully prove live runtime behavior. Live Cosmos smoke remains required for mission-load acceptance items such as BOOT-001 and BOOT-012.
 
 If live Cosmos fails after quick tests pass, treat the live failure as stronger evidence. Update the verification note, add a regression/static check where feasible, and do not claim the slice complete until the live failure is fixed or documented as a blocker.
+
+When live Cosmos crashes or goes ambiguous with empty `mast.runtime.log` / `mast.compile.log`, use a route-smoke breadcrumb trace before guessing at runtime fixes. Keep the evidence classes separate:
+
+- last-success audit, such as `tests/live_smoke_last_bootstrap.txt`
+- append-only crash breadcrumbs, such as `tests/live_startup_trace.txt`
+
+Route-smoke breadcrumbs should bracket the real startup path and risky handoffs: `script.py` entry, sbs_utils import, client/start page setup, `story.mast` handoff, `scripts/main.mast` entry, state defaults, subsystem entry, and the exact API call suspected of crashing. If the trace does not update, the active startup path is earlier or different than assumed. If it stops at a marker, inspect the next line or API call first.
+
+Quick tests may check that route-smoke markers exist and trace files are ignored, but they must not claim live success from marker strings alone.
 
 ---
 
@@ -215,4 +226,3 @@ Failure/ambiguous observation:
 A clean terminal exit is not enough when the acceptance criterion depends on a visible UI marker, log line, runtime state, file output, or game behavior.
 
 For negative-control tests, state explicitly when an expected failure means the negative control passed. Example: "The deliberate broken import should make quick tests fail; if quick tests fail for that import, the negative-control phase passed. Restore the file and rerun quick tests; the restored run should pass."
-

@@ -358,6 +358,104 @@ Full playtests remain necessary, but they should not carry the full testing burd
 
 ---
 
+# 7A. Testing evidence classes
+
+Khovan testing uses separate evidence classes. They are cumulative; a stronger class does not erase the need for narrower regression checks, and a narrower class must not be reported as live runtime proof.
+
+## 7A.1 Static/source checks
+
+Static/source checks inspect repository files without running Cosmos. They include:
+
+- required file presence
+- JSON/Python parse checks
+- forbidden old-module references
+- missing active `.mast` imports where statically detectable
+- generated artifact ignore checks
+- documentation/governance keyword checks
+
+These checks run through:
+
+```text
+python run_tests.py quick
+```
+
+Static/source checks can prevent obvious regressions, but they do not prove MAST runtime evaluation, GUI lifecycle behavior, player spawn behavior, or bridge/client usability.
+
+## 7A.2 MAST compile/preflight checks
+
+MAST compile/preflight checks are a middle evidence class between text-only static checks and live Cosmos smoke.
+
+When the local installed SBS Utils package exposes a usable preflight API, quick tests should run:
+
+```text
+tests/test_mast_compile_or_preflight.py
+```
+
+The current Slice 01A preflight loads the installed `artemis-sbs.sbs_utils.v1.3.0.sbslib`, registers SBS/GUI MAST nodes, points the MAST filesystem at the Khovan mission root, and compiles:
+
+```text
+story.mast
+scripts/main.mast
+scripts/systems/*.mast reached by imports
+```
+
+MAST compile/preflight can catch MAST syntax/import/compiler failures before live Cosmos. It cannot prove:
+
+- runtime expression values
+- bare-variable availability after task scheduling
+- renderer/client-page behavior
+- player ship assignment success
+- GUI/page lifecycle in live Cosmos
+- server/client playability
+
+Therefore compile/preflight success is useful but not acceptance proof for BOOT, PLAYBOOT, admin UI, or gameplay criteria that require live runtime behavior.
+
+## 7A.3 Runtime load-path checks
+
+Runtime load-path checks verify that active startup files point only to allowed, existing, active runtime files. They should fail on:
+
+- missing `.mast` files
+- old archived MAST modules in active load paths
+- external clone paths in active runtime files
+- stale old-build module names such as `salvager_arrival.mast`
+
+Runtime load-path checks are still static unless they are observed in live Cosmos.
+
+## 7A.4 Route-smoke breadcrumb traces
+
+Route-smoke traces are live troubleshooting evidence. They should be used when quick/static/preflight checks pass but live Cosmos still crashes, stalls, or gives no useful logs.
+
+Use:
+
+```text
+tests/live_startup_trace.txt
+```
+
+as append-only crash breadcrumbs, and:
+
+```text
+tests/live_smoke_last_bootstrap.txt
+```
+
+as the last successful bootstrap audit.
+
+If the trace stops at a marker, the next line or API call is the first suspect. If the trace does not update, the active startup path is earlier or different than assumed.
+
+## 7A.5 Live Cosmos smoke
+
+Live Cosmos smoke is the only evidence class that proves Cosmos/MAST runtime behavior. It is required for acceptance criteria involving:
+
+- mission package load
+- player ship visibility or assignment
+- GUI/page lifecycle stability
+- server/client console transition
+- operator-visible mission state
+- playable bridge/server state
+
+Live failures outrank green quick tests. A green quick run plus a live runtime failure means the failure must be fixed, converted into a targeted regression when feasible, or documented as an exact blocker.
+
+---
+
 # 8. Required test artifacts
 
 Create in the implementation project:
@@ -1057,6 +1155,45 @@ quick tests pass but live Cosmos acceptance is still required
 ```
 
 Negative-control tests must identify which failure is expected. If a deliberate broken import is supposed to make quick tests fail, then the quick-test failure is the expected observation for that phase. The restored phase should return the quick suite to passing.
+
+# 25A. Route-smoke breadcrumb trace pattern
+
+Route-smoke breadcrumb traces are live-smoke troubleshooting evidence, not gameplay tests and not a substitute for acceptance.
+
+Use an append-only route trace when quick/static/preflight checks pass but live Cosmos crashes or provides no useful log output. This is especially important when `mast.runtime.log`, `mast.compile.log`, or the last-success marker file are empty, stale, or ambiguous.
+
+Recommended evidence split:
+
+```text
+tests/live_smoke_last_bootstrap.txt = last successful bootstrap audit
+tests/live_startup_trace.txt = append-only crash breadcrumb trace
+```
+
+Route-smoke traces should bracket the active entry chain and risky runtime boundaries, for example:
+
+```text
+[KHOVAN EARLY 001] script.py entered
+[KHOVAN EARLY 002] before sbs_utils import
+[KHOVAN EARLY 003] after sbs_utils import
+[KHOVAN EARLY 006] before story.mast load/handoff
+[KHOVAN BOOT 001] scripts/main.mast entered
+[KHOVAN BOOT 002] before state defaults
+[KHOVAN BOOT 003] after state defaults
+[KHOVAN BOOT 004] before a risky subsystem
+[KHOVAN BOOT 005] risky subsystem entered
+[KHOVAN BOOT 006] before a risky API call
+```
+
+Acceptance interpretation:
+
+```text
+trace absent = active startup path is earlier/different than assumed, or trace write path failed
+trace stops at marker = next startup line/API call is the first suspect
+last-success audit stale = previous success only; not proof for the current live run
+quick green + live crash = live crash outranks quick green
+```
+
+Quick tests may verify that route-smoke marker strings exist in active startup files and that trace artifacts are ignored. Quick tests must not claim the route-smoke trace proves live Cosmos behavior unless the live run actually produced the trace.
 
 # 26. Operator test expectation acceptance checks
 

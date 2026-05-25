@@ -1,0 +1,58 @@
+# Slice 01A minimum playable bootstrap.
+# Reference-backed pattern: sim_create, player_spawn, assign_client_to_ship.
+# This mirrors local tutorial/reference missions and keeps Act I gameplay systems unloaded.
+
+=== khovan_reach_initialize_playable_bootstrap ===
+    script.write_khovan_startup_trace("[KHOVAN BOOT 005] playable_bootstrap entered")
+    artemis_player_ship_status = "checking_existing_runtime_player_ship"
+    scene_1_runtime_presence = "player_ship_checking"
+    player_console_select_status = "client_select_page_enabled"
+
+    script.write_khovan_startup_trace("[KHOVAN BOOT 006] before Artemis/player ship init or confirmation")
+    script.write_khovan_startup_trace("[KHOVAN BOOT 006A] before sim_create")
+    sim_create()
+    script.write_khovan_startup_trace("[KHOVAN BOOT 006B] after sim_create")
+
+    script.write_khovan_startup_trace("[KHOVAN BOOT 006C] before existing player ship query")
+    player_objects = sorted(to_object_list(role("__player__") & role("tsn")), key=lambda p: p.id)
+    script.write_khovan_startup_trace("[KHOVAN BOOT 006D] after existing player ship query")
+    artemis_object = None
+
+    for player_ship in player_objects:
+        if player_ship.name == "Artemis":
+            artemis_object = player_ship
+
+    if artemis_object is None and len(player_objects) > 0:
+        artemis_object = player_objects[0]
+        artemis_object.name = "Artemis"
+
+    if artemis_object is None:
+        script.write_khovan_startup_trace("[KHOVAN BOOT 006E] before ship spawn call")
+        shared artemis_id = to_id(player_spawn(0, 0, 0, "Artemis", "tsn", "tsn_battle_cruiser"))
+        script.write_khovan_startup_trace("[KHOVAN BOOT 006F] after ship spawn call")
+        artemis_object = to_object(artemis_id)
+
+    if artemis_object is None:
+        shared artemis_id = 0
+        artemis_player_ship_status = "spawn_failed_after_reference_pattern"
+        scene_1_runtime_presence = "dillon_stub_only_player_ship_spawn_failed"
+        script.write_khovan_startup_trace("[KHOVAN BOOT 006G] player ship spawn returned no object")
+        log("Slice 01A playable bootstrap could not create or bind Artemis after reference-backed sim_create/player_spawn pattern.")
+        ->END
+
+    shared artemis_id = artemis_object.id
+    script.write_khovan_startup_trace("[KHOVAN BOOT 006H] before ship role/name assignment")
+    artemis_object.name = "Artemis"
+    artemis_object.update_comms_id()
+    add_role(artemis_id, "default_player_ship")
+    script.write_khovan_startup_trace("[KHOVAN BOOT 006I] after ship role/name assignment")
+
+    script.write_khovan_startup_trace("[KHOVAN BOOT 006J] before client/player assignment")
+    assign_client_to_ship(0, artemis_id)
+    script.write_khovan_startup_trace("[KHOVAN BOOT 006K] after client/player assignment")
+
+    artemis_player_ship_status = "initialized"
+    scene_1_runtime_presence = "artemis_player_ship_and_dillon_stub"
+    script.write_khovan_startup_trace("[KHOVAN BOOT 007] after Artemis/player ship init or confirmation")
+    log(f"Slice 01A playable bootstrap initialized Artemis player ship id {artemis_id}.")
+    ->END
