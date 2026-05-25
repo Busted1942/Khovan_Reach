@@ -1,0 +1,55 @@
+# Khovan Reach Act II scaffold
+# Scenes 5-8 from design_docs/khovan_reach_pass1.md
+
+=== scene_05_new_orders ===
+    current_scene = 5
+    mission_phase = "act_2"
+    # TODO: Trigger existing Anderson Clip 1 only after clip/video playback syntax is validated.
+    # TODO: Anderson must not mention the stabilizer or frame this as a fetch mission.
+    await task_schedule(khovan_reach_play_anderson_new_orders_text)
+    await task_schedule(khovan_reach_play_dillon_pivot_acknowledgment_text)
+    anderson_orders_received = True
+    log("Scene 5 armed: Anderson new-orders text and Dillon pivot acknowledgment delivered. Video/audio clips remain future replacements.")
+    ->END
+
+=== khovan_reach_play_anderson_new_orders_text ===
+    await task_schedule(khovan_reach_anderson_text, {"banner": "Priority Transmission", "message": "Captain. Admiral Anderson, Command Coordination.", "time": 6})
+    await delay_sim(seconds=5)
+    await task_schedule(khovan_reach_anderson_text, {"banner": "Priority Transmission", "message": "Long-range monitoring has detected a fragmentary distress signal in the Khovan Reach region. The signal is on a TSN-compatible emergency band but has been too degraded for source identification or authentication.", "time": 11})
+    await delay_sim(seconds=10)
+    await task_schedule(khovan_reach_anderson_text, {"banner": "Priority Transmission", "message": "Pattern analysis suggests either a civilian emergency beacon or a possible TSN vessel in difficulty. We cannot resolve the source from Command range. No other TSN assets are positioned to respond within operational timeframes.", "time": 12})
+    await delay_sim(seconds=11)
+    await task_schedule(khovan_reach_anderson_text, {"banner": "Priority Transmission", "message": "Your orders, Captain: proceed to the Khovan Reach region, locate the signal source, render aid as appropriate, and report findings. Anticipated transit from your current position is approximately ninety minutes at standard cruise.", "time": 12})
+    await delay_sim(seconds=11)
+    await task_schedule(khovan_reach_anderson_text, {"banner": "Priority Transmission", "message": "The qualification framework remains in effect. This is now a live operation under Master Sergeant Dillon's observation. Operate accordingly.", "time": 9})
+    await delay_sim(seconds=8)
+    await task_schedule(khovan_reach_anderson_text, {"banner": "Priority Transmission", "message": "Command, out.", "time": 5})
+    await delay_sim(seconds=4)
+    ->END
+
+=== khovan_reach_play_dillon_pivot_acknowledgment_text ===
+    await task_schedule(khovan_reach_dillon_text, {"banner": "Live Operation", "message": "Captain. Crew.", "time": 5})
+    await delay_sim(seconds=4)
+    await task_schedule(khovan_reach_dillon_text, {"banner": "Live Operation", "message": "The qualification framework remains in effect. This is now a live operation. The same observational discipline applies, but the consequences are real.", "time": 10})
+    await delay_sim(seconds=9)
+    await task_schedule(khovan_reach_dillon_text, {"banner": "Live Operation", "message": "Operate accordingly. I'll continue to observe.", "time": 6})
+    await delay_sim(seconds=5)
+    ->END
+
+=== scene_06_long_range_transit ===
+    # TODO Scene 6: Long-Range Transit.
+    # TODO: Implement sustained transit, energy monitoring, Science passive sweeps, and Command cadence later.
+    log("TODO Scene 6: Long-Range Transit.")
+    ->END
+
+=== scene_07_distress_signal_detected ===
+    # TODO Scene 7: Distress Signal Detected.
+    # TODO: Implement signal localization and captain deviation decision later.
+    log("TODO Scene 7: Distress Signal Detected.")
+    ->END
+
+=== scene_08_approach_to_halcyon_drift ===
+    # TODO Scene 8: Approach to Halcyon Drift.
+    # TODO: Implement Halcyon Drift contact, external scan, hailing, and checkpoint later.
+    log("TODO Scene 8: Approach to Halcyon Drift.")
+    ->END

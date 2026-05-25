@@ -1,0 +1,21 @@
+# Khovan Reach DAMCON timer scaffold
+# Mechanic source: design_docs/03_mast_requirements.md Section 3
+
+=== damcon_timer_start ===
+    # TODO: Start the suit O2 timer after cascade_triggered is true.
+    # TODO: Use set_timer/start_counter only after the exact pattern is validated in this project.
+    # TODO: Extended config is 30 minutes; compressed config is 15 minutes.
+    log("TODO DAMCON timer start.")
+    ->END
+
+=== damcon_timer_report ===
+    # TODO: Deliver scheduled DAMCON report from gm_scripts/03_damcon_reports.md.
+    # TODO: Comms message routing syntax still needs Khovan-specific validation.
+    log("TODO DAMCON timer report.")
+    ->END
+
+=== damcon_timer_evaluate_outcome ===
+    # TODO: Evaluate clean survival, hypoxic survival, or total loss.
+    # TODO: Elapsed-time calculation syntax and repair-completion trigger need validation.
+    log("TODO DAMCON timer outcome evaluation.")
+    ->END

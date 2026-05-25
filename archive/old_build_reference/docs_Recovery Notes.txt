@@ -1,0 +1,40 @@
+# 2026-05-17 Revert Notes - Drill 2 Recovery Attempt
+
+## High-Level Changes Tried
+
+- Revised Drill 2's Engineering walkthrough so the shield observation step became raise shields for 10 seconds, observe energy depletion, drop shields for 10 seconds, and observe the lower depletion.
+- Added new Engineering walkthrough state flags and dev-jump seeding for those steps.
+- Reworked the Drill 2 target several times
+  - Started from the neutral training contact  TSN-style warpster target.
+  - Tried a carrier-style or Kralien-style target so Science and Weapons would see normal hostile shield, hull, and subsystem data.
+  - Added hostile-side setup, raider roles, fleet metadata, shieldhull tuning, and no-surrender handling.
+- Removed or attempted to remove Science debuginitial scan clutter so Science would use normal `scan`, `status`, `intel`, and `bio` behavior.
+- Shortened Science statusintel text after the status and intel panels became visually crowded.
+- Changed Drill 2 controlled fire from a simple disable gate into a two-volley training sequence
+  - Weapons targets the Weapons subsystem on the strongest shield frequency.
+  - Science reports damage and relays the weakest shield frequency.
+  - Weapons fires a second volley on the weak frequency.
+- Added a weak-frequency relay confirmation button in Comms and staged damage handling that held Weapons around partial damage until the relay was confirmed.
+- Tried to prevent Weapons from losing its lock after the target subsystem was disabled.
+- Adjusted Drill 3 to use similar regular-hostile target behavior and preserve ceasefire after subsystem disable.
+- Added additional objective text and comms broadcasts so the displayed goal would refresh after dev jumps and state transitions.
+- Tried fallback Comms route changes for KestrelTarsis when menu options disappeared, then moved back toward the master-style KestrelTarsis route shape.
+
+## What Broke Or Remained Unresolved
+
+- KestrelTarsis Comms options disappeared or failed to populate reliably in this branch, even after restoring the route shape closer to `master`.
+- The regular-hostile target approach produced confusing sidenameskin behavior and introduced surrendertaunt options.
+- The target could expose normal Science data, but subsystem damage did not behave predictably enough for the training gate.
+- Weapons damage could stall at scripted partial values, especially around the weak-frequency relay experiment.
+- Some Science statusintel text still crowded the UI.
+- The dev-jump objective display could show stale or wrong goals after jumping directly into later Drill 2 states.
+
+## Lessons For A Fresh Attempt
+
+- Start from `master` and make one narrow change at a time.
+- Preserve the known-good KestrelTarsis Comms routes before changing target behavior.
+- Treat target selection as the main risk. If normal subsystem damage is required, prefer a known stock enemyfightercarrier path that has already shown working subsystem damage in playtest.
+- Avoid mixing three concerns in one pass Engineering walkthrough changes, target replacement, and Comms menu routing.
+- If weak-frequency training returns, make it observational first; do not gate subsystem damage behind a new Comms relay until the baseline target reliably takes subsystem damage.
+- Keep Science scan panel text short and let normal dynamic status data carry most of the information.
+

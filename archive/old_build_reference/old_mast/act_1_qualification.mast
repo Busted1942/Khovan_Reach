@@ -1,0 +1,1052 @@
+# Khovan Reach Act I scaffold
+# Scenes 1-4 from design_docs/khovan_reach_pass1.md
+
+=== scene_01_departure_and_briefing ===
+    current_scene = 1
+    mission_phase = "act_1"
+
+    log("Scene 1 armed: Departure and briefing at Kestrel Yards.")
+    # TODO: Implement on-screen text with NPC portraits for the opening briefing once the display pattern is validated. For now, the log carries GM prompts for playtesting.
+    # TODO: Trigger existing Dillon Clip 1 after clip playback syntax is validated.
+    dillon_opening_briefing_run_id += 1
+    task_schedule(khovan_reach_play_dillon_opening_text, {"opening_briefing_run_id": dillon_opening_briefing_run_id})
+
+    log("GM prompt: Artemis is on the Kestrel Yards launch ramp. Captain takes the chair and calls station readiness.")
+    await delay_sim(seconds=1)
+    log("GM prompt: Comms requests departure clearance from Kestrel Yards Control.")
+    await delay_sim(seconds=1)
+    log("GM prompt: Helm clears the Kestrel launch envelope and sets course for Tarsis Station.")
+    await delay_sim(seconds=1)
+    ->END
+
+=== khovan_reach_play_dillon_opening_text ===
+    default opening_briefing_run_id = dillon_opening_briefing_run_id
+    if opening_briefing_run_id != dillon_opening_briefing_run_id:
+        ->END
+    await task_schedule(khovan_reach_dillon_text, {"banner": "Opening Briefing", "message": "Captain. Crew of Artemis.", "time": 5})
+    await delay_sim(seconds=4)
+    if opening_briefing_run_id != dillon_opening_briefing_run_id:
+        ->END
+    await task_schedule(khovan_reach_dillon_text, {"banner": "Opening Briefing", "message": "This is a qualification cruise. Your first cruise together as a crew on this ship. Standard pattern: depart Kestrel, dock and resupply at Tarsis, conduct two skill drills in the adjacent operating area, return for debrief.", "time": 11})
+    await delay_sim(seconds=10)
+    if opening_briefing_run_id != dillon_opening_briefing_run_id:
+        ->END
+    await task_schedule(khovan_reach_dillon_text, {"banner": "Opening Briefing", "message": "Expected duration: four standard hours.", "time": 6})
+    await delay_sim(seconds=5)
+    if opening_briefing_run_id != dillon_opening_briefing_run_id:
+        ->END
+    await task_schedule(khovan_reach_dillon_text, {"banner": "Opening Briefing", "message": "I'll be observing. Standard observational framework: each station will be evaluated across operational tasks. The framework is internal; you don't need to track it.", "time": 11})
+    await delay_sim(seconds=10)
+    if opening_briefing_run_id != dillon_opening_briefing_run_id:
+        ->END
+    await task_schedule(khovan_reach_dillon_text, {"banner": "Opening Briefing", "message": "Run the cruise. Do your jobs. I'll handle the rest.", "time": 7})
+    await delay_sim(seconds=7)
+    if opening_briefing_run_id != dillon_opening_briefing_run_id:
+        ->END
+    await task_schedule(khovan_reach_dillon_text, {"banner": "Opening Briefing", "message": "Rules of engagement: defensive posture, hail before any escalation, standard TSN protocol. No live combat is anticipated.", "time": 9})
+    await delay_sim(seconds=8)
+    if opening_briefing_run_id != dillon_opening_briefing_run_id:
+        ->END
+    await task_schedule(khovan_reach_dillon_text, {"banner": "Opening Briefing", "message": "Captain, the ship is yours.", "time": 6})
+    await delay_sim(seconds=5)
+    if opening_briefing_run_id != dillon_opening_briefing_run_id:
+        ->END
+    await task_schedule(khovan_reach_objective_text, {"banner": "Departure Step", "message": "Comms: select Kestrel Yards and choose Request Departure Clearance. Artemis remains held at Kestrel until that clearance is logged.", "time": 24})
+    ->END
+
+=== scene_02_drill_one_dock_and_resupply ===
+    current_scene = 2
+    mission_phase = "act_1"
+    drill_1_complete = False
+    drill_1_retry_occurred = False
+    drill_1_docking_clearance_granted = False
+    drill_1_docked_at_tarsis = False
+    drill_1_docked_without_clearance_notice = False
+
+    log("Scene 2 armed: Drill One - dock and resupply at Tarsis Station.")
+    # TODO: Trigger existing Dillon Clip 2 after clip playback syntax is validated.
+    log("GM cue: Play Dillon Clip 2 - Drill One Intro.")
+    log("Drill One objective text will be sent when Kestrel grants departure clearance.")
+
+    log("GM prompt: Artemis enters the Tarsis approach lane on Helm vector.")
+    await delay_sim(seconds=1)
+    log("GM prompt: Comms hails Tarsis Docking Control and requests docking clearance.")
+    await delay_sim(seconds=1)
+    log("GM prompt: Engineering confirms docking-safe power posture; shields down, impulse reduced.")
+    await delay_sim(seconds=1)
+    log("GM prompt: Weapons confirms weapons hold during docking proximity.")
+    await delay_sim(seconds=1)
+    log("GM prompt: Captain coordinates final docking and resupply order once the station sequence is clean.")
+    log("Scene 2 objective: hail Tarsis, request docking clearance, then dock with Tarsis Station to complete Drill One.")
+    log("GM note: This playable slice currently ends after the Act I qualification drills.")
+    ->END
+
+=== khovan_reach_complete_drill_1_resupply ===
+    default ship_id = artemis_id
+
+    if ship_id == 0:
+        log("Drill One resupply could not run: no Artemis ship id is bound.")
+        ->END
+
+    if drill_1_complete:
+        ->END
+
+    set_data_set_value(ship_id, "energy", drill_1_full_energy, 0)
+    set_data_set_value(ship_id, "Homing_NUM", drill_1_full_homing_torpedoes, 0)
+    set_data_set_value(ship_id, "Nuke_NUM", drill_1_full_nukes, 0)
+    set_data_set_value(ship_id, "EMP_NUM", drill_1_full_emps, 0)
+    set_data_set_value(ship_id, "Mine_NUM", drill_1_full_mines, 0)
+
+    drill_1_complete = True
+    drill_1_docked_at_tarsis = True
+    drill_2_waiting_for_tarsis_release = True
+    last_checkpoint = "drill_1_complete"
+
+    if drill_1_retry_occurred:
+        log("GM cue: Play Dillon Clip 3 Variant B - Drill One Complete after retry.")
+    else:
+        log("GM cue: Play Dillon Clip 3 Variant A - Drill One Complete.")
+
+    log("Drill One complete: Artemis resupplied to energy 100%, torpedoes 8 homing / 2 nukes / 2 EMPs / 2 mines. Checkpoint marker set to drill_1_complete.")
+    await task_schedule(khovan_reach_objective_text, {"banner": "Drill One Complete", "message": "Drill One complete. Release docking from Tarsis Station to begin Drill Two. Training Control will walk Engineering, Helm, Science, Comms, and Weapons through the next sequence by Comms confirmations.", "time": 28})
+    ->END
+
+=== khovan_reach_mark_drill_1_retry ===
+    drill_1_retry_occurred = True
+    log("Drill One retry flag set.")
+    ->END
+
+//shared/signal/docked if has_roles(ORIGIN_ID, "__player__") and has_roles(SELECTED_ID, "tarsis_station")
+    if current_scene != 2:
+        ->END
+
+    if not drill_1_docking_clearance_granted:
+        await task_schedule(khovan_reach_objective_text, {"banner": "Drill One Hold", "message": "Docking detected, but Drill One is not complete. Comms must select Tarsis Station and use Request Docking Clearance before the resupply drill completes.", "time": 24})
+        log("Scene 2 trigger: Artemis docked with Tarsis before docking clearance was logged. Drill One is not complete.")
+        ->END
+
+    await task_schedule(khovan_reach_complete_drill_1_resupply, {"ship_id": ORIGIN_ID})
+    log("Scene 2 trigger: Artemis docked with Tarsis after clearance. Drill One completion and resupply scheduled.")
+    ->END
+
+//enable/comms if has_roles(COMMS_SELECTED_ID, "kestrel_yards")
+
+//comms if has_roles(COMMS_SELECTED_ID, "kestrel_yards")
+    + "Khovan Dev Jumps" //comms/gamemaster/khovan_dev_jumps if has_roles(COMMS_ORIGIN_ID, "gamemaster")
+    + "Hail Kestrel Yards" khovan_kestrel_hail
+    + "Request Departure Clearance" khovan_kestrel_request_departure_clearance if not kestrel_departure_clearance_granted
+    + "Training Control: Confirm 1 Preset 2 Saved" khovan_drill_2_confirm_preset_2 if current_scene == 3 and drill_2_sequence_step == 1
+    + "Training Control: Confirm 2 5 km Transit Complete" khovan_drill_2_confirm_helm_transit if current_scene == 3 and drill_2_sequence_step == 2
+    + "Training Control: Confirm 3 Balanced Output Restored" khovan_drill_2_confirm_balanced_output if current_scene == 3 and drill_2_sequence_step == 3
+    + "Training Control: Confirm 4 Sensor Preset 3 Saved" khovan_drill_2_confirm_sensor_preset_3 if current_scene == 3 and drill_2_sequence_step == 4
+    + "Training Control: Confirm 5 Science Scan Complete" khovan_drill_2_confirm_science_scan if current_scene == 3 and drill_2_sequence_step == 5 and drill_2_science_scan_complete
+    + "Training Control: Confirm 7 Sensor Cooldown Preset 0" khovan_drill_2_confirm_sensor_preset_0 if current_scene == 3 and drill_2_sequence_step == 7
+    + "Training Control: Confirm 8 Beam/Torpedo 190/10" khovan_drill_2_confirm_weapon_output_190 if current_scene == 3 and drill_2_sequence_step == 8
+    + "Training Control: Confirm 9 Torpedo Load Speed Observed" khovan_drill_2_confirm_torpedo_load_observed if current_scene == 3 and drill_2_sequence_step == 9
+    + "Training Control: Confirm 10 DAMCON Teams Assigned" khovan_drill_2_confirm_damcon_assigned if current_scene == 3 and drill_2_sequence_step == 10
+    + "Training Control: Confirm 11 Weapons Overheat Started" khovan_drill_2_confirm_weapons_overheat if current_scene == 3 and drill_2_sequence_step == 11
+    + "Training Control: Confirm 12 DAMCON Repairs Managed" khovan_drill_2_confirm_damcon_repairs if current_scene == 3 and drill_2_sequence_step == 12
+    + "Training Control: Confirm 13 One DAMCON Team Resting" khovan_drill_2_confirm_damcon_rest if current_scene == 3 and drill_2_sequence_step == 13
+    + "Training Control: Confirm 14 Weapon Heat Resolved" khovan_drill_2_confirm_heat_zero if current_scene == 3 and drill_2_sequence_step == 14
+    + "Training Control: Confirm 15 Engineering Released" khovan_drill_2_confirm_engineering_released if current_scene == 3 and drill_2_sequence_step == 15
+    + "Training Control: Report Ready Posture" khovan_drill_2_report_ready_posture if current_scene == 3 and drill_2_engineering_boost_check and not drill_2_ready_posture_reported
+    + "Training Control: Check Controlled Fire Authorization" khovan_drill_2_check_fire_authorization if current_scene == 3 and drill_2_ready_posture_reported and not drill_2_fire_authorized_check
+    + "Training Control: Confirm Ceasefire" khovan_drill_2_confirm_ceasefire if current_scene == 3 and drill_2_weapons_subsystem_disabled and not drill_2_ceasefire_check
+    + "Training Control: Report Final Verification" khovan_drill_2_report_final_verification if current_scene == 3 and drill_2_weapons_subsystem_disabled and drill_2_ceasefire_check
+
+=== khovan_kestrel_hail ===
+    if not kestrel_departure_clearance_granted:
+        comms_receive(f"""Artemis, Kestrel Yards Control. You are still inside the refit-yard control zone. Docking and weapon privileges are not available here. Request departure clearance when your crew is ready to release from the yard.""", title="Kestrel Yards Control", title_color="green")
+        yield success
+
+    comms_receive(f"""Artemis, Kestrel Yards Control. Departure clearance is logged. Continue outbound and proceed to Tarsis Station for Drill One.""", title="Kestrel Yards Control", title_color="green")
+    yield success
+
+=== khovan_kestrel_request_departure_clearance ===
+    kestrel_departure_clearance_granted = True
+    artemis_object = to_object(artemis_id)
+    if artemis_object is not None:
+        current_dock_base_id = artemis_object.data_set.get("dock_base_id", 0)
+        if current_dock_base_id == kestrel_yards_id:
+            artemis_object.data_set.set("dock_base_id", 0, 0)
+            artemis_object.data_set.set("dock_state", "undocked", 0)
+            artemis_object.data_set.set("playerThrottle", 0, 0)
+    comms_receive(f"""Artemis, Kestrel Yards Control. Departure clearance granted. Mooring clamps released. Clear the launch envelope and proceed to Tarsis Station for Drill One.""", title="Kestrel Yards Control", title_color="green")
+    await task_schedule(khovan_reach_objective_text, {"banner": "Departure Cleared", "message": "Helm: proceed to Tarsis Station. Comms: select Tarsis Station, use Hail Tarsis Station, then choose Request Docking Clearance. After clearance, dock normally; priority docking is not part of this drill.", "time": 28})
+    yield success
+
+//enable/comms if has_roles(COMMS_SELECTED_ID, "tarsis_station")
+
+//comms if has_roles(COMMS_SELECTED_ID, "tarsis_station")
+    + "Khovan Dev Jumps" //comms/gamemaster/khovan_dev_jumps if has_roles(COMMS_ORIGIN_ID, "gamemaster")
+    + "Hail Tarsis Station" khovan_tarsis_hail
+    + "Request Docking Clearance" khovan_tarsis_request_docking_clearance
+
+=== khovan_tarsis_hail ===
+    comms_receive(f"""Artemis, Tarsis Station. We read you. Docking Control has the Drill One lane standing by.""", title="Tarsis Station", title_color="green")
+    yield success
+
+=== khovan_tarsis_request_docking_clearance ===
+    if current_scene != 2:
+        comms_receive(f"""Artemis, Tarsis Station. Docking Control is standing by for Drill One.""", title="Tarsis Docking Control", title_color="green")
+        yield success
+
+    if not kestrel_departure_clearance_granted:
+        comms_receive(f"""Artemis, Tarsis Docking Control. We do not have Kestrel departure clearance in the drill log. Request clearance from Kestrel Yards before entering the Tarsis drill lane.""", title="Tarsis Docking Control", title_color="yellow")
+        yield fail
+
+    drill_1_docking_clearance_granted = True
+    comms_receive(f"""Artemis, Tarsis Docking Control. Drill traffic is clear. Approach on assigned vector, reduce to maneuvering thrust, and close to 500 meters or less for hard dock.""", title="Tarsis Docking Control", title_color="green")
+    await task_schedule(khovan_reach_objective_text, {"banner": "Docking Cleared", "message": "Helm: dock normally with Tarsis Station now. Close to 500 m or less to enter hard-dock range. Drill One completes when Artemis docks after this clearance; do not use priority docking.", "time": 24})
+    yield success
+
+=== scene_03_drill_two_threat_identification ===
+    if drill_2_complete:
+        ->END
+
+    current_scene = 3
+    mission_phase = "act_1"
+    drill_2_started = True
+    drill_2_current_step = 1
+    drill_2_waiting_for_tarsis_release = False
+    drill_2_sequence_started = True
+    drill_2_sequence_step = 1
+    drill_2_science_scan_complete = False
+    drill_2_science_intel_complete = False
+    drill_2_science_bio_complete = False
+    drill_2_science_classification_complete = False
+    drill_2_comms_hail_complete = False
+    drill_2_captain_posture_check = False
+    drill_2_helm_geometry_check = False
+    drill_2_engineering_boost_check = False
+    drill_2_weapons_lock_complete = False
+    drill_2_weapons_ready_check = False
+    drill_2_ready_posture_reported = False
+    drill_2_authorization_hold_started = False
+    drill_2_authorization_hold_ready = False
+    drill_2_fire_authorized_check = False
+    drill_2_weapons_subsystem_disabled = False
+    drill_2_ceasefire_check = False
+    drill_2_verification_check = False
+    drill_2_fire_before_authorized = False
+    drill_2_drone_destroyed = False
+    drill_2_authorized_damage_count = 0
+    drill_2_result = "pending"
+
+    log("Scene 3 armed: Drill Two - guided contact handling and controlled Weapons disable.")
+    # TODO: Trigger existing Dillon Clip 4 after clip playback syntax is validated.
+    log("GM cue: Play Dillon Clip 4 - Drill Two Intro / Guided Contact Handling.")
+
+    existing_drill_drones = to_object_list(role("khovan_drill_2_contact"))
+    if len(existing_drill_drones) > 0:
+        drill_2_drone_id = existing_drill_drones[0].id
+    else:
+        drill_2_spawn_x = 34000 + (drill_2_retry_count * 1000)
+        drill_2_drone = npc_spawn(drill_2_spawn_x, 0, 8000, "Unidentified Contact", "khovan_training, neutral, khovan_drill_drone, khovan_drill_2_contact", "tsn_warpster", "behav_npcship")
+        drill_2_drone_id = to_id(drill_2_drone)
+        drill_2_navproxy = sim.add_navproxy(drill_2_drone_id, "Unidentified Contact", "tsn_warpster", "#FC3")
+        drill_2_navproxy_id = to_id(drill_2_navproxy)
+
+    if artemis_id != 0 and drill_2_drone_id != 0:
+        link(artemis_id, "extra_scan_source", drill_2_drone_id)
+        set_comms_selection(artemis_id, drill_2_drone_id)
+
+    task_schedule(khovan_reach_objective_text, {"banner": "Drill Two Step 1", "message": "Comms: Unidentified Contact is selected. Confirm each Training Control step in order. Step 1: Engineering sets warp output to 150% and impulse output to 50%, presses S, then presses 2 to save preset 2.", "time": 30})
+
+    log(f"Drill Two contact available: Unidentified Contact id {drill_2_drone_id}. Neutral training drone has no attack orders in Scene 3.")
+    log("Training Control Step 1: Engineering sets preset 2 with warp 150% and impulse 50%.")
+    await delay_sim(seconds=1)
+    log("Training Control Step 2: Helm navigates on impulse, then warps heading 060 to 5 km from Tarsis Station.")
+    await delay_sim(seconds=1)
+    log("Training Control Step 3: Engineering restores balanced output by pressing preset 0.")
+    await delay_sim(seconds=1)
+    log("Training Control Step 4: Engineering sets sensors to 200% and saves preset 3.")
+    await delay_sim(seconds=1)
+    log("Training Control Steps 5-6: Science scans Drone 01, then Comms hails on standard bands.")
+    await delay_sim(seconds=1)
+    log("Training Control Steps 7-14: Engineering completes sensor cooldown, weapons output, torpedo loading observation, DAMCON assignments, overheat/repair management, rest cycle, and heat zeroing.")
+    await delay_sim(seconds=1)
+    log("Training Control Step 15: Engineering manages systems at Engineer and Captain discretion; Weapons locks Drone 01 and waits for controlled-fire authorization.")
+    log("Drill Two objective: disable Drone 01 Weapons subsystem, confirm ceasefire, then complete Science/Comms verification.")
+    ->END
+
+//enable/science if has_roles(SCIENCE_SELECTED_ID, "khovan_drill_2_contact") and current_scene == 3
+
+//science if has_roles(SCIENCE_SELECTED_ID, "khovan_drill_2_contact") and current_scene == 3
+    + "Initial Scan":
+        drill_2_science_scan_complete = True
+        drill_2_science_classification_complete = True
+        task_schedule(khovan_reach_refresh_drill_2_step)
+        if drill_2_sequence_step < 5:
+            <scan>
+                % Initial scan logged early. Compact TSN-pattern hull, low emissions, weapons cold. This will satisfy the later Training Control scan gate when Comms reaches that step.
+        else:
+            <scan>
+                % Initial scan logged. Compact TSN-pattern hull, low emissions, weapons cold. Transponder masked under training-control protocol.
+
+    + "scan":
+        drill_2_science_scan_complete = True
+        drill_2_science_classification_complete = True
+        task_schedule(khovan_reach_refresh_drill_2_step)
+        <scan>
+            % Baseline scan logged. Compact TSN-pattern hull, low emissions, weapons cold. This satisfies the Drill Two Science scan gate.
+
+    + "intel":
+        if not drill_2_science_scan_complete:
+            <scan>
+                % Intel package unavailable. Complete Initial Scan first.
+        else:
+            drill_2_science_intel_complete = True
+            if drill_2_science_scan_complete and drill_2_science_intel_complete and drill_2_science_bio_complete:
+                drill_2_science_classification_complete = True
+                await task_schedule(khovan_reach_refresh_drill_2_step)
+            <scan>
+                % Classification package: TSN Drill Drone 01. Automated drill-mode controller. Simulated shield profile available for beam tuning. Targetable subsystem for this guided drill: Weapons. No live hostile posture detected.
+
+    + "bio":
+        if not drill_2_science_intel_complete:
+            <scan>
+                % Bio scan routing is not calibrated. Resolve Initial Scan and intel first.
+        else:
+            drill_2_science_bio_complete = True
+            if drill_2_science_scan_complete and drill_2_science_intel_complete and drill_2_science_bio_complete:
+                drill_2_science_classification_complete = True
+                await task_schedule(khovan_reach_refresh_drill_2_step)
+            <scan>
+                % Bio scan negative. No crew life signs; contact is an unmanned training platform. Do not fire during Drill Two unless Training Control authorizes escalation.
+
+//enable/comms if has_roles(COMMS_SELECTED_ID, "khovan_drill_2_contact") and current_scene == 3
+
+//comms if has_roles(COMMS_SELECTED_ID, "khovan_drill_2_contact") and current_scene == 3
+    + "Khovan Dev Jumps" //comms/gamemaster/khovan_dev_jumps if has_roles(COMMS_ORIGIN_ID, "gamemaster")
+    + "Hail on Standard Bands" khovan_drill_2_hail if drill_2_sequence_step == 6 and drill_2_science_scan_complete
+
+=== khovan_drill_2_confirm_preset_2 ===
+    drill_2_sequence_step = 2
+    comms_receive(f"""Training Control: preset 2 logged. Helm, navigate on impulse, then warp heading zero-six-zero to five kilometers from Tarsis Station.""", title="Dillon Training Control", title_color="green")
+    task_schedule(khovan_reach_objective_text, {"banner": "Drill Two Step 2", "message": "Helm: navigate away from Tarsis on impulse, then warp heading 060 until Artemis is 5 km or more from Tarsis Station. Stop Artemis there; Training Control will auto-advance when the position and stop are detected.", "time": 32})
+    task_schedule(khovan_drill_2_monitor_helm_transit)
+    task_schedule(khovan_reach_refresh_drill_2_comms_menu, {"player_id": COMMS_ORIGIN_ID})
+    yield success
+
+=== khovan_drill_2_confirm_helm_transit ===
+    drill_2_sequence_step = 3
+    drill_2_helm_geometry_check = True
+    comms_receive(f"""Training Control: transit logged. Engineering, restore balanced output by pressing preset zero.""", title="Dillon Training Control", title_color="green")
+    task_schedule(khovan_reach_objective_text, {"banner": "Drill Two Step 3", "message": "Engineering: press 0 to restore balanced output. Comms confirms when balanced output is restored.", "time": 24})
+    task_schedule(khovan_reach_refresh_drill_2_comms_menu, {"player_id": COMMS_ORIGIN_ID})
+    yield success
+
+=== khovan_reach_refresh_drill_2_comms_menu ===
+    default player_id = artemis_id
+    if player_id == 0:
+        ->END
+
+    if drill_2_sequence_step == 6 and drill_2_drone_id != 0:
+        set_comms_selection(player_id, drill_2_drone_id)
+        follow_route_select_comms(player_id, drill_2_drone_id)
+        ->END
+
+    if kestrel_yards_id != 0:
+        set_comms_selection(player_id, kestrel_yards_id)
+        follow_route_select_comms(player_id, kestrel_yards_id)
+    ->END
+
+=== khovan_drill_2_monitor_helm_transit ===
+    await delay_sim(seconds=1)
+    if current_scene != 3:
+        ->END
+    if drill_2_sequence_step != 2:
+        ->END
+    if artemis_id == 0 or tarsis_station_id == 0:
+        jump khovan_drill_2_monitor_helm_transit
+
+    artemis_object = to_object(artemis_id)
+    tarsis_object = to_object(tarsis_station_id)
+    if artemis_object is None or tarsis_object is None:
+        jump khovan_drill_2_monitor_helm_transit
+
+    dx = artemis_object.pos.x - tarsis_object.pos.x
+    dz = artemis_object.pos.z - tarsis_object.pos.z
+    flat_distance_sq = dx * dx + dz * dz
+    if flat_distance_sq < 1:
+        jump khovan_drill_2_monitor_helm_transit
+
+    flat_distance = math.sqrt(flat_distance_sq)
+    heading_dot = ((dx * 0.8660254) + (dz * 0.5)) / flat_distance
+    throttle = artemis_object.data_set.get("playerThrottle", 0)
+    speed = 0
+    artemis_engine_object = to_engine_object(artemis_id)
+    if artemis_engine_object is not None:
+        speed = abs(artemis_engine_object.cur_speed)
+
+    if flat_distance >= 5000 and heading_dot >= 0.90 and throttle <= 0.01 and speed <= 10:
+        drill_2_sequence_step = 3
+        drill_2_helm_geometry_check = True
+        task_schedule(khovan_reach_objective_text, {"banner": "Drill Two Step 3", "message": "Engineering: press 0 to restore balanced output. Comms confirms when balanced output is restored.", "time": 24})
+        task_schedule(khovan_reach_refresh_drill_2_comms_menu)
+        log(f"Drill Two Step 2 auto-complete: Artemis stopped {flat_distance:.0f} m from Tarsis on the 060 transit vector. Throttle {throttle}, speed {speed}.")
+        ->END
+
+    jump khovan_drill_2_monitor_helm_transit
+
+=== khovan_drill_2_confirm_balanced_output ===
+    drill_2_sequence_step = 4
+    comms_receive(f"""Training Control: balanced output logged. Engineering, set sensors to two hundred percent and save that configuration as preset three.""", title="Dillon Training Control", title_color="green")
+    task_schedule(khovan_reach_objective_text, {"banner": "Drill Two Step 4", "message": "Engineering: set sensors to 200%, press S, then press 3 to save preset 3. Comms confirms when sensor preset 3 is saved.", "time": 26})
+    task_schedule(khovan_reach_refresh_drill_2_comms_menu, {"player_id": COMMS_ORIGIN_ID})
+    yield success
+
+=== khovan_drill_2_confirm_sensor_preset_3 ===
+    drill_2_sequence_step = 5
+    comms_receive(f"""Training Control: sensor preset three logged. Science, scan Drone zero-one now.""", title="Dillon Training Control", title_color="green")
+    task_schedule(khovan_reach_objective_text, {"banner": "Drill Two Step 5", "message": "Science: select Drone 01 and open Initial Scan. If Science already scanned the contact, Comms may confirm Science Scan Complete now.", "time": 26})
+    task_schedule(khovan_reach_refresh_drill_2_comms_menu, {"player_id": COMMS_ORIGIN_ID})
+    yield success
+
+=== khovan_drill_2_confirm_science_scan ===
+    drill_2_sequence_step = 6
+    comms_receive(f"""Training Control: Science scan logged. Comms, hail Drone zero-one on standard bands.""", title="Dillon Training Control", title_color="green")
+    task_schedule(khovan_reach_objective_text, {"banner": "Drill Two Step 6", "message": "Comms: hail Drone 01 on standard bands.", "time": 22})
+    task_schedule(khovan_reach_refresh_drill_2_comms_menu, {"player_id": COMMS_ORIGIN_ID})
+    yield success
+
+=== khovan_drill_2_hail ===
+    if current_scene != 3:
+        comms_receive(f"""Automated response: TSN drill drone standing by. Threat-identification drill is not active.""", title="TSN Drill Drone 01", title_color="yellow")
+        yield fail
+
+    if drill_2_sequence_step != 6:
+        comms_receive(f"""Drone 01 hail is not the active step. Continue the Training Control sequence.""", title="Dillon Training Control", title_color="yellow")
+        yield fail
+
+    if not drill_2_science_classification_complete:
+        comms_receive(f"""No usable response. Contact protocol and drill-mode transponder are unresolved. Complete Science Initial Scan first.""", title="Unidentified Contact", title_color="yellow")
+        yield fail
+
+    drill_2_comms_hail_complete = True
+    drill_2_sequence_step = 7
+    comms_receive(f"""Automated drill-mode response. TSN Drill Drone 01 acknowledges Artemis on standard bands. Contact is non-hostile and holding for the identification/readiness drill. Engineering, press preset zero, lower sensors to eighty percent for cooldown, then save the configuration as preset zero. Weapons, hold torpedo loading until Training Control calls for the load-speed observation.""", title="TSN Drill Drone 01", title_color="green")
+    task_schedule(khovan_reach_refresh_drill_2_step)
+    task_schedule(khovan_reach_objective_text, {"banner": "Drill Two Step 7", "message": "Engineering: press 0, lower sensors to 80% so the sensor system can cool down, press S, then press 0 to save this as preset 0.", "time": 30})
+    task_schedule(khovan_reach_refresh_drill_2_comms_menu, {"player_id": COMMS_ORIGIN_ID})
+    yield success
+
+=== khovan_drill_2_confirm_sensor_preset_0 ===
+    drill_2_sequence_step = 8
+    comms_receive(f"""Training Control: sensor cooldown preset logged. Engineering, set beam output to one hundred ninety percent and torpedo output to ten percent.""", title="Dillon Training Control", title_color="green")
+    task_schedule(khovan_reach_objective_text, {"banner": "Drill Two Step 8", "message": "Engineering: set beam output to 190% and torpedo output to 10%. Comms confirms when that output profile is set.", "time": 24})
+    task_schedule(khovan_reach_refresh_drill_2_comms_menu, {"player_id": COMMS_ORIGIN_ID})
+    yield success
+
+=== khovan_drill_2_confirm_weapon_output_190 ===
+    drill_2_sequence_step = 9
+    comms_receive(f"""Training Control: beam and torpedo output profile logged. Weapons, load one homing torpedo tube and observe the load speed.""", title="Dillon Training Control", title_color="green")
+    task_schedule(khovan_reach_objective_text, {"banner": "Drill Two Step 9", "message": "Weapons: load one homing torpedo tube and observe the load speed. Comms confirms after Weapons reports the load-speed observation.", "time": 26})
+    task_schedule(khovan_reach_refresh_drill_2_comms_menu, {"player_id": COMMS_ORIGIN_ID})
+    yield success
+
+=== khovan_drill_2_confirm_torpedo_load_observed ===
+    drill_2_sequence_step = 10
+    comms_receive(f"""Training Control: torpedo load-speed observation logged. Engineering, assign one DAMCON team to each of three separate Crew Quarters compartments.""", title="Dillon Training Control", title_color="green")
+    task_schedule(khovan_reach_objective_text, {"banner": "Drill Two Step 10", "message": "Engineering: click three separate Crew Quarters compartments and assign one DAMCON team to each. Comms confirms after all three assignments are complete.", "time": 30})
+    task_schedule(khovan_reach_refresh_drill_2_comms_menu, {"player_id": COMMS_ORIGIN_ID})
+    yield success
+
+=== khovan_drill_2_confirm_damcon_assigned ===
+    drill_2_sequence_step = 11
+    comms_receive(f"""Training Control: DAMCON rally assignments logged. Engineering, raise beam and torpedo output to three hundred percent and allow overheat to begin.""", title="Dillon Training Control", title_color="green")
+    task_schedule(khovan_reach_objective_text, {"banner": "Drill Two Step 11", "message": "Engineering: increase beam and torpedo output to 300% and allow those systems to overheat. Comms confirms once overheat has started.", "time": 28})
+    task_schedule(khovan_reach_refresh_drill_2_comms_menu, {"player_id": COMMS_ORIGIN_ID})
+    yield success
+
+=== khovan_drill_2_confirm_weapons_overheat ===
+    drill_2_sequence_step = 12
+    comms_receive(f"""Training Control: overheat condition logged. Engineering, manage the DAMCON repair work.""", title="Dillon Training Control", title_color="green")
+    task_schedule(khovan_reach_objective_text, {"banner": "Drill Two Step 12", "message": "Engineering: observe and manage the DAMCON team repair work caused by the overheat condition. Comms confirms when repair work is under control.", "time": 28})
+    task_schedule(khovan_reach_refresh_drill_2_comms_menu, {"player_id": COMMS_ORIGIN_ID})
+    yield success
+
+=== khovan_drill_2_confirm_damcon_repairs ===
+    drill_2_sequence_step = 13
+    comms_receive(f"""Training Control: DAMCON repair management logged. Engineering, stand one DAMCON team down to eat and sleep.""", title="Dillon Training Control", title_color="green")
+    task_schedule(khovan_reach_objective_text, {"banner": "Drill Two Step 13", "message": "Engineering: send one DAMCON team to eat and sleep. Comms confirms once one team is resting.", "time": 24})
+    task_schedule(khovan_reach_refresh_drill_2_comms_menu, {"player_id": COMMS_ORIGIN_ID})
+    yield success
+
+=== khovan_drill_2_confirm_damcon_rest ===
+    drill_2_sequence_step = 14
+    comms_receive(f"""Training Control: DAMCON rest cycle logged. Engineering, resolve all heat conditions to zero.""", title="Dillon Training Control", title_color="green")
+    task_schedule(khovan_reach_objective_text, {"banner": "Drill Two Step 14", "message": "Engineering: resolve all heat conditions back to 0. Comms confirms after heat is clear.", "time": 24})
+    task_schedule(khovan_reach_refresh_drill_2_comms_menu, {"player_id": COMMS_ORIGIN_ID})
+    yield success
+
+=== khovan_drill_2_confirm_heat_zero ===
+    drill_2_sequence_step = 15
+    comms_receive(f"""Training Control: heat-zero condition logged. Engineering, manage systems at your discretion and at the Captain's discretion from this point forward.""", title="Dillon Training Control", title_color="green")
+    task_schedule(khovan_reach_objective_text, {"banner": "Drill Two Step 15", "message": "Engineering: from this point forward, manage ship systems at your discretion and at the Captain's discretion. Comms confirms when Engineering is released to normal management.", "time": 26})
+    task_schedule(khovan_reach_refresh_drill_2_comms_menu, {"player_id": COMMS_ORIGIN_ID})
+    yield success
+
+=== khovan_drill_2_confirm_engineering_released ===
+    drill_2_sequence_step = 16
+    drill_2_engineering_boost_check = True
+    comms_receive(f"""Training Control: Engineering sequence complete. Proceed to Drone Drill Two. Establish ready posture with Drone zero-one locked at one to two kilometers.""", title="Dillon Training Control", title_color="green")
+    task_schedule(khovan_reach_refresh_drill_2_step)
+    task_schedule(khovan_reach_objective_text, {"banner": "Proceed To Drone Drill", "message": "Engineering sequence complete. Helm and Weapons: hold Drone 01 at 1-2 km with Drone 01 locked. Comms can check controlled-fire authorization after the ready posture is accepted.", "time": 28})
+    task_schedule(khovan_reach_refresh_drill_2_comms_menu, {"player_id": COMMS_ORIGIN_ID})
+    yield success
+
+=== khovan_drill_2_report_ready_posture ===
+    if current_scene != 3:
+        comms_receive(f"""Training Control is not accepting Drill Two ready posture reports at this time.""", title="Dillon Training Control", title_color="yellow")
+        yield fail
+
+    if drill_2_complete:
+        comms_receive(f"""Drill Two is already marked complete. Hold weapons and await further instruction.""", title="Dillon Training Control", title_color="green")
+        yield success
+
+    if not drill_2_science_classification_complete:
+        comms_receive(f"""Ready posture not accepted. Science classification is not complete.""", title="Dillon Training Control", title_color="yellow")
+        yield fail
+
+    if not drill_2_comms_hail_complete:
+        comms_receive(f"""Ready posture not accepted. Standard-band hail has not been logged.""", title="Dillon Training Control", title_color="yellow")
+        yield fail
+
+    dist = sbs.distance_id(artemis_id, drill_2_drone_id)
+    selected_weapons_target_id = get_weapons_selection(artemis_id)
+
+    if selected_weapons_target_id != drill_2_drone_id:
+        comms_receive(f"""Ready posture not accepted. Weapons must lock Drone 01 before the ready hold begins.""", title="Dillon Training Control", title_color="yellow")
+        yield fail
+
+    if dist < 1000:
+        comms_receive(f"""Ready posture not accepted. Artemis is {dist:.0f} m from Drone 01; hold just outside beam range, at least 1 km.""", title="Dillon Training Control", title_color="yellow")
+        yield fail
+
+    if dist > 2000:
+        comms_receive(f"""Ready posture not accepted. Artemis is {dist:.0f} m from Drone 01; close to the 1-2 km ready band while keeping beams out of auto-fire range.""", title="Dillon Training Control", title_color="yellow")
+        yield fail
+
+    if not drill_2_engineering_boost_check:
+        comms_receive(f"""Ready posture not accepted. Complete the guided Engineering sequence through Comms before reporting ready posture.""", title="Dillon Training Control", title_color="yellow")
+        yield fail
+
+    drill_2_captain_posture_check = True
+    drill_2_helm_geometry_check = True
+    drill_2_weapons_lock_complete = True
+    drill_2_weapons_ready_check = True
+    drill_2_ready_posture_reported = True
+
+    if not drill_2_authorization_hold_started and not drill_2_fire_authorized_check:
+        drill_2_authorization_hold_started = True
+        drill_2_authorization_hold_ready = False
+        drill_2_authorization_hold_run_id += 1
+        task_schedule(khovan_reach_drill_2_authorization_hold, {"authorization_hold_run_id": drill_2_authorization_hold_run_id})
+
+    comms_receive(f"""Ready posture accepted at {dist:.0f} m. Hold Drone 01 lock outside beam range for 15 seconds, then check controlled-fire authorization.""", title="Dillon Training Control", title_color="green")
+    task_schedule(khovan_reach_refresh_drill_2_step)
+    yield success
+
+=== khovan_reach_drill_2_authorization_hold ===
+    default authorization_hold_run_id = drill_2_authorization_hold_run_id
+    await delay_sim(seconds=15)
+
+    if current_scene != 3:
+        ->END
+    if drill_2_complete:
+        ->END
+    if authorization_hold_run_id != drill_2_authorization_hold_run_id:
+        ->END
+    if not drill_2_authorization_hold_started:
+        ->END
+    if drill_2_drone_id == 0:
+        drill_2_authorization_hold_started = False
+        drill_2_authorization_hold_ready = False
+        ->END
+
+    dist = sbs.distance_id(artemis_id, drill_2_drone_id)
+    selected_weapons_target_id = get_weapons_selection(artemis_id)
+    if selected_weapons_target_id == drill_2_drone_id and dist >= 1000 and dist <= 2000 and not drill_2_fire_before_authorized:
+        drill_2_authorization_hold_ready = True
+        log(f"Drill Two 15-second ready hold complete at {dist:.0f} m. Comms can now check controlled-fire authorization.")
+        await task_schedule(khovan_reach_refresh_drill_2_step)
+    else:
+        drill_2_ready_posture_reported = False
+        drill_2_fire_authorized_check = False
+        drill_2_authorization_hold_started = False
+        drill_2_authorization_hold_ready = False
+        log(f"Drill Two ready hold failed. Range {dist:.0f} m, locked target {selected_weapons_target_id}; report ready posture again from 1-2 km with Drone 01 locked.")
+
+    ->END
+
+=== khovan_drill_2_check_fire_authorization ===
+    if current_scene != 3:
+        comms_receive(f"""Training Control is not accepting Drill Two fire authorization checks at this time.""", title="Dillon Training Control", title_color="yellow")
+        yield fail
+
+    if not drill_2_ready_posture_reported:
+        comms_receive(f"""Controlled fire is not authorized. Report ready posture first.""", title="Dillon Training Control", title_color="yellow")
+        yield fail
+
+    if not drill_2_authorization_hold_started:
+        comms_receive(f"""Controlled fire is not authorized. Report ready posture to begin the 15-second hold.""", title="Dillon Training Control", title_color="yellow")
+        yield fail
+
+    if not drill_2_authorization_hold_ready:
+        comms_receive(f"""Controlled fire is not authorized yet. Maintain Drone 01 lock at 1-2 km until the 15-second hold completes, then check again.""", title="Dillon Training Control", title_color="yellow")
+        yield fail
+
+    dist = sbs.distance_id(artemis_id, drill_2_drone_id)
+    selected_weapons_target_id = get_weapons_selection(artemis_id)
+    if selected_weapons_target_id != drill_2_drone_id or dist < 1000 or dist > 2000:
+        drill_2_ready_posture_reported = False
+        drill_2_authorization_hold_started = False
+        drill_2_authorization_hold_ready = False
+        comms_receive(f"""Controlled fire is not authorized. Ready hold broke before authorization check: range {dist:.0f} m, locked target {selected_weapons_target_id}. Re-establish 1-2 km lock and report ready posture again.""", title="Dillon Training Control", title_color="yellow")
+        yield fail
+
+    drill_2_fire_authorized_check = True
+    drill_2_authorization_hold_started = False
+    drill_2_authorization_hold_ready = False
+    comms_receive(f"""Controlled fire authorized. Weapons: load homing torpedoes, close into beam range, and fire only to disable Drone 01's Weapons subsystem. Captain, call ceasefire immediately when Training Control reports Weapons disabled.""", title="Dillon Training Control", title_color="green")
+    task_schedule(khovan_reach_refresh_drill_2_step)
+    task_schedule(khovan_reach_objective_text, {"banner": "Controlled Fire", "message": "Weapons: load homing torpedoes, close into beam range, and fire only until Drone 01 Weapons is disabled. Captain: call ceasefire as soon as Training Control reports Weapons disabled.", "time": 24})
+    yield success
+
+=== khovan_drill_2_confirm_ceasefire ===
+    if current_scene != 3:
+        comms_receive(f"""Training Control is not accepting Drill Two ceasefire reports at this time.""", title="Dillon Training Control", title_color="yellow")
+        yield fail
+
+    if not drill_2_weapons_subsystem_disabled:
+        comms_receive(f"""Ceasefire report not accepted yet. Drone 01 Weapons subsystem disable is not confirmed.""", title="Dillon Training Control", title_color="yellow")
+        yield fail
+
+    drill_2_ceasefire_check = True
+    comms_receive(f"""Ceasefire confirmed. Weapons hold logged. Science and Comms may complete final verification.""", title="Dillon Training Control", title_color="green")
+    task_schedule(khovan_reach_refresh_drill_2_step)
+    task_schedule(khovan_reach_try_complete_drill_2)
+    yield success
+
+=== khovan_drill_2_report_final_verification ===
+    if current_scene != 3:
+        comms_receive(f"""Training Control is not accepting Drill Two final verification reports at this time.""", title="Dillon Training Control", title_color="yellow")
+        yield fail
+
+    if not drill_2_weapons_subsystem_disabled:
+        comms_receive(f"""Final verification not accepted. Drone 01 Weapons subsystem disable is not confirmed.""", title="Dillon Training Control", title_color="yellow")
+        yield fail
+
+    if not drill_2_ceasefire_check:
+        comms_receive(f"""Final verification not accepted. Ceasefire has not been confirmed.""", title="Dillon Training Control", title_color="yellow")
+        yield fail
+
+    drill_2_verification_check = True
+    comms_receive(f"""Final verification logged. Drone 01 broadcasts training-safe status; Science/Comms verification complete.""", title="Dillon Training Control", title_color="green")
+    task_schedule(khovan_reach_try_complete_drill_2)
+    yield success
+
+=== khovan_reach_refresh_drill_2_step ===
+    if not drill_2_science_classification_complete:
+        drill_2_current_step = 1
+    elif not drill_2_comms_hail_complete:
+        drill_2_current_step = 2
+    elif not drill_2_captain_posture_check:
+        drill_2_current_step = 3
+    elif not drill_2_helm_geometry_check:
+        drill_2_current_step = 4
+    elif not drill_2_engineering_boost_check:
+        drill_2_current_step = 5
+    elif not drill_2_weapons_ready_check or not drill_2_ready_posture_reported:
+        drill_2_current_step = 6
+    elif not drill_2_fire_authorized_check:
+        drill_2_current_step = 7
+    elif not drill_2_weapons_subsystem_disabled:
+        drill_2_current_step = 8
+    elif not drill_2_ceasefire_check:
+        drill_2_current_step = 9
+    elif not drill_2_verification_check:
+        drill_2_current_step = 10
+    else:
+        drill_2_current_step = 11
+
+    log(f"Drill Two current step marker: {drill_2_current_step}.")
+    ->END
+
+=== khovan_reach_mark_drill_2_weapons_disabled ===
+    default source = "controlled fire"
+    if source == "GM fallback" and not drill_2_fire_authorized_check:
+        log("Drill Two GM fallback ignored: Weapons subsystem disable cannot be marked before controlled-fire authorization.")
+        ->END
+
+    if drill_2_weapons_subsystem_disabled:
+        ->END
+
+    drill_2_weapons_subsystem_disabled = True
+    if artemis_id != 0:
+        set_weapons_selection(artemis_id, 0)
+    await task_schedule(khovan_reach_refresh_drill_2_step)
+    task_schedule(khovan_reach_drill_2_announce_weapons_disabled)
+    log(f"Drill Two trigger: Drone 01 Weapons subsystem disabled by {source}. Ceasefire cue sent.")
+    ->END
+
+=== khovan_reach_drill_2_announce_weapons_disabled ===
+    if artemis_id != 0:
+        comms_broadcast(artemis_id, "Drone 01 Weapons disabled. CEASE FIRE. Comms: confirm ceasefire with Training Control.", "green")
+    for gui in role("__gui__"):
+        gui_info_panel_send_message(gui, "Drone 01 Weapons subsystem disabled. CEASE FIRE. Captain, call ceasefire now. Weapons, hold fire. Comms, confirm ceasefire with Training Control.", banner="Ceasefire", banner_color="green", title="Dillon Training Control", title_color="green", history=True, time=24)
+    ->END
+
+=== khovan_reach_try_complete_drill_2 ===
+    if drill_2_complete:
+        ->END
+
+    await task_schedule(khovan_reach_refresh_drill_2_step)
+
+    if drill_2_drone_destroyed:
+        drill_2_result = "retry_destroyed"
+        log("Drill Two cannot complete: Drone 01 was destroyed. Drill Two is restarting with a fresh drone.")
+        ->END
+
+    if not drill_2_science_classification_complete:
+        ->END
+    if not drill_2_comms_hail_complete:
+        ->END
+    if not drill_2_captain_posture_check:
+        ->END
+    if not drill_2_helm_geometry_check:
+        ->END
+    if not drill_2_engineering_boost_check:
+        ->END
+    if not drill_2_weapons_ready_check:
+        ->END
+    if not drill_2_fire_authorized_check:
+        ->END
+    if not drill_2_weapons_subsystem_disabled:
+        ->END
+    if not drill_2_ceasefire_check:
+        ->END
+    if not drill_2_verification_check:
+        ->END
+
+    drill_2_complete = True
+    drill_2_result = "complete"
+    last_checkpoint = "drill_2_complete"
+
+    # TODO: Trigger existing Dillon Clip 5 after clip playback syntax is validated.
+    log("GM cue: Play Dillon Clip 5 - Drill Two Complete / Guided sequence complete.")
+
+    if drill_2_drone_id != 0:
+        target_pos(drill_2_drone_id, 52000, 0, 16000, 1.0, 0, 0)
+
+    log("Drill Two complete: Drone 01 Weapons subsystem disabled, ceasefire confirmed, and final verification complete. Checkpoint marker set to drill_2_complete.")
+    task_schedule(scene_04_drill_three_subsystem_targeting)
+    ->END
+
+//damage/object if has_role(DAMAGE_TARGET_ID, "khovan_drill_2_contact")
+    if current_scene != 3:
+        ->END
+
+    if not drill_2_fire_authorized_check:
+        drill_2_fire_before_authorized = True
+        drill_2_result = "fire_before_authorized"
+        log("Drill Two safety flag: Drone 01 was hit before controlled fire authorization.")
+        ->END
+
+    if drill_2_weapons_subsystem_disabled:
+        if artemis_id != 0:
+            set_weapons_selection(artemis_id, 0)
+        set_inventory_value(DAMAGE_SOURCE_ID, "MANUAL_SYSTEM", None)
+        set_inventory_value(DAMAGE_SOURCE_ID, "MANUAL_CRITICAL_HIT", None)
+        log("Drill Two safety flag: Drone 01 took additional damage after Weapons disabled cue.")
+        ->END
+
+    system = get_inventory_value(DAMAGE_SOURCE_ID, "MANUAL_SYSTEM")
+    target_id = get_inventory_value(DAMAGE_SOURCE_ID, "MANUAL_CRITICAL_HIT")
+
+    if target_id != 0:
+        set_inventory_value(DAMAGE_SOURCE_ID, "MANUAL_SYSTEM", None)
+        set_inventory_value(DAMAGE_SOURCE_ID, "MANUAL_CRITICAL_HIT", None)
+
+        ->END if target_id != DAMAGE_TARGET_ID
+        ->END if system is None
+        ->END if target_id is None
+
+        t = to_object(target_id)
+        ->END if t is None
+
+        max_damage = t.data_set.get("system_max_damage", system)
+        cur = t.data_set.get("system_damage", system)
+        if cur < 1:
+            cur = 1
+        up = cur * 1.35
+        t.data_set.set("system_damage", up, system)
+
+        if system == sbs.SHPSYS.WEAPONS and up > max_damage:
+            await task_schedule(khovan_reach_mark_drill_2_weapons_disabled, {"source": "manual Weapons subsystem damage"})
+            await task_schedule(khovan_reach_try_complete_drill_2)
+        else:
+            log(f"Drill Two subsystem hit recorded on {system.name}; objective remains Weapons subsystem disable.")
+        ->END
+
+    drill_2_authorized_damage_count += 1
+    if drill_2_authorized_damage_count >= 1:
+        await task_schedule(khovan_reach_mark_drill_2_weapons_disabled, {"source": "controlled weapon damage"})
+        await task_schedule(khovan_reach_try_complete_drill_2)
+
+    ->END
+
+//damage/destroy if has_role(DESTROYED_ID, "khovan_drill_2_contact")
+    drill_2_drone_destroyed = True
+    if not drill_2_complete:
+        drill_2_result = "retry_destroyed"
+        drill_2_retry_count += 1
+        log(f"Drill Two reset: Drone 01 destroyed. Cleaning up old object and respawning replacement 1 km farther from Tarsis. Retry count: {drill_2_retry_count}.")
+        remove_role(DESTROYED_ID, "khovan_drill_2_contact")
+        remove_role(DESTROYED_ID, "khovan_drill_drone")
+        if artemis_id != 0:
+            set_weapons_selection(artemis_id, 0)
+            set_science_selection(artemis_id, 0)
+            set_comms_selection(artemis_id, 0)
+        if drill_2_navproxy_id != 0:
+            sim.delete_navproxy_by_id(drill_2_navproxy_id)
+            drill_2_navproxy_id = 0
+        sbs.delete_object(DESTROYED_ID)
+        drill_2_drone_id = 0
+        task_schedule(khovan_reach_restart_drill_2_after_destroy)
+    ->END
+
+=== khovan_reach_restart_drill_2_after_destroy ===
+    await delay_sim(seconds=3)
+    if current_scene != 3:
+        ->END
+    if drill_2_complete:
+        ->END
+    await task_schedule(scene_03_drill_two_threat_identification)
+    ->END
+
+=== scene_04_drill_three_subsystem_targeting ===
+    if drill_3_complete:
+        ->END
+
+    current_scene = 4
+    mission_phase = "act_1"
+    drill_3_started = True
+    drill_3_evasion_active = True
+    drill_3_science_observed = False
+    drill_3_comms_observed = False
+    drill_3_captain_authorized = False
+    drill_3_helm_observed = False
+    drill_3_engineering_observed = False
+    drill_3_weapons_lock_observed = False
+    drill_3_weapons_ready_observed = False
+    drill_3_engine_subsystem_disabled = False
+    drill_3_ceasefire_confirmed = False
+    drill_3_fire_before_authorized = False
+    drill_3_drone_destroyed = False
+    drill_3_help_prompt_used = False
+    drill_3_result = "pending"
+
+    log("Scene 4 armed: Drill Three - unguided evasive live-fire repeat / Engine disable.")
+    # TODO: Trigger existing Dillon Clip 6 after clip playback syntax is validated.
+    log("GM cue: Play Dillon Clip 6 - Drill Three Intro / Now You Do It.")
+
+    existing_drill_3_drones = to_object_list(role("khovan_drill_3_contact"))
+    if len(existing_drill_3_drones) > 0:
+        drill_3_drone_id = existing_drill_3_drones[0].id
+    else:
+        drill_3_spawn_x = 36000 + (drill_3_retry_count * 1000)
+        drill_3_drone = npc_spawn(drill_3_spawn_x, 0, -9000, "Drill Drone 02", "khovan_training, neutral, khovan_drill_drone, khovan_drill_3_contact", "tsn_warpster", "behav_npcship")
+        drill_3_drone_id = to_id(drill_3_drone)
+        drill_3_navproxy = sim.add_navproxy(drill_3_drone_id, "Drill Drone 02", "tsn_warpster", "#FC3")
+        drill_3_navproxy_id = to_id(drill_3_navproxy)
+
+    if artemis_id != 0 and drill_3_drone_id != 0:
+        link(artemis_id, "extra_scan_source", drill_3_drone_id)
+
+    drill_3_evasion_run_id += 1
+    task_schedule(khovan_drill_3_evasion_loop, {"evasion_run_id": drill_3_evasion_run_id})
+    log("Drill Three objective: repeat the contact-handling sequence without step calls. Disable Drone 02 Engine subsystem and confirm ceasefire.")
+    log("GM note: Process quality is recorded for debrief; runtime completion requires Engine subsystem disabled plus ceasefire confirmed.")
+    ->END
+
+=== khovan_drill_3_evasion_loop ===
+    default evasion_run_id = drill_3_evasion_run_id
+    if current_scene != 4:
+        ->END
+    if drill_3_complete:
+        ->END
+    if not drill_3_evasion_active:
+        ->END
+    if evasion_run_id != drill_3_evasion_run_id:
+        ->END
+    if drill_3_drone_id == 0:
+        ->END
+
+    target_pos(drill_3_drone_id, 38500, 0, -6000, throttle=0.8, target_id=0, stop_dist=600)
+    await delay_sim(seconds=18)
+    if current_scene != 4:
+        ->END
+    if drill_3_complete:
+        ->END
+    if not drill_3_evasion_active:
+        ->END
+    if evasion_run_id != drill_3_evasion_run_id:
+        ->END
+    target_pos(drill_3_drone_id, 33000, 0, -12500, throttle=0.8, target_id=0, stop_dist=600)
+    await delay_sim(seconds=18)
+    jump khovan_drill_3_evasion_loop
+
+//enable/science if has_roles(SCIENCE_SELECTED_ID, "khovan_drill_3_contact") and current_scene == 4
+
+//science if has_roles(SCIENCE_SELECTED_ID, "khovan_drill_3_contact") and current_scene == 4
+    + "scan":
+        drill_3_science_observed = True
+        <scan>
+            % Drill Drone 02. Training-control transponder active. Contact is maneuvering under simple evasion.
+    + "intel":
+        drill_3_science_observed = True
+        <scan>
+            % Objective package: Engine subsystem disable. Simulated shield profile available for beam tuning. Process quality is observed, but Engine disable plus ceasefire is the runtime gate.
+    + "bio":
+        drill_3_science_observed = True
+        <scan>
+            % Unmanned training drone. No crew life signs.
+
+//enable/comms if has_roles(COMMS_SELECTED_ID, "khovan_drill_3_contact") and current_scene == 4
+
+//comms if has_roles(COMMS_SELECTED_ID, "khovan_drill_3_contact") and current_scene == 4
+    + "Khovan Dev Jumps" //comms/gamemaster/khovan_dev_jumps if has_roles(COMMS_ORIGIN_ID, "gamemaster")
+    + "Monitor Training Broadcast" khovan_drill_3_monitor_broadcast
+    + "Confirm Drill Three Ceasefire" khovan_drill_3_confirm_ceasefire
+
+=== khovan_drill_3_monitor_broadcast ===
+    drill_3_comms_observed = True
+    comms_receive(f"""Automated broadcast: Drill Drone 02 maneuvering. Objective package is Engine subsystem disable. Training Control is monitoring for ceasefire after objective completion.""", title="Drill Drone 02", title_color="green")
+    yield success
+
+=== khovan_drill_3_confirm_ceasefire ===
+    if not drill_3_engine_subsystem_disabled:
+        comms_receive(f"""Ceasefire report not accepted yet. Engine subsystem disable is not confirmed.""", title="Dillon Training Control", title_color="yellow")
+        yield fail
+
+    drill_3_ceasefire_confirmed = True
+    await task_schedule(khovan_reach_try_complete_drill_3)
+    comms_receive(f"""Ceasefire confirmed. Training Control is checking the Drill Three completion gate.""", title="Dillon Training Control", title_color="green")
+    yield success
+
+=== khovan_reach_try_complete_drill_3 ===
+    if drill_3_complete:
+        ->END
+
+    if drill_3_drone_destroyed and not drill_3_engine_subsystem_disabled:
+        drill_3_result = "failed_overfire"
+        log("Drill Three cannot complete: Drone 02 destroyed before Engine subsystem disable confirmation.")
+        ->END
+
+    if not drill_3_engine_subsystem_disabled:
+        ->END
+    if not drill_3_ceasefire_confirmed:
+        ->END
+
+    drill_3_complete = True
+    drill_3_result = "complete"
+    last_checkpoint = "drill_3_complete"
+
+    # TODO: Trigger existing Dillon Clip 7 after clip playback syntax is validated.
+    log("GM cue: Play Dillon Clip 7 - Drill Three Complete.")
+    log("Drill Three complete: Drone 02 Engine subsystem disabled and ceasefire confirmed. Checkpoint marker set to drill_3_complete.")
+    task_schedule(scene_05_new_orders)
+    log("Act I drill slice complete. Anderson diversion orders scheduled as Scene 5 text.")
+    ->END
+
+//damage/object if has_role(DAMAGE_TARGET_ID, "khovan_drill_3_contact")
+    if current_scene != 4:
+        ->END
+
+    if not drill_3_captain_authorized:
+        drill_3_fire_before_authorized = True
+        log("Drill Three observation: Drone 02 was hit before Captain fire authorization was marked. This is a debrief observation, not an automatic runtime blocker.")
+
+    system = get_inventory_value(DAMAGE_SOURCE_ID, "MANUAL_SYSTEM")
+    target_id = get_inventory_value(DAMAGE_SOURCE_ID, "MANUAL_CRITICAL_HIT")
+    ->END if target_id == 0
+
+    set_inventory_value(DAMAGE_SOURCE_ID, "MANUAL_SYSTEM", None)
+    set_inventory_value(DAMAGE_SOURCE_ID, "MANUAL_CRITICAL_HIT", None)
+
+    ->END if target_id != DAMAGE_TARGET_ID
+    ->END if system is None
+    ->END if target_id is None
+
+    t = to_object(target_id)
+    ->END if t is None
+
+    max_damage = t.data_set.get("system_max_damage", system)
+    cur = t.data_set.get("system_damage", system)
+    if cur < 1:
+        cur = 1
+    up = cur * 1.35
+    t.data_set.set("system_damage", up, system)
+
+    if system == sbs.SHPSYS.ENGINES and up > max_damage:
+        drill_3_engine_subsystem_disabled = True
+        log("Drill Three trigger: Drone 02 Engine subsystem disabled by manual subsystem damage.")
+        await task_schedule(khovan_reach_try_complete_drill_3)
+    else:
+        log(f"Drill Three subsystem hit recorded on {system.name}; objective remains Engine subsystem disable.")
+
+    ->END
+
+//damage/destroy if has_role(DESTROYED_ID, "khovan_drill_3_contact")
+    drill_3_drone_destroyed = True
+    if not drill_3_complete:
+        drill_3_result = "retry_destroyed"
+        drill_3_retry_count += 1
+        log(f"Drill Three reset: Drone 02 destroyed. Cleaning up old object and respawning replacement 1 km farther from Tarsis. Retry count: {drill_3_retry_count}.")
+        remove_role(DESTROYED_ID, "khovan_drill_3_contact")
+        remove_role(DESTROYED_ID, "khovan_drill_drone")
+        if artemis_id != 0:
+            set_weapons_selection(artemis_id, 0)
+            set_science_selection(artemis_id, 0)
+            set_comms_selection(artemis_id, 0)
+        if drill_3_navproxy_id != 0:
+            sim.delete_navproxy_by_id(drill_3_navproxy_id)
+            drill_3_navproxy_id = 0
+        sbs.delete_object(DESTROYED_ID)
+        drill_3_drone_id = 0
+        task_schedule(khovan_reach_restart_drill_3_after_destroy)
+    ->END
+
+=== khovan_reach_restart_drill_3_after_destroy ===
+    await delay_sim(seconds=3)
+    if current_scene != 4:
+        ->END
+    if drill_3_complete:
+        ->END
+    await task_schedule(scene_04_drill_three_subsystem_targeting)
+    ->END
+
+//select/weapons if has_role(WEAPONS_ORIGIN_ID, "__player__")
+    if current_scene == 3:
+        if drill_2_drone_id == 0:
+            ->END
+
+        selected_weapons_target_id = get_weapons_selection(WEAPONS_ORIGIN_ID)
+        if selected_weapons_target_id == drill_2_drone_id and not drill_2_weapons_lock_complete:
+            drill_2_weapons_lock_complete = True
+            log("Scene 3 trigger: Weapons selected/locked Drone 01. TODO: beam frequency tuning and manual subsystem selection APIs are not fully verified; GM marks Weapons ready after observing tuning/subtarget/no-fire discipline.")
+            await task_schedule(khovan_reach_refresh_drill_2_step)
+
+    if current_scene == 4:
+        if drill_3_drone_id == 0:
+            ->END
+
+        selected_weapons_target_id = get_weapons_selection(WEAPONS_ORIGIN_ID)
+        if selected_weapons_target_id == drill_3_drone_id and not drill_3_weapons_lock_observed:
+            drill_3_weapons_lock_observed = True
+            log("Scene 4 observation: Weapons selected/locked Drone 02.")
+
+    ->END

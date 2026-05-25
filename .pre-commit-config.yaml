@@ -1,0 +1,8 @@
+repos:
+- repo: local
+  hooks:
+  - id: pytest
+    name: Run pytest
+    entry: python run_tests.py
+    language: system
+    stages: [commit]

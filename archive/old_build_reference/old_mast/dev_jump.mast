@@ -1,0 +1,212 @@
+# Khovan Reach dev-only Act I jump harness.
+# This is playtest infrastructure, not production checkpoint restore.
+
+//comms if has_roles(COMMS_ORIGIN_ID, "gamemaster")
+    + "Khovan Dev Jumps" //comms/gamemaster/khovan_dev_jumps
+
+//comms/gamemaster/khovan_dev_jumps if has_roles(COMMS_ORIGIN_ID, "gamemaster")
+    + "Back" //comms
+    + "Start Fresh / Normal Mission Start":
+        await task_schedule(khovan_dev_jump_normal_start)
+        comms_receive(dev_jump_summary, title="Khovan Dev Jump", title_color="cyan")
+        comms_navigate("//comms/gamemaster/khovan_dev_jumps")
+    + "Jump to Scene 1 Departure":
+        await task_schedule(khovan_dev_jump_scene_1_departure)
+        comms_receive(dev_jump_summary, title="Khovan Dev Jump", title_color="cyan")
+        comms_navigate("//comms/gamemaster/khovan_dev_jumps")
+    + "Jump to Scene 2 Drill One":
+        await task_schedule(khovan_dev_jump_scene_2_drill_one)
+        comms_receive(dev_jump_summary, title="Khovan Dev Jump", title_color="cyan")
+        comms_navigate("//comms/gamemaster/khovan_dev_jumps")
+    + "Jump to Scene 3 Drill Two Start":
+        await task_schedule(khovan_dev_jump_drill_2_start)
+        comms_receive(dev_jump_summary, title="Khovan Dev Jump", title_color="cyan")
+        comms_navigate("//comms/gamemaster/khovan_dev_jumps")
+    + "Jump to D2 Step 1 Science Scan":
+        await task_schedule(khovan_dev_jump_drill_2_step, {"step_number": 1, "anchor_name": "Drill Two Step 1 - Science Scan", "next_action": "Science selects Drone 01 and completes Initial Scan, intel, and bio as needed."})
+        comms_receive(dev_jump_summary, title="Khovan Dev Jump", title_color="cyan")
+        comms_navigate("//comms/gamemaster/khovan_dev_jumps")
+    + "Jump to D2 Step 2 Comms Hail":
+        await task_schedule(khovan_dev_jump_drill_2_step, {"step_number": 2, "anchor_name": "Drill Two Step 2 - Comms Hail", "next_action": "Comms selects Drone 01 and uses Hail on Standard Bands."})
+        comms_receive(dev_jump_summary, title="Khovan Dev Jump", title_color="cyan")
+        comms_navigate("//comms/gamemaster/khovan_dev_jumps")
+    + "Jump to D2 Step 3 Captain Posture":
+        await task_schedule(khovan_dev_jump_drill_2_step, {"step_number": 3, "anchor_name": "Drill Two Step 3 - Captain Posture", "next_action": "Captain orders ready posture; Helm and Weapons set up Drone 01 at 1-2 km, then Comms reports ready posture."})
+        comms_receive(dev_jump_summary, title="Khovan Dev Jump", title_color="cyan")
+        comms_navigate("//comms/gamemaster/khovan_dev_jumps")
+    + "Jump to D2 Step 4 Helm Geometry":
+        await task_schedule(khovan_dev_jump_drill_2_step, {"step_number": 4, "anchor_name": "Drill Two Step 4 - Helm Geometry", "next_action": "Helm holds Drone 01 at 1-2 km; Weapons locks Drone 01; Comms reports ready posture."})
+        comms_receive(dev_jump_summary, title="Khovan Dev Jump", title_color="cyan")
+        comms_navigate("//comms/gamemaster/khovan_dev_jumps")
+    + "Jump to D2 Step 5 Engineering Boost":
+        await task_schedule(khovan_dev_jump_drill_2_step, {"step_number": 5, "anchor_name": "Drill Two Step 5 - Engineering Boost", "next_action": "Engineering completes the boost/stability state; Comms confirms Engineering Released."})
+        comms_receive(dev_jump_summary, title="Khovan Dev Jump", title_color="cyan")
+        comms_navigate("//comms/gamemaster/khovan_dev_jumps")
+    + "Jump to D2 Step 6 Weapons Ready":
+        await task_schedule(khovan_dev_jump_drill_2_step, {"step_number": 6, "anchor_name": "Drill Two Step 6 - Weapons Ready", "next_action": "Weapons selects/tunes Drone 01 and subtargets Weapons; hold fire. Comms reports ready posture."})
+        comms_receive(dev_jump_summary, title="Khovan Dev Jump", title_color="cyan")
+        comms_navigate("//comms/gamemaster/khovan_dev_jumps")
+    + "Jump to D2 Step 7 Fire Authorized":
+        await task_schedule(khovan_dev_jump_drill_2_step, {"step_number": 7, "anchor_name": "Drill Two Step 7 - Fire Authorized", "next_action": "Comms checks controlled-fire authorization; Weapons still holds fire until authorization is accepted."})
+        comms_receive(dev_jump_summary, title="Khovan Dev Jump", title_color="cyan")
+        comms_navigate("//comms/gamemaster/khovan_dev_jumps")
+    + "Jump to D2 Step 8 Weapons Disable":
+        await task_schedule(khovan_dev_jump_drill_2_step, {"step_number": 8, "anchor_name": "Drill Two Step 8 - Weapons Subsystem Disable", "next_action": "Weapons fires only until Drone 01 Weapons subsystem is disabled, then Captain calls ceasefire."})
+        comms_receive(dev_jump_summary, title="Khovan Dev Jump", title_color="cyan")
+        comms_navigate("//comms/gamemaster/khovan_dev_jumps")
+    + "Jump to D2 Step 9 Ceasefire":
+        await task_schedule(khovan_dev_jump_drill_2_step, {"step_number": 9, "anchor_name": "Drill Two Step 9 - Ceasefire", "next_action": "Captain/Weapons hold fire; Comms confirms ceasefire with Training Control."})
+        comms_receive(dev_jump_summary, title="Khovan Dev Jump", title_color="cyan")
+        comms_navigate("//comms/gamemaster/khovan_dev_jumps")
+    + "Jump to D2 Step 10 Final Verification":
+        await task_schedule(khovan_dev_jump_drill_2_step, {"step_number": 10, "anchor_name": "Drill Two Step 10 - Final Verification", "next_action": "Science and Comms verify Drone 01 status; Comms reports final verification."})
+        comms_receive(dev_jump_summary, title="Khovan Dev Jump", title_color="cyan")
+        comms_navigate("//comms/gamemaster/khovan_dev_jumps")
+    + "Jump to Scene 4 Drill Three Start":
+        await task_schedule(khovan_dev_jump_drill_3_start)
+        comms_receive(dev_jump_summary, title="Khovan Dev Jump", title_color="cyan")
+        comms_navigate("//comms/gamemaster/khovan_dev_jumps")
+    + "Jump to Act II / Anderson Orders":
+        await task_schedule(khovan_dev_jump_act_2_anderson_orders)
+        comms_receive(dev_jump_summary, title="Khovan Dev Jump", title_color="cyan")
+        comms_navigate("//comms/gamemaster/khovan_dev_jumps")
+
+=== khovan_dev_jump_normal_start ===
+    await task_schedule(khovan_state_clear_act_1_runtime_activity)
+    await task_schedule(khovan_reach_initialize)
+    await task_schedule(scene_01_departure_and_briefing)
+    await task_schedule(scene_02_drill_one_dock_and_resupply)
+
+    dev_jump_active = False
+    dev_jump_anchor = "none"
+    dev_seeded_prior_steps = False
+    dev_seeded_qualification_context = "none"
+    await task_schedule(khovan_dev_set_summary, {"anchor_name": "Start fresh / normal mission start", "scene_name": "1-2", "drone_summary": "none", "prior_summary": "none", "next_action": "Comms requests departure clearance from Kestrel Yards; normal mission flow is active."})
+    ->END
+
+=== khovan_dev_jump_scene_1_departure ===
+    await task_schedule(khovan_state_clear_act_1_runtime_activity)
+    await task_schedule(khovan_reach_initialize)
+    await task_schedule(scene_01_departure_and_briefing)
+
+    dev_jump_active = True
+    dev_jump_anchor = "Scene 1 Departure"
+    dev_seeded_prior_steps = False
+    dev_seeded_qualification_context = "dev harness start; no qualification observations seeded"
+    await task_schedule(khovan_dev_set_summary, {"anchor_name": dev_jump_anchor, "scene_name": "1", "drone_summary": "none", "prior_summary": "none", "next_action": "Comms selects Kestrel Yards and requests departure clearance."})
+    ->END
+
+=== khovan_dev_jump_scene_2_drill_one ===
+    await task_schedule(khovan_state_clear_act_1_runtime_activity)
+    await task_schedule(khovan_reach_initialize)
+
+    dev_jump_active = True
+    dev_jump_anchor = "Scene 2 Drill One"
+    dev_seeded_prior_steps = True
+    dev_seeded_qualification_context = "Scene 1 context dev-seeded; departure was not observed"
+    kestrel_departure_clearance_granted = True
+    await task_schedule(khovan_state_undock_artemis)
+    await task_schedule(scene_02_drill_one_dock_and_resupply)
+
+    artemis_object = to_object(artemis_id)
+    if artemis_object is not None:
+        artemis_object.pos = Vec3(12000, 0, 0)
+        artemis_object.data_set.set("playerThrottle", 0, 0)
+
+    if artemis_id != 0 and tarsis_station_id != 0:
+        set_comms_selection(artemis_id, tarsis_station_id)
+
+    await task_schedule(khovan_dev_set_summary, {"anchor_name": dev_jump_anchor, "scene_name": "2", "drone_summary": "none", "prior_summary": "Scene 1 dev-seeded; not a qualification pass", "next_action": "Comms selects Tarsis Station, requests docking clearance, then Helm docks normally inside 500 m."})
+    ->END
+
+=== khovan_dev_jump_drill_2_start ===
+    await task_schedule(khovan_dev_jump_drill_2_step, {"step_number": 0, "anchor_name": "Scene 3 Drill Two Start", "next_action": "Comms selects Kestrel Yards for Dillon Training Control and confirms Step 1 after Engineering saves preset 2."})
+    ->END
+
+=== khovan_dev_jump_drill_2_step ===
+    default step_number = 1
+    default anchor_name = ""
+    default next_action = "Continue the Drill Two guided sequence."
+
+    if anchor_name == "":
+        anchor_name = f"Drill Two Step {step_number}"
+
+    await task_schedule(khovan_state_enter_drill_2_step, {"step_number": step_number})
+    last_checkpoint = "dev_seeded_after_resupply"
+
+    dev_jump_active = True
+    dev_jump_anchor = anchor_name
+    dev_seeded_prior_steps = True
+    dev_seeded_qualification_context = "Act I prior context was dev-seeded; skipped observations are not qualification passes"
+
+    prior_summary = "Drill One/resupply and prior Drill Two checks dev-seeded; not qualification passes"
+    if step_number <= 0:
+        prior_summary = "Drill One/resupply dev-seeded; Drill Two starts at current Engineering preamble"
+    elif step_number == 1:
+        prior_summary = "Drill One/resupply and Engineering preamble dev-seeded; Science scan not yet observed"
+
+    drone_summary = "Drone 01 spawned passive as Unidentified Contact"
+    await task_schedule(khovan_dev_set_summary, {"anchor_name": anchor_name, "scene_name": "3", "drone_summary": drone_summary, "prior_summary": prior_summary, "next_action": next_action})
+    ->END
+
+=== khovan_dev_jump_drill_3_start ===
+    await task_schedule(khovan_state_clear_act_1_runtime_activity)
+    await task_schedule(khovan_state_seed_artemis_for_act_1_after_resupply)
+    last_checkpoint = "dev_seeded_after_resupply"
+
+    dev_jump_active = True
+    dev_jump_anchor = "Scene 4 Drill Three Start"
+    dev_seeded_prior_steps = True
+    dev_seeded_qualification_context = "Drills One and Two were dev-seeded; skipped observations are not qualification passes"
+
+    mission_phase = "act_1"
+    current_scene = 4
+    drill_1_complete = True
+    drill_2_complete = True
+    drill_3_started = False
+    drill_3_complete = False
+    drill_3_result = "pending"
+    await task_schedule(scene_04_drill_three_subsystem_targeting)
+
+    artemis_object = to_object(artemis_id)
+    if artemis_object is not None:
+        artemis_object.pos = Vec3(33000, 0, -9000)
+        artemis_object.data_set.set("playerThrottle", 0, 0)
+
+    if artemis_id != 0 and drill_3_drone_id != 0:
+        set_comms_selection(artemis_id, drill_3_drone_id)
+
+    drone_summary = "Drone 02 spawned; simple evasion active" if drill_3_evasion_active else "Drone 02 spawn/evasion pending"
+    await task_schedule(khovan_dev_set_summary, {"anchor_name": dev_jump_anchor, "scene_name": "4", "drone_summary": drone_summary, "prior_summary": "Drill One and Drill Two dev-seeded; not qualification passes", "next_action": "Crew repeats the contact-handling sequence without Drill Two step prompts; disable Drone 02 Engines and confirm ceasefire."})
+    ->END
+
+=== khovan_dev_jump_act_2_anderson_orders ===
+    await task_schedule(khovan_state_clear_act_1_runtime_activity)
+    await task_schedule(khovan_state_seed_artemis_for_act_1_after_resupply)
+    last_checkpoint = "dev_seeded_after_resupply"
+
+    dev_jump_active = True
+    dev_jump_anchor = "Act II / Anderson Orders"
+    dev_seeded_prior_steps = True
+    dev_seeded_qualification_context = "Act I drills were dev-seeded; skipped observations are not qualification passes"
+    drill_1_complete = True
+    drill_2_complete = True
+    drill_3_complete = True
+    drill_3_result = "complete_dev_seeded"
+
+    await task_schedule(scene_05_new_orders)
+    await task_schedule(khovan_dev_set_summary, {"anchor_name": dev_jump_anchor, "scene_name": "5", "drone_summary": "Act I drill drones cleaned up", "prior_summary": "Act I dev-seeded; not qualification passes", "next_action": "Captain receives Anderson diversion orders from the existing Scene 5 entrypoint."})
+    ->END
+
+=== khovan_dev_set_summary ===
+    default anchor_name = "Unknown"
+    default scene_name = "unknown"
+    default drone_summary = "none"
+    default prior_summary = "none"
+    default next_action = "Continue testing."
+
+    dev_jump_anchor = anchor_name
+    dev_jump_summary = f"DEV JUMP COMPLETE:^Anchor: {anchor_name}^Scene: {scene_name}^Drone: {drone_summary}^Prior checks: {prior_summary}^Next expected action: {next_action}"
+    await task_schedule(khovan_reach_objective_text, {"banner": "Dev Jump", "message": f"{anchor_name}. Next: {next_action}", "time": 36})
+    log(dev_jump_summary)
+    ->END

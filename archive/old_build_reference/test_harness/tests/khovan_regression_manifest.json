@@ -1,0 +1,154 @@
+{
+  "mission_name": "khovan_reach",
+  "required_files": [
+    "AGENTS.md",
+    "README.md",
+    "script.py",
+    "settings.yaml",
+    "story.json",
+    "story.mast",
+    "scripts/__init__.mast",
+    "scripts/main.mast",
+    "scripts/act_1_qualification.mast",
+    "scripts/act_2_investigation.mast",
+    "scripts/act_3_khovan_reach.mast",
+    "scripts/state_save.mast",
+    "scripts/damcon_timer.mast",
+    "scripts/salvager_arrival.mast",
+    "scripts/dev_jump.mast",
+    "scripts/act_1_state_helpers.mast",
+    "design_docs/03_mast_requirements.md",
+    "design_docs/02_gm_operational_notes.md",
+    "design_docs/khovan_reach_pass1.md",
+    "design_docs/khovan_reach_outline.md"
+  ],
+  "required_labels": [
+    "khovan_reach_start",
+    "khovan_reach_initialize",
+    "khovan_reach_setup_act_1_space",
+    "khovan_reach_setup_artemis_player_ship",
+    "scene_01_departure_and_briefing",
+    "scene_02_drill_one_dock_and_resupply",
+    "khovan_kestrel_request_departure_clearance",
+    "khovan_tarsis_request_docking_clearance",
+    "khovan_reach_complete_drill_1_resupply",
+    "scene_03_drill_two_threat_identification",
+    "khovan_drill_2_hail",
+    "khovan_reach_try_complete_drill_2",
+    "scene_04_drill_three_subsystem_targeting",
+    "khovan_reach_try_complete_drill_3",
+    "scene_05_new_orders",
+    "checkpoint_save",
+    "checkpoint_restore",
+    "khovan_dev_jump_normal_start",
+    "khovan_dev_jump_scene_1_departure",
+    "khovan_dev_jump_scene_2_drill_one",
+    "khovan_dev_jump_drill_2_start",
+    "khovan_dev_jump_drill_2_step",
+    "khovan_dev_jump_drill_3_start",
+    "khovan_dev_jump_act_2_anderson_orders"
+  ],
+  "required_text": [
+    {
+      "file": "story.mast",
+      "text": "@map/khovan_reach_act_1_slice"
+    },
+    {
+      "file": "story.mast",
+      "text": "await task_schedule(khovan_reach_start)"
+    },
+    {
+      "file": "scripts/__init__.mast",
+      "text": "import main.mast"
+    },
+    {
+      "file": "scripts/main.mast",
+      "text": "import act_1_qualification.mast"
+    },
+    {
+      "file": "scripts/main.mast",
+      "text": "import dev_jump.mast"
+    },
+    {
+      "file": "scripts/act_1_qualification.mast",
+      "text": "has_roles(COMMS_SELECTED_ID, \"kestrel_yards\")"
+    },
+    {
+      "file": "scripts/act_1_qualification.mast",
+      "text": "has_roles(COMMS_SELECTED_ID, \"tarsis_station\")"
+    },
+    {
+      "file": "scripts/act_1_qualification.mast",
+      "text": "has_roles(SCIENCE_SELECTED_ID, \"khovan_drill_2_contact\")"
+    },
+    {
+      "file": "scripts/act_1_qualification.mast",
+      "text": "has_roles(COMMS_SELECTED_ID, \"khovan_drill_2_contact\")"
+    },
+    {
+      "file": "scripts/act_1_qualification.mast",
+      "text": "get_weapons_selection(artemis_id)"
+    },
+    {
+      "file": "scripts/dev_jump.mast",
+      "text": "Khovan Dev Jumps"
+    }
+  ],
+  "allowed_external_labels": [
+    "spawn_players",
+    "default_player_friendly_eyes",
+    "docking_dock_not_allowed",
+    "docking_dock_with_friendly_station",
+    "gui_panel_console_message_tick",
+    "gui_panel_console_message"
+  ],
+  "local_reference_prefixes": [
+    "khovan_",
+    "scene_",
+    "damcon_",
+    "salvager_",
+    "checkpoint_"
+  ],
+  "log_files": [
+    "mast.compile.log",
+    "mast.runtime.log",
+    "debug.log"
+  ],
+  "fatal_log_patterns": [
+    "Traceback",
+    "Exception",
+    "MastError",
+    "mast RUNTIME ERROR",
+    "SBS Utils Page Level Runtime Error",
+    "import failed",
+    "unknown label",
+    "syntax error",
+    "compile failed",
+    "property .* has no setter"
+  ],
+  "warning_log_patterns": [
+    "WARNING",
+    "SKIPPED_UNVERIFIED",
+    "MANUAL_REQUIRED"
+  ],
+  "optional_sentinels": [
+    "KHOVAN_BOOT_OK",
+    "KHOVAN_SCENE_1_READY",
+    "KHOVAN_TARSIS_READY",
+    "KHOVAN_DRILL_1_READY",
+    "KHOVAN_DRILL_2_READY",
+    "KHOVAN_DRILL_3_READY"
+  ],
+  "manual_smoke_checklist": [
+    "Launch Khovan Reach in Cosmos",
+    "Confirm mission starts",
+    "Confirm no compile/runtime errors appear",
+    "Confirm Artemis spawns",
+    "Confirm Kestrel/Tarsis setup still appears",
+    "Dock/resupply at Tarsis",
+    "Undock and confirm next Act I training phase begins",
+    "Confirm Science scan, Comms hail, and Weapons target still work where currently implemented",
+    "Exit Cosmos",
+    "Run .\\tools\\khovan_regression.ps1 -LogsOnly"
+  ]
+}

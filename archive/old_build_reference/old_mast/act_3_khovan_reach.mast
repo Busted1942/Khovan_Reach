@@ -1,0 +1,48 @@
+# Khovan Reach Act III scaffold
+# Scenes 9-15 from design_docs/khovan_reach_pass1.md
+
+=== scene_09_away_mission_to_halcyon_drift ===
+    # TODO Scene 9: Away Mission to Halcyon Drift.
+    # TODO: Support Engineering away mission state and Comms relay later.
+    # TODO: Hessler is voice-mode only; do not script Hessler as a MAST NPC.
+    # TODO: Cascade trigger will call damcon_timer scaffolding after syntax is validated.
+    log("TODO Scene 9: Away Mission to Halcyon Drift.")
+    ->END
+
+=== scene_10_captains_decision ===
+    # TODO Scene 10: The Captain's Decision.
+    # TODO: Implement Engineer stays/returns and torpedo conversion decision capture later.
+    log("TODO Scene 10: The Captain's Decision.")
+    ->END
+
+=== scene_11_sprint_or_run_to_khovan_reach ===
+    # TODO Scene 11: The Sprint or Run to Khovan Reach.
+    # TODO: Implement cache transit timing, pirate-arrival timer interaction, and route fork later.
+    log("TODO Scene 11: The Sprint or Run to Khovan Reach.")
+    ->END
+
+=== scene_12_salvager_arrival_and_deception_detection ===
+    # TODO Scene 12: The Salvager Arrival and Comms Deception Detection.
+    # TODO: Use salvager_arrival.mast for pirate state transitions later.
+    # TODO: Pirate dialogue should reference existing gm_scripts/02_pirate_dialogue.md, not new dialogue here.
+    log("TODO Scene 12: Salvager Arrival and Deception Detection.")
+    ->END
+
+=== scene_13_cache_retrieval_at_khovan_reach ===
+    # TODO Scene 13: Cache Retrieval at Khovan Reach.
+    # TODO: Implement cache docking/access and Science component selection later.
+    log("TODO Scene 13: Cache Retrieval at Khovan Reach.")
+    ->END
+
+=== scene_14_return_and_rescue_resolution ===
+    # TODO Scene 14: Return and Rescue Resolution.
+    # TODO: Evaluate DAMCON outcome, Halcyon repair, pirate outcome, and rescue resolution later.
+    log("TODO Scene 14: Return and Rescue Resolution.")
+    ->END
+
+=== scene_15_return_transit_and_debrief ===
+    # TODO Scene 15: Return Transit and Debrief.
+    # TODO: Trigger existing Dillon debrief clips and show GM debrief support later.
+    # TODO: Do not add new Anderson or Dillon dialogue here.
+    log("TODO Scene 15: Return Transit and Debrief.")
+    ->END

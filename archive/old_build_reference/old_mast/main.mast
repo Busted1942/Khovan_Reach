@@ -1,0 +1,645 @@
+# Khovan Reach MAST architecture scaffold
+# Source: AGENTS.md and design_docs/03_mast_requirements.md
+# Verified local MAST patterns used here:
+# - import statements
+# - shared assignments
+# - await task_schedule(...)
+# - delay_sim(...)
+# - labels
+# - log(...)
+# - ->END
+# - prefab_spawn(prefab_side_generic, ...)
+# - npc_spawn(...)
+# - sim.add_navproxy(...)
+# - set_face(...)
+# - await task_schedule(spawn_players)
+# - to_object_list(role("__player__") & role("tsn"))
+# - sorted(..., key=lambda p: p.id)
+# - object.name and object.id for player ship lookup
+# - docking_set_docking_logic(player_id, target_id, docking_dock_with_friendly_station)
+# - link(player_id, "extra_scan_source", target_id)
+# - remove_role(...)
+# - set_data_set_value(..., "energy", ...)
+# - set_data_set_value(..., "{TorpedoType}_NUM", ...)
+# - to_blob(...).set(...)
+
+import act_1_qualification.mast
+import act_2_investigation.mast
+import act_3_khovan_reach.mast
+import damcon_timer.mast
+import salvager_arrival.mast
+import act_1_state_helpers.mast
+import state_save.mast
+import dev_jump.mast
+
+# Documented mission state
+shared mission_phase = "initialization"
+shared current_scene = 0
+shared last_checkpoint = "none"
+
+# Dev-only playtest jump state. These flags prevent seeded jump context from
+# looking like clean production qualification evidence.
+shared dev_jump_active = False
+shared dev_jump_anchor = "none"
+shared dev_seeded_prior_steps = False
+shared dev_seeded_qualification_context = "none"
+shared dev_jump_summary = ""
+shared dillon_opening_briefing_run_id = 0
+
+# Artemis player ship binding and Act I starting state from Pass 1 Section 2.
+shared artemis_ship_name = "Artemis"
+shared artemis_id = 0
+shared artemis_start_hull_state = "full"
+shared artemis_start_energy_percent = 70
+# TODO: Ensure torpedo start count is 0 instead of 8 in design docs and implemented in mast files
+shared artemis_start_homing_torpedoes = 0
+shared artemis_start_nukes = 0
+shared artemis_start_emps = 0
+shared artemis_start_mines = 0
+shared artemis_start_coolant_state = "full"
+shared artemis_start_damcon_teams = 0
+
+# Text-dialogue stand-ins for recorded NPC clips.
+shared dillon_npc_id = 0
+shared dillon_face = ""
+shared anderson_npc_id = 0
+shared anderson_face = ""
+
+# Act I fixed play-space bindings.
+shared kestrel_yards_id = 0
+shared kestrel_departure_clearance_granted = False
+shared tarsis_station_id = 0
+shared drill_1_full_energy = 1000
+shared drill_1_full_homing_torpedoes = 8
+shared drill_1_full_nukes = 2
+shared drill_1_full_emps = 2
+shared drill_1_full_mines = 2
+
+# Documented drill state
+shared drill_1_complete = False
+shared drill_1_retry_occurred = False
+shared drill_1_docking_clearance_granted = False
+shared drill_1_docked_at_tarsis = False
+shared drill_1_docked_without_clearance_notice = False
+shared drill_2_started = False
+shared drill_2_drone_id = 0
+shared drill_2_navproxy_id = 0
+shared drill_2_retry_count = 0
+shared drill_2_current_step = 0
+shared drill_2_waiting_for_tarsis_release = False
+shared drill_2_sequence_started = False
+shared drill_2_sequence_step = 0
+shared drill_2_science_scan_complete = False
+shared drill_2_science_intel_complete = False
+shared drill_2_science_bio_complete = False
+shared drill_2_science_classification_complete = False
+shared drill_2_comms_hail_complete = False
+shared drill_2_captain_posture_check = False
+shared drill_2_helm_geometry_check = False
+shared drill_2_engineering_boost_check = False
+shared drill_2_weapons_lock_complete = False
+shared drill_2_weapons_ready_check = False
+shared drill_2_ready_posture_reported = False
+shared drill_2_authorization_hold_started = False
+shared drill_2_authorization_hold_ready = False
+shared drill_2_authorization_hold_run_id = 0
+shared drill_2_fire_authorized_check = False
+shared drill_2_weapons_subsystem_disabled = False
+shared drill_2_ceasefire_check = False
+shared drill_2_verification_check = False
+shared drill_2_fire_before_authorized = False
+shared drill_2_drone_destroyed = False
+shared drill_2_authorized_damage_count = 0
+shared drill_2_result = "pending"
+shared drill_2_complete = False
+shared drill_3_started = False
+shared drill_3_drone_id = 0
+shared drill_3_navproxy_id = 0
+shared drill_3_retry_count = 0
+shared drill_3_evasion_active = False
+shared drill_3_evasion_run_id = 0
+shared drill_3_science_observed = False
+shared drill_3_comms_observed = False
+shared drill_3_captain_authorized = False
+shared drill_3_helm_observed = False
+shared drill_3_engineering_observed = False
+shared drill_3_weapons_lock_observed = False
+shared drill_3_weapons_ready_observed = False
+shared drill_3_engine_subsystem_disabled = False
+shared drill_3_ceasefire_confirmed = False
+shared drill_3_fire_before_authorized = False
+shared drill_3_drone_destroyed = False
+shared drill_3_help_prompt_used = False
+shared drill_3_result = "pending"
+shared drill_3_complete = False
+
+# Documented Anderson orders state
+shared anderson_orders_received = False
+shared captain_acknowledged_orders = False
+shared distress_signal_detected = False
+shared captain_deviated_to_distress = False
+
+# Documented Halcyon Drift state
+shared engineer_deployed_to_halcyon = False
+shared damcon_team_count_aboard_artemis = 6
+shared convergence_revealed = False
+shared cascade_triggered = False
+shared cascade_time = None
+
+# Documented captain decision state
+shared engineer_placement = "not_decided"
+shared torpedoes_converted = 0
+shared artemis_departed_for_cache = False
+shared force_authorized = False
+
+# Documented DAMCON team state
+shared damcon_team_status = "pending"
+shared damcon_timer_config = "none"
+shared next_damcon_report_time = None
+shared damcon_reports_delivered = 0
+shared damcon_outcome = "pending"
+
+# Documented cache state
+shared cache_arrival = False
+shared cache_component_selected = "none"
+shared cache_retry_required = False
+shared cache_retry_complete = False
+
+# Documented pirate state machine
+shared pirate_cover_status = "intact"
+shared pirates_arrived = False
+shared pirate_arrival_time = None
+shared credentials_requested = False
+shared credentials_provided = "none"
+shared legal_posture_challenged = False
+shared cultural_mismatch_observed = False
+shared science_scan_completed = False
+shared science_scan_result = "none"
+shared docking_requested = False
+shared docking_denied = False
+shared unauthorized_docking_attempt = False
+shared combat_active = False
+shared pirate_outcome = "pending"
+
+# Documented Halcyon Drift outcome state
+shared halcyon_repair_complete = False
+shared halcyon_outcome = "pending"
+shared hessler_status = "aboard_halcyon"
+
+=== khovan_reach_start ===
+    await task_schedule(khovan_reach_initialize)
+    await task_schedule(scene_01_departure_and_briefing)
+    await task_schedule(scene_02_drill_one_dock_and_resupply)
+    log("Khovan Reach Act I Scene 1-4 drill flow is armed. Act II is intentionally not started.")
+    ->END
+
+=== khovan_reach_initialize ===
+    mission_phase = "act_1"
+    current_scene = 0
+    last_checkpoint = "none"
+    dev_jump_active = False
+    dev_jump_anchor = "none"
+    dev_seeded_prior_steps = False
+    dev_seeded_qualification_context = "none"
+    dev_jump_summary = ""
+    dillon_opening_briefing_run_id = 0
+    kestrel_departure_clearance_granted = False
+
+    drill_1_complete = False
+    drill_1_retry_occurred = False
+    drill_1_docking_clearance_granted = False
+    drill_1_docked_at_tarsis = False
+    drill_1_docked_without_clearance_notice = False
+    drill_2_started = False
+    drill_2_drone_id = 0
+    drill_2_navproxy_id = 0
+    drill_2_retry_count = 0
+    drill_2_current_step = 0
+    drill_2_waiting_for_tarsis_release = False
+    drill_2_sequence_started = False
+    drill_2_sequence_step = 0
+    drill_2_science_scan_complete = False
+    drill_2_science_intel_complete = False
+    drill_2_science_bio_complete = False
+    drill_2_science_classification_complete = False
+    drill_2_comms_hail_complete = False
+    drill_2_captain_posture_check = False
+    drill_2_helm_geometry_check = False
+    drill_2_engineering_boost_check = False
+    drill_2_weapons_lock_complete = False
+    drill_2_weapons_ready_check = False
+    drill_2_ready_posture_reported = False
+    drill_2_authorization_hold_started = False
+    drill_2_authorization_hold_ready = False
+    drill_2_authorization_hold_run_id = 0
+    drill_2_fire_authorized_check = False
+    drill_2_weapons_subsystem_disabled = False
+    drill_2_ceasefire_check = False
+    drill_2_verification_check = False
+    drill_2_fire_before_authorized = False
+    drill_2_drone_destroyed = False
+    drill_2_authorized_damage_count = 0
+    drill_2_result = "pending"
+    drill_2_complete = False
+    drill_3_started = False
+    drill_3_drone_id = 0
+    drill_3_navproxy_id = 0
+    drill_3_retry_count = 0
+    drill_3_evasion_active = False
+    drill_3_evasion_run_id = 0
+    drill_3_science_observed = False
+    drill_3_comms_observed = False
+    drill_3_captain_authorized = False
+    drill_3_helm_observed = False
+    drill_3_engineering_observed = False
+    drill_3_weapons_lock_observed = False
+    drill_3_weapons_ready_observed = False
+    drill_3_engine_subsystem_disabled = False
+    drill_3_ceasefire_confirmed = False
+    drill_3_fire_before_authorized = False
+    drill_3_drone_destroyed = False
+    drill_3_help_prompt_used = False
+    drill_3_result = "pending"
+    drill_3_complete = False
+
+    anderson_orders_received = False
+    captain_acknowledged_orders = False
+    distress_signal_detected = False
+    captain_deviated_to_distress = False
+
+    engineer_deployed_to_halcyon = False
+    damcon_team_count_aboard_artemis = artemis_start_damcon_teams
+    convergence_revealed = False
+    cascade_triggered = False
+    cascade_time = None
+
+    engineer_placement = "not_decided"
+    torpedoes_converted = 0
+    artemis_departed_for_cache = False
+    force_authorized = False
+
+    damcon_team_status = "pending"
+    damcon_timer_config = "none"
+    next_damcon_report_time = None
+    damcon_reports_delivered = 0
+    damcon_outcome = "pending"
+
+    cache_arrival = False
+    cache_component_selected = "none"
+    cache_retry_required = False
+    cache_retry_complete = False
+
+    pirate_cover_status = "intact"
+    pirates_arrived = False
+    pirate_arrival_time = None
+    credentials_requested = False
+    credentials_provided = "none"
+    legal_posture_challenged = False
+    cultural_mismatch_observed = False
+    science_scan_completed = False
+    science_scan_result = "none"
+    docking_requested = False
+    docking_denied = False
+    unauthorized_docking_attempt = False
+    combat_active = False
+    pirate_outcome = "pending"
+
+    halcyon_repair_complete = False
+    halcyon_outcome = "pending"
+    hessler_status = "aboard_halcyon"
+    dillon_npc_id = 0
+    dillon_face = ""
+    anderson_npc_id = 0
+    anderson_face = ""
+
+    await task_schedule(khovan_reach_setup_act_1_space)
+    await task_schedule(khovan_reach_setup_artemis_player_ship)
+    await task_schedule(khovan_reach_setup_dialogue_npcs)
+    await task_schedule(khovan_reach_hide_debug_tabs)
+
+    log("Khovan Reach initialized for Act I Scenes 1-4.")
+    log(f"Artemis start applied where verified: id {artemis_id}, energy {artemis_start_energy_percent}%, homing {artemis_start_homing_torpedoes}, nukes {artemis_start_nukes}, EMPs {artemis_start_emps}, mines {artemis_start_mines}.")
+    # TODO: Verify runtime hull/integrity setter before forcing Artemis hull to full; only shipData hullpoints/default setup are verified.
+    # TODO: Verify runtime coolant pool setter before forcing Artemis coolant to full; system_coolant_available is documented but no local setter pattern was verified.
+    # TODO: Verify runtime DAMCON count/remove/add API before forcing Artemis DAMCON teams to six; grid_restore_damcons exists, but set-count semantics are not verified.
+    ->END
+
+=== khovan_reach_hide_debug_tabs ===
+    allow_debug = False
+    DEBUG_TAB_ENABLED = False
+    gui_tab_remove_top("debug,brain,mast")
+    log("Player-facing debug tabs disabled for Khovan Reach normal play.")
+    ->END
+
+=== khovan_reach_setup_act_1_space ===
+    await task_schedule(khovan_reach_setup_tsn_side)
+    await task_schedule(khovan_reach_setup_training_side)
+
+    existing_kestrel_yards = to_object_list(role("kestrel_yards"))
+    if len(existing_kestrel_yards) > 0:
+        kestrel_yards_id = existing_kestrel_yards[0].id
+    else:
+        kestrel_yards = npc_spawn(0, 0, 0, "Kestrel Yards", "tsn, friendly, kestrel_yards, khovan_origin", "starbase_command", "behav_station")
+        kestrel_yards_id = to_id(kestrel_yards)
+        set_face(kestrel_yards_id, random_terran(civilian=True))
+        sim.add_navproxy(kestrel_yards_id, "Kestrel Yards", "starbase_command", "#4A7")
+    remove_role(kestrel_yards_id, "Station")
+    remove_role(kestrel_yards_id, "station")
+
+    existing_tarsis_station = to_object_list(role("tarsis_station"))
+    if len(existing_tarsis_station) > 0:
+        tarsis_station_id = existing_tarsis_station[0].id
+    else:
+        tarsis_station = npc_spawn(18000, 0, 0, "Tarsis Station", "tsn, friendly, tarsis_station, khovan_drill_resupply", "starbase_command", "behav_station")
+        tarsis_station_id = to_id(tarsis_station)
+        set_face(tarsis_station_id, random_terran(civilian=True))
+        sim.add_navproxy(tarsis_station_id, "Tarsis Station", "starbase_command", "#4A7")
+    remove_role(tarsis_station_id, "Station")
+    add_role(tarsis_station_id, "station")
+    task_schedule(khovan_reach_keep_tarsis_priority_docking_hidden)
+
+    tarsis_blob = to_blob(tarsis_station_id)
+    if tarsis_blob is not None:
+        tarsis_blob.set("torpedo_types_available", "Homing,Nuke,EMP,Mine")
+        set_data_set_value(tarsis_station_id, "Homing_NUM", 32, 0)
+        set_data_set_value(tarsis_station_id, "Nuke_NUM", 8, 0)
+        set_data_set_value(tarsis_station_id, "EMP_NUM", 8, 0)
+        set_data_set_value(tarsis_station_id, "Mine_NUM", 8, 0)
+
+    log(f"Act I space ready: Kestrel Yards id {kestrel_yards_id}, Tarsis Station id {tarsis_station_id}.")
+    ->END
+
+=== khovan_reach_setup_tsn_side ===
+    tsn_side = to_side_id("tsn")
+    if tsn_side is None:
+        tsn_side = await prefab_spawn(prefab_side_generic, data={"key":"tsn"})
+
+    if tsn_side is not None:
+        side_set_display_name(tsn_side, "TSN")
+        side_set_description(tsn_side, "The Terran Stellar Navy")
+        side_set_icon_color(tsn_side, "#07F")
+
+    ->END
+
+=== khovan_reach_setup_training_side ===
+    training_side = to_side_id("khovan_training")
+    if training_side is None:
+        training_side = await prefab_spawn(prefab_side_generic, data={"key":"khovan_training", "name":"Training Contact", "color":"#FC3", "desc":"Masked training-control contacts"})
+
+    if training_side is not None:
+        side_set_display_name(training_side, "Training Contact")
+        side_set_description(training_side, "Masked training-control contacts")
+        side_set_icon_color(training_side, "#FC3")
+
+    ->END
+
+=== khovan_reach_setup_artemis_player_ship ===
+    await task_schedule(spawn_players)
+    await task_schedule(default_player_friendly_eyes)
+
+    player_objects = sorted(to_object_list(role("__player__") & role("tsn")), key=lambda p: p.id)
+    artemis_object = None
+
+    for player_ship in player_objects:
+        if player_ship.name == artemis_ship_name:
+            artemis_object = player_ship
+
+    if artemis_object is None and len(player_objects) > 0:
+        artemis_object = player_objects[0]
+        artemis_object.name = artemis_ship_name
+
+    if artemis_object is None:
+        artemis_id = 0
+        log("TODO player ship: no TSN player ship was available after spawn_players; verify PLAYER_LIST/PLAYER_COUNT settings and LegendaryMissions.fleets mastlib loading.")
+        ->END
+
+    artemis_id = artemis_object.id
+    artemis_object.update_comms_id()
+
+    artemis_start_energy = int(1000 * artemis_start_energy_percent / 100)
+    set_data_set_value(artemis_id, "energy", artemis_start_energy, 0)
+    set_data_set_value(artemis_id, "Homing_NUM", artemis_start_homing_torpedoes, 0)
+    set_data_set_value(artemis_id, "Nuke_NUM", artemis_start_nukes, 0)
+    set_data_set_value(artemis_id, "EMP_NUM", artemis_start_emps, 0)
+    set_data_set_value(artemis_id, "Mine_NUM", artemis_start_mines, 0)
+
+    artemis_object.pos = Vec3(0, 0, 500)
+
+    if kestrel_yards_id != 0:
+        link(artemis_id, "extra_scan_source", kestrel_yards_id)
+        docking_set_docking_logic(artemis_id, kestrel_yards_id, docking_dock_not_allowed)
+        artemis_object.data_set.set("dock_base_id", kestrel_yards_id, 0)
+        artemis_object.data_set.set("dock_state", "docked", 0)
+        artemis_object.data_set.set("playerThrottle", 0, 0)
+        task_schedule(khovan_reach_hold_artemis_at_kestrel_until_clearance)
+
+    if tarsis_station_id != 0:
+        link(artemis_id, "extra_scan_source", tarsis_station_id)
+        docking_set_docking_logic(artemis_id, tarsis_station_id, khovan_dock_with_stock_station_release)
+
+    log(f"Artemis player ship bound to id {artemis_id}. Verified start values applied; docked at Kestrel Yards pending departure clearance.")
+    ->END
+
+//enable/comms if has_roles(COMMS_ORIGIN_ID, "__player__") and COMMS_ORIGIN_ID == COMMS_SELECTED_ID
+    selected_player_ship = to_object(COMMS_SELECTED_ID)
+    if selected_player_ship is not None:
+        selected_player_ship.update_comms_id()
+        sbs.send_comms_selection_info(COMMS_ORIGIN_ID, "", "white", selected_player_ship.name)
+
+//comms if has_roles(COMMS_ORIGIN_ID, "__player__") and COMMS_ORIGIN_ID == COMMS_SELECTED_ID
+    selected_player_ship = to_object(COMMS_SELECTED_ID)
+    if selected_player_ship is not None:
+        selected_player_ship.update_comms_id()
+        sbs.send_comms_selection_info(COMMS_ORIGIN_ID, "", "white", selected_player_ship.name)
+    + "Khovan Internal Channel" if False:
+        comms_receive_internal("Artemis internal channel is online.", from_name="Artemis")
+=== khovan_reach_setup_dialogue_npcs ===
+    dillon_face = random_terran(civilian=False)
+    existing_dillon_npcs = to_object_list(role("khovan_dillon_npc"))
+    if len(existing_dillon_npcs) > 0:
+        dillon_npc_id = existing_dillon_npcs[0].id
+        set_face(dillon_npc_id, dillon_face)
+    else:
+        dillon_npc = lifeform_spawn("Master Sergeant Dillon", dillon_face, "tsn, khovan_dialogue_npc, khovan_dillon_npc", artemis_id, path=None, title_color="green")
+        dillon_npc_id = to_id(dillon_npc)
+
+    anderson_face = random_terran(civilian=False)
+    existing_anderson_npcs = to_object_list(role("khovan_anderson_npc"))
+    if len(existing_anderson_npcs) > 0:
+        anderson_npc_id = existing_anderson_npcs[0].id
+        set_face(anderson_npc_id, anderson_face)
+    else:
+        anderson_npc = lifeform_spawn("Admiral Anderson", anderson_face, "tsn, khovan_dialogue_npc, khovan_anderson_npc", 0, path=None, title_color="blue")
+        anderson_npc_id = to_id(anderson_npc)
+
+    log(f"Dialogue NPC text stand-ins ready: Dillon id {dillon_npc_id}, Anderson id {anderson_npc_id}.")
+    ->END
+
+=== khovan_reach_dillon_text ===
+    default message = ""
+    default banner = "Dillon"
+    default time = 8
+    for gui in role("__gui__"):
+        gui_info_panel_send_message(gui, message, banner=banner, banner_color="green", title="Master Sergeant Dillon", title_color="green", face=dillon_face, history=True, time=time)
+    ->END
+
+=== khovan_reach_anderson_text ===
+    default message = ""
+    default banner = "Command"
+    default time = 8
+    for gui in role("__gui__"):
+        gui_info_panel_send_message(gui, message, banner=banner, banner_color="blue", title="Admiral Anderson", title_color="blue", face=anderson_face, history=True, time=time)
+    ->END
+
+=== khovan_reach_objective_text ===
+    default message = ""
+    default banner = "Current Objective"
+    default title = "Training Control"
+    default time = 20
+    for gui in role("__gui__"):
+        gui_info_panel_send_message(gui, message, banner=banner, banner_color="cyan", title=title, title_color="cyan", history=True, time=time)
+    ->END
+
+=== khovan_reach_keep_tarsis_priority_docking_hidden ===
+    if tarsis_station_id == 0:
+        ->END
+
+    remove_role(tarsis_station_id, "Station")
+    await delay_sim(seconds=1)
+    jump khovan_reach_keep_tarsis_priority_docking_hidden
+    ->END
+
+=== khovan_reach_hold_artemis_at_kestrel_until_clearance ===
+    if artemis_id == 0:
+        ->END
+    if kestrel_yards_id == 0:
+        ->END
+    if kestrel_departure_clearance_granted:
+        artemis_object = to_object(artemis_id)
+        if artemis_object is not None:
+            artemis_object.data_set.set("dock_base_id", 0, 0)
+            artemis_object.data_set.set("dock_state", "undocked", 0)
+            artemis_object.data_set.set("playerThrottle", 0, 0)
+        log("Kestrel departure hold released. Artemis is undocked and cleared to depart.")
+        ->END
+
+    artemis_object = to_object(artemis_id)
+    if artemis_object is not None:
+        artemis_object.pos = Vec3(0, 0, 500)
+
+    artemis_object = to_object(artemis_id)
+    if artemis_object is not None:
+        artemis_object.data_set.set("dock_base_id", kestrel_yards_id, 0)
+        artemis_object.data_set.set("dock_state", "docked", 0)
+        artemis_object.data_set.set("playerThrottle", 0, 0)
+    await delay_sim(seconds=1)
+    jump khovan_reach_hold_artemis_at_kestrel_until_clearance
+    ->END
+
+=== khovan_dock_with_stock_station_release
+metadata: ``` yaml
+distance: 600
+```
++++ enable
+    yield fail if DOCKING_NPC_ID == 0
+    yield fail if not side_are_allies(DOCKING_PLAYER_ID, DOCKING_NPC_ID)
+
++++ undocking
+    if DOCKING_NPC_ID == tarsis_station_id and drill_2_waiting_for_tarsis_release and not drill_2_sequence_started:
+        drill_2_waiting_for_tarsis_release = False
+        task_schedule(scene_03_drill_two_threat_identification)
+        log("Tarsis undocking detected. Drill Two Engineering sequence scheduled.")
+
++++ docking
+    set_weapons_selection(DOCKING_PLAYER_ID, 0)
+    _too_close = 300+(DIFFICULTY+1)*200
+    raider = closest(DOCKING_PLAYER_ID, role("raider"), _too_close)
+    if raider is not None:
+        with comms_override(DOCKING_PLAYER_ID, DOCKING_PLAYER_ID, from_name="Docking"):
+            <<[red,white] "Enemies Near"
+                % Attempting dock when enemies are near is ill advised.
+        comms_broadcast(DOCKING_PLAYER_ID, "docking disable, enemy near")
+        yield fail
+
++++ docked
+    set_weapons_selection(DOCKING_PLAYER_ID, 0)
+    grid_restore_damcons(DOCKING_PLAYER_ID)
+    start_counter(DOCKING_PLAYER_ID, "refuel")
+    start_counter(DOCKING_PLAYER_ID, "torps")
+    start_counter(DOCKING_PLAYER_ID, "shields")
+    start_counter(DOCKING_PLAYER_ID, "interior")
+    if current_scene == 2 and DOCKING_NPC_ID == tarsis_station_id and not drill_1_complete:
+        if drill_1_docking_clearance_granted:
+            if not drill_1_docked_at_tarsis:
+                drill_1_docked_at_tarsis = True
+                task_schedule(khovan_reach_complete_drill_1_resupply, {"ship_id": DOCKING_PLAYER_ID})
+                log("Scene 2 docking logic: Artemis docked with Tarsis after clearance. Drill One completion scheduled.")
+        elif not drill_1_docked_without_clearance_notice:
+            drill_1_docked_without_clearance_notice = True
+            task_schedule(khovan_reach_objective_text, {"banner": "Drill One Hold", "message": "Docking detected, but Drill One is not logged complete yet. Comms must select Tarsis Station and use Request Docking Clearance before the resupply drill completes.", "time": 24})
+            log("Scene 2 docking logic: Artemis docked with Tarsis before docking clearance. Waiting for Comms clearance request.")
+
++++ refit
+    set_weapons_selection(DOCKING_PLAYER_ID, 0)
+    refuel_amount = DOCKING_REFUEL_AMOUNT
+    refuel_delay = DOCKING_REFUEL_DELAY
+    shields_delay = DOCKING_SHIELD_DELAY
+    shields_coeff = DOCKING_SHIELD_COEFF
+    torps_delay = DOCKING_TORPS_DELAY
+    interior_delay = DOCKING_INTERIOR_DELAY
+    interior_count = DOCKING_INTERIOR_COUNT
+
+    player_blob = DOCKING_PLAYER.data_set
+    player_id = DOCKING_PLAYER_ID
+    npc_blob = DOCKING_NPC.data_set
+
+    if get_counter_elapsed_seconds(DOCKING_PLAYER_ID,"refuel") >= refuel_delay:
+        start_counter(DOCKING_PLAYER_ID,"refuel")
+        fuel_value = DOCKING_PLAYER.data_set.get("energy",0)
+        if fuel_value < 1000:
+            fuel_value = fuel_value + refuel_amount
+            DOCKING_PLAYER.data_set.set("energy", int(fuel_value),0)
+
+    if get_counter_elapsed_seconds(DOCKING_PLAYER_ID,"torps") >= torps_delay:
+        start_counter(DOCKING_PLAYER_ID,"torps")
+        _torp_types = npc_blob.get("torpedo_types_available",0)
+        _torp_types =  [x.strip() for x in _torp_types.split(',')]
+        for torps in _torp_types:
+            tLeft = npc_blob.get(f"{torps}_NUM", 0)
+            if tLeft is not None and tLeft > 0:
+                torp_max = player_blob.get(f"{torps}_MAX", 0)
+                if torp_max is None:
+                    torp_max = 10
+                torp_now = player_blob.get(f"{torps}_NUM", 0)
+                if torp_now < torp_max:
+                    torp_now = torp_now + 1
+                    player_blob.set(f"{torps}_NUM", torp_now,0)
+                    npc_blob.set(f"{torps}_NUM", tLeft-1, 0)
+
+    if get_counter_elapsed_seconds(DOCKING_PLAYER_ID,"shields") >= shields_delay:
+        start_counter(DOCKING_PLAYER_ID,"shields")
+        shield_rate = player_blob.get("repair_rate_shields",0)
+        shield_rate *= shields_coeff
+        sCount = player_blob.get("shield_count",0)
+        for shield in range(sCount):
+            sVal = player_blob.get("shield_val", shield)
+            sValMax = player_blob.get("shield_max_val", shield)
+            changed = (sVal < sValMax)
+            sVal = max(0.0, min(sVal + shield_rate, sValMax))
+            if changed:
+                player_blob.set("shield_val", sVal, shield)
+
+    if get_counter_elapsed_seconds(DOCKING_PLAYER_ID,"interior") >= interior_delay:
+        start_counter(DOCKING_PLAYER_ID,"interior")
+        system_grid_objects = to_list(grid_objects(player_id) & role("__damaged__") & role("system"))
+        if len(system_grid_objects):
+            count = min(len(system_grid_objects), interior_count)
+            grid_repair_grid_objects(player_id, system_grid_objects[:count])
+        else:
+            non_system_grid_objects = to_list((grid_objects(player_id) & role("__damaged__") ) - role("system") -  role("lifeform"))
+            if len(non_system_grid_objects):
+                count = min(len(non_system_grid_objects), interior_count)
+                grid_repair_grid_objects(player_id, non_system_grid_objects[0])
+
++++ throttle
+    DOCKING_PLAYER.data_set.set("playerThrottle", 0, 0)

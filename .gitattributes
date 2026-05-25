@@ -1,0 +1,25 @@
+# Normalize text files for this repo
+* text=auto eol=lf
+
+# Git control files
+.gitattributes text eol=lf
+.gitignore text eol=lf
+
+# Source and documentation
+*.md text eol=lf
+*.mast text eol=lf
+*.py text eol=lf
+*.json text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+*.xml text eol=lf
+*.txt text eol=lf
+
+# Binary assets
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.wav binary
+*.mp3 binary
+*.zip binary

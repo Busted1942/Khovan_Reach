@@ -1,0 +1,7 @@
+﻿.venv/
+__pycache__/
+*.pyc
+*.log
+slice00_repo_intake.txt
+before_rollback_*.txt
+before_rollback_*.patch

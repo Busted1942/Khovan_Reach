@@ -1,0 +1,861 @@
+# KHOVAN REACH — ADMIN CONTROL AND TESTING PLAN v2.2 MERGED
+*Merged Scenario Control Panel and testing/regression architecture.*
+
+Status: Canonical admin/testing specification  
+Supersedes: `khovan_reach_scenario_control_panel_architecture.md` and `khovan_reach_testing_regression_architecture.md`
+
+---
+
+# 1. Purpose
+
+**v2.2 cleanup note:** This version keeps the v2.1 story-jump framework but aligns file references and DAMCON threshold language with the v2.2 source index.
+
+
+This document defines the admin/test layer that makes Khovan Reach practical to build, debug, regression-test, and run.
+
+It merges:
+- Scenario Control Panel architecture
+- story-jump preset definitions
+- testing layers
+- regression matrices
+- pre-session acceptance checks
+- golden path tests
+
+The goal is to avoid full 95-105 minute mission replays for every feature change.
+
+---
+
+# 2. Scenario Control Panel
+
+The Scenario Control Panel is a GM/admin-only interface.
+
+It supports:
+- story jumps
+- checkpoint reload
+- scene hold/release
+- clip replay
+- timer control
+- subsystem seeding
+- pirate state control
+- debrief synthetic states
+- test validation
+- action logging
+
+It must not be visible to players.
+
+---
+
+# 3. Control panel modes
+
+## 3.1 Test / Authoring Mode
+
+Purpose:
+- development
+- playtest setup
+- feature tests
+- regression tests
+- synthetic outcomes
+
+Capabilities:
+- all story jumps
+- forced state changes
+- forced outcomes
+- arbitrary variable setting if implemented
+- spawn/despawn test entities
+- clear/reset tools
+
+## 3.2 Live GM Recovery Mode
+
+Purpose:
+- protect real sessions
+- correct runtime errors
+- preserve pacing
+
+Capabilities:
+- reload last checkpoint
+- hold/release current scene
+- replay clips
+- delay/trigger DAMCON report
+- reset current drill
+- expose pirates if jammed
+- force next beat if blocked
+- add qualification note
+
+Live Mode must hide destructive Test Mode tools.
+
+---
+
+# 4. Control panel sections
+
+## 4.1 Mission overview
+
+Display:
+
+```text
+mission_phase
+current_scene
+current_beat
+last_checkpoint
+active timers
+next expected event
+held transition status
+active warnings
+```
+
+## 4.2 Story jump presets
+
+Display:
+- jump ID
+- target scene
+- mode access
+- seed status
+- validation status
+
+## 4.3 Scene flow controls
+
+Controls:
+
+```text
+hold current scene
+release held scene
+advance to next beat
+force scene exit
+replay current briefing
+replay last clip
+mark current beat complete
+```
+
+## 4.4 System controls
+
+Controls:
+
+```text
+timer hold/resume
+trigger next DAMCON report
+delay next DAMCON report
+spawn/reset drill drone
+reset current drill
+mark pirates suspected
+mark pirates exposed
+trigger pirate docking request
+trigger pirate combat state
+force cache selection result
+trigger repair resolution
+```
+
+## 4.5 Qualification notes
+
+Controls:
+
+```text
+open station observation view
+add GM note
+mark observation evidence
+flag retest item
+preserve notes across reload
+export debrief support summary
+```
+
+## 4.6 Debug/destructive tools
+
+Test Mode only.
+
+```text
+set arbitrary variable
+force DAMCON outcome
+force pirate outcome
+force Halcyon outcome
+spawn/despawn test entities
+reset all state
+skip to debrief with synthetic data
+clear timers
+clear checkpoint data
+```
+
+---
+
+# 5. Story jump contract
+
+A story jump is a full world-state preset.
+
+Required fields:
+
+```text
+jump_id
+display_name
+target_scene
+mode_access
+mission_phase
+required_prior_flags
+ship_state
+weapons_state
+damcon_state
+halcyon_state
+pirate_state
+cache_state
+timers
+entities
+clips
+gm_display
+expected_next_event
+validation_checks
+recovery_notes
+```
+
+---
+
+
+# 6. Required story jumps
+
+Story jumps are state presets, not scene-number assignments.
+
+## 6.1 Act I v2.2 jump presets
+
+```text
+JUMP-001 mission_start_generator_governor
+JUMP-002 post_departure_generator_packet
+JUMP-003 tarsis_approach_governor_active
+JUMP-004 tarsis_resupply_complete
+JUMP-005 shakedown_choice_full
+JUMP-006 shakedown_choice_compressed
+JUMP-007 direct_scenario_after_resupply
+JUMP-008 engineering_shakedown_start
+JUMP-009 stationary_drone_disable
+JUMP-010 live_fire_target
+```
+
+## 6.2 Act II / Act III jump presets
+
+```text
+JUMP-011 anderson_orders
+JUMP-012 distress_localized
+JUMP-013 halcyon_arrival
+JUMP-014 away_mission_start
+JUMP-015 cascade_decision
+JUMP-016 cache_run_extended_timer
+JUMP-017 cache_run_compressed_timer
+JUMP-018 pirate_arrival_cover_intact
+JUMP-019 pirate_suspected
+JUMP-020 pirate_exposed
+JUMP-021 combat_active
+JUMP-022 cache_selection
+JUMP-023 repair_resolution_clean
+JUMP-024 repair_resolution_hypoxic
+JUMP-025 repair_resolution_total_loss
+JUMP-026 return_transit
+JUMP-027 debrief
+```
+
+## 6.3 Act I preset seed requirements
+
+### JUMP-001 mission_start_generator_governor
+
+```text
+generator_governor_active = true
+starting_homing_torpedoes = 2
+current_scene = 1
+Dillon Clip 1 ready
+Artemis at Kestrel
+```
+
+Expected next event: Comms requests departure clearance.
+
+### JUMP-002 post_departure_generator_packet
+
+```text
+launch_envelope_cleared = true
+kestrel_generator_packet_sent = false
+advisory_timer = 10 seconds or ready-to-fire
+```
+
+Expected next event: Kestrel generator advisory displays and archives.
+
+### JUMP-003 tarsis_approach_governor_active
+
+```text
+generator_governor_active = true
+starting_homing_torpedoes = 2
+Artemis approaching Tarsis
+required requests unset
+```
+
+Expected next event: Comms requests homing priority, generator support, and docking clearance.
+
+### JUMP-004 tarsis_resupply_complete
+
+```text
+tarsis_homing_priority_requested = true
+tarsis_generator_support_requested = true
+tarsis_docking_clearance_requested = true
+tarsis_resupply_complete = true
+generator_governor_active = false
+generator_governor_cleared = true
+```
+
+Expected next event: shakedown profile selection or selected branch proceeds.
+
+### JUMP-008 engineering_shakedown_start
+
+```text
+shakedown_mode = full
+generator_governor_cleared = true
+engineering_shakedown_complete = false
+```
+
+Expected next event: impulse zero / warp 200 instruction.
+
+### JUMP-009 stationary_drone_disable
+
+```text
+shakedown_mode = full or compressed
+drone_01_spawned = true
+drone_01_weapons_disabled = false
+drone_01_fire_authorized = false
+```
+
+Expected next event: scan/hail/frequency/range/lock gates.
+
+### JUMP-010 live_fire_target
+
+```text
+shakedown_mode = full
+drone_01_weapons_disabled = true
+drone_02_spawned = true
+drone_02_destroyed = false
+```
+
+Expected next event: captain engages and destroys target.
+
+## 6.4 Live-mode restrictions
+
+Live GM Recovery Mode should allow only:
+
+```text
+last_checkpoint
+current_scene_start
+next_scene
+mission_start only before players begin
+reload checkpoint
+replay clip
+hold/release transition
+```
+
+Test-only jumps include synthetic repair outcomes, pirate mid-states, and arbitrary Act I branch presets.
+
+# 7. Testing layers
+
+Khovan Reach testing uses six layers:
+
+1. Bootstrap smoke tests
+2. Story-jump preset validation
+3. Subsystem regression tests
+4. Golden-path regression tests
+5. Pre-session acceptance tests
+6. Full playtests
+
+Full playtests remain necessary, but they should not carry the full testing burden.
+
+---
+
+# 8. Required test artifacts
+
+Create in the implementation project:
+
+```text
+/tests/test_matrix.md
+/tests/story_jump_presets.md
+/tests/golden_paths.md
+/tests/pre_session_checklist.md
+/tests/regression_log.md
+/tests/known_issues.md
+/tests/playtest_report_template.md
+```
+
+---
+
+# 9. Bootstrap tests
+
+```text
+BOOT-001 mission package loads
+BOOT-002 main.mast imports all required files
+BOOT-003 story.json is valid
+BOOT-004 script.py initializes without runtime error
+BOOT-005 all mission state variables initialize
+BOOT-006 Artemis starts with correct ship state
+BOOT-007 Dillon Clip 1 queues or plays
+BOOT-008 current_scene = 1
+BOOT-009 mission_phase valid
+BOOT-010 GM debug/admin overlay visible to GM
+BOOT-011 player-facing debug controls hidden
+BOOT-012 first scene proceeds without manual admin action
+```
+
+Acceptance:
+
+```text
+Fresh mission load reaches Scene 1 with no manual recovery.
+```
+
+---
+
+
+
+# 9A. Act I v2.2 tests
+
+```text
+ACT1-001: mission starts with generator_governor_active = true
+ACT1-002: Artemis starts with exactly 2 homing torpedoes
+ACT1-003: departure is blocked until Comms requests clearance
+ACT1-004: launch-envelope clear starts 10-second advisory timer
+ACT1-005: Kestrel generator advisory appears in upper-left overlay
+ACT1-006: Kestrel generator advisory echoes to Comms archive
+ACT1-007: shakedown profile choice appears after advisory
+ACT1-008: Tarsis docking blocked until homing priority requested
+ACT1-009: Tarsis docking blocked until generator support requested
+ACT1-010: Tarsis docking blocked until docking clearance requested/granted
+ACT1-011: Tarsis resupply clears generator_governor_active
+ACT1-012: Full Shakedown enters Engineering systems sequence
+ACT1-013: Compressed Shakedown skips Engineering practice without failure flags
+ACT1-014: Direct Scenario marks skipped Act I observations N/A
+ACT1-015: DAMCON crew-quarters confirmation can route through Comms
+ACT1-016: DAMCON mess confirmation can route through Comms
+ACT1-017: controlled overload damage is detected or confirmable
+ACT1-018: repair completion is detected or confirmable
+ACT1-019: Drone 01 early fire triggers reset 5 km farther from beacon
+ACT1-020: Drone 01 destruction triggers reset 5 km farther from beacon
+ACT1-021: Drone 01 requires 1-2 km range band plus 15-second stationary hold
+ACT1-022: Drone 01 Weapons array disables after three confirmed hits
+ACT1-023: Drone 02 destruction advances to Act II transition
+ACT1-024: cultural Comms packet appears and archives
+```
+
+
+# 10. Story-jump tests
+
+Each story jump must have a validation test.
+
+Standard procedure:
+
+```text
+1. Activate jump.
+2. Verify current_scene.
+3. Verify mission_phase.
+4. Verify required variables.
+5. Verify required entities exist or are queued.
+6. Verify timers initialize correctly.
+7. Verify GM overlay shows expected next event.
+8. Trigger next expected event.
+9. Verify no immediate errors or invalid state warnings.
+```
+
+Test IDs:
+
+```text
+JUMPTEST-001 through JUMPTEST-021 correspond to JUMP-001 through JUMP-021.
+```
+
+---
+
+# 11. Drill tests
+
+## 11.1 Drill Two
+
+```text
+D2-001 Dillon Clip 4 plays once
+D2-002 Drone 01 spawns at correct range
+D2-003 Drone 01 passive
+D2-004 through D2-013 steps 1-10 advance correctly
+D2-014 manual GM mark works for each step
+D2-015 mechanical detection and manual mark do not double-advance
+D2-016 fire before authorization sets safety flag
+D2-017 Drone destroyed before objective blocks clean completion
+D2-018 all hard flags required for clean completion
+D2-019 Dillon Clip 5 plays once
+D2-020 post_drill_2 checkpoint saves once
+```
+
+## 11.2 Drill Three
+
+```text
+D3-001 Dillon Clip 6 plays once
+D3-002 Drone 02 spawns correctly
+D3-003 simple evasion activates
+D3-004 no step prompts fire after intro
+D3-005 observation flags can be logged
+D3-006 observation flags do not hard-block completion
+D3-007 Engine subsystem disable required
+D3-008 ceasefire confirmation required
+D3-009 Engine disable without ceasefire does not complete unless explicitly implemented as late-ceasefire partial
+D3-010 ceasefire without Engine disable does not complete
+D3-011 overfire before Engine disable blocks clean completion
+D3-012 help prompt sets drill_3_help_prompt_used
+D3-013 Dillon Clip 7 plays once
+D3-014 post_drill_3 checkpoint saves once
+```
+
+---
+
+# 12. DAMCON tests
+
+```text
+DAMCON-001 cascade trigger starts timer
+DAMCON-002 Engineer aboard Halcyon selects extended timer
+DAMCON-003 Engineer returned selects compressed timer
+DAMCON-004 timer state appears on GM overlay
+DAMCON-005 timer persists across checkpoint
+DAMCON-006 timer restores after reload
+DAMCON-010 extended reports schedule every 180 seconds
+DAMCON-011 compressed reports schedule every 90 seconds
+DAMCON-012 first report fires at T+0
+DAMCON-013 reports deliver to correct channel
+DAMCON-014 reports use correct sequence
+DAMCON-015 GM can hold report
+DAMCON-016 GM can release held report
+DAMCON-017 held report logs timing drift
+DAMCON-018 drift does not alter outcome unless elapsed crosses threshold
+DAMCON-020 extended clean survival resolves correctly
+DAMCON-021 extended hypoxic survival resolves correctly
+DAMCON-022 extended total loss resolves correctly
+DAMCON-023 compressed clean survival resolves correctly
+DAMCON-024 compressed hypoxic survival resolves correctly
+DAMCON-025 compressed total loss resolves correctly
+DAMCON-026 total loss is irreversible after threshold
+DAMCON-027 total loss persists across reload
+```
+
+---
+
+# 13. Pirate tests
+
+```text
+PIRATE-001 pirate arrival triggers
+PIRATE-002 Cordial Reach spawns/queues
+PIRATE-003 Bright Reckoning spawns/queues
+PIRATE-004 pirate_cover_status = intact
+PIRATE-005 GM display shows opening branch
+PIRATE-006 combat_active = false
+PIRATE-010 credentials probe can advance intact -> suspected
+PIRATE-011 rescue law challenge can advance intact -> suspected
+PIRATE-012 cultural protocol challenge can advance intact -> suspected
+PIRATE-013 Science suspicious scan can advance intact -> suspected
+PIRATE-014 captain explicit challenge can advance intact -> suspected
+PIRATE-015 GM can hold intact despite weak probe
+PIRATE-016 GM can advance suspicion after strong insight
+PIRATE-020 second strong tell advances suspected -> exposed
+PIRATE-021 unauthorized docking advances suspected -> exposed
+PIRATE-022 unauthorized docking advances intact -> exposed
+PIRATE-023 weapons activation advances exposed
+PIRATE-024 refusal of TSN authority can expose
+PIRATE-025 exposed state stops salvage-cover dialogue
+PIRATE-030 backstop timer surfaces docking request option
+PIRATE-031 GM can trigger docking request
+PIRATE-032 GM can wait additional interval
+PIRATE-033 docking denial sets docking_denied
+PIRATE-034 unauthorized docking attempt fires after denial
+PIRATE-035 Hessler warning available
+PIRATE-040 force authorization starts combat after exposure
+PIRATE-041 pirates can flee
+PIRATE-042 pirates can surrender
+PIRATE-043 pirates can be destroyed
+PIRATE-044 pirates can board if enabled
+PIRATE-045 combat resolution advances mission
+PIRATE-046 pirate outcome persists into debrief
+```
+
+---
+
+# 14. Cache tests
+
+```text
+CACHE-001 cache arrival sets cache_arrival = true
+CACHE-002 cache options display correctly
+CACHE-003 correct component sets correct
+CACHE-004 military stabilizer sets incorrect_military
+CACHE-005 regulator sets incorrect_regulator
+CACHE-006 other wrong component sets incorrect_other
+CACHE-007 wrong first attempt sets cache_retry_required
+CACHE-008 retry path adds time/state consequence
+CACHE-009 correct second attempt sets cache_retry_complete
+CACHE-010 repair accepts correct component
+CACHE-011 repair rejects wrong component
+CACHE-012 cache error surfaces in Science debrief evidence
+```
+
+---
+
+# 15. Checkpoint/reload tests
+
+```text
+SAVE-001 checkpoint after Drill One
+SAVE-002 checkpoint after Drill Two
+SAVE-003 checkpoint after Drill Three
+SAVE-004 checkpoint after Anderson orders
+SAVE-005 checkpoint after Halcyon arrival
+SAVE-006 checkpoint after cascade
+SAVE-007 checkpoint before pirate combat if feasible
+SAVE-008 checkpoint at mission resolution
+SAVE-010 reload restores mission_phase
+SAVE-011 reload restores current_scene
+SAVE-012 reload restores Artemis hull/energy/weapons
+SAVE-013 reload restores required entities
+SAVE-014 reload restores active timers
+SAVE-015 reload restores GM overlay
+SAVE-016 reload resumes expected next event
+SAVE-020 reload does not resurrect DAMCON team
+SAVE-021 reload does not undo Halcyon Drift loss
+SAVE-022 reload does not restore converted torpedoes
+SAVE-023 reload does not erase qualification observations
+SAVE-024 reload does not erase visible pirate exposure
+SAVE-030 deliberate ship destruction allows reload
+SAVE-031 reload confirmation displays consequences
+SAVE-032 mission resumes from checkpoint
+SAVE-033 irreversible consequences remain
+```
+
+---
+
+# 16. Admin tests
+
+```text
+ADMIN-001 GM panel visible only to GM
+ADMIN-002 player consoles hide debug/admin controls
+ADMIN-003 Test Mode exposes all story jumps
+ADMIN-004 Live Mode hides destructive controls
+ADMIN-005 hold scene transition works
+ADMIN-006 release scene transition works
+ADMIN-007 replay last clip works
+ADMIN-008 trigger next DAMCON report works
+ADMIN-009 delay next DAMCON report works
+ADMIN-010 expose pirates works
+ADMIN-011 force combat works
+ADMIN-012 reset Drill Two works
+ADMIN-013 reset Drill Three works
+ADMIN-014 manual observation note works
+ADMIN-015 manual mark does not corrupt automated state
+ADMIN-016 destructive action requires confirmation
+ADMIN-017 admin action log records action
+```
+
+---
+
+# 17. Debrief tests
+
+```text
+DEBRIEF-001 mission resolution triggers debrief setup
+DEBRIEF-002 Dillon Clip 10 opens debrief
+DEBRIEF-003 station observations display by station
+DEBRIEF-004 GM notes persist into debrief
+DEBRIEF-005 GM can assign PASS/PARTIAL/NEEDS RETEST/N/A
+DEBRIEF-006 runtime does not auto-grade final results
+DEBRIEF-007 clean success summary works
+DEBRIEF-008 DAMCON loss summary works
+DEBRIEF-009 Halcyon Drift loss summary works
+DEBRIEF-010 DAMCON total_loss triggers Dillon Clip 11 availability
+DEBRIEF-011 Dillon Clip 12 closes debrief
+DEBRIEF-012 optional Anderson closing clip can be triggered
+```
+
+---
+
+# 18. Golden paths
+
+## GOLD-001 clean qualification success
+
+```text
+Engineer stays aboard Halcyon.
+Correct cache component first try.
+Pirates exposed early or neutralized cleanly.
+DAMCON survives clean.
+Halcyon repaired.
+```
+
+Expected:
+
+```text
+damcon_outcome = clean_survival
+halcyon_outcome = repaired
+pirate_outcome resolved
+debrief clean success variant available
+```
+
+## GOLD-002 compressed timer loss
+
+```text
+Engineer returns to Artemis.
+Timer compressed.
+Cache run consumes too much time.
+DAMCON reaches T+15.
+Halcyon repaired late.
+```
+
+Expected:
+
+```text
+damcon_outcome = total_loss
+damcon_team_status = lost
+Dillon Clip 11 available
+reload does not undo deaths
+```
+
+## GOLD-003 wrong cache recovery
+
+```text
+Science selects wrong component first.
+Retry required.
+Second selection correct.
+Timer worsens.
+```
+
+Expected:
+
+```text
+cache_retry_required = true
+cache_retry_complete = true
+Science debrief evidence includes wrong selection
+DAMCON outcome reflects delay
+```
+
+## GOLD-004 pirate backstop
+
+```text
+Comms does not expose pirates.
+Pirates request docking.
+Docking denied.
+Unauthorized docking attempt.
+```
+
+Expected:
+
+```text
+unauthorized_docking_attempt = true
+pirate_cover_status = exposed
+combat_active = true or imminent
+Hessler warning available
+```
+
+## GOLD-005 ship destruction and reload
+
+```text
+Pirate combat destroys Artemis.
+GM reloads checkpoint.
+```
+
+Expected:
+
+```text
+reload succeeds
+mission resumes
+irreversible consequences remain
+qualification observations remain
+```
+
+## GOLD-006 Halcyon Drift loss
+
+```text
+Repair fails or is delayed beyond allowed path.
+Halcyon Drift lost.
+Survivors handled as designed.
+```
+
+Expected:
+
+```text
+halcyon_outcome = lost
+debrief loss variant available
+Anderson status variant available if used
+mission still reaches debrief
+```
+
+---
+
+# 19. Change-based regression gate
+
+| Change type | Required tests |
+|---|---|
+| Bootstrap/file layout | BOOT + JUMPTEST-001 |
+| State variable change | BOOT + affected JUMPTEST + SAVE smoke |
+| Clip/audio trigger | BOOT + affected scene jump + replay test |
+| Act I drill | BOOT + D2/D3 + SAVE-001/002/003 |
+| DAMCON timer | BOOT + DAMCON + GOLD-001 or GOLD-002 |
+| Pirate state | BOOT + PIRATE + GOLD-004 |
+| Cache selection | BOOT + CACHE + GOLD-003 |
+| Checkpoint/reload | BOOT + SAVE + GOLD-005 |
+| GM/admin panel | BOOT + ADMIN + affected subsystem |
+| Debrief/qualification | BOOT + DEBRIEF + one seeded outcome |
+| Combat behavior | BOOT + PIRATE combat + GOLD-005 |
+| Scene transition | BOOT + affected JUMPTEST + adjacent scene test |
+
+---
+
+# 20. Pre-session checklist
+
+V2.1 Act I checks to include before live play:
+
+```text
+PRE-ACT1-001: fresh mission load shows generator-governor start state
+PRE-ACT1-002: Kestrel departure clearance gate works
+PRE-ACT1-003: post-departure generator advisory fires and archives
+PRE-ACT1-004: Tarsis request gates block docking until complete
+PRE-ACT1-005: direct scenario bypass marks skipped drills N/A
+```
+
+
+```text
+PRE-001 fresh mission load reaches Scene 1
+PRE-002 player-facing debug controls hidden
+PRE-003 GM control panel visible
+PRE-004 jump to Drill Two, verify clip/prompt/drone
+PRE-005 jump to Anderson Orders, verify clip trigger
+PRE-006 jump to cascade_decision, verify DAMCON timer start
+PRE-007 jump to pirate_arrival_cover_intact, verify pirate state and GM branch display
+PRE-008 jump to repair_resolution_clean, verify debrief opens
+PRE-009 reload last checkpoint once
+PRE-010 replay last clip once
+PRE-011 verify audio assets available
+PRE-012 verify Hessler voice-mode file ready
+```
+
+Ready to run if all checks pass or every failure has a documented workaround.
+
+---
+
+# 21. Defect severity
+
+## Severity 1 — session blocker
+
+Mission cannot load, Artemis cannot spawn, Scene 1 cannot begin, GM cannot recover, or player consoles unusable.
+
+Must fix before live session.
+
+## Severity 2 — major path blocker
+
+Drill Two cannot complete, DAMCON timer does not start, pirates cannot expose, repair cannot resolve, or debrief cannot open.
+
+Fix before live session unless workaround exists.
+
+## Severity 3 — recoverable runtime issue
+
+Clip replay needed, unexpected manual mark needed, display wrong but state valid, noncritical branch unavailable.
+
+Can run with workaround.
+
+## Severity 4 — polish / clarity
+
+Wording, labels, optional clip routing, nonessential timing polish.
+
+Fix when convenient.
+
+---
+
+# 22. Acceptance criteria
+
+The admin/testing layer is acceptable when:
+
+1. Developer can jump to any major story point without replaying prior scenes.
+2. Each jump seeds a valid world state.
+3. Live Mode hides destructive Test Mode tools.
+4. Player consoles never show hidden admin/debug controls.
+5. GM can recover common deadlocks in under one minute.
+6. Admin actions are logged.
+7. Regression tests can isolate major systems.
+8. Pre-session readiness can be verified quickly.

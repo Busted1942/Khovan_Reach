@@ -1,0 +1,245 @@
+# Khovan Reach Act I runtime state helpers.
+# Shared by dev jump controls now and intended for future checkpoint restore.
+
+=== khovan_state_clear_act_1_runtime_activity ===
+    await task_schedule(khovan_state_cleanup_act_1_test_entities)
+    dillon_opening_briefing_run_id += 1
+    drill_2_authorization_hold_started = False
+    drill_2_authorization_hold_ready = False
+    drill_2_authorization_hold_run_id += 1
+    drill_3_evasion_active = False
+    drill_3_evasion_run_id += 1
+
+    if artemis_id != 0:
+        set_weapons_selection(artemis_id, 0)
+        set_science_selection(artemis_id, 0)
+        set_comms_selection(artemis_id, 0)
+    ->END
+
+=== khovan_state_cleanup_act_1_test_entities ===
+    if drill_2_navproxy_id != 0:
+        sim.delete_navproxy_by_id(drill_2_navproxy_id)
+        drill_2_navproxy_id = 0
+
+    if drill_3_navproxy_id != 0:
+        sim.delete_navproxy_by_id(drill_3_navproxy_id)
+        drill_3_navproxy_id = 0
+
+    for drone in to_object_list(role("khovan_drill_2_contact")):
+        remove_role(drone.id, "khovan_drill_2_contact")
+        remove_role(drone.id, "khovan_drill_drone")
+        sbs.delete_object(drone.id)
+
+    for drone in to_object_list(role("khovan_drill_3_contact")):
+        remove_role(drone.id, "khovan_drill_3_contact")
+        remove_role(drone.id, "khovan_drill_drone")
+        sbs.delete_object(drone.id)
+
+    drill_2_drone_id = 0
+    drill_3_drone_id = 0
+    ->END
+
+=== khovan_state_prepare_act_1_runtime ===
+    await task_schedule(khovan_reach_setup_act_1_space)
+    await task_schedule(khovan_reach_setup_artemis_player_ship)
+    await task_schedule(khovan_reach_setup_dialogue_npcs)
+    ->END
+
+=== khovan_state_apply_drill_1_resupply_state ===
+    kestrel_departure_clearance_granted = True
+    drill_1_complete = True
+    drill_1_docking_clearance_granted = True
+    drill_1_docked_at_tarsis = True
+    drill_1_docked_without_clearance_notice = False
+    drill_2_waiting_for_tarsis_release = False
+
+    if artemis_id != 0:
+        set_data_set_value(artemis_id, "energy", drill_1_full_energy, 0)
+        set_data_set_value(artemis_id, "Homing_NUM", drill_1_full_homing_torpedoes, 0)
+        set_data_set_value(artemis_id, "Nuke_NUM", drill_1_full_nukes, 0)
+        set_data_set_value(artemis_id, "EMP_NUM", drill_1_full_emps, 0)
+        set_data_set_value(artemis_id, "Mine_NUM", drill_1_full_mines, 0)
+
+    ->END
+
+=== khovan_state_seed_artemis_for_act_1_after_resupply ===
+    await task_schedule(khovan_state_prepare_act_1_runtime)
+    await task_schedule(khovan_state_apply_drill_1_resupply_state)
+    await task_schedule(khovan_state_undock_artemis)
+    ->END
+
+=== khovan_state_undock_artemis ===
+    if artemis_id == 0:
+        ->END
+
+    artemis_object = to_object(artemis_id)
+    if artemis_object is None:
+        ->END
+
+    artemis_object.data_set.set("dock_base_id", 0, 0)
+    artemis_object.data_set.set("dock_state", "undocked", 0)
+    artemis_object.data_set.set("playerThrottle", 0, 0)
+    ->END
+
+=== khovan_state_spawn_drill_2_drone ===
+    existing_drill_drones = to_object_list(role("khovan_drill_2_contact"))
+    if len(existing_drill_drones) > 0:
+        drill_2_drone_id = existing_drill_drones[0].id
+    else:
+        drill_2_drone = npc_spawn(34000, 0, 8000, "Unidentified Contact", "khovan_training, neutral, khovan_drill_drone, khovan_drill_2_contact", "tsn_warpster", "behav_npcship")
+        drill_2_drone_id = to_id(drill_2_drone)
+        drill_2_navproxy = sim.add_navproxy(drill_2_drone_id, "Unidentified Contact", "tsn_warpster", "#FC3")
+        drill_2_navproxy_id = to_id(drill_2_navproxy)
+
+    if artemis_id != 0 and drill_2_drone_id != 0:
+        link(artemis_id, "extra_scan_source", drill_2_drone_id)
+
+    ->END
+
+=== khovan_state_place_artemis_for_drill_2 ===
+    default step_number = 0
+    if artemis_id == 0:
+        ->END
+
+    artemis_object = to_object(artemis_id)
+    if artemis_object is None:
+        ->END
+
+    if step_number >= 6 and drill_2_drone_id != 0:
+        drone_object = to_object(drill_2_drone_id)
+        if drone_object is not None:
+            artemis_object.pos = Vec3(drone_object.pos.x - 1500, drone_object.pos.y, drone_object.pos.z)
+            artemis_object.data_set.set("playerThrottle", 0, 0)
+            ->END
+
+    artemis_object.pos = Vec3(23000, 0, 3000)
+    artemis_object.data_set.set("playerThrottle", 0, 0)
+    ->END
+
+=== khovan_state_enter_drill_2_step ===
+    default step_number = 0
+
+    await task_schedule(khovan_state_clear_act_1_runtime_activity)
+    await task_schedule(khovan_state_seed_artemis_for_act_1_after_resupply)
+
+    mission_phase = "act_1"
+    current_scene = 3
+    drill_1_complete = True
+    drill_2_started = True
+    drill_2_complete = False
+    drill_2_sequence_started = True
+    drill_2_waiting_for_tarsis_release = False
+
+    await task_schedule(khovan_state_reset_drill_2_runtime_flags)
+    await task_schedule(khovan_state_apply_drill_2_step_state, {"step_number": step_number})
+    await task_schedule(khovan_state_spawn_drill_2_drone)
+    await task_schedule(khovan_state_place_artemis_for_drill_2, {"step_number": step_number})
+    await task_schedule(khovan_state_select_drill_2_targets_for_step, {"step_number": step_number})
+    await task_schedule(khovan_reach_refresh_drill_2_step)
+    ->END
+
+=== khovan_state_reset_drill_2_runtime_flags ===
+    drill_2_science_scan_complete = False
+    drill_2_science_intel_complete = False
+    drill_2_science_bio_complete = False
+    drill_2_science_classification_complete = False
+    drill_2_comms_hail_complete = False
+    drill_2_captain_posture_check = False
+    drill_2_helm_geometry_check = False
+    drill_2_engineering_boost_check = False
+    drill_2_weapons_lock_complete = False
+    drill_2_weapons_ready_check = False
+    drill_2_ready_posture_reported = False
+    drill_2_authorization_hold_started = False
+    drill_2_authorization_hold_ready = False
+    drill_2_authorization_hold_run_id += 1
+    drill_2_fire_authorized_check = False
+    drill_2_weapons_subsystem_disabled = False
+    drill_2_ceasefire_check = False
+    drill_2_verification_check = False
+    drill_2_fire_before_authorized = False
+    drill_2_drone_destroyed = False
+    drill_2_authorized_damage_count = 0
+    drill_2_result = "pending"
+    ->END
+
+=== khovan_state_apply_drill_2_step_state ===
+    default step_number = 0
+
+    if step_number <= 0:
+        drill_2_sequence_step = 1
+    elif step_number == 1:
+        drill_2_sequence_step = 5
+    elif step_number == 2:
+        drill_2_sequence_step = 6
+    elif step_number == 5:
+        drill_2_sequence_step = 15
+    else:
+        drill_2_sequence_step = 16
+
+    if step_number >= 2:
+        drill_2_science_scan_complete = True
+        drill_2_science_intel_complete = True
+        drill_2_science_bio_complete = True
+        drill_2_science_classification_complete = True
+
+    if step_number >= 3:
+        drill_2_comms_hail_complete = True
+
+    # The current playable sequence gates ready-posture reporting behind the
+    # Engineering preamble. For captain/helm anchors, seed that preamble only
+    # so the existing ready-posture button remains testable.
+    if step_number == 3 or step_number == 4:
+        drill_2_engineering_boost_check = True
+
+    if step_number >= 4:
+        drill_2_captain_posture_check = True
+
+    if step_number >= 5:
+        drill_2_helm_geometry_check = True
+
+    if step_number >= 6:
+        drill_2_engineering_boost_check = True
+
+    if step_number >= 7:
+        drill_2_weapons_lock_complete = True
+        drill_2_weapons_ready_check = True
+        drill_2_ready_posture_reported = True
+        drill_2_authorization_hold_started = True
+        drill_2_authorization_hold_ready = True
+
+    if step_number >= 8:
+        drill_2_fire_authorized_check = True
+        drill_2_authorization_hold_started = False
+        drill_2_authorization_hold_ready = False
+
+    if step_number >= 9:
+        drill_2_weapons_subsystem_disabled = True
+
+    if step_number >= 10:
+        drill_2_ceasefire_check = True
+
+    if step_number >= 11:
+        drill_2_verification_check = True
+
+    ->END
+
+=== khovan_state_select_drill_2_targets_for_step ===
+    default step_number = 0
+    if artemis_id == 0:
+        ->END
+    if drill_2_drone_id == 0:
+        ->END
+
+    if step_number == 2:
+        set_comms_selection(artemis_id, drill_2_drone_id)
+    elif kestrel_yards_id != 0:
+        set_comms_selection(artemis_id, kestrel_yards_id)
+
+    if step_number == 1:
+        set_science_selection(artemis_id, drill_2_drone_id)
+
+    if step_number >= 7:
+        set_weapons_selection(artemis_id, drill_2_drone_id)
+
+    ->END
