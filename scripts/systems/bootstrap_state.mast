@@ -15,6 +15,7 @@ shared shakedown_mode = "unset"
 shared training_overlay_active = True
 shared comms_archive_enabled = True
 shared dillon_clip_1_status = "queued"
+shared artemis_player_ship_status = "not_initialized_api_uncertainty"
 
 === khovan_reach_initialize_bootstrap_state ===
     mission_phase = "act_1"
@@ -32,5 +33,6 @@ shared dillon_clip_1_status = "queued"
     training_overlay_active = True
     comms_archive_enabled = True
     dillon_clip_1_status = "queued"
+    artemis_player_ship_status = "not_initialized_api_uncertainty"
     log("Slice 01 bootstrap state initialized.")
     ->END

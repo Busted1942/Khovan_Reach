@@ -25,6 +25,7 @@ REQUIRED_STATE = {
     "shakedown_mode": "\"unset\"",
     "training_overlay_active": "True",
     "comms_archive_enabled": "True",
+    "artemis_player_ship_status": "\"not_initialized_api_uncertainty\"",
 }
 
 LEGACY_MAST_NAMES = {
@@ -100,6 +101,9 @@ class BootstrapStaticTests(unittest.TestCase):
         self.assertIn("write_slice01_live_smoke_marker(client_id)", script)
         self.assertIn("mission_phase=act_1", script)
         self.assertIn("current_scene=1", script)
+        self.assertIn("dillon_clip_1_status=stubbed", script)
+        self.assertIn("artemis_player_ship_status=not_initialized_api_uncertainty", script)
+        self.assertIn("scene_1_runtime_presence=bootstrap_marker_and_dillon_stub", script)
         self.assertIn("Gui.server_start_page_class(KhovanReachStoryPage)", script)
         self.assertIn("Gui.client_start_page_class(KhovanReachStoryPage)", script)
 
@@ -127,9 +131,14 @@ class BootstrapStaticTests(unittest.TestCase):
             main,
         )
         self.assertIn("sbs.send_story_dialog(0", main)
+        self.assertIn("Dillon Clip 1 text stub active.", main)
+        self.assertIn("Artemis/player ship spawn not initialized", main)
+        self.assertIn("BOOT-006 needs a reference-backed API spike", main)
         self.assertIn('logger("mast.runtime")', main)
         self.assertIn('"mast.runtime"', main)
         self.assertIn("mission_phase = act_1; current_scene = 1", main)
+        self.assertIn("dillon_clip_1_status = stubbed", main)
+        self.assertIn("artemis_player_ship_status = not_initialized_api_uncertainty", main)
         self.assertIn("await gui(timeout=delay_sim(10))", main)
         self.assertIn("jump khovan_reach_slice01_runtime_idle", main)
 
@@ -191,8 +200,11 @@ class BootstrapStaticTests(unittest.TestCase):
 
     def test_dillon_clip_1_is_stubbed(self) -> None:
         audio = read("scripts/systems/audio_runtime.mast")
+        self.assertIn("shared dillon_clip_1_stub_text", audio)
         self.assertIn("=== khovan_reach_stub_dillon_clip_1 ===", audio)
         self.assertIn('dillon_clip_1_status = "stubbed"', audio)
+        self.assertIn("Dillon Clip 1 text stub active", audio)
+        self.assertIn("sbs.send_story_dialog(0", audio)
 
     def test_debug_runtime_is_stubbed(self) -> None:
         debug = read("scripts/systems/debug_runtime.mast")

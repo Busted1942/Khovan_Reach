@@ -30,6 +30,9 @@ try:
                     SLICE01_SMOKE_MARKER_TEXT,
                     "mission_phase=act_1",
                     "current_scene=1",
+                    "dillon_clip_1_status=stubbed",
+                    "artemis_player_ship_status=not_initialized_api_uncertainty",
+                    "scene_1_runtime_presence=bootstrap_marker_and_dillon_stub",
                     "entry_chain=story.json -> script.py -> story.mast -> scripts/main.mast -> khovan_reach_slice01_entry",
                     "",
                 ]
