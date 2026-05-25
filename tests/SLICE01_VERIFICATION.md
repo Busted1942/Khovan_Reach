@@ -298,6 +298,34 @@ bootstrap route passed; server/client playable state unresolved
 
 It is not a missing-file failure and not the previous SBS Utils GUI lifecycle failure.
 
+Matt later confirmed the visible marker appears on the Mission Select/startup UI:
+
+```text
+Khovan Reach Slice 01 bootstrap loaded. Scene 1 initialized.
+Mission shell active. No Act I gameplay systems loaded.
+```
+
+This marker is displayed from the correct startup route: `script.py` registers `KhovanReachStoryPage`, `story.mast` imports `scripts/main.mast`, `main_server` points to `khovan_reach_slice01_entry`, and that label runs bootstrap before entering `khovan_reach_slice01_runtime_idle`.
+
+The Mission Select/startup context is acceptable for the current Slice 01 bootstrap shell checkpoint. It proves the custom Khovan StoryPage route is active and no longer failing during package load or GUI lifecycle presentation.
+
+It does not prove the normal playable/server-ready state. The marker currently replaces the normal ready/running surface because Slice 01 does not yet implement the reference-backed server/client runtime primitives used by playable examples:
+
+- no `sim_create`
+- no Artemis/player ship spawn
+- no server Start button or mission-start transition
+- no client ship assignment
+- no Helm/Science/Comms/etc. console routing
+
+There is no current Khovan runtime button for Matt to press to advance from this shell marker into playable console state. Connecting a client is useful only as a diagnosis step; the client should not be expected to receive a usable ship console until the minimum runtime primitive for BOOT-006 is implemented.
+
+BOOT interpretation:
+
+- BOOT-001 is satisfied for mission package load and active StoryPage startup.
+- BOOT-012 is satisfied for bootstrap Scene 1 reaching the status marker without admin/recovery action.
+- BOOT-006 remains missing because Artemis/player ship state is not created or validated.
+- Full server/client playable readiness remains outside the current shell marker and requires an approved Slice 01 runtime primitive or later slice work.
+
 The next operator test should distinguish these observations:
 
 - Server only: may remain blank/quiet in the current bootstrap shell. Do not treat the generic default server welcome screen as required after Khovan registers its own StoryPage.
@@ -331,6 +359,20 @@ References inspected:
 The checked Story mission examples mostly use same-folder imports. The archived old Khovan `main.mast` also uses same-folder imports. However, the sbs_utils import parser explicitly accepts `/` and `\` in import names, and the sbs_utils test suite includes successful compile examples for both `import tests/mast/imp.mast` and `import tests\mast\imp.mast`.
 
 Conclusion: slash-style imports are valid MAST runtime syntax. The active import lines remain unchanged.
+
+## VS Code `__init__.mast` warning triage
+
+VS Code MAST extension warnings such as "No `__init__.mast` file found in this folder" are classified as non-blocking tooling warnings for the current Slice 01 runtime.
+
+Active Slice 01 startup uses this explicit chain:
+
+```text
+story.json -> script.py -> story.mast -> scripts/main.mast -> khovan_reach_slice01_entry
+```
+
+No active runtime file currently imports or loads `__init__.mast`, and live Cosmos smoke has already started the mission and displayed the Slice 01 bootstrap marker without a missing-`__init__.mast` runtime error. `story.json` loads the sbs_utils sbslib and has an empty `mastlib` list; `script.py` registers `StoryPage`; `story.mast` imports `scripts/main.mast`; `scripts/main.mast` imports the specific Slice 01 system files directly.
+
+Do not create an active `__init__.mast` only to silence the editor warning. If later reference-backed work proves `__init__.mast` is needed for a package/library layout, document the required location and contents before adding it. Do not copy the archived old-build `__init__.mast` into active runtime.
 
 ## Slice 01 findings
 
