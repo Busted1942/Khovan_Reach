@@ -30,6 +30,8 @@ Generated runtime copies should be ignored by Git unless there is a strong reaso
   - 03_game_resources/
   - 04_implementation_setup/
   - 05_governance/
+- docs_external/
+- reference_missions/
 - scripts/
   - acts/
   - systems/
@@ -37,6 +39,7 @@ Generated runtime copies should be ignored by Git unless there is a strong reaso
 - tests/
 - tools/
 - audio/
+- archive/
 
 ---
 
@@ -116,6 +119,7 @@ Files:
 - 10_mast_file_lessons.md
 - 20_current_objective_display_spike.md
 - 30_implementation_project_start_prompt.md
+- 40_slice01_bootstrap_findings.md
 These files help the coding project start cleanly. They are not a substitute for the active design docs.
 
 The active build-start checklist lives at `docs/00_project/20_build_start_checklist.md`.
@@ -147,6 +151,45 @@ Suggested structure:
 - scripts/lib/
 
 Do not put design docs here.
+
+---
+
+# 9A. docs_external
+
+Purpose:
+- non-canonical implementation references and curated notes
+
+Rules:
+- `docs_external/` does not override active design docs
+- `_local_clones` folders are local-only and must be Git-ignored
+- external clones must not be referenced by active runtime files
+- local clones should not live inside the active mission root during live Cosmos smoke tests if the loader can discover them
+
+---
+
+# 9B. reference_missions
+
+Purpose:
+- non-canonical reference missions or reference inventory only
+
+Rules:
+- use reference missions for syntax, package layout, API usage, and known-good implementation patterns only
+- do not import story, pacing, factions, objectives, or player-facing behavior from reference missions
+- `_local_clones` folders are local-only and must be Git-ignored
+- reference mission files must not be referenced by active runtime files
+
+---
+
+# 9C. archive/old_build_reference
+
+Purpose:
+- old implementation-history evidence only
+
+Rules:
+- archive files do not override active design docs
+- old-build references must not be referenced by active runtime files
+- old MAST files must not be moved into active `scripts/`
+- `scripts/` remains active runtime code only
 
 ---
 

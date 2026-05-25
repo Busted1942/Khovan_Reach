@@ -201,7 +201,113 @@ Current completion status: unresolved live Cosmos blocker until Matt confirms th
 
 On May 25, 2026, Matt confirmed the previous SBS Utils GUI lifecycle error no longer appears. Current observed live behavior is that the mission loads to a blank/quiet Mission Select screen. The remaining Slice 01 smoke question is whether the bootstrap actually reached Scene 1.
 
-The required next live smoke is to confirm that the marker `Khovan Reach Slice 01 bootstrap loaded. Scene 1 initialized.` appears, or that an equivalent log marker proves the same entry path ran.
+The generic default server welcome screen is not required for Khovan mission load. The absence of the previous SBS Utils runtime error is progress, but it is not sufficient Slice 01 acceptance evidence.
+
+Matt also observed that `mast.runtime.log` and `mast.compile.log` exist but remain empty after live load. Log-only smoke evidence is therefore unreliable in this setup.
+
+Logging triage on May 25, 2026 found that the local `docs_external/_local_clones` and `reference_missions/_local_clones` folders are not present inside the live mission root, which is intentional runtime-root hygiene. Available installed/reference evidence shows:
+
+- sbs_utils creates `mast.compile.log` and `mast.runtime.log` file handlers when a MAST story is compiled.
+- `mast.compile.log` may remain empty when there are no compile diagnostics.
+- MAST `log(...)` defaults to DEBUG-level logging; without an enabled logger, marker text may not appear even when the file exists.
+- Reference mission code uses the MAST `logger(...)` command to enable logging.
+
+Slice 01 now enables the `mast.runtime` logger immediately before the bootstrap log marker with `logger("mast.runtime")`, but this is still secondary diagnostics until live Cosmos proves that this local launch path writes runtime logs. Logging remains a future diagnostics spike if richer runtime traces are needed.
+
+The visible story-dialog marker remains useful if Cosmos displays it after the bootstrap state, debug stub, and Dillon Clip 1 stub have run:
+
+```text
+Khovan Reach Slice 01 bootstrap loaded. Scene 1 initialized.
+```
+
+The visible marker is emitted from the active Slice 01 bootstrap path with the reference-backed `sbs.send_story_dialog(...)` pattern used by known-good missions. On the May 25 live smoke, this marker was not observable, so it is not sufficient as the only evidence.
+
+Primary next live-smoke proof is the Python-side marker file written after the active sbs_utils `StoryPage.start_story()` startup tick returns for the server page:
+
+```text
+tests/live_smoke_last_bootstrap.txt
+```
+
+Expected marker-file content includes:
+
+```text
+Khovan Reach Slice 01 bootstrap loaded. Scene 1 initialized.
+mission_phase=act_1
+current_scene=1
+```
+
+This marker is the accepted Slice 01 live-smoke proof. It is temporary Slice 01 smoke scaffolding, not mission gameplay, not player debug control, and not Scenario Control Panel behavior. The file is Git-ignored and must not be committed.
+
+Secondary log marker, if Cosmos begins writing runtime logs:
+
+```text
+Khovan Reach Slice 01 bootstrap loaded. Scene 1 initialized. mission_phase = act_1; current_scene = 1.
+```
+
+The active bootstrap still emits this marker with `logger("mast.runtime")` followed by `log(..., "mast.runtime")`, but the empty-log observation means `mast.runtime.log` and `mast.compile.log` are secondary evidence only. Quick tests must not require either log file to contain output unless logging is separately proven reliable in this Cosmos launch path.
+
+For the next live smoke, Matt should check `tests/live_smoke_last_bootstrap.txt` after launch/reload. Failure or ambiguous observations are: blank screen with no visible marker, marker file absent, marker file timestamp unchanged after relaunch, marker file missing the exact state lines, logs still empty with no alternate marker, or any runtime error.
+
+## Runtime/server-load observation after bootstrap marker
+
+Matt confirmed the live-smoke marker file is written with:
+
+```text
+Khovan Reach Slice 01 bootstrap loaded. Scene 1 initialized.
+mission_phase=act_1
+current_scene=1
+entry_chain=story.json -> script.py -> story.mast -> scripts/main.mast -> khovan_reach_slice01_entry
+```
+
+This proves the active Khovan StoryPage startup path runs far enough for Slice 01 bootstrap smoke evidence. It does not prove the server/client playable state.
+
+Reference inspection found that known-good playable examples use additional runtime primitives that Slice 01 has not yet implemented:
+
+- `SecretMeeting` and `WalkTheLine` use `@map` metadata, LegendaryMissions mastlib dependencies, map start flow, `spawn_players`, docking/setup helpers, and actual world objects.
+- `tutorial_runner-main/mast/simple_common.mast` uses `sim_create()`, `player_spawn(...)`, `assign_client_to_ship(...)`, `gui_reroute_server(...)`, `gui_reroute_clients(...)`, `route_change_console(...)`, a server GUI label, and client console selection before player consoles are useful.
+- Archived old Khovan MAST also treated Artemis setup as a separate runtime step using `spawn_players`, start-state setters, and Kestrel/Tarsis objects. That old code remains implementation-history evidence only.
+
+Current active Slice 01 code deliberately does not create a simulation world, spawn Artemis, assign a client to a ship, route clients to Helm/Science/Comms/etc., or create the server mission-control surface. Therefore a blank/quiet server screen with the marker file present is currently classified as:
+
+```text
+bootstrap route passed; server/client playable state unresolved
+```
+
+It is not a missing-file failure and not the previous SBS Utils GUI lifecycle failure.
+
+The next operator test should distinguish these observations:
+
+- Server only: may remain blank/quiet in the current bootstrap shell. Do not treat the generic default server welcome screen as required after Khovan registers its own StoryPage.
+- Client connected: useful for diagnosis, but current Slice 01 does not spawn Artemis or assign consoles, so no usable ship/consoles should be assumed yet.
+- Marker file: remains the accepted proof that the active bootstrap path ran.
+
+The likely missing runtime primitive is a minimal Slice 01 server/client setup, probably including some combination of `sim_create`, Artemis/player-ship spawn or `spawn_players`, client ship assignment/console routing, and a small server status page. Because this is the first real runtime primitive and BOOT-006 requires Artemis to start with correct ship state, it should be implemented only as an explicitly approved Slice 01 bootstrap patch or spike. It must not silently import Act I gameplay, Kestrel/Tarsis/drone flow, story jumps, or Scenario Control Panel behavior.
+
+Current completion stance:
+
+```text
+Mission bootstrap marker: passed.
+Server/client playable state: not yet passed.
+BOOT-006 Artemis starts with correct ship state: not yet implemented.
+BOOT-012 first scene proceeds without manual admin action: not yet fully proven.
+```
+
+## MAST import warning triage
+
+VS Code MAST language-server warnings on import lines such as `import scripts/systems/bootstrap_state.mast`, `import scripts/systems/audio_runtime.mast`, and `import scripts/systems/debug_runtime.mast` are classified as non-blocking editor false positives unless live Cosmos reports a matching compile/load failure.
+
+References inspected:
+
+- `docs_external/_local_clones/mast_starter/story.mast`, via the external Tier 2 cache
+- `reference_missions/_local_clones/SecretMeeting/story.mast`, via the external Tier 2 cache
+- `reference_missions/_local_clones/WalkTheLine/story.mast`, via the external Tier 2 cache
+- `archive/old_build_reference/old_mast/main.mast`
+- `sbs_utils/sbs_utils/mast/core_nodes/import_cmd.py`, via the external Tier 2 cache
+- `sbs_utils/tests/test_mast.py`, via the external Tier 2 cache
+
+The checked Story mission examples mostly use same-folder imports. The archived old Khovan `main.mast` also uses same-folder imports. However, the sbs_utils import parser explicitly accepts `/` and `\` in import names, and the sbs_utils test suite includes successful compile examples for both `import tests/mast/imp.mast` and `import tests\mast\imp.mast`.
+
+Conclusion: slash-style imports are valid MAST runtime syntax. The active import lines remain unchanged.
 
 ## Slice 01 findings
 

@@ -95,7 +95,10 @@ Tests:
 - BOOT-001 through BOOT-012
 
 Acceptance:
-- Fresh mission load reaches Scene 1 without manual recovery.
+- Quick/static checks pass.
+- Active runtime load-path checks pass where implemented.
+- Live Cosmos mission load reaches Scene 1 without manual recovery.
+- If live Cosmos still fails, the branch may be checkpointed only as a blocker/investigation checkpoint, not as completed Slice 01.
 
 ---
 

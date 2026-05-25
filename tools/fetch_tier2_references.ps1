@@ -1,14 +1,33 @@
 [CmdletBinding()]
 param(
-    [switch]$DryRun
+    [switch]$DryRun,
+    [string]$ReferenceRoot
 )
 
 $ErrorActionPreference = "Stop"
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 
-# These clones are Tier 2 implementation references only. They are ignored by
-# Git and must not be copied into active scripts/ or treated as Khovan design.
+if ([string]::IsNullOrWhiteSpace($ReferenceRoot)) {
+    $cosmosRoot = (Resolve-Path (Join-Path $repoRoot "../../..")).Path
+    $ReferenceRoot = Join-Path $cosmosRoot "_khovan_reach_tier2_references"
+}
+
+$referenceRootFull = [System.IO.Path]::GetFullPath($ReferenceRoot)
+$repoRootPrefix = $repoRoot.TrimEnd([System.IO.Path]::DirectorySeparatorChar, [System.IO.Path]::AltDirectorySeparatorChar) + [System.IO.Path]::DirectorySeparatorChar
+
+if (
+    $referenceRootFull.Equals($repoRoot, [System.StringComparison]::OrdinalIgnoreCase) -or
+    $referenceRootFull.StartsWith($repoRootPrefix, [System.StringComparison]::OrdinalIgnoreCase)
+) {
+    Write-Error "ReferenceRoot must be outside the live mission package. The MAST loader can scan .mastlib/.zip files under the mission root."
+    exit 1
+}
+
+# These clones are Tier 2 implementation references only. They must live
+# outside the active mission package because the MAST loader can discover
+# .mastlib and .zip files under the mission root. Do not copy them into
+# active scripts/ or treat them as Khovan design.
 $targets = @(
     @{
         Name = "sbs_utils"
@@ -44,6 +63,7 @@ $targets = @(
 
 Write-Host "Tier 2 reference fetch helper"
 Write-Host "Repo root: $repoRoot"
+Write-Host "Reference root: $referenceRootFull"
 
 if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
     Write-Error "git is not available on PATH; cannot fetch Tier 2 references."
@@ -57,13 +77,13 @@ if ($DryRun) {
 }
 
 foreach ($target in $targets) {
-    $destination = Join-Path $repoRoot $target.Destination
+    $destination = Join-Path $referenceRootFull $target.Destination
     $parent = Split-Path -Parent $destination
 
     Write-Host ""
     Write-Host "Target: $($target.Name)"
     Write-Host "URL: $($target.Url)"
-    Write-Host "Destination: $($target.Destination)"
+    Write-Host "Destination: $destination"
 
     if (Test-Path -LiteralPath $destination) {
         Write-Host "Status: already exists; skipping."
@@ -85,4 +105,4 @@ foreach ($target in $targets) {
 }
 
 Write-Host ""
-Write-Host "Reminder: external reference clones are ignored by Git and must not be committed."
+Write-Host "Reminder: external reference clones are reference-only and must not be committed."

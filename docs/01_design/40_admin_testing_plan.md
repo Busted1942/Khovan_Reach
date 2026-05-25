@@ -358,6 +358,38 @@ Full playtests remain necessary, but they should not carry the full testing burd
 
 ---
 
+## 7.1 Evidence classes
+
+Testing evidence is not interchangeable. Record which class of evidence each acceptance item has.
+
+Static/source hygiene checks:
+- verify file presence, repo structure, forbidden active filenames, and source authority
+
+Parser/schema/package/import checks:
+- verify JSON shape, Python parseability, package metadata, and statically discoverable imports
+
+Runtime load-path checks:
+- verify active runtime files do not reference missing `.mast` files, external reference clone paths, archive paths, or forbidden old module names
+
+Live Cosmos smoke checks:
+- verify the actual Cosmos/MAST runtime can load the mission package, run startup, keep required StoryPage/GUI tasks alive, and reach the expected scene
+
+UI/manual acceptance checks:
+- verify GM-only controls, player-facing visibility, console behavior, and manual fallback workflows
+
+Full playtests:
+- verify pacing, operator workload, GM workflow, and end-to-end scenario resilience
+
+Static tests do not prove live/runtime behavior unless the runtime was actually exercised. Live Cosmos failures after static success must be captured as one of:
+
+- a targeted regression/static check, if feasible
+- a live-smoke checklist item, if Cosmos is required to prove the behavior
+- a documented blocker with exact next action
+
+Do not weaken BOOT, story-jump, golden-path, or pre-session acceptance tests when adding evidence-class notes.
+
+---
+
 # 8. Required test artifacts
 
 Create in the implementation project:

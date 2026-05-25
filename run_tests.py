@@ -8,6 +8,7 @@ import subprocess
 import sys
 import unittest
 import importlib.util
+from io import StringIO
 from pathlib import Path
 
 
@@ -150,21 +151,21 @@ def check_clone_contents_not_tracked() -> list[str]:
     return [f"external clone content is tracked: {line}" for line in tracked]
 
 
-def run_static_unittests() -> list[str]:
+def run_static_unittests() -> tuple[list[str], int]:
     test_file = ROOT / "tests" / "test_bootstrap_static.py"
     spec = importlib.util.spec_from_file_location("test_bootstrap_static", test_file)
     if spec is None or spec.loader is None:
-        return [f"could not load static test file: {rel(test_file)}"]
+        return [f"could not load static test file: {rel(test_file)}"], 0
 
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     suite = unittest.defaultTestLoader.loadTestsFromModule(module)
-    result = unittest.TextTestRunner(verbosity=1).run(suite)
+    result = unittest.TextTestRunner(stream=StringIO(), verbosity=1).run(suite)
     failures = []
     for test_case, traceback_text in result.failures + result.errors:
         last_line = traceback_text.strip().splitlines()[-1]
         failures.append(f"{test_case.id()}: {last_line}")
-    return failures
+    return failures, result.testsRun
 
 
 def conflict_tokens(path: Path) -> set[str]:
@@ -213,21 +214,32 @@ def print_group(label: str, items: list[str]) -> None:
 def run_quick() -> int:
     print("Khovan Reach quick checks")
 
+    harness_checks_run = 0
     required_docs, source_failures = read_source_index()
+    harness_checks_run += 1
     failures = []
     warnings = []
 
     failures.extend(source_failures)
     if required_docs:
+        harness_checks_run += 1
         failures.extend(check_required_docs(required_docs))
 
+    harness_checks_run += 1
     failures.extend(check_required_folders())
+    harness_checks_run += 1
     failures.extend(check_old_mast_filenames())
+    harness_checks_run += 1
     failures.extend(check_conflicting_doc_filenames(required_docs))
+    harness_checks_run += 1
     failures.extend(check_slice01_bootstrap_files())
+    harness_checks_run += 1
     failures.extend(check_clone_contents_not_tracked())
-    failures.extend(run_static_unittests())
+    static_failures, static_tests_run = run_static_unittests()
+    failures.extend(static_failures)
+    harness_checks_run += 1
     warnings.extend(check_old_mast_archive_warning())
+    total_checks_run = harness_checks_run + static_tests_run
 
     if failures:
         print_group("FAIL", failures)
@@ -237,6 +249,11 @@ def run_quick() -> int:
     if warnings:
         print_group("WARN", warnings)
 
+    print(f"Ran {static_tests_run} Python tests")
+    print(
+        f"CHECKS: {total_checks_run} Khovan quick checks "
+        f"({harness_checks_run} harness checks, {static_tests_run} Python tests)"
+    )
     print(
         f"SUMMARY: {'FAIL' if failures else 'PASS'} "
         f"({len(failures)} failure(s), {len(warnings)} warning(s))"

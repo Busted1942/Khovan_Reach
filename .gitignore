@@ -5,7 +5,8 @@ __pycache__/
 slice00_repo_intake.txt
 before_rollback_*.txt
 before_rollback_*.patch
+tests/live_smoke_last_bootstrap.txt
 
-# Tier 2 local reference clones are non-canonical.
+# Guard against Tier 2 reference clones being staged inside the live mission root.
 docs_external/_local_clones/
 reference_missions/_local_clones/

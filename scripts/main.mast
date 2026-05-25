@@ -8,13 +8,29 @@ import scripts/systems/debug_runtime.mast
 @map/khovan_reach "Khovan Reach"
 " TSN training mission bootstrap shell.
 " Slice 01 initializes mission state and reaches Scene 1 without gameplay gates.
+    jump khovan_reach_slice01_entry
+
+=== khovan_reach_slice01_entry ===
     await task_schedule(khovan_reach_slice01_bootstrap)
-    ->END
+    jump khovan_reach_slice01_runtime_idle
+
+=== khovan_reach_slice01_client_entry ===
+    jump khovan_reach_slice01_runtime_idle
 
 === khovan_reach_slice01_bootstrap ===
     await task_schedule(khovan_reach_initialize_bootstrap_state)
     await task_schedule(khovan_reach_initialize_debug_runtime)
     await task_schedule(khovan_reach_stub_dillon_clip_1)
     current_beat = "scene_1_bootstrap"
-    log("Khovan Reach Slice 01 bootstrap complete: mission_phase act_1, current_scene 1.")
+    sbs.send_story_dialog(0, "Khovan Reach", "Khovan Reach Slice 01 bootstrap loaded. Scene 1 initialized.", "", "#444")
+    logger("mast.runtime")
+    log("Khovan Reach Slice 01 bootstrap loaded. Scene 1 initialized. mission_phase = act_1; current_scene = 1.", "mast.runtime")
+    log("Khovan Reach Slice 01 bootstrap complete: mission_phase act_1, current_scene 1.", "mast.runtime")
     ->END
+
+=== khovan_reach_slice01_runtime_idle ===
+    gui_section(style="area:2,20,80,35;")
+    """Khovan Reach Slice 01 bootstrap loaded. Scene 1 initialized.
+Mission shell active. No Act I gameplay systems loaded."""
+    await gui(timeout=delay_sim(10))
+    jump khovan_reach_slice01_runtime_idle

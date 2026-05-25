@@ -92,8 +92,20 @@ class BootstrapStaticTests(unittest.TestCase):
         self.assertIn('story_file = "story.mast"', script)
         self.assertIn('main_server = "khovan_reach_slice01_entry"', script)
         self.assertIn('main_client = "khovan_reach_slice01_client_entry"', script)
+        self.assertIn("SLICE01_SMOKE_MARKER_PATH", script)
+        self.assertIn("tests\" / \"live_smoke_last_bootstrap.txt", script)
+        self.assertIn("def write_slice01_live_smoke_marker(client_id):", script)
+        self.assertIn("def start_story(self, client_id):", script)
+        self.assertIn("super().start_story(client_id)", script)
+        self.assertIn("write_slice01_live_smoke_marker(client_id)", script)
+        self.assertIn("mission_phase=act_1", script)
+        self.assertIn("current_scene=1", script)
         self.assertIn("Gui.server_start_page_class(KhovanReachStoryPage)", script)
         self.assertIn("Gui.client_start_page_class(KhovanReachStoryPage)", script)
+
+    def test_live_smoke_marker_file_is_gitignored(self) -> None:
+        gitignore = read(".gitignore")
+        self.assertIn("tests/live_smoke_last_bootstrap.txt", gitignore)
 
     def test_story_mast_imports_active_main(self) -> None:
         story = read("story.mast")
@@ -114,6 +126,10 @@ class BootstrapStaticTests(unittest.TestCase):
             "Khovan Reach Slice 01 bootstrap loaded. Scene 1 initialized.",
             main,
         )
+        self.assertIn("sbs.send_story_dialog(0", main)
+        self.assertIn('logger("mast.runtime")', main)
+        self.assertIn('"mast.runtime"', main)
+        self.assertIn("mission_phase = act_1; current_scene = 1", main)
         self.assertIn("await gui(timeout=delay_sim(10))", main)
         self.assertIn("jump khovan_reach_slice01_runtime_idle", main)
 
@@ -326,6 +342,31 @@ class BootstrapStaticTests(unittest.TestCase):
         self.assertIn("boot-012", text)
         self.assertIn("salvager_arrival.mast", text)
         self.assertIn("edge case", text)
+        self.assertIn("mast.runtime.log", text)
+        self.assertIn("mast.compile.log", text)
+        self.assertIn("tests/live_smoke_last_bootstrap.txt", text)
+        self.assertIn("mission_phase=act_1", text)
+        self.assertIn("current_scene=1", text)
+
+    def test_negative_control_wording_is_not_inverted(self) -> None:
+        searched_files = [
+            ROOT / "run_tests.py",
+            *sorted((ROOT / "tests").glob("*.py")),
+            *sorted((ROOT / "tests").glob("*.md")),
+            *sorted((ROOT / "docs").rglob("*.md")),
+        ]
+        inverted = (
+            "negative control failed: quick tests caught "
+            "the broken mast import"
+        )
+        hits = [
+            path.relative_to(ROOT).as_posix()
+            for path in searched_files
+            if path.is_file()
+            and path.name != "test_bootstrap_static.py"
+            and inverted in path.read_text(encoding="utf-8").lower()
+        ]
+        self.assertEqual([], hits)
 
 
 if __name__ == "__main__":

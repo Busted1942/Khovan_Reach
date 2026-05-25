@@ -28,6 +28,7 @@ Purpose: Confirm the project is ready to begin implementation Slice 0 / Slice 1.
 - [ ] `docs/04_implementation_setup/10_mast_file_lessons.md` is active.
 - [ ] `docs/04_implementation_setup/20_current_objective_display_spike.md` is active.
 - [ ] `docs/04_implementation_setup/30_implementation_project_start_prompt.md` is active.
+- [ ] `docs/04_implementation_setup/40_slice01_bootstrap_findings.md` is available as implementation setup/handoff evidence.
 
 ---
 
@@ -85,6 +86,21 @@ Purpose: Confirm the project is ready to begin implementation Slice 0 / Slice 1.
 - [ ] Python test dependencies are installed.
 - [ ] `python run_tests.py quick` works or failure is documented.
 - [ ] `git status` is clean or expected.
+
+---
+
+# 6A. Runtime-Clean Mission Root
+
+These checks apply to active runtime load paths only, such as `story.mast`, `story.json`, `script.py`, and `scripts/**`. Historical notes and implementation findings may mention old files without failing this check.
+
+- [ ] Active runtime files do not reference `_local_clones`.
+- [ ] Active runtime files do not reference `archive/old_build_reference`.
+- [ ] Active runtime files do not reference old root MAST modules.
+- [ ] Active runtime files do not reference missing `.mast` files.
+- [ ] Old root-level or archived `damcon_timer.mast` references are absent from active runtime paths; a future fresh `scripts/systems/damcon_timer.mast` is allowed only when the DAMCON timer slice implements it under current requirements.
+- [ ] `python run_tests.py quick` works or the exact failure is documented.
+- [ ] Static checks and live Cosmos smoke are recorded as different evidence classes.
+- [ ] Live Cosmos smoke remains required for mission-load acceptance when the acceptance criterion depends on actual Cosmos/MAST runtime behavior.
 
 ---
 

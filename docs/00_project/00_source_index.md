@@ -77,12 +77,25 @@ Do not expose secret pirate truth in player-facing game resources.
 - `docs/04_implementation_setup/10_mast_file_lessons.md`
 - `docs/04_implementation_setup/20_current_objective_display_spike.md`
 - `docs/04_implementation_setup/30_implementation_project_start_prompt.md`
+- `docs/04_implementation_setup/40_slice01_bootstrap_findings.md`
 
 These are setup and handoff documents for starting or restarting the coding project. They preserve useful prior-build lessons without making old code authoritative.
+
+`docs/04_implementation_setup/40_slice01_bootstrap_findings.md` is setup/handoff evidence, not mission canon. It records Slice 01 bootstrap implementation findings: runtime-clean mission root, packaging metadata, load-path validation, GUI/task lifecycle, and static-vs-live smoke evidence.
 
 The active checklist lives in:
 
 - `docs/00_project/20_build_start_checklist.md`
+
+---
+
+# 6A. Non-Canonical Implementation References
+
+- `docs_external/00_tier2_reference_inventory.md`
+
+`docs_external/` and `reference_missions/` are non-canonical implementation references only. They may inform syntax, API usage, package layout, and known-good implementation patterns. They do not define Khovan story, pacing, factions, objectives, or player-facing behavior.
+
+Do not list `docs_external/` as active design authority.
 
 ---
 
