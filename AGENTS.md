@@ -151,16 +151,6 @@ For coding work:
 - Keep design docs authoritative over improvised code.
 - Treat Git diff, local compile, and Cosmos smoke tests as the enforcement layer.
 
-## Test-First Slice Discipline
-
-Before implementing a slice, write down the test and acceptance plan for that slice. The plan should identify what can be proven by static checks, what can be proven by local automation, and what requires a live Cosmos smoke test.
-
-Preserve existing quick tests unless Matt explicitly changes the test scope. Add new slice checks where practical, especially for package shape, active file presence, state initialization, import/include boundaries, and regressions found during live testing.
-
-When automation cannot prove behavior, document the required live Cosmos check and the expected result. Do not claim a slice is complete until tests pass, or until failing/untestable behavior is documented as a precise blocker with a next action.
-
-Before committing slice work, review whether the implementation has enough test coverage for the touched behavior. Runtime failures should produce a regression, static, or smoke check when feasible so the same failure is easier to catch next time.
-
 Before Agent-mode edits, identify:
 1. Files to inspect.
 2. Files allowed to edit.
@@ -173,3 +163,119 @@ For risky changes:
 - Use diagnosis first.
 - Propose a minimal patch plan.
 - Do not edit until the scope is clear.
+
+## Git and GitHub Discipline
+
+The assistant should proactively guide Git/GitHub workflow without waiting for Matt to ask.
+
+Default workflow:
+1. Work on a slice branch, not master.
+2. Before edits, confirm current branch and working tree status.
+3. Keep changes limited to the active slice.
+4. Run the required slice test or smoke check before any commit.
+5. Commit only after tests pass or after documenting a blocker.
+6. Push the branch after commit.
+7. Recommend a PR to master for slice checkpoints.
+8. Merge to master only after the slice acceptance criteria are met.
+9. After merge, pull master locally and confirm clean status.
+10. Start the next slice from updated master.
+
+Do not claim a slice is complete unless:
+- required tests/smoke checks passed, or
+- a blocker is documented with evidence and next action.
+
+For every slice completion, report:
+- branch name
+- files changed
+- test command run
+- test result
+- commit hash
+- pushed branch status
+- PR or merge recommendation
+- whether master is clean/current
+
+Never suggest committing directly to master except for repository initialization or explicitly approved emergency corrections.
+
+## Test-First Slice Discipline
+
+For every implementation slice, define the test/acceptance plan before writing mission feature code.
+
+Before implementation, produce a slice test packet:
+
+1. Slice ID and goal
+2. Source docs used
+3. Acceptance criteria
+4. Existing tests that must keep passing
+5. New tests or smoke checks to add
+6. What the tests prove
+7. What the tests do not prove
+8. Manual/live Cosmos checks required
+9. Known API uncertainties or spike needs
+10. Stop conditions
+
+Do not start feature implementation until the slice has at least one planned verification path. The path may be automated, static, smoke/manual, or a documented blocker if the required capability cannot be tested yet.
+
+Default rule:
+
+- Automated/static checks go into `python run_tests.py quick` when practical.
+- Existing Slice 00 and prior-slice checks must remain in `quick`.
+- New slice checks must not replace or weaken earlier checks.
+- Live Cosmos-only checks must be written into the slice verification document with exact manual steps.
+- If a feature cannot be verified locally, document it as a live-smoke item or API uncertainty instead of pretending the test passed.
+
+During implementation:
+
+- Run `python run_tests.py quick` after meaningful changes.
+- If live runtime behavior is involved, run or request the relevant Cosmos smoke check before claiming the slice works.
+- If a runtime failure appears, add or update a test/check that would catch the same class of failure when feasible.
+- Do not mark a slice complete on static tests alone when the acceptance criterion requires live Cosmos behavior.
+
+After implementation and before commit, perform a test coverage review:
+
+1. Did the planned tests run?
+2. Did any new failure appear during live or manual checks?
+3. Can that failure be guarded by a static/unit/smoke test?
+4. Are any BOOT/ACT/JUMP/etc. acceptance items still untested?
+5. Are untested items documented as live-smoke-only, API uncertainty, or blocker?
+6. Did `python run_tests.py quick` preserve all earlier checks?
+7. Does the slice verification document match the actual test evidence?
+
+Commit only when:
+
+- required quick/static checks pass, and
+- live/manual checks pass or are explicitly documented as blockers/uncertainties, and
+- the slice verification document states what remains unproven.
+
+For every slice completion report, include:
+
+- planned tests
+- tests actually run
+- pass/fail result
+- live Cosmos smoke result, if applicable
+- added regression checks
+- remaining untested acceptance criteria
+- blocker/API uncertainty list
+- next recommended test to add
+
+### Runtime Load and GUI Lifecycle Testing
+
+For Cosmos/MAST work, `python run_tests.py quick` must protect the active runtime load path, not just source hygiene, when practical.
+
+The quick check should fail if active runtime files reference:
+- missing `.mast` files
+- archived old-build files
+- external reference clone paths
+- forbidden old module names
+- files outside the active mission load path
+
+Git-ignored folders are not runtime-ignored. Cosmos/MAST can still discover loader-visible files under the active mission root even when Git ignores them.
+
+When live Cosmos reports a missing file or invalid runtime dependency, add a targeted regression check so the same class of failure is caught by `quick` before the next live run.
+
+When live Cosmos reports a GUI/story task lifecycle failure, add or update a targeted static or smoke check when feasible. Active bootstrap code should leave a yielding or long-running GUI/story task alive where practical, using verified MAST/sbs_utils patterns.
+
+SBS Utils / MAST GUI/task lifecycle issues require connected startup-route checks where practical; the task must be connected to the actual startup route, not merely present in a file.
+
+Static tests cannot fully prove live runtime behavior. Live Cosmos smoke remains required for BOOT-001 mission package load and BOOT-012 first scene proceeds without manual admin action.
+
+Live Cosmos failures outrank green static checks. If live Cosmos fails after quick tests pass, update the verification note, add a regression/static check where feasible, and do not claim the slice complete until the live failure is fixed or documented as a blocker.
