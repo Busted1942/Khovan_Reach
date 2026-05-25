@@ -31,6 +31,19 @@ Do not import scenario design, pacing, story structure, or player-facing behavio
 
 ---
 
+## Original user-provided source roots
+
+- `https://github.com/artemis-sbs`
+- `https://www.armidalesoftware.com/Artemis/CosmosBridgeTools.htm`
+- `https://github.com/astrolamb-gaming`
+- `https://artemis-sbs.github.io/sbs_utils/`
+
+`artemis-sbs` and `astrolamb-gaming` are organization/root sources. The fetch script uses selected concrete repositories from those roots.
+
+Selected clone targets are not exhaustive. If Slice 01 or later work needs an API not covered by the selected repositories, revisit the root sources and document any newly selected reference repo before using it.
+
+---
+
 ## Required local inventory check
 
 Before Slice 01 coding, run:
@@ -66,9 +79,9 @@ Folders marked "not yet populated" currently contain no implementation reference
 
 ## Safe local fetch workflow
 
-Use `tools/fetch_tier2_references.ps1` to preview approved reference fetch commands.
+Use `tools/fetch_tier2_references.ps1` to populate approved local reference clones.
 
-Default mode is dry-run only:
+Fetch mode:
 
 ```powershell
 .\tools\fetch_tier2_references.ps1
@@ -80,16 +93,10 @@ If local PowerShell execution policy blocks direct script execution, use:
 powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\fetch_tier2_references.ps1
 ```
 
-Only after explicit approval, run:
+Dry-run preview mode:
 
 ```powershell
-.\tools\fetch_tier2_references.ps1 -Execute
-```
-
-or, if execution policy requires the bypass form:
-
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\fetch_tier2_references.ps1 -Execute
+.\tools\fetch_tier2_references.ps1 -DryRun
 ```
 
 The script must not be used to pull references into active `scripts/`. External reference clones are local evidence only and must not be committed.

@@ -8,7 +8,7 @@ Approved reference targets are listed in `docs_external/TIER2_REFERENCE_INVENTOR
 
 Approved local clones go under `_local_clones`, which is ignored by Git.
 
-This folder is currently not yet populated beyond placeholder/README files. Use `tools/fetch_tier2_references.ps1` for a dry-run preview before fetching anything. If direct script execution is blocked by local PowerShell policy, run the dry-run with:
+This folder is currently not yet populated beyond placeholder/README files. Use `tools/fetch_tier2_references.ps1 -DryRun` for a preview, or `tools/fetch_tier2_references.ps1` to fetch approved references. If direct script execution is blocked by local PowerShell policy, run the fetch with:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\fetch_tier2_references.ps1

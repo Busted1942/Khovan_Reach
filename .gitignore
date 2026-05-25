@@ -7,5 +7,5 @@ before_rollback_*.txt
 before_rollback_*.patch
 
 # Tier 2 local reference clones are non-canonical.
-docs_external/_local_clones/**
-reference_missions/_local_clones/**
+docs_external/_local_clones/
+reference_missions/_local_clones/
