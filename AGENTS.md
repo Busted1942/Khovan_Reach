@@ -151,6 +151,16 @@ For coding work:
 - Keep design docs authoritative over improvised code.
 - Treat Git diff, local compile, and Cosmos smoke tests as the enforcement layer.
 
+## Test-First Slice Discipline
+
+Before implementing a slice, write down the test and acceptance plan for that slice. The plan should identify what can be proven by static checks, what can be proven by local automation, and what requires a live Cosmos smoke test.
+
+Preserve existing quick tests unless Matt explicitly changes the test scope. Add new slice checks where practical, especially for package shape, active file presence, state initialization, import/include boundaries, and regressions found during live testing.
+
+When automation cannot prove behavior, document the required live Cosmos check and the expected result. Do not claim a slice is complete until tests pass, or until failing/untestable behavior is documented as a precise blocker with a next action.
+
+Before committing slice work, review whether the implementation has enough test coverage for the touched behavior. Runtime failures should produce a regression, static, or smoke check when feasible so the same failure is easier to catch next time.
+
 Before Agent-mode edits, identify:
 1. Files to inspect.
 2. Files allowed to edit.
