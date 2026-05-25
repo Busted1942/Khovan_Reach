@@ -5,3 +5,7 @@ __pycache__/
 slice00_repo_intake.txt
 before_rollback_*.txt
 before_rollback_*.patch
+
+# Tier 2 local reference clones are non-canonical.
+docs_external/_local_clones/**
+reference_missions/_local_clones/**
