@@ -99,6 +99,29 @@ No story jump presets are implemented in Slice 01.
 - BOOT-011: player-facing debug controls remain a documented stub.
 - BOOT-012: first scene bootstrap path exists statically; live runtime smoke is still required.
 
+## BOOT coverage audit
+
+| ID | Requirement | Classification | Evidence / rationale |
+| --- | --- | --- | --- |
+| BOOT-001 | Mission package loads | implemented and live-smoked | Cosmos loaded Khovan without the previous missing-file or SBS Utils GUI lifecycle errors. The visible Slice 01 marker and `tests/live_smoke_last_bootstrap.txt` prove the active package/startup path ran. |
+| BOOT-002 | `main.mast` imports/includes required files or documented equivalent | implemented and live-smoked | `story.mast` imports `scripts/main.mast`; `scripts/main.mast` imports bootstrap, audio, and debug system files. The live visible marker is emitted from `scripts/main.mast` after those system tasks run. |
+| BOOT-003 | `story.json` is valid | implemented static-only | Quick tests validate JSON shape and expected sbs_utils dependency. Live load indirectly uses it, but JSON validity remains a static/parser check. |
+| BOOT-004 | `script.py` initializes without runtime error | implemented and live-smoked | The marker file is written by `KhovanReachStoryPage.start_story()` after sbs_utils starts the configured StoryPage path. |
+| BOOT-005 | Mission state variables initialize | implemented static-only | Quick tests validate the full Slice 01 state set. Live smoke directly proves the `mission_phase=act_1` and `current_scene=1` surface markers; broader defaults remain static-only. |
+| BOOT-006 | Artemis starts with correct ship state | missing | Active Slice 01 does not create a sim world, spawn Artemis, assign clients to a ship, or apply live ship state. This is the smallest remaining Slice 01 runtime primitive if BOOT-006 must be satisfied before completion. |
+| BOOT-007 | Dillon Clip 1 queues, plays, or stubs | intentionally stubbed | `scripts/systems/audio_runtime.mast` sets `dillon_clip_1_status = "stubbed"`. Real audio playback API remains unverified and is not implemented. |
+| BOOT-008 | `current_scene = 1` | implemented and live-smoked | Bootstrap state sets `current_scene = 1`; live marker file records `current_scene=1`; visible marker appeared without admin/recovery action. |
+| BOOT-009 | `mission_phase` valid | implemented and live-smoked | Bootstrap state sets `mission_phase = "act_1"`; live marker file records `mission_phase=act_1`. |
+| BOOT-010 | GM debug/admin overlay visible to GM | API uncertainty/spike | `gm_debug_overlay_status = "stubbed"` exists, but no GM overlay is rendered. GUI/admin implementation remains unsafe to invent and belongs in a focused later spike or Slice 02 foundation. |
+| BOOT-011 | Player-facing debug controls hidden | implemented static-only | No active player debug/admin routes or Scenario Control Panel controls are present. `player_debug_controls_status = "stubbed_hidden"` documents intent. |
+| BOOT-012 | First scene proceeds without manual admin action | implemented and live-smoked | Live load reached the Slice 01 status marker and marker file without manual admin/recovery controls. This proves bootstrap Scene 1 proceeds; playable Artemis/console state remains separate under BOOT-006. |
+
+Smallest remaining Slice 01 implementation work:
+
+1. BOOT-006: add a minimal, reference-backed runtime primitive for Artemis/player ship setup if Slice 01 completion requires live ship state. This likely needs `sim_create`, a player ship spawn or `spawn_players`, starting torpedo/state application, and possibly client assignment/console routing. It should be approved as a focused Slice 01 bootstrap patch before implementation.
+2. BOOT-010: leave as API uncertainty/spike unless Slice 01 explicitly requires visible GM overlay before Slice 02. Do not build Scenario Control Panel in Slice 01.
+3. BOOT-007: current stub is acceptable only as an intentional stub; real audio playback remains a later API verification item.
+
 ## Known risks or API uncertainties
 
 Live Cosmos runtime was not executed from this environment.
@@ -195,9 +218,9 @@ The corrected lifecycle pattern is:
 
 Quick tests now verify that the StoryPage entry labels named by `script.py` are actually defined in `scripts/main.mast`, and that the persistent idle loop is reachable from those active entry labels instead of existing only as an unreferenced label.
 
-Live Cosmos smoke must confirm that the missing-file error and the GUI lifecycle error are gone before Slice 01 is claimed complete.
+Live Cosmos smoke had to confirm that the missing-file error and the GUI lifecycle error were gone before Slice 01 could be evaluated further.
 
-Current completion status: unresolved live Cosmos blocker until Matt confirms the mission package loads, the GUI lifecycle error is gone, and Scene 1 proceeds without manual recovery. This document records static quick checks, runtime load-path checks, live Cosmos smoke requirements, and unresolved blockers separately.
+That blocker was later cleared by live marker evidence. This document records static quick checks, runtime load-path checks, live Cosmos smoke requirements, and remaining coverage gaps separately.
 
 On May 25, 2026, Matt confirmed the previous SBS Utils GUI lifecycle error no longer appears. Current observed live behavior is that the mission loads to a blank/quiet Mission Select screen. The remaining Slice 01 smoke question is whether the bootstrap actually reached Scene 1.
 
@@ -289,7 +312,7 @@ Current completion stance:
 Mission bootstrap marker: passed.
 Server/client playable state: not yet passed.
 BOOT-006 Artemis starts with correct ship state: not yet implemented.
-BOOT-012 first scene proceeds without manual admin action: not yet fully proven.
+BOOT-012 first scene proceeds without manual admin action: passed for bootstrap status marker.
 ```
 
 ## MAST import warning triage
