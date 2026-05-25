@@ -287,6 +287,40 @@ If live Cosmos still fails, Slice 01 may be committed only as a documented block
 
 ---
 
+## Slice 01 live-smoke finding: load proof is not playable bootstrap
+
+During Slice 01, the mission reached a stable live-load/bootstrap checkpoint.
+
+Observed checkpoint:
+
+- branch: `slice01-bootstrap`
+- mission starts without missing-file errors
+- mission starts without GUI lifecycle errors
+- live smoke displays:
+
+```text
+Khovan Reach Slice 01 bootstrap loaded. Scene 1 initialized.
+Mission shell active. No Act I gameplay systems loaded.
+```
+
+Finding:
+
+- "mission loads and displays validation marker" is not the same as "minimum playable mission start"
+- the marker proves package load, Khovan route execution, and GUI lifecycle safety
+- it does not prove Artemis/player ship exists
+- it does not prove a connected client has a playable bridge state
+- it does not prove Dillon Clip 1 was queued, played, or meaningfully stubbed beyond the validation surface
+
+Implementation consequence:
+
+- Slice 01 should be treated as mission shell and load proof
+- Slice 01A should own the minimum playable bootstrap
+- Scenario Control Panel work should not be treated as a substitute for minimum playable startup
+
+This finding does not change scenario design, player-facing story content, or Act I requirements. It only clarifies implementation sequencing and acceptance evidence.
+
+---
+
 ## Branch lifecycle lesson from Slice 01
 
 During Slice 01, work moved between an implementation branch and a temporary documentation/architecture-feedback branch. A live-smoke confirmation prompt was run while the repository was still on the documentation branch. No damage occurred, but the event exposed a workflow gap.
@@ -325,4 +359,3 @@ Durable lesson:
 - for negative controls, state clearly when an expected failure means the control passed
 
 This is a workflow/process finding. It does not change scenario design or mission runtime requirements.
-

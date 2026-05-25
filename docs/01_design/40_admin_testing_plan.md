@@ -394,12 +394,37 @@ BOOT-012 first scene proceeds without manual admin action
 Acceptance:
 
 ```text
-Fresh mission load reaches Scene 1 with no manual recovery.
+Fresh mission load reaches playable Scene 1 with no manual recovery.
 ```
+
+A validation marker proves load path and lifecycle only. It is not, by itself, playable Scene 1.
 
 ---
 
 
+
+# 9B. Minimum playable bootstrap tests
+
+```text
+PLAYBOOT-001 fresh load reaches playable Scene 1 without Resume Mission or manual recovery
+PLAYBOOT-002 validation marker is not treated as playable Scene 1
+PLAYBOOT-003 Artemis/player ship exists or exact API blocker is documented
+PLAYBOOT-004 connected client can observe starting bridge/player state or exact blocker is documented
+PLAYBOOT-005 Dillon Clip 1 queues, plays, or displays an operator-visible text/audio stub
+PLAYBOOT-006 player-facing bootstrap text does not expose debug/admin controls
+PLAYBOOT-007 Scenario Control Panel is not required for Slice 01A
+PLAYBOOT-008 no Act I gates, Tarsis, drones, DAMCON, pirates, cache, debrief, or story jumps are active
+PLAYBOOT-009 live smoke records server/client observations and marker-file evidence where available
+PLAYBOOT-010 unresolved Cosmos/MAST API uncertainty is documented before Slice 02 proceeds
+```
+
+Acceptance:
+
+```text
+Fresh mission load reaches playable Scene 1 with no manual recovery, or the exact minimum-playable blocker is documented before Scenario Control Panel work proceeds.
+```
+
+---
 
 # 9A. Act I v2.2 tests
 
@@ -1046,4 +1071,3 @@ OTE-007 Negative-control tests clearly state when an expected failure means the 
 OTE-008 Completion reports do not claim live/runtime success from static tests.
 OTE-009 If a result has no error but also no marker/log/UI/file/runtime evidence, the assistant classifies it as ambiguous rather than success.
 ```
-
