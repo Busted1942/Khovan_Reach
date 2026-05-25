@@ -62,8 +62,8 @@ The check is observational only. Do not download, move, copy, or activate refere
 
 ## Current local status
 
-- `docs_external/_local_clones`: not yet populated.
-- `reference_missions/_local_clones`: not yet populated.
+- `docs_external/_local_clones`: populated locally by approved fetch; ignored by Git.
+- `reference_missions/_local_clones`: populated locally by approved fetch; ignored by Git.
 - `docs_external/cosmos`: not yet populated.
 - `docs_external/mast`: not yet populated.
 - `docs_external/sbs_utils`: not yet populated.
@@ -107,12 +107,12 @@ The script must not be used to pull references into active `scripts/`. External 
 
 | Target | Local destination | Upstream | Use for | Current local state |
 | --- | --- | --- | --- | --- |
-| sbs_utils docs/source | `docs_external/_local_clones/sbs_utils` | `https://github.com/artemis-sbs/sbs_utils.git` | MAST language, sbs_utils API, bootstrap examples, docs source | not yet populated |
-| MAST starter | `docs_external/_local_clones/mast_starter` | `https://github.com/artemis-sbs/mast_starter.git` | minimal starter layout and bootstrap conventions | not yet populated |
-| Tutorial runner | `docs_external/_local_clones/tutorial_runner` | `https://github.com/artemis-sbs/tutorial_runner.git` | tutorial execution patterns and runnable examples | not yet populated |
-| Legendary Missions | `reference_missions/_local_clones/LegendaryMissions` | `https://github.com/artemis-sbs/LegendaryMissions.git` | broad known-good mission structure, GM/comms/science/damage patterns | not yet populated |
-| Secret Meeting | `reference_missions/_local_clones/SecretMeeting` | `https://github.com/artemis-sbs/SecretMeeting.git` | compact bootstrap and simple MAST mission layout | not yet populated |
-| Walk The Line | `reference_missions/_local_clones/WalkTheLine` | `https://github.com/artemis-sbs/WalkTheLine.git` | compact bootstrap, helper-function patterns, alternate mission structure | not yet populated |
+| sbs_utils docs/source | `docs_external/_local_clones/sbs_utils` | `https://github.com/artemis-sbs/sbs_utils.git` | MAST language, sbs_utils API, bootstrap examples, docs source | populated locally; ignored by Git |
+| MAST starter | `docs_external/_local_clones/mast_starter` | `https://github.com/artemis-sbs/mast_starter.git` | minimal starter layout and bootstrap conventions | populated locally; ignored by Git |
+| Tutorial runner | `docs_external/_local_clones/tutorial_runner` | `https://github.com/artemis-sbs/tutorial_runner.git` | tutorial execution patterns and runnable examples | populated locally; ignored by Git |
+| Legendary Missions | `reference_missions/_local_clones/LegendaryMissions` | `https://github.com/artemis-sbs/LegendaryMissions.git` | broad known-good mission structure, GM/comms/science/damage patterns | populated locally; ignored by Git |
+| Secret Meeting | `reference_missions/_local_clones/SecretMeeting` | `https://github.com/artemis-sbs/SecretMeeting.git` | compact bootstrap and simple MAST mission layout | populated locally; ignored by Git |
+| Walk The Line | `reference_missions/_local_clones/WalkTheLine` | `https://github.com/artemis-sbs/WalkTheLine.git` | compact bootstrap, helper-function patterns, alternate mission structure | populated locally; ignored by Git |
 
 The `docs_external/cosmos`, `docs_external/mast`, and `docs_external/sbs_utils` folders are reserved for local notes or curated documentation snapshots if Matt explicitly asks for them. The approved clone destinations are under `docs_external/_local_clones` and `reference_missions/_local_clones`.
 

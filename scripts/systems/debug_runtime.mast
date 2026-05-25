@@ -1,0 +1,12 @@
+# Slice 01 debug/admin visibility stub only. Scenario Control Panel is Slice 02.
+
+shared gm_debug_overlay_status = "stubbed"
+shared player_debug_controls_status = "stubbed_hidden"
+
+=== khovan_reach_initialize_debug_runtime ===
+    gm_debug_overlay_status = "stubbed"
+    player_debug_controls_status = "stubbed_hidden"
+    test_mode_enabled = False
+    live_recovery_mode_enabled = False
+    log("Slice 01 GM debug overlay and player debug visibility are documented stubs.")
+    ->END

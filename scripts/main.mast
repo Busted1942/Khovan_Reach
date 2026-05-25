@@ -1,0 +1,20 @@
+# Khovan Reach Slice 01 mission shell.
+# This is active bootstrap code only; Act I gameplay starts in later slices.
+
+import scripts/systems/bootstrap_state.mast
+import scripts/systems/audio_runtime.mast
+import scripts/systems/debug_runtime.mast
+
+@map/khovan_reach "Khovan Reach"
+" TSN training mission bootstrap shell.
+" Slice 01 initializes mission state and reaches Scene 1 without gameplay gates.
+    await task_schedule(khovan_reach_slice01_bootstrap)
+    ->END
+
+=== khovan_reach_slice01_bootstrap ===
+    await task_schedule(khovan_reach_initialize_bootstrap_state)
+    await task_schedule(khovan_reach_initialize_debug_runtime)
+    await task_schedule(khovan_reach_stub_dillon_clip_1)
+    current_beat = "scene_1_bootstrap"
+    log("Khovan Reach Slice 01 bootstrap complete: mission_phase act_1, current_scene 1.")
+    ->END

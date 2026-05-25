@@ -1,0 +1,6 @@
+# Slice 01 audio wrapper stub. Real playback API needs Cosmos smoke validation.
+
+=== khovan_reach_stub_dillon_clip_1 ===
+    dillon_clip_1_status = "stubbed"
+    log("Dillon Clip 1 is stubbed for Slice 01; real audio playback API not verified locally.")
+    ->END
