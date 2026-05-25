@@ -51,6 +51,10 @@ class BootstrapStaticTests(unittest.TestCase):
         self.assertIn("artemis-sbs.sbs_utils.v1.3.0.sbslib", data["sbslib"])
         self.assertIn("mastlib", data)
 
+    def test_lib_json_is_reference_aligned_metadata(self) -> None:
+        data = json.loads(read("__lib__.json"))
+        self.assertEqual({"version": "v1.3.0"}, data)
+
     def test_script_py_static_bootstrap_shape(self) -> None:
         script = read("script.py")
         ast.parse(script)
@@ -73,6 +77,7 @@ class BootstrapStaticTests(unittest.TestCase):
 
     def test_required_bootstrap_system_files_exist(self) -> None:
         for path in [
+            "__lib__.json",
             "scripts/main.mast",
             "scripts/systems/bootstrap_state.mast",
             "scripts/systems/audio_runtime.mast",

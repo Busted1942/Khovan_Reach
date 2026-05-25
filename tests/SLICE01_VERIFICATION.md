@@ -17,6 +17,7 @@ Build the minimum Khovan Reach mission shell and bootstrap path. Slice 01 does n
 ## Files/folders verified
 
 - `description.txt`
+- `__lib__.json`
 - `script.py`
 - `story.json`
 - `story.mast`
@@ -75,7 +76,7 @@ No story jump presets are implemented in Slice 01.
 
 ## Acceptance criteria
 
-- BOOT-001: mission package files exist for static verification.
+- BOOT-001: mission package files exist for static verification, including reference-aligned `__lib__.json` packaging metadata.
 - BOOT-002: `story.mast` imports active `scripts/main.mast`; active main imports required systems.
 - BOOT-003: `story.json` is valid JSON.
 - BOOT-004: `script.py` parses and has the verified `StoryPage` bootstrap shape.
@@ -98,6 +99,7 @@ Unverified until live smoke:
 - GM-only debug/admin overlay rendering
 - player-facing debug tab/control hiding
 - whether additional `story.json` mastlib dependencies are required for later gameplay slices
+- `__lib__.json` was added as reference-aligned packaging metadata because `mast_starter`, `SecretMeeting`, `WalkTheLine`, and `LegendaryMissions` include it, simple observed mission examples use `{"version": "v1.3.0"}`, and the VS Code MAST extension warning indicates folder classification behavior. This is not Khovan design authority or mission feature code. Live Cosmos smoke must still verify mission load.
 
 ## Slice 01 findings
 
