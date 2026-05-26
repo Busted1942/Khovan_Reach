@@ -611,3 +611,26 @@ Static checks cover the source contract and visibility guard shape only. Live Co
 - player clients cannot see admin/debug controls
 - hold/release updates the visible overview
 - Slice 01B console selection, Game Master availability, and Helm movement do not regress
+
+---
+
+## Reusable-kernel note: defer extraction until Khovan proves real gameplay
+
+The Slice 01A through Slice 03 plumbing now looks like a possible reusable starter kernel for future Cosmos/MAST missions:
+
+- runtime-clean mission packaging
+- reference-backed LegendaryMissions client lifecycle
+- normal player console selection
+- Game Master access
+- GM-only Scenario Control Panel
+- Test Mode story-jump framework
+- quick/static checks plus explicit live-smoke evidence boundaries
+
+Do not extract this into a template yet.
+
+Extraction should wait until Khovan proves both:
+
+- one real playable mission start beyond bootstrap
+- one real gameplay progression path with actual runtime gates, state changes, GM observability, and player-facing behavior
+
+Until then, keep improving the Khovan implementation in place. Treat any future starter-template idea as an architecture/productization follow-up, not as part of the current mission slices.
