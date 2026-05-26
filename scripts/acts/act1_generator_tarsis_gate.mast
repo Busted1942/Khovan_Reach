@@ -1,0 +1,321 @@
+# Khovan Reach Slice 04 Act I generator-governor start and Tarsis gate.
+# This is the first real progression path after the playable bootstrap.
+
+shared act1_generator_tarsis_gate_initialized = False
+shared act1_generator_tarsis_gate_status = "not_initialized"
+shared act1_launch_detection_mode = "temporary_comms_confirmation"
+shared act1_docking_detection_mode = "temporary_comms_confirmation"
+shared act1_text_delivery_mode = "story_dialog_and_trace"
+shared act1_comms_archive_status = "trace_and_action_log_stub"
+shared act1_last_progression_summary = "Act I generator/Tarsis gate not initialized."
+
+shared kestrel_yards_id = 0
+shared kestrel_departure_clearance_granted = False
+shared kestrel_departure_gate_status = "waiting_for_clearance"
+shared kestrel_generator_advisory_run_id = 0
+shared kestrel_generator_advisory_status = "pending_launch_envelope"
+
+shared homing_reserve_status = "pending"
+shared homing_reserve_count = 2
+shared homing_reserve_runtime_apply_status = "stubbed_due_to_ordnance_api_uncertainty"
+shared homing_reserve_live_inventory_status = "not_verified"
+
+shared tarsis_station_id = 0
+shared tarsis_gate_status = "not_started"
+shared tarsis_homing_priority_requested = False
+shared tarsis_generator_support_requested = False
+shared tarsis_docking_clearance_requested = False
+shared tarsis_required_requests_complete = False
+shared tarsis_resupply_confirmed = False
+shared generator_governor_cleared = False
+
+shared kestrel_generator_advisory_text = "Artemis, Kestrel Yard Control. Advisory packet follows. Your generator assembly is still under observation. We are working a regulator-output problem on our end and have placed a temporary governor on your generator output. You may see sluggish acceleration and reduced sustained-speed response until Tarsis accepts the generator handoff and clears the governor."
+shared kestrel_homing_reserve_text = "We have issued two homing torpedoes as emergency conversion reserve. That should be sufficient to get you to Tarsis if you need to trade ordnance for power margin. Tarsis has been notified to prioritize homing torpedo production and generator acceptance."
+shared tarsis_homing_priority_text = "Tarsis Control acknowledges. Homing torpedo production priority set for Artemis. Other ordnance will load as available after homing complement is restored."
+shared tarsis_generator_support_text = "Generator acceptance packet received. We can clear the Kestrel governor after docking and yard-lock synchronization. Do not assume full acceleration response until transfer complete."
+
+//enable/comms if has_roles(COMMS_SELECTED_ID, "kestrel_yards")
+    script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS 005] Kestrel standard station selected")
+
+//comms if has_roles(COMMS_SELECTED_ID, "kestrel_yards")
+    + "Khovan: Hail Kestrel Yards" khovan_kestrel_hail
+    + "Khovan: Request Departure Clearance" khovan_kestrel_request_departure_clearance
+    + "Khovan: Confirm Launch-Envelope Exit" khovan_kestrel_report_launch_envelope_clear
+    + "Khovan: Resend Generator Advisory" khovan_kestrel_resend_generator_advisory
+
+//enable/comms if has_roles(COMMS_SELECTED_ID, "tarsis_station")
+    script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS 007] Tarsis standard station selected")
+
+//comms if has_roles(COMMS_SELECTED_ID, "tarsis_station")
+    + "Khovan: Hail Tarsis Station" khovan_tarsis_hail
+    + "Khovan: Request Homing-Torpedo Priority" khovan_tarsis_request_homing_priority
+    + "Khovan: Request Generator Support" khovan_tarsis_request_generator_support
+    + "Khovan: Request Docking Clearance" khovan_tarsis_request_docking_clearance
+    + "Khovan: Confirm Docking/Resupply" khovan_tarsis_confirm_docking_and_resupply
+    + "Khovan: Report Tarsis Gate Status" khovan_tarsis_report_gate_status
+
+=== khovan_act1_initialize_generator_tarsis_gate ===
+    act1_generator_tarsis_gate_initialized = True
+    act1_generator_tarsis_gate_status = "initialized"
+    mission_phase = "act_1"
+    current_scene = 1
+    current_beat = "scene_1_kestrel_departure_gate"
+    generator_governor_active = True
+    generator_governor_cleared = False
+    starting_homing_torpedoes = 2
+    homing_reserve_count = 2
+    homing_reserve_status = "initialized_as_state_only"
+    homing_reserve_runtime_apply_status = "stubbed_due_to_ordnance_api_uncertainty"
+    homing_reserve_live_inventory_status = "live smoke reported 10/10 homing; not claimed correct until ordnance API is proven"
+    kestrel_departure_clearance_granted = False
+    kestrel_departure_gate_status = "waiting_for_clearance"
+    launch_envelope_cleared = False
+    kestrel_generator_packet_sent = False
+    kestrel_generator_advisory_status = "pending_launch_envelope"
+    kestrel_generator_advisory_run_id = 0
+    tarsis_gate_status = "waiting_for_kestrel_departure"
+    tarsis_homing_priority_requested = False
+    tarsis_generator_support_requested = False
+    tarsis_docking_clearance_requested = False
+    tarsis_required_requests_complete = False
+    tarsis_resupply_confirmed = False
+    act1_last_progression_summary = "Generator governor active; homing reserve represented as state/log stub pending ordnance API proof."
+    script.write_khovan_startup_trace("[KHOVAN ACT1 001] generator governor initialized active")
+    script.write_khovan_startup_trace("[KHOVAN ACT1 002] homing reserve initialized as state/log stub count=2")
+    script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS 001] Kestrel route registered")
+    script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS 002] Tarsis route registered")
+    await task_schedule(khovan_act1_setup_kestrel_and_tarsis_contacts)
+    await task_schedule(khovan_scenario_control_panel_update_overview)
+    log("Khovan Slice 04 Act I generator/Tarsis gate initialized. Homing reserve is state/log stubbed pending ordnance API proof.")
+    ->END
+
+=== khovan_act1_setup_kestrel_and_tarsis_contacts ===
+    existing_kestrel_yards = to_object_list(role("kestrel_yards"))
+    if len(existing_kestrel_yards) > 0:
+        kestrel_yards_id = existing_kestrel_yards[0].id
+    else:
+        kestrel_yards = npc_spawn(0, 0, 0, "Kestrel Yards", "tsn, station, kestrel_yards, khovan_origin", "starbase_command", "behav_station")
+        kestrel_yards_id = to_id(kestrel_yards)
+        set_face(kestrel_yards_id, random_terran(civilian=True))
+        sim.add_navproxy(kestrel_yards_id, "Kestrel Yards", "starbase_command", "#4A7")
+    add_role(kestrel_yards_id, "Station")
+    add_role(kestrel_yards_id, "station")
+    add_role(kestrel_yards_id, "kestrel_yards")
+    kestrel_roles = to_object(kestrel_yards_id).get_roles()
+    script.write_khovan_startup_trace(f"[KHOVAN ACT1 COMMS 003] Kestrel standard station setup complete roles={kestrel_roles}")
+
+    existing_tarsis_station = to_object_list(role("tarsis_station"))
+    if len(existing_tarsis_station) > 0:
+        tarsis_station_id = existing_tarsis_station[0].id
+    else:
+        tarsis_station = npc_spawn(18000, 0, 0, "Tarsis Station", "tsn, station, tarsis_station, khovan_drill_resupply", "starbase_command", "behav_station")
+        tarsis_station_id = to_id(tarsis_station)
+        set_face(tarsis_station_id, random_terran(civilian=True))
+        sim.add_navproxy(tarsis_station_id, "Tarsis Station", "starbase_command", "#4A7")
+    add_role(tarsis_station_id, "Station")
+    add_role(tarsis_station_id, "station")
+    add_role(tarsis_station_id, "tarsis_station")
+    tarsis_roles = to_object(tarsis_station_id).get_roles()
+    script.write_khovan_startup_trace(f"[KHOVAN ACT1 COMMS 004] Tarsis standard station setup complete roles={tarsis_roles}")
+
+    script.write_khovan_startup_trace("[KHOVAN ACT1 DOCK 001] docking setup scheduled")
+    await task_schedule(docking_standard_player_station)
+    for player_id in role("__player__"):
+        if kestrel_yards_id != 0:
+            science_set_scan_data(player_id, kestrel_yards_id, "Kestrel Yards is Artemis' launch yard and active departure-control contact.")
+            link(player_id, "extra_scan_source", kestrel_yards_id)
+            docking_set_docking_logic(player_id, kestrel_yards_id, docking_dock_with_friendly_station)
+        if tarsis_station_id != 0:
+            link(player_id, "extra_scan_source", tarsis_station_id)
+            docking_set_docking_logic(player_id, tarsis_station_id, docking_dock_with_friendly_station)
+    script.write_khovan_startup_trace("[KHOVAN ACT1 DOCK 002] docking setup applied or failed/stubbed")
+    script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS 003A] Kestrel marked known to player ships for departure Comms")
+    script.write_khovan_startup_trace("[KHOVAN ACT1 003] Kestrel/Tarsis contacts initialized")
+    script.write_khovan_startup_trace("[KHOVAN ACT1 003C] Kestrel/Tarsis use reference-backed standard station primitives")
+    script.write_khovan_startup_trace("[KHOVAN ACT1 003D] Khovan station presentation polish deferred until standard Comms/docking path is proven")
+    log(f"Khovan Act I contacts initialized: Kestrel id {kestrel_yards_id}, Tarsis id {tarsis_station_id}.")
+    ->END
+
+=== khovan_act1_record_progression ===
+    default action = "unknown"
+    default detail = ""
+    act1_last_progression_summary = f"{action}: {detail}"
+    scenario_control_panel_last_action = f"act1:{action}"
+    scenario_control_panel_action_log = f"{scenario_control_panel_action_log} | ACT1 {action}: {detail}"
+    await task_schedule(khovan_scenario_control_panel_update_overview)
+    ->END
+
+=== khovan_kestrel_hail ===
+    script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS 006] Kestrel Hail option selected")
+    if not kestrel_departure_clearance_granted:
+        comms_receive("Artemis, Kestrel Yard Control. You are inside the refit-yard control zone. Request departure clearance when your crew is ready to release from the yard.", title="Kestrel Yard Control", title_color="green")
+        script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS 006H] Kestrel Hail option response sent")
+        yield success
+
+    comms_receive("Artemis, Kestrel Yard Control. Departure clearance is logged. Report launch-envelope clear once Helm is outside the yard control zone.", title="Kestrel Yard Control", title_color="green")
+    script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS 006H] Kestrel Hail option response sent")
+    yield success
+
+=== khovan_kestrel_request_departure_clearance ===
+    script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS 006A] Kestrel departure-clearance option selected")
+    kestrel_departure_clearance_granted = True
+    kestrel_departure_gate_status = "clearance_granted_waiting_launch_envelope"
+    current_beat = "kestrel_departure_clearance_granted"
+    script.write_khovan_startup_trace("[KHOVAN ACT1 004] Kestrel departure clearance granted")
+    await task_schedule(khovan_act1_record_progression, {"action": "kestrel_departure_clearance", "detail": "departure clearance granted; waiting for launch envelope confirmation"})
+    comms_receive("Artemis, Kestrel Yard Control. Departure clearance granted. Mooring authority released. Clear the launch envelope and proceed toward Tarsis Station.", title="Kestrel Yard Control", title_color="green")
+    script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS 006D] Kestrel departure-clearance option response sent")
+    yield success
+
+=== khovan_kestrel_report_launch_envelope_clear ===
+    script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS 006B] Kestrel launch-envelope option selected")
+    if not kestrel_departure_clearance_granted:
+        comms_receive("Artemis, Kestrel Yard Control. Departure clearance is not in the log. Request clearance before reporting launch-envelope clear.", title="Kestrel Yard Control", title_color="yellow")
+        script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS 006E] Kestrel launch-envelope option rejected before clearance")
+        yield fail
+
+    launch_envelope_cleared = True
+    kestrel_departure_gate_status = "launch_envelope_cleared"
+    kestrel_generator_advisory_status = "timer_started"
+    current_beat = "launch_envelope_cleared_generator_advisory_timer"
+    kestrel_generator_advisory_run_id = kestrel_generator_advisory_run_id + 1
+    script.write_khovan_startup_trace("[KHOVAN ACT1 005] launch envelope clear confirmed; Kestrel advisory timer started")
+    await task_schedule(khovan_act1_record_progression, {"action": "launch_envelope_cleared", "detail": "temporary Comms confirmation started 10-second advisory timer"})
+    task_schedule(khovan_act1_deliver_kestrel_generator_advisory_after_delay, {"advisory_run_id": kestrel_generator_advisory_run_id})
+    comms_receive("Kestrel Yard Control logs Artemis clear of the launch envelope. Advisory packet will follow after yard telemetry catches up.", title="Kestrel Yard Control", title_color="green")
+    script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS 006E] Kestrel launch-envelope option response sent")
+    yield success
+
+=== khovan_act1_deliver_kestrel_generator_advisory_after_delay ===
+    default advisory_run_id = kestrel_generator_advisory_run_id
+    await delay_sim(seconds=10)
+    if advisory_run_id != kestrel_generator_advisory_run_id:
+        ->END
+    if not launch_envelope_cleared:
+        ->END
+    if kestrel_generator_packet_sent:
+        ->END
+
+    kestrel_generator_packet_sent = True
+    kestrel_generator_advisory_status = "delivered"
+    act1_comms_archive_status = "trace_and_action_log_stub; Comms archive UI not separately proven"
+    current_beat = "kestrel_generator_advisory_delivered"
+    script.write_khovan_startup_trace("[KHOVAN ACT1 006] Kestrel advisory delivered after 10-second timer")
+    sbs.send_story_dialog(0, "Kestrel Yard Control", kestrel_generator_advisory_text, "", "#464")
+    sbs.send_story_dialog(0, "Kestrel Yard Control", kestrel_homing_reserve_text, "", "#464")
+    await task_schedule(khovan_act1_record_progression, {"action": "kestrel_generator_advisory", "detail": "delivered by story dialog; archive represented by trace/action log stub"})
+    log("Khovan Act I Kestrel generator advisory delivered after launch-envelope timer.")
+    ->END
+
+=== khovan_kestrel_resend_generator_advisory ===
+    script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS 006C] Kestrel resend-advisory option selected")
+    if not kestrel_generator_packet_sent:
+        comms_receive("Kestrel Yard Control has not issued the generator advisory yet.", title="Kestrel Yard Control", title_color="yellow")
+        script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS 006F] Kestrel resend-advisory option rejected before advisory")
+        yield fail
+
+    comms_receive(kestrel_generator_advisory_text, title="Kestrel Yard Control", title_color="green")
+    comms_receive(kestrel_homing_reserve_text, title="Kestrel Yard Control", title_color="green")
+    script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS 006F] Kestrel resend-advisory option response sent")
+    yield success
+
+=== khovan_tarsis_hail ===
+    script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS 008] Tarsis Hail option selected")
+    if current_scene < 2:
+        current_scene = 2
+    current_beat = "tarsis_gate_active"
+    await task_schedule(khovan_tarsis_update_gate_status)
+    script.write_khovan_startup_trace("[KHOVAN ACT1 007] Tarsis hailed; gate active")
+    comms_receive("Artemis, Tarsis Station. We read you. Production Control and Generator Acceptance are standing by for the Kestrel handoff.", title="Tarsis Station", title_color="green")
+    script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS 008H] Tarsis Hail option response sent")
+    yield success
+
+=== khovan_tarsis_request_homing_priority ===
+    script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS 008A] Tarsis homing-priority option selected")
+    tarsis_homing_priority_requested = True
+    script.write_khovan_startup_trace("[KHOVAN ACT1 008] Tarsis homing-priority request marked")
+    await task_schedule(khovan_tarsis_update_gate_status)
+    await task_schedule(khovan_act1_record_progression, {"action": "tarsis_homing_priority", "detail": "homing torpedo production priority requested"})
+    comms_receive(tarsis_homing_priority_text, title="Tarsis Production Control", title_color="green")
+    script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS 008F] Tarsis homing-priority option response sent")
+    yield success
+
+=== khovan_tarsis_request_generator_support ===
+    script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS 008B] Tarsis generator-acceptance option selected")
+    tarsis_generator_support_requested = True
+    script.write_khovan_startup_trace("[KHOVAN ACT1 009] Tarsis generator-support request marked")
+    await task_schedule(khovan_tarsis_update_gate_status)
+    await task_schedule(khovan_act1_record_progression, {"action": "tarsis_generator_support", "detail": "generator acceptance/support requested"})
+    comms_receive(tarsis_generator_support_text, title="Tarsis Generator Acceptance", title_color="green")
+    script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS 008G] Tarsis generator-acceptance option response sent")
+    yield success
+
+=== khovan_tarsis_request_docking_clearance ===
+    script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS 008C] Tarsis docking-clearance option selected")
+    if not tarsis_homing_priority_requested or not tarsis_generator_support_requested:
+        tarsis_docking_clearance_requested = False
+        script.write_khovan_startup_trace("[KHOVAN ACT1 010] Tarsis docking clearance blocked by missing request")
+        script.write_khovan_startup_trace("[KHOVAN ACT1 010A] governor remains held; Tarsis required requests incomplete")
+        await task_schedule(khovan_tarsis_update_gate_status)
+        await task_schedule(khovan_act1_record_progression, {"action": "tarsis_docking_clearance_blocked", "detail": "homing priority and generator support must be logged first"})
+        comms_receive("Tarsis Docking Control: hold docking request. We need homing production priority and generator acceptance logged before clearing the yard-lock lane.", title="Tarsis Docking Control", title_color="yellow")
+        script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS 008I] Tarsis docking-clearance option rejected before prerequisites")
+        yield fail
+
+    tarsis_docking_clearance_requested = True
+    script.write_khovan_startup_trace("[KHOVAN ACT1 011] Tarsis docking-clearance request marked")
+    await task_schedule(khovan_tarsis_update_gate_status)
+    await task_schedule(khovan_act1_record_progression, {"action": "tarsis_docking_clearance", "detail": "docking clearance requested/granted after required prior requests"})
+    comms_receive("Tarsis Docking Control: docking clearance granted. Approach on the yard-lock vector and confirm docking synchronization when secure.", title="Tarsis Docking Control", title_color="green")
+    script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS 008I] Tarsis docking-clearance option response sent")
+    yield success
+
+=== khovan_tarsis_update_gate_status ===
+    if tarsis_homing_priority_requested and tarsis_generator_support_requested and tarsis_docking_clearance_requested:
+        tarsis_required_requests_complete = True
+        tarsis_gate_status = "requests_complete_waiting_for_docking_resupply"
+    elif tarsis_homing_priority_requested and tarsis_generator_support_requested:
+        tarsis_required_requests_complete = False
+        tarsis_gate_status = "waiting_for_docking_clearance_request"
+    elif tarsis_homing_priority_requested:
+        tarsis_required_requests_complete = False
+        tarsis_gate_status = "waiting_for_generator_support_and_docking_clearance"
+    elif tarsis_generator_support_requested:
+        tarsis_required_requests_complete = False
+        tarsis_gate_status = "waiting_for_homing_priority_and_docking_clearance"
+    else:
+        tarsis_required_requests_complete = False
+        tarsis_gate_status = "waiting_for_three_required_requests"
+    ->END
+
+=== khovan_tarsis_report_gate_status ===
+    script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS 008E] Tarsis status-report option selected")
+    await task_schedule(khovan_tarsis_update_gate_status)
+    if generator_governor_active:
+        script.write_khovan_startup_trace(f"[KHOVAN ACT1 011A] governor remains held; tarsis_gate_status={tarsis_gate_status}")
+    comms_receive(f"Tarsis gate status: {tarsis_gate_status}. Homing priority: {tarsis_homing_priority_requested}. Generator support: {tarsis_generator_support_requested}. Docking clearance: {tarsis_docking_clearance_requested}. Governor active: {generator_governor_active}.", title="Tarsis Station", title_color="cyan")
+    script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS 008K] Tarsis status-report option response sent")
+    yield success
+
+=== khovan_tarsis_confirm_docking_and_resupply ===
+    script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS 008D] Tarsis docking/resupply confirmation option selected")
+    if not tarsis_required_requests_complete:
+        await task_schedule(khovan_tarsis_update_gate_status)
+        script.write_khovan_startup_trace(f"[KHOVAN ACT1 011B] governor remains held; docking/resupply confirmation blocked status={tarsis_gate_status}")
+        comms_receive(f"Tarsis cannot clear the generator governor yet. Gate status: {tarsis_gate_status}.", title="Tarsis Station", title_color="yellow")
+        script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS 008J] Tarsis docking/resupply confirmation option rejected before prerequisites")
+        yield fail
+
+    tarsis_resupply_confirmed = True
+    generator_governor_active = False
+    generator_governor_cleared = True
+    tarsis_gate_status = "resupply_confirmed_governor_cleared"
+    current_scene = 2
+    current_beat = "tarsis_resupply_governor_cleared"
+    last_checkpoint = "tarsis_resupply_governor_cleared"
+    script.write_khovan_startup_trace("[KHOVAN ACT1 012] Tarsis resupply confirmed; generator governor cleared")
+    sbs.send_story_dialog(0, "Tarsis Station", "Yard-lock synchronization complete. Kestrel generator governor cleared. Artemis generator response is restored for departure.", "", "#464")
+    await task_schedule(khovan_act1_record_progression, {"action": "tarsis_resupply_governor_cleared", "detail": "all three requests complete; temporary Comms confirmation cleared governor"})
+    comms_receive("Tarsis Station confirms resupply and generator handoff. Kestrel governor is cleared.", title="Tarsis Station", title_color="green")
+    script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS 008J] Tarsis docking/resupply confirmation option response sent")
+    yield success

@@ -1,0 +1,62 @@
+# Temporary Slice 04 diagnostic proof for standard station Comms.
+# This is isolated from the Act I gate logic.
+
+shared khovan_comms_proof_station_id = 0
+shared khovan_comms_proof_station_status = "not_initialized"
+shared khovan_comms_proof_option_status = "not_selected"
+
+//enable/comms if has_roles(COMMS_SELECTED_ID, "khovan_comms_proof_station")
+    script.write_khovan_startup_trace("[KHOVAN COMMS PROOF] proof station selected")
+
+//comms if has_roles(COMMS_SELECTED_ID, "khovan_comms_proof_station")
+    + "Proof Option" khovan_comms_proof_option_selected
+
+=== khovan_comms_proof_station_initialize ===
+    khovan_comms_proof_station_status = "initializing"
+    await task_schedule(khovan_comms_proof_setup_tsn_side)
+    existing_proof_stations = to_object_list(role("khovan_comms_proof_station"))
+    if len(existing_proof_stations) > 0:
+        khovan_comms_proof_station_id = existing_proof_stations[0].id
+    else:
+        proof_station = npc_spawn(9000, 0, 3500, "Comms Test Station", "tsn, friendly, khovan_comms_proof_station, khovan_drill_resupply", "starbase_command", "behav_station")
+        khovan_comms_proof_station_id = to_id(proof_station)
+        set_face(khovan_comms_proof_station_id, random_terran(civilian=True))
+        sim.add_navproxy(khovan_comms_proof_station_id, "Comms Test Station", "starbase_command", "#4A7")
+
+    remove_role(khovan_comms_proof_station_id, "Station")
+    add_role(khovan_comms_proof_station_id, "station")
+    add_role(khovan_comms_proof_station_id, "khovan_comms_proof_station")
+    proof_blob = to_blob(khovan_comms_proof_station_id)
+    if proof_blob is not None:
+        proof_blob.set("torpedo_types_available", "Homing,Nuke,EMP,Mine")
+        set_data_set_value(khovan_comms_proof_station_id, "Homing_NUM", 32, 0)
+        set_data_set_value(khovan_comms_proof_station_id, "Nuke_NUM", 8, 0)
+        set_data_set_value(khovan_comms_proof_station_id, "EMP_NUM", 8, 0)
+        set_data_set_value(khovan_comms_proof_station_id, "Mine_NUM", 8, 0)
+    proof_object = to_object(khovan_comms_proof_station_id)
+    proof_roles = proof_object.get_roles()
+    proof_side = proof_object.side
+    for player_id in role("__player__"):
+        science_set_scan_data(player_id, khovan_comms_proof_station_id, "Known TSN diagnostic contact for Slice 04 Comms option proof.")
+        link(player_id, "extra_scan_source", khovan_comms_proof_station_id)
+    khovan_comms_proof_station_status = "spawned_old_tarsis_reference_pattern"
+    script.write_khovan_startup_trace(f"[KHOVAN COMMS PROOF] Comms Test Station spawned with old Tarsis settings side={proof_side} roles={proof_roles}")
+    script.write_khovan_startup_trace("[KHOVAN COMMS PROOF] proof station marked known to player ships for Comms button test")
+    ->END
+
+=== khovan_comms_proof_setup_tsn_side ===
+    tsn_side = to_side_id("tsn")
+    if tsn_side is None:
+        tsn_side = await prefab_spawn(prefab_side_generic, data={"key":"tsn"})
+
+    if tsn_side is not None:
+        side_set_display_name(tsn_side, "TSN")
+        side_set_description(tsn_side, "The Terran Stellar Navy")
+        side_set_icon_color(tsn_side, "#07F")
+    ->END
+
+=== khovan_comms_proof_option_selected ===
+    khovan_comms_proof_option_status = "selected"
+    script.write_khovan_startup_trace("[KHOVAN COMMS PROOF] proof option selected")
+    comms_receive("Proof Option selected. This confirms a standard spawned station can render and handle a visible Comms option in this lifecycle.", title="Comms Proof", title_color="cyan")
+    yield success

@@ -1,5 +1,5 @@
-# Khovan Reach Slice 01 mission shell.
-# This is active bootstrap code only; Act I gameplay starts in later slices.
+# Khovan Reach mission shell.
+# Slice 04 adds the first Act I generator/Tarsis progression path.
 # Slice 01B lets LegendaryMissions own server/client console lifecycle.
 
 import scripts/systems/bootstrap_state.mast
@@ -8,12 +8,13 @@ import scripts/systems/audio_runtime.mast
 import scripts/systems/debug_runtime.mast
 import scripts/systems/scenario_control_panel.mast
 import scripts/systems/story_jump_presets.mast
+import scripts/systems/comms_proof_station.mast
+import scripts/acts/act1_generator_tarsis_gate.mast
 
 shared artemis_id = 0
 
 @map/khovan_reach "Khovan Reach"
 " TSN training mission bootstrap shell.
-" Slice 01B uses the old/reference LegendaryMissions console lifecycle.
 metadata: ```
 Properties:
   Main:
@@ -42,6 +43,10 @@ Properties:
     script.write_khovan_startup_trace("[KHOVAN BOOT 003B] jump registry initialized")
     script.write_khovan_startup_trace("[KHOVAN BOOT 004] before playable_bootstrap")
     await task_schedule(khovan_reach_initialize_playable_bootstrap)
+    await task_schedule(khovan_act1_initialize_generator_tarsis_gate)
+    script.write_khovan_startup_trace("[KHOVAN BOOT 004A] Act I generator/Tarsis gate initialized")
+    await task_schedule(khovan_comms_proof_station_initialize)
+    script.write_khovan_startup_trace("[KHOVAN BOOT 004B] Comms proof station initialized")
     await task_schedule(khovan_reach_initialize_debug_runtime)
     await task_schedule(khovan_reach_stub_dillon_clip_1)
     script.write_khovan_startup_trace("[KHOVAN BOOT 009] mission_phase=act_1 current_scene=1")
