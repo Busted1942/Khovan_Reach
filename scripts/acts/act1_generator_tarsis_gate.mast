@@ -12,6 +12,12 @@ shared act1_last_progression_summary = "Act I generator/Tarsis gate not initiali
 shared kestrel_yards_id = 0
 shared kestrel_departure_clearance_granted = False
 shared kestrel_departure_gate_status = "waiting_for_clearance"
+shared kestrel_departure_hold_status = "not_initialized"
+shared kestrel_departure_hold_release_status = "not_released"
+shared kestrel_departure_hold_detection_mode = "mechanical_position_throttle_hold_no_legendary_docking"
+shared kestrel_start_docking_helper_status = "not_initialized"
+shared kestrel_yard_lock_visual_mode = "mechanical_yard_lock_overlay_fallback"
+shared kestrel_yard_lock_visual_status = "not_initialized"
 shared kestrel_generator_advisory_run_id = 0
 shared kestrel_generator_advisory_status = "pending_launch_envelope"
 
@@ -31,6 +37,7 @@ shared tarsis_station_visibility_status = "scan_gated_until_science_initial_scan
 shared tarsis_docking_resupply_status = "docking_setup_attempted_resupply_unproven"
 shared generator_governor_cleared = False
 
+shared kestrel_yard_lock_visual_text = "Artemis, Kestrel Yard Control. Yard-lock is engaged. Hold position on the launch ramp until Comms requests departure clearance."
 shared kestrel_generator_advisory_text = "Artemis, Kestrel Yard Control. Advisory packet follows. Your generator assembly is still under observation. We are working a regulator-output problem on our end and have placed a temporary governor on your generator output. You may see sluggish acceleration and reduced sustained-speed response until Tarsis accepts the generator handoff and clears the governor."
 shared kestrel_homing_reserve_text = "We have issued two homing torpedoes as emergency conversion reserve. That should be sufficient to get you to Tarsis if you need to trade ordnance for power margin. Tarsis has been notified to prioritize homing torpedo production and generator acceptance."
 shared tarsis_homing_priority_text = "Tarsis Control acknowledges. Homing torpedo production priority set for Artemis. Other ordnance will load as available after homing complement is restored."
@@ -71,6 +78,10 @@ shared tarsis_generator_support_text = "Generator acceptance packet received. We
     homing_reserve_live_inventory_status = "live smoke reported 10/10 homing; not claimed correct until ordnance API is proven"
     kestrel_departure_clearance_granted = False
     kestrel_departure_gate_status = "waiting_for_clearance"
+    kestrel_departure_hold_status = "waiting_for_contact_setup"
+    kestrel_departure_hold_release_status = "not_released"
+    kestrel_start_docking_helper_status = "not_initialized"
+    kestrel_yard_lock_visual_status = "pending_contact_setup"
     launch_envelope_cleared = False
     kestrel_generator_packet_sent = False
     kestrel_generator_advisory_status = "pending_launch_envelope"
@@ -101,7 +112,8 @@ shared tarsis_generator_support_text = "Generator acceptance packet received. We
         set_face(kestrel_yards_id, random_terran(civilian=True))
         sim.add_navproxy(kestrel_yards_id, "Kestrel Yards", "starbase_command", "#4A7")
     add_role(kestrel_yards_id, "Station")
-    add_role(kestrel_yards_id, "station")
+    # Kestrel starts as a mechanical hold, not a Legendary docking transition.
+    remove_role(kestrel_yards_id, "station")
     add_role(kestrel_yards_id, "kestrel_yards")
     kestrel_roles = to_object(kestrel_yards_id).get_roles()
     script.write_khovan_startup_trace(f"[KHOVAN ACT1 COMMS 003] Kestrel standard station setup complete roles={kestrel_roles}")
@@ -123,16 +135,39 @@ shared tarsis_generator_support_text = "Generator acceptance packet received. We
     script.write_khovan_startup_trace(f"[KHOVAN ACT1 COMMS 004] Tarsis standard station setup complete roles={tarsis_roles}")
 
     script.write_khovan_startup_trace("[KHOVAN ACT1 DOCK 001] docking setup scheduled")
+    kestrel_start_docking_helper_status = "skipped_startup_hold_uses_mechanical_fallback"
+    script.write_khovan_startup_trace("[KHOVAN ACT1 DOCK 001K] Kestrel Legendary docking helper skipped for startup mechanical hold fallback")
+    kestrel_yard_lock_visual_status = "attempted_mechanical_fallback"
+    script.write_khovan_startup_trace("[KHOVAN ACT1 VISUAL 001] Kestrel yard-lock visual setup attempted")
     await task_schedule(docking_standard_player_station)
     for player_id in role("__player__"):
         if kestrel_yards_id != 0:
             science_set_scan_data(player_id, kestrel_yards_id, "Kestrel Yards is Artemis' launch yard and active departure-control contact.")
             link(player_id, "extra_scan_source", kestrel_yards_id)
-            docking_set_docking_logic(player_id, kestrel_yards_id, docking_dock_with_friendly_station)
         if tarsis_station_id != 0:
             link(player_id, "extra_scan_source", tarsis_station_id)
             docking_set_docking_logic(player_id, tarsis_station_id, docking_dock_with_friendly_station)
     script.write_khovan_startup_trace("[KHOVAN ACT1 DOCK 002] docking setup applied or failed/stubbed")
+    if artemis_id != 0 and kestrel_yards_id != 0:
+        kestrel_departure_hold_status = "scheduled"
+        script.write_khovan_startup_trace("[KHOVAN ACT1 HOLD 001] Kestrel departure hold scheduled")
+        artemis_object = to_object(artemis_id)
+        if artemis_object is not None:
+            artemis_object.pos = Vec3(0, 0, 500)
+            artemis_object.data_set.set("dock_base_id", 0, 0)
+            artemis_object.data_set.set("dock_state", "undocked", 0)
+            artemis_object.data_set.set("playerThrottle", 0, 0)
+            kestrel_departure_hold_status = "active"
+            kestrel_departure_hold_release_status = "waiting_for_clearance"
+            script.write_khovan_startup_trace("[KHOVAN ACT1 HOLD 002] Artemis mechanical hold fallback active at Kestrel pending departure clearance")
+            await task_schedule(khovan_act1_show_kestrel_yard_lock_visual_fallback)
+            task_schedule(khovan_act1_hold_artemis_at_kestrel_until_clearance)
+        else:
+            kestrel_departure_hold_status = "stopped_artemis_object_missing"
+            script.write_khovan_startup_trace("[KHOVAN ACT1 HOLD 000C] Kestrel departure hold stopped missing Artemis object")
+    else:
+        kestrel_departure_hold_status = "not_scheduled_missing_artemis_or_kestrel"
+        script.write_khovan_startup_trace("[KHOVAN ACT1 HOLD 000] Kestrel departure hold not scheduled missing Artemis or Kestrel id")
     tarsis_docking_resupply_status = "docking_setup_attempted_resupply_unproven"
     script.write_khovan_startup_trace(f"[KHOVAN ACT1 DOCK 002A] Tarsis docking setup attempted id={tarsis_station_id}; mechanical docking/resupply remains live-smoke only")
     script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS 003A] Kestrel marked known to player ships for departure Comms")
@@ -141,6 +176,57 @@ shared tarsis_generator_support_text = "Generator acceptance packet received. We
     script.write_khovan_startup_trace("[KHOVAN ACT1 003C] Kestrel/Tarsis use reference-backed standard station primitives")
     script.write_khovan_startup_trace("[KHOVAN ACT1 003D] Khovan station presentation polish deferred until standard Comms/docking path is proven")
     log(f"Khovan Act I contacts initialized: Kestrel id {kestrel_yards_id}, Tarsis id {tarsis_station_id}.")
+    ->END
+
+=== khovan_act1_show_kestrel_yard_lock_visual_fallback ===
+    kestrel_yard_lock_visual_status = "fallback_active_mechanical_yard_lock_overlay"
+    script.write_khovan_startup_trace("[KHOVAN ACT1 VISUAL 002] Kestrel mechanical yard-lock visual fallback active")
+    sbs.send_story_dialog(0, "Kestrel Yard Control", kestrel_yard_lock_visual_text, "", "#464")
+    ->END
+
+=== khovan_act1_hold_artemis_at_kestrel_until_clearance ===
+    if artemis_id == 0:
+        kestrel_departure_hold_status = "stopped_missing_artemis"
+        script.write_khovan_startup_trace("[KHOVAN ACT1 HOLD 000A] Kestrel departure hold stopped missing Artemis id")
+        ->END
+    if kestrel_yards_id == 0:
+        kestrel_departure_hold_status = "stopped_missing_kestrel"
+        script.write_khovan_startup_trace("[KHOVAN ACT1 HOLD 000B] Kestrel departure hold stopped missing Kestrel id")
+        ->END
+
+    artemis_object = to_object(artemis_id)
+    if artemis_object is None:
+        kestrel_departure_hold_status = "stopped_artemis_object_missing"
+        script.write_khovan_startup_trace("[KHOVAN ACT1 HOLD 000C] Kestrel departure hold stopped missing Artemis object")
+        ->END
+
+    if kestrel_departure_clearance_granted:
+        await task_schedule(khovan_act1_release_kestrel_departure_hold)
+        ->END
+
+    artemis_object.pos = Vec3(0, 0, 500)
+    artemis_object.data_set.set("dock_base_id", 0, 0)
+    artemis_object.data_set.set("dock_state", "undocked", 0)
+    artemis_object.data_set.set("playerThrottle", 0, 0)
+    if kestrel_departure_hold_status != "active":
+        kestrel_departure_hold_status = "active"
+        kestrel_departure_hold_release_status = "waiting_for_clearance"
+        script.write_khovan_startup_trace("[KHOVAN ACT1 HOLD 002] Artemis mechanical hold fallback active at Kestrel pending departure clearance")
+    await delay_sim(seconds=1)
+    jump khovan_act1_hold_artemis_at_kestrel_until_clearance
+    ->END
+
+=== khovan_act1_release_kestrel_departure_hold ===
+    artemis_object = to_object(artemis_id)
+    if artemis_object is not None:
+        artemis_object.data_set.set("dock_base_id", 0, 0)
+        artemis_object.data_set.set("dock_state", "undocked", 0)
+        artemis_object.data_set.set("playerThrottle", 0, 0)
+    if kestrel_departure_hold_status != "released_after_clearance":
+        script.write_khovan_startup_trace("[KHOVAN ACT1 HOLD 003] Kestrel departure hold released after clearance")
+    kestrel_departure_hold_status = "released_after_clearance"
+    kestrel_departure_hold_release_status = "released"
+    log("Khovan Act I Kestrel departure hold released after Comms clearance.")
     ->END
 
 === khovan_act1_record_progression ===
@@ -169,6 +255,7 @@ shared tarsis_generator_support_text = "Generator acceptance packet received. We
     kestrel_departure_gate_status = "clearance_granted_waiting_launch_envelope"
     current_beat = "kestrel_departure_clearance_granted"
     script.write_khovan_startup_trace("[KHOVAN ACT1 004] Kestrel departure clearance granted")
+    await task_schedule(khovan_act1_release_kestrel_departure_hold)
     await task_schedule(khovan_act1_record_progression, {"action": "kestrel_departure_clearance", "detail": "departure clearance granted; waiting for launch envelope confirmation"})
     comms_receive("Artemis, Kestrel Yard Control. Departure clearance granted. Mooring authority released. Clear the launch envelope and proceed toward Tarsis Station.", title="Kestrel Yard Control", title_color="green")
     script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS 006D] Kestrel departure-clearance option response sent")
