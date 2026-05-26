@@ -5,7 +5,7 @@ shared act1_generator_tarsis_gate_initialized = False
 shared act1_generator_tarsis_gate_status = "not_initialized"
 shared act1_launch_detection_mode = "temporary_comms_confirmation"
 shared act1_docking_detection_mode = "temporary_comms_confirmation"
-shared act1_text_delivery_mode = "story_dialog_and_trace"
+shared act1_text_delivery_mode = "guarded_comms_text_no_lifeform_overlay"
 shared act1_comms_archive_status = "trace_and_action_log_stub"
 shared act1_last_progression_summary = "Act I generator/Tarsis gate not initialized."
 
@@ -31,6 +31,16 @@ shared homing_reserve_status = "pending"
 shared homing_reserve_count = 2
 shared homing_reserve_runtime_apply_status = "stubbed_due_to_ordnance_api_uncertainty"
 shared homing_reserve_live_inventory_status = "not_verified"
+shared homing_reserve_request_status = "not_requested"
+shared homing_reserve_conversion_mode = "kestrel_request_loads_two_homing_once_no_energy_conversion"
+shared artemis_start_condition_status = "not_applied"
+shared artemis_start_energy_policy = "cosmos_default_energy_with_generator_governor_not_zero_energy"
+shared artemis_start_energy_runtime_apply_status = "not_overridden"
+shared artemis_start_homing_torpedoes = 0
+shared artemis_start_nukes = 0
+shared artemis_start_emps = 0
+shared artemis_start_mines = 0
+shared artemis_start_ordnance_runtime_apply_status = "not_applied"
 
 shared tarsis_station_id = 0
 shared tarsis_gate_status = "not_started"
@@ -53,6 +63,7 @@ shared generator_governor_cleared = False
 shared kestrel_yard_lock_visual_text = "Kestrel Yard Control: Artemis is held in yard-lock pending departure clearance. Comms, request clearance when the captain is ready."
 shared kestrel_generator_advisory_text = "Kestrel Yard Control: advisory packet follows. Your generator assembly is still under observation. We have placed a temporary governor on generator output. You may see sluggish acceleration and reduced sustained-speed response until Tarsis accepts the generator handoff and clears the governor. Tarsis has been notified to prioritize homing-torpedo production and generator acceptance."
 shared kestrel_homing_reserve_text = "We have issued two homing torpedoes as emergency conversion reserve. That should be sufficient to get you to Tarsis if you need to trade ordnance for power margin. Tarsis has been notified to prioritize homing torpedo production and generator acceptance."
+shared kestrel_homing_reserve_request_text = "Kestrel Yard Control: emergency homing reserve released. Artemis now carries two homing torpedoes as generator-governor margin. No nukes, EMPs, or mines are released before Tarsis resupply. Tarsis has been notified to prioritize homing replacement and generator acceptance."
 shared training_speed_power_reminder_text = "Training Control: keep speed and power changes deliberate. Treat the generator advisory as active until Tarsis completes the handoff. Comms should coordinate homing priority, generator support, and docking clearance with Tarsis."
 shared tarsis_homing_priority_text = "Tarsis Control acknowledges. Homing torpedo production priority set for Artemis. Other ordnance will load as available after homing complement is restored."
 shared tarsis_generator_support_text = "Generator acceptance packet received. We can clear the Kestrel governor after docking and yard-lock synchronization. Do not assume full acceleration response until transfer complete."
@@ -66,6 +77,7 @@ shared tarsis_resupply_text = "Tarsis Station confirms resupply and generator ha
 //comms if has_roles(COMMS_SELECTED_ID, "kestrel_yards")
     + "Khovan: Hail Kestrel Yards" khovan_kestrel_hail
     + "Khovan: Request Departure Clearance" khovan_kestrel_request_departure_clearance
+    + "Khovan: Request Emergency Homing Reserve" khovan_kestrel_request_emergency_homing_reserve
     + "Khovan: Confirm Launch-Envelope Exit" khovan_kestrel_report_launch_envelope_clear
     + "Khovan: Resend Generator Advisory" khovan_kestrel_resend_generator_advisory
 
@@ -100,11 +112,21 @@ shared tarsis_resupply_text = "Tarsis Station confirms resupply and generator ha
     current_beat = "scene_1_kestrel_departure_gate"
     generator_governor_active = True
     generator_governor_cleared = False
-    starting_homing_torpedoes = 2
+    starting_homing_torpedoes = 0
     homing_reserve_count = 2
-    homing_reserve_status = "initialized_as_state_only"
-    homing_reserve_runtime_apply_status = "stubbed_due_to_ordnance_api_uncertainty"
-    homing_reserve_live_inventory_status = "live smoke reported 10/10 homing; not claimed correct until ordnance API is proven"
+    homing_reserve_status = "held_by_kestrel_pending_request"
+    homing_reserve_runtime_apply_status = "pending_kestrel_request"
+    homing_reserve_live_inventory_status = "fresh_load_zero_requested_live_smoke_required"
+    homing_reserve_request_status = "not_requested"
+    homing_reserve_conversion_mode = "kestrel_request_loads_two_homing_once_no_energy_conversion"
+    artemis_start_condition_status = "pending_apply"
+    artemis_start_energy_policy = "cosmos_default_energy_with_generator_governor_not_zero_energy"
+    artemis_start_energy_runtime_apply_status = "not_overridden_zero_energy_not_source_authorized"
+    artemis_start_homing_torpedoes = 0
+    artemis_start_nukes = 0
+    artemis_start_emps = 0
+    artemis_start_mines = 0
+    artemis_start_ordnance_runtime_apply_status = "pending_apply"
     kestrel_departure_clearance_granted = False
     kestrel_departure_gate_status = "waiting_for_clearance"
     kestrel_departure_hold_status = "waiting_for_contact_setup"
@@ -135,14 +157,42 @@ shared tarsis_resupply_text = "Tarsis Station confirms resupply and generator ha
     tarsis_generator_support_response_sent = False
     tarsis_docking_clearance_response_sent = False
     tarsis_governor_clear_response_sent = False
-    act1_last_progression_summary = "Generator governor active; homing reserve represented as state/log stub pending ordnance API proof."
+    act1_last_progression_summary = "Generator governor active; fresh load requests zero homing until Kestrel reserve is requested."
     script.write_khovan_startup_trace("[KHOVAN ACT1 001] generator governor initialized active")
-    script.write_khovan_startup_trace("[KHOVAN ACT1 002] homing reserve initialized as state/log stub count=2")
+    script.write_khovan_startup_trace("[KHOVAN ACT1 002] homing reserve held at Kestrel pending Comms request count=2")
     script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS 001] Kestrel route registered")
     script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS 002] Tarsis route registered")
+    await task_schedule(khovan_act1_apply_source_authorized_start_state)
     await task_schedule(khovan_act1_setup_kestrel_and_tarsis_contacts)
     await task_schedule(khovan_scenario_control_panel_update_overview)
-    log("Khovan Slice 04 Act I generator/Tarsis gate initialized. Homing reserve is state/log stubbed pending ordnance API proof.")
+    log("Khovan Slice 04 Act I generator/Tarsis gate initialized. Source-authorized starting ordnance set requested; live smoke must verify the Weapons UI.")
+    ->END
+
+=== khovan_act1_apply_source_authorized_start_state ===
+    generator_governor_active = True
+    starting_homing_torpedoes = 0
+    homing_reserve_count = 2
+    artemis_start_energy_runtime_apply_status = "not_overridden_zero_energy_not_source_authorized"
+    if artemis_id == 0:
+        artemis_start_condition_status = "skipped_missing_artemis_id"
+        artemis_start_ordnance_runtime_apply_status = "skipped_missing_artemis_id"
+        script.write_khovan_startup_trace("[KHOVAN ACT1 START STATE] Artemis starting energy set to Cosmos default with generator governor active; zero-energy start not source-authorized")
+        script.write_khovan_startup_trace("[KHOVAN ACT1 START STATE] Artemis starting ordnance not set: missing Artemis id")
+        script.write_khovan_startup_trace("[KHOVAN ACT1 START STATE FINAL] homing=unknown nuke=unknown emp=unknown mine=unknown missing_artemis_id")
+        ->END
+
+    set_data_set_value(artemis_id, "Homing_NUM", artemis_start_homing_torpedoes, 0)
+    set_data_set_value(artemis_id, "Nuke_NUM", artemis_start_nukes, 0)
+    set_data_set_value(artemis_id, "EMP_NUM", artemis_start_emps, 0)
+    set_data_set_value(artemis_id, "Mine_NUM", artemis_start_mines, 0)
+    homing_reserve_status = "held_by_kestrel_pending_request"
+    homing_reserve_runtime_apply_status = "fresh_load_zero_requested_live_smoke_required"
+    homing_reserve_live_inventory_status = "fresh_load_zero_requested_live_smoke_required"
+    artemis_start_condition_status = "generator_governor_zero_homing_until_kestrel_reserve_no_other_ordnance"
+    artemis_start_ordnance_runtime_apply_status = "requested_homing_0_nuke_0_emp_0_mine_0"
+    script.write_khovan_startup_trace("[KHOVAN ACT1 START STATE] Artemis starting energy set to Cosmos default with generator governor active; zero-energy start not source-authorized")
+    script.write_khovan_startup_trace("[KHOVAN ACT1 START STATE] Artemis starting ordnance set to Homing=0 Nuke=0 EMP=0 Mine=0")
+    script.write_khovan_startup_trace(f"[KHOVAN ACT1 START STATE FINAL] homing={artemis_start_homing_torpedoes} nuke={artemis_start_nukes} emp={artemis_start_emps} mine={artemis_start_mines} reserve=held_by_kestrel")
     ->END
 
 === khovan_act1_setup_kestrel_and_tarsis_contacts ===
@@ -211,6 +261,7 @@ shared tarsis_resupply_text = "Tarsis Station confirms resupply and generator ha
             kestrel_departure_hold_status = "active"
             kestrel_departure_hold_release_status = "waiting_for_clearance"
             script.write_khovan_startup_trace("[KHOVAN ACT1 HOLD 002] Artemis mechanical hold fallback active at Kestrel pending departure clearance")
+            await task_schedule(khovan_reach_stub_dillon_clip_1)
             await task_schedule(khovan_act1_show_kestrel_yard_lock_visual_fallback)
             task_schedule(khovan_act1_hold_artemis_at_kestrel_until_clearance)
         else:
@@ -256,7 +307,7 @@ distance: 600
     kestrel_yard_lock_message_sent = True
     kestrel_yard_lock_visual_status = "fallback_active_mechanical_yard_lock_overlay"
     script.write_khovan_startup_trace("[KHOVAN ACT1 VISUAL 002] Kestrel mechanical yard-lock visual fallback active")
-    await task_schedule(khovan_reach_send_safe_startup_message, {"startup_sender": "Kestrel Yard Control", "startup_text": kestrel_yard_lock_visual_text, "startup_color": "#464", "startup_breadcrumb": "[KHOVAN ACT1 MSG KESTREL 001] Kestrel yard-lock message sent"})
+    await task_schedule(khovan_reach_send_safe_startup_message, {"startup_sender": "Kestrel Yard Control", "startup_text": kestrel_yard_lock_visual_text, "startup_title_color": "green", "startup_sender_id": kestrel_yards_id, "startup_player_id": artemis_id, "startup_breadcrumb": "[KHOVAN ACT1 MSG KESTREL 001] Kestrel yard-lock message sent"})
     ->END
 
 === khovan_act1_hold_artemis_at_kestrel_until_clearance ===
@@ -324,6 +375,32 @@ distance: 600
     script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS 006H] Kestrel Hail option response sent")
     yield success
 
+=== khovan_kestrel_request_emergency_homing_reserve ===
+    script.write_khovan_startup_trace("[KHOVAN ACT1 RESERVE 001] emergency homing reserve requested")
+    if homing_reserve_status == "loaded_by_kestrel_comms":
+        homing_reserve_request_status = "duplicate_suppressed_already_loaded"
+        script.write_khovan_startup_trace("[KHOVAN ACT1 MSG ORDER] duplicate suppressed Kestrel emergency homing reserve request")
+        script.write_khovan_startup_trace("[KHOVAN ACT1 RESERVE 004] emergency homing reserve already loaded; homing remains 2")
+        comms_receive("Kestrel Yard Control: emergency homing reserve is already released. Artemis remains capped at two homing torpedoes until Tarsis resupply.", title="Kestrel Yard Control", title_color="yellow")
+        yield success
+
+    if artemis_id == 0:
+        homing_reserve_request_status = "failed_missing_artemis_id"
+        script.write_khovan_startup_trace("[KHOVAN ACT1 RESERVE BLOCKED] emergency homing reserve not loaded: missing Artemis id")
+        comms_receive("Kestrel Yard Control: unable to release emergency homing reserve; Artemis receiver is not confirmed.", title="Kestrel Yard Control", title_color="yellow")
+        yield fail
+
+    homing_reserve_request_status = "loaded_by_kestrel_comms"
+    homing_reserve_status = "loaded_by_kestrel_comms"
+    homing_reserve_runtime_apply_status = "kestrel_request_set_homing_2_live_smoke_required"
+    homing_reserve_live_inventory_status = "kestrel_request_set_homing_2_live_smoke_required"
+    set_data_set_value(artemis_id, "Homing_NUM", homing_reserve_count, 0)
+    script.write_khovan_startup_trace("[KHOVAN ACT1 RESERVE 002] emergency homing reserve load requested")
+    script.write_khovan_startup_trace("[KHOVAN ACT1 RESERVE 003] emergency homing reserve applied homing=2")
+    comms_receive(kestrel_homing_reserve_request_text, title="Kestrel Yard Control", title_color="green")
+    await task_schedule(khovan_act1_record_progression, {"action": "kestrel_homing_reserve_request", "detail": "emergency homing reserve loaded; Homing_NUM set to 2 once"})
+    yield success
+
 === khovan_kestrel_request_departure_clearance ===
     script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS 006A] Kestrel departure-clearance option selected")
     if kestrel_departure_clearance_response_sent:
@@ -388,8 +465,8 @@ distance: 600
     act1_comms_archive_status = "trace_and_action_log_stub; Comms archive UI not separately proven"
     current_beat = "kestrel_generator_advisory_delivered"
     script.write_khovan_startup_trace("[KHOVAN ACT1 006] Kestrel advisory delivered after 10-second timer")
-    await task_schedule(khovan_reach_send_safe_startup_message, {"startup_sender": "Kestrel Yard Control", "startup_text": kestrel_generator_advisory_text, "startup_color": "#464", "startup_breadcrumb": "[KHOVAN ACT1 MSG KESTREL 004] generator advisory packet sent"})
-    await task_schedule(khovan_act1_record_progression, {"action": "kestrel_generator_advisory", "detail": "delivered by story dialog; archive represented by trace/action log stub"})
+    await task_schedule(khovan_reach_send_safe_startup_message, {"startup_sender": "Kestrel Yard Control", "startup_text": kestrel_generator_advisory_text, "startup_title_color": "green", "startup_sender_id": kestrel_yards_id, "startup_player_id": artemis_id, "startup_breadcrumb": "[KHOVAN ACT1 MSG KESTREL 004] generator advisory packet sent"})
+    await task_schedule(khovan_act1_record_progression, {"action": "kestrel_generator_advisory", "detail": "delivered by guarded text packet; archive represented by Comms response/trace/action log"})
     await task_schedule(khovan_act1_send_training_speed_power_reminder)
     log("Khovan Act I Kestrel generator advisory delivered after launch-envelope timer.")
     ->END
@@ -403,7 +480,7 @@ distance: 600
 
     training_speed_power_reminder_sent = True
     script.write_khovan_startup_trace("[KHOVAN ACT1 MSG ORDER] Training Control speed-power reminder sent after advisory")
-    await task_schedule(khovan_reach_send_safe_startup_message, {"startup_sender": "Training Control", "startup_text": training_speed_power_reminder_text, "startup_color": "#4A7", "startup_breadcrumb": "[KHOVAN ACT1 MSG TRAINING 001] Training speed-power reminder sent"})
+    await task_schedule(khovan_reach_send_safe_startup_message, {"startup_sender": "Training Control", "startup_text": training_speed_power_reminder_text, "startup_title_color": "cyan", "startup_sender_id": kestrel_yards_id, "startup_player_id": artemis_id, "startup_breadcrumb": "[KHOVAN ACT1 MSG TRAINING 001] Training speed-power reminder sent"})
     ->END
 
 === khovan_kestrel_resend_generator_advisory ===
@@ -426,7 +503,6 @@ distance: 600
     current_beat = "tarsis_gate_active"
     await task_schedule(khovan_tarsis_update_gate_status)
     script.write_khovan_startup_trace("[KHOVAN ACT1 007] Tarsis hailed; gate active")
-    sbs.send_story_dialog(0, "Tarsis Station", tarsis_hail_text, "", "#4A7")
     comms_receive(tarsis_hail_text, title="Tarsis Station", title_color="green")
     script.write_khovan_startup_trace("[KHOVAN ACT1 MSG TARSIS 001] hail response sent")
     script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS 008H] Tarsis Hail option response sent")
@@ -444,7 +520,6 @@ distance: 600
     await task_schedule(khovan_tarsis_update_gate_status)
     await task_schedule(khovan_act1_record_progression, {"action": "tarsis_homing_priority", "detail": "homing torpedo production priority requested"})
     tarsis_homing_priority_response_sent = True
-    sbs.send_story_dialog(0, "Tarsis Control", tarsis_homing_priority_text, "", "#4A7")
     comms_receive(tarsis_homing_priority_text, title="Tarsis Production Control", title_color="green")
     script.write_khovan_startup_trace("[KHOVAN ACT1 MSG TARSIS 002] homing priority response sent")
     script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS 008F] Tarsis homing-priority option response sent")
@@ -462,7 +537,6 @@ distance: 600
     await task_schedule(khovan_tarsis_update_gate_status)
     await task_schedule(khovan_act1_record_progression, {"action": "tarsis_generator_support", "detail": "generator acceptance/support requested"})
     tarsis_generator_support_response_sent = True
-    sbs.send_story_dialog(0, "Tarsis Generator Acceptance", tarsis_generator_support_text, "", "#4A7")
     comms_receive(tarsis_generator_support_text, title="Tarsis Generator Acceptance", title_color="green")
     script.write_khovan_startup_trace("[KHOVAN ACT1 MSG TARSIS 003] generator support response sent")
     script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS 008G] Tarsis generator-acceptance option response sent")
@@ -491,7 +565,6 @@ distance: 600
     await task_schedule(khovan_tarsis_enable_docking_after_clearance)
     await task_schedule(khovan_act1_record_progression, {"action": "tarsis_docking_clearance", "detail": "docking clearance requested/granted after required prior requests"})
     tarsis_docking_clearance_response_sent = True
-    sbs.send_story_dialog(0, "Tarsis Docking Control", tarsis_docking_clearance_text, "", "#4A7")
     comms_receive(tarsis_docking_clearance_text, title="Tarsis Docking Control", title_color="green")
     script.write_khovan_startup_trace("[KHOVAN ACT1 MSG TARSIS 004] docking clearance response sent")
     script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS 008I] Tarsis docking-clearance option response sent")
@@ -585,7 +658,6 @@ distance: 600
     last_checkpoint = "tarsis_resupply_governor_cleared"
     tarsis_governor_clear_response_sent = True
     script.write_khovan_startup_trace("[KHOVAN ACT1 012] Tarsis resupply confirmed; generator governor cleared")
-    sbs.send_story_dialog(0, "Tarsis Station", "Yard-lock synchronization complete. Kestrel generator governor cleared. Artemis generator response is restored for departure.", "", "#464")
     await task_schedule(khovan_act1_record_progression, {"action": "tarsis_resupply_governor_cleared", "detail": "all three requests complete; temporary Comms confirmation cleared governor"})
     comms_receive(tarsis_resupply_text, title="Tarsis Station", title_color="green")
     script.write_khovan_startup_trace("[KHOVAN ACT1 MSG TARSIS 005] docking/resupply response sent")
