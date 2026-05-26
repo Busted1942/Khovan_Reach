@@ -2,15 +2,32 @@
 
 shared dillon_clip_1_stub_text = "Captain. Crew of Artemis. This is a qualification cruise. Standard pattern: depart Kestrel, dock and resupply at Tarsis, conduct the selected shakedown profile, then return for debrief. I'll be observing. Run the cruise. Do your jobs. Captain, the ship is yours."
 shared dillon_clip_1_stub_sent = False
+shared dillon_clip_1_delivery_mode = "text_standin_safe_comms_no_lifeform_overlay"
+shared dillon_clip_1_comms_echo_status = "not_sent"
 
 === khovan_reach_send_safe_startup_message ===
     default startup_sender = "Khovan Reach"
     default startup_text = ""
-    default startup_color = "#446"
+    default startup_title_color = "cyan"
+    default startup_sender_id = 0
+    default startup_player_id = artemis_id
     default startup_breadcrumb = ""
-    sbs.send_story_dialog(0, startup_sender, startup_text, "", startup_color)
-    script.write_khovan_startup_trace("[KHOVAN ACT1 MSG SAFE] startup message sent via safe visible fallback")
-    script.write_khovan_startup_trace("[KHOVAN ACT1 MSG SAFE] comms_receive skipped: no valid sender/context")
+    default startup_archive_breadcrumb = ""
+    default startup_safe_breadcrumb = "[KHOVAN ACT1 MSG SAFE] comms_receive skipped: no valid sender/context"
+    script.write_khovan_startup_trace("[KHOVAN ACT1 UI] black-box overlay source disabled or replaced")
+    script.write_khovan_startup_trace("[KHOVAN ACT1 UI] lifeform overlay deferred")
+    if startup_sender_id != 0 and startup_player_id != 0:
+        with comms_override(startup_sender_id, startup_player_id, from_name=startup_sender):
+            comms_receive(startup_text, title=startup_sender, title_color=startup_title_color)
+        script.write_khovan_startup_trace("[KHOVAN ACT1 UI] safe text message path used")
+        if startup_breadcrumb != "":
+            script.write_khovan_startup_trace(startup_breadcrumb)
+        if startup_archive_breadcrumb != "":
+            script.write_khovan_startup_trace(startup_archive_breadcrumb)
+        ->END
+
+    script.write_khovan_startup_trace("[KHOVAN ACT1 UI] safe text message path unavailable")
+    script.write_khovan_startup_trace(startup_safe_breadcrumb)
     if startup_breadcrumb != "":
         script.write_khovan_startup_trace(startup_breadcrumb)
     ->END
@@ -22,8 +39,15 @@ shared dillon_clip_1_stub_sent = False
 
     dillon_clip_1_stub_sent = True
     dillon_clip_1_status = "stubbed"
+    dillon_clip_1_comms_echo_status = "requested"
     dillon_clip_1_stub_text = "Captain. Crew of Artemis. This is a qualification cruise. Standard pattern: depart Kestrel, dock and resupply at Tarsis, conduct the selected shakedown profile, then return for debrief. I'll be observing. Run the cruise. Do your jobs. Captain, the ship is yours."
-    await task_schedule(khovan_reach_send_safe_startup_message, {"startup_sender": "Dillon / Training Control", "startup_text": dillon_clip_1_stub_text, "startup_color": "#446", "startup_breadcrumb": "[KHOVAN ACT1 MSG DILLON 001] Dillon opening briefing sent"})
+    script.write_khovan_startup_trace("[KHOVAN DILLON 001] Clip 1 text stand-in requested")
+    await task_schedule(khovan_reach_send_safe_startup_message, {"startup_sender": "Dillon / Training Control", "startup_text": dillon_clip_1_stub_text, "startup_title_color": "cyan", "startup_sender_id": kestrel_yards_id, "startup_player_id": artemis_id, "startup_breadcrumb": "[KHOVAN DILLON 002] Clip 1 visible text sent", "startup_archive_breadcrumb": "[KHOVAN DILLON 003] Clip 1 Comms archive echo sent", "startup_safe_breadcrumb": "[KHOVAN DILLON SAFE] Comms echo skipped because sender/context unavailable"})
+    if kestrel_yards_id != 0 and artemis_id != 0:
+        dillon_clip_1_comms_echo_status = "sent_with_guarded_context"
+    else:
+        dillon_clip_1_comms_echo_status = "skipped_missing_sender_context"
+    script.write_khovan_startup_trace("[KHOVAN ACT1 MSG DILLON 001] Dillon opening briefing sent")
     script.write_khovan_startup_trace("[KHOVAN BOOT 008] Dillon Clip 1 stub/queue reached")
     log("Dillon Clip 1 is stubbed for Slice 01; real audio playback API not verified locally.")
     ->END

@@ -11,12 +11,12 @@
   - literal zero ship energy is not applied because the active source specifies generator governor, not a no-energy start.
   - Kestrel can explain the two homing torpedoes as emergency conversion reserve through a status-only Comms packet.
   - Artemis starts mechanically held at Kestrel Yards by a position and throttle clamp loop.
-  - Kestrel yard-lock presentation uses an in-fiction startup overlay and trace breadcrumbs as a fallback visual cue.
+  - Kestrel yard-lock presentation uses an in-fiction guarded text packet and trace breadcrumbs as a fallback visual cue.
   - Kestrel departure clearance is required before launch-envelope confirmation.
   - Kestrel departure clearance releases the startup hold before Helm departure.
   - Kestrel generator advisory is scheduled after launch-envelope confirmation plus 10 seconds.
   - Act I briefing/instruction packets are guarded as one-time sends at their intended trigger points.
-  - Startup and scheduled Act I packets use a safe visible story-dialog fallback instead of raw `comms_receive` when no valid station/Comms sender context is available.
+  - Startup and scheduled Act I packets use a guarded text-message path with valid sender/player IDs instead of raw startup `comms_receive` or blank lifeform/story-dialog overlays.
   - Tarsis homing priority, generator support, and docking clearance are required before governor clear.
   - Tarsis docking/resupply confirmation clears the governor only after required requests are complete.
 - Kestrel Yards and Tarsis Station use reference-backed standard station primitives:
@@ -94,7 +94,7 @@ Kestrel startup visual docking / yard-lock presentation:
 
 - Observed polish issue: the mechanical Kestrel hold works, but normal docking lines, docking animation, and docked effects are not visible at fresh load.
 - Investigation result: the reference Legendary docking visual path is tied to `docking_dock_with_friendly_station` transition/refit states. That path is not safe for Kestrel startup hold because it caused the `interior` counter crash above when used from a forced startup state.
-- Change: Slice 04 keeps the mechanical hold and adds an in-fiction `Kestrel Yard Control` startup story dialog: yard-lock is engaged, hold position on the launch ramp until Comms requests departure clearance.
+- Change: Slice 04 keeps the mechanical hold and adds an in-fiction `Kestrel Yard Control` guarded text packet: yard-lock is engaged, hold position on the launch ramp until Comms requests departure clearance.
 - Fallback status: this is mechanical yard-lock without proven Cosmos docking animation. True docking visuals remain unclaimed until live smoke proves a safe startup path.
 
 Future polish: Kestrel startup docking animation / yard-lock visual
@@ -147,7 +147,7 @@ Act I message-ordering bug:
   10. Tarsis docking clearance request selected: Tarsis docking-clearance acknowledgment and docking setup enabled.
   11. Tarsis pre-clearance docking rejection appears only when the player attempts to dock before clearance.
   12. Tarsis resupply/governor clear message appears only after required Tarsis requests plus docking/resupply/fallback condition.
-- Change: Slice 04 now sends Dillon's opening briefing before Act I station setup, stages Tarsis options before/after docking clearance, and has one-time send flags for the Dillon stub, Kestrel yard-lock, Kestrel departure response, launch-envelope response, generator advisory, Training Control speed-power reminder, Tarsis request acknowledgments, and Tarsis governor-clear response. Duplicate paths write `[KHOVAN ACT1 MSG ORDER]` breadcrumbs instead of replaying the packet.
+- Change: Slice 04 now sends Dillon's opening briefing after Kestrel/Artemis sender context exists and before the Kestrel yard-lock packet, stages Tarsis options before/after docking clearance, and has one-time send flags for the Dillon stub, Kestrel yard-lock, Kestrel departure response, launch-envelope response, generator advisory, Training Control speed-power reminder, Tarsis request acknowledgments, and Tarsis governor-clear response. Duplicate paths write `[KHOVAN ACT1 MSG ORDER]` breadcrumbs instead of replaying the packet.
 - Story sequence text:
   1. Dillon: `Captain. Crew of Artemis. This is a qualification cruise. Standard pattern: depart Kestrel, dock and resupply at Tarsis, conduct the selected shakedown profile, then return for debrief. I'll be observing. Run the cruise. Do your jobs. Captain, the ship is yours.`
   2. Kestrel yard-lock: `Kestrel Yard Control: Artemis is held in yard-lock pending departure clearance. Comms, request clearance when the captain is ready.`
@@ -156,18 +156,27 @@ Act I message-ordering bug:
   5. Kestrel advisory: `Kestrel Yard Control: advisory packet follows. Your generator assembly is still under observation. We have placed a temporary governor on generator output. You may see sluggish acceleration and reduced sustained-speed response until Tarsis accepts the generator handoff and clears the governor. Tarsis has been notified to prioritize homing-torpedo production and generator acceptance.`
   6. Training reminder: `Training Control: keep speed and power changes deliberate. Treat the generator advisory as active until Tarsis completes the handoff. Comms should coordinate homing priority, generator support, and docking clearance with Tarsis.`
 - Guardrail: launch-envelope confirmation cannot restart the advisory timer after the advisory has already been sent, and resend-advisory only works after the advisory has been delivered.
-- Static proof: quick tests check the one-time flags, intended handler ties, staged Tarsis labels, duplicate-suppression breadcrumbs, advisory timer guard, resend-advisory guard, Tarsis dock-attempt rejection path, per-option Tarsis message breadcrumbs, Dillon safe startup story-dialog fallback, and Tarsis governor-clear one-time guard.
-- Live proof still required: only Cosmos can prove the visible lifeform/Comms messages appear in the intended player-facing order and do not repeat unexpectedly.
+- Static proof: quick tests check the one-time flags, intended handler ties, staged Tarsis labels, duplicate-suppression breadcrumbs, advisory timer guard, resend-advisory guard, Tarsis dock-attempt rejection path, per-option Tarsis message breadcrumbs, Dillon guarded text stand-in, absence of blank story-dialog overlays in the startup path, and Tarsis governor-clear one-time guard.
+- Live proof still required: only Cosmos can prove the guarded text/Comms messages appear in the intended player-facing order and do not repeat unexpectedly.
 
 Startup `comms_receive` crash:
 
 - Crash: fresh mission load crashed in `khovan_act1_show_kestrel_yard_lock_visual_fallback` when it called `comms_receive(kestrel_yard_lock_visual_text, title="Kestrel Yard Control", title_color="green")` outside a valid selected-station sender context. The SBS Utils Comms helper tried to read `from_obj.INV.name` and raised `error: 'name'`.
 - Best-known cause: startup and scheduled story packets do not always have a valid `COMMS_SELECTED_ID` / sender object with `INV.name`. Raw `comms_receive` is safe for selected station option handlers, but unsafe for the startup yard-lock path and other scheduled non-Comms packet tasks.
-- Change: startup/scheduled packets now route through `khovan_reach_send_safe_startup_message`, which uses `sbs.send_story_dialog` plus trace breadcrumbs and intentionally skips `comms_receive` when no valid sender/context exists.
-- Breadcrumbs: `[KHOVAN ACT1 MSG SAFE] startup message sent via safe visible fallback`, `[KHOVAN ACT1 MSG SAFE] comms_receive skipped: no valid sender/context`, `[KHOVAN ACT1 MSG DILLON 001] Dillon opening briefing sent`, and `[KHOVAN ACT1 MSG KESTREL 001] Kestrel yard-lock message sent`.
-- Scope note: later Kestrel/Tarsis Comms option handlers keep their `comms_receive` responses because those run from the station Comms context. Startup Comms-log echo is not claimed until a safe sender/context API is proven.
-- Static proof: quick tests check the safe helper, Dillon startup briefing helper call, Kestrel yard-lock helper call, advisory/training helper calls, and absence of raw `comms_receive` from startup/scheduled packet labels.
-- Live proof still required: only Cosmos can prove fresh load no longer crashes and that startup story-dialog fallback is visible.
+- Change: startup/scheduled packets now route through `khovan_reach_send_safe_startup_message`, which disables the risky lifeform/story-dialog overlay path and uses guarded `comms_override(...): comms_receive(...)` only when valid sender/player IDs are available.
+- Breadcrumbs: `[KHOVAN ACT1 UI] black-box overlay source disabled or replaced`, `[KHOVAN ACT1 UI] lifeform overlay deferred`, `[KHOVAN ACT1 UI] safe text message path used`, `[KHOVAN ACT1 MSG SAFE] comms_receive skipped: no valid sender/context`, `[KHOVAN DILLON 001]`, `[KHOVAN DILLON 002]`, `[KHOVAN DILLON 003]` or `[KHOVAN DILLON SAFE]`, `[KHOVAN ACT1 MSG DILLON 001] Dillon opening briefing sent`, and `[KHOVAN ACT1 MSG KESTREL 001] Kestrel yard-lock message sent`.
+- Scope note: later Kestrel/Tarsis Comms option handlers keep their selected-station `comms_receive` responses because those run from station Comms context. Startup Comms-log echo is claimed only when the guarded sender/player context is valid; otherwise the trace records the safe skip.
+- Static proof: quick tests check the safe helper, Dillon helper call after Kestrel/Artemis context exists, Kestrel yard-lock helper call, advisory/training helper calls, absence of raw `comms_receive` from startup/scheduled packet labels, and absence of `sbs.send_story_dialog` from the startup message helper.
+- Live proof still required: only Cosmos can prove fresh load no longer crashes, the Dillon/Kestrel text packets are visible/useful, and no black-box overlay remains.
+
+Dillon text stand-in / black-box UI regression:
+
+- Bug: Dillon Clip 1 was not reliably visible/logged, and prior lifeform-style/story-dialog attempts could leave a persistent black rectangle or blank portrait/info panel on viewer/client screens.
+- Best-known cause: blank or incomplete `sbs.send_story_dialog(..., "", ...)` overlay calls are unsafe for this branch, while raw startup `comms_receive` can crash before a valid sender object/context exists.
+- Change: Dillon Clip 1 is now a text stand-in sent once through the central guarded startup helper after Kestrel/Artemis IDs exist. The helper does not call `sbs.send_story_dialog`; true lifeform overlay/audio playback is deferred.
+- Text stand-in: `Captain. Crew of Artemis. This is a qualification cruise. Standard pattern: depart Kestrel, dock and resupply at Tarsis, conduct the selected shakedown profile, then return for debrief. I'll be observing. Run the cruise. Do your jobs. Captain, the ship is yours.`
+- Acceptance status: this is text stand-in plumbing only. It does not implement final Dillon audio/video or prove true lifeform presentation.
+- Live proof still required: no persistent black box on main viewer/client screens, Dillon text appears or the trace records the safe fallback, and existing Kestrel/Tarsis gates still work.
 
 Latest live result:
 
@@ -197,7 +206,7 @@ Quick/static checks prove source structure only:
 - Kestrel departure hold is scheduled after docking setup.
 - Kestrel removes lowercase `station` before `docking_standard_player_station`, so the startup hold is not enrolled in `docking_dock_with_friendly_station`.
 - Kestrel does not call `docking_set_docking_logic(player_id, kestrel_yards_id, docking_dock_with_friendly_station)`.
-- Kestrel yard-lock visual status, fallback mode, startup text, safe story-dialog fallback call, and `[KHOVAN ACT1 VISUAL 001/002]` breadcrumbs are present.
+- Kestrel yard-lock visual status, fallback mode, startup text, guarded safe text call, and `[KHOVAN ACT1 VISUAL 001/002]` breadcrumbs are present.
 - The hold loop clamps Artemis to Kestrel by `playerThrottle` and position reset until `kestrel_departure_clearance_granted`.
 - The Kestrel departure-clearance handler calls the release helper.
 - The release helper leaves throttle at zero and records the release breadcrumb.
@@ -210,8 +219,9 @@ Quick/static checks prove source structure only:
 - Tarsis pre-clearance rejection includes `[KHOVAN ACT1 DOCK BLOCKED]`.
 - Tarsis Comms option block contains the required staged labels: Hail, Homing-Torpedo Priority, Generator Support, Docking Clearance, conditional Confirm Docking/Resupply, and Gate Status.
 - Tarsis option handlers set the required flags, send Comms responses, and write the new Tarsis option/message breadcrumbs.
-- Dillon's opening briefing sends through the safe startup story-dialog fallback before Act I station setup and skips raw `comms_receive` until a valid sender/context is available.
-- The safe startup helper records `[KHOVAN ACT1 MSG SAFE]` breadcrumbs when Comms-log echo is skipped.
+- Dillon's opening briefing sends through the safe guarded text helper after Kestrel/Artemis sender context exists and before Kestrel yard-lock messaging.
+- The safe startup helper records `[KHOVAN ACT1 UI]` breadcrumbs and `[KHOVAN ACT1 MSG SAFE]` when Comms-log echo is skipped.
+- The startup text helper does not call `sbs.send_story_dialog`, so the risky black-box overlay path is not in the Slice 04 startup packet route.
 - Act I message-order flags exist for mission start, Kestrel yard-lock, Kestrel departure, launch-envelope, generator advisory, Training Control speed-power reminder, Tarsis request acknowledgments, and Tarsis governor clear.
 - Kestrel departure, launch-envelope, generator advisory, Training Control reminder, Tarsis acknowledgments, and governor-clear messages have duplicate-suppression breadcrumbs.
 - Launch-envelope confirmation cannot restart the advisory timer after the advisory has already been sent.
@@ -236,7 +246,7 @@ Only live Cosmos smoke can prove:
 - Mission launch remains runtime-clean.
 - Player consoles and Helm control still work.
 - Artemis starts mechanically held at Kestrel Yards.
-- Kestrel yard-lock startup overlay appears.
+- Kestrel yard-lock guarded text packet appears.
 - Whether true docking lines, docking animation, or docked UI state appear.
 - Fresh load does not crash in `docking_dock_with_friendly_station`.
 - Helm cannot move Artemis away from Kestrel before Comms requests departure clearance.
@@ -373,24 +383,28 @@ Act I message ordering checklist:
 
 1. Clear `tests/live_startup_trace.txt`.
 2. Launch Khovan Reach.
-3. Confirm Dillon opening briefing appears visibly, or logs the safe startup fallback and Comms skip breadcrumbs if startup Comms echo remains unsafe.
-4. Confirm Kestrel yard-lock message appears after Dillon.
-5. Select Kestrel departure clearance.
-6. Confirm departure response appears once.
-7. Select launch-envelope confirmation.
-8. Wait 10 seconds.
-9. Confirm generator advisory appears once.
-10. Confirm Training Control speed-power reminder follows.
-11. Select Tarsis.
-12. Confirm Tarsis options are visible and story-guided.
-13. Click Hail; confirm `[KHOVAN ACT1 COMMS TARSIS HAIL]` and `[KHOVAN ACT1 MSG TARSIS 001]`.
-14. Click Homing Priority; confirm `[KHOVAN ACT1 COMMS TARSIS HOMING]` and `[KHOVAN ACT1 MSG TARSIS 002]`.
-15. Click Generator Support; confirm `[KHOVAN ACT1 COMMS TARSIS GENERATOR]` and `[KHOVAN ACT1 MSG TARSIS 003]`.
-16. Try docking before clearance; confirm clearance-denied message and `[KHOVAN ACT1 DOCK BLOCKED]`.
-17. Click Docking Clearance; confirm `[KHOVAN ACT1 COMMS TARSIS CLEARANCE]` and `[KHOVAN ACT1 MSG TARSIS 004]`.
-18. Dock with Tarsis; confirm docking works.
-19. Use Confirm Docking/Resupply if required; confirm `[KHOVAN ACT1 COMMS TARSIS RESUPPLY]` and `[KHOVAN ACT1 MSG TARSIS 005]`.
-20. Confirm no unexpected duplicate story messages.
+3. Confirm no runtime crash for at least 30 seconds.
+4. Confirm no persistent black box, blank portrait, empty info panel, or player-facing debug/admin UI appears on main viewer or player clients.
+5. Confirm Dillon opening briefing appears through the guarded text path, or logs `[KHOVAN DILLON SAFE]` if startup Comms echo is unavailable.
+6. Confirm trace includes `[KHOVAN DILLON 001]`, `[KHOVAN DILLON 002]`, and either `[KHOVAN DILLON 003]` or `[KHOVAN DILLON SAFE]`.
+7. Confirm trace includes `[KHOVAN ACT1 UI] black-box overlay source disabled or replaced`, `[KHOVAN ACT1 UI] lifeform overlay deferred`, and `[KHOVAN ACT1 UI] safe text message path used` or the safe unavailable breadcrumb.
+8. Confirm Kestrel yard-lock message appears after Dillon.
+9. Select Kestrel departure clearance.
+10. Confirm departure response appears once.
+11. Select launch-envelope confirmation.
+12. Wait 10 seconds.
+13. Confirm generator advisory appears once.
+14. Confirm Training Control speed-power reminder follows.
+15. Select Tarsis.
+16. Confirm Tarsis options are visible and story-guided.
+17. Click Hail; confirm `[KHOVAN ACT1 COMMS TARSIS HAIL]` and `[KHOVAN ACT1 MSG TARSIS 001]`.
+18. Click Homing Priority; confirm `[KHOVAN ACT1 COMMS TARSIS HOMING]` and `[KHOVAN ACT1 MSG TARSIS 002]`.
+19. Click Generator Support; confirm `[KHOVAN ACT1 COMMS TARSIS GENERATOR]` and `[KHOVAN ACT1 MSG TARSIS 003]`.
+20. Try docking before clearance; confirm clearance-denied message and `[KHOVAN ACT1 DOCK BLOCKED]`.
+21. Click Docking Clearance; confirm `[KHOVAN ACT1 COMMS TARSIS CLEARANCE]` and `[KHOVAN ACT1 MSG TARSIS 004]`.
+22. Dock with Tarsis; confirm docking works.
+23. Use Confirm Docking/Resupply if required; confirm `[KHOVAN ACT1 COMMS TARSIS RESUPPLY]` and `[KHOVAN ACT1 MSG TARSIS 005]`.
+24. Confirm no unexpected duplicate story messages.
 
 ## Expected Observation
 
@@ -399,10 +413,11 @@ Act I message ordering checklist:
 - No `'>=' not supported between instances of 'NoneType' and 'int'` crash from `docking_dock_with_friendly_station`.
 - Playable bootstrap still works.
 - Generator governor initializes active.
-- Dillon opening briefing appears visibly before Kestrel yard-lock messaging, or trace logs `[KHOVAN ACT1 MSG SAFE]` plus `[KHOVAN ACT1 MSG DILLON 001] Dillon opening briefing sent` as the safe startup fallback.
-- Startup/scheduled packets do not crash in `comms_receive`; startup Comms-log echo is not claimed unless a valid sender/context is later proven live.
+- Dillon opening briefing appears through the guarded text/Comms path before Kestrel yard-lock messaging, or trace logs `[KHOVAN DILLON SAFE]` plus `[KHOVAN ACT1 MSG DILLON 001] Dillon opening briefing sent` as the safe startup fallback.
+- Startup/scheduled packets do not crash in `comms_receive`; startup Comms-log echo is claimed only when the guarded sender/player context is valid.
+- No persistent black box, blank portrait, empty info panel, or player-facing debug/admin UI remains from Dillon/Kestrel startup messaging.
 - `tests/live_startup_trace.txt` includes `[KHOVAN ACT1 DOCK 001K]`, `[KHOVAN ACT1 VISUAL 001]`, `[KHOVAN ACT1 VISUAL 002]`, `[KHOVAN ACT1 HOLD 001]`, and `[KHOVAN ACT1 HOLD 002]` on fresh load.
-- Kestrel Yard Control overlay says Artemis is held in yard-lock pending departure clearance.
+- Kestrel Yard Control guarded text packet says Artemis is held in yard-lock pending departure clearance.
 - If docking lines / animation / docked UI state are absent, the result is fallback-only, not true docking visuals.
 - Before Kestrel departure clearance, Helm input does not let Artemis leave Kestrel.
 - Selecting `Khovan: Request Departure Clearance` produces `[KHOVAN ACT1 HOLD 003]` in the trace.
@@ -436,7 +451,8 @@ Act I message ordering checklist:
 ## Failure/Ambiguous Observation
 
 - Kestrel remains unknown or blank before any Science scan.
-- Dillon opening briefing is absent, has neither visible story-dialog output nor `[KHOVAN ACT1 MSG SAFE]` fallback breadcrumbs, or appears after Kestrel yard-lock messaging.
+- Dillon opening briefing is absent, has neither guarded visible text output nor `[KHOVAN DILLON SAFE]` fallback breadcrumbs, or appears after Kestrel yard-lock messaging.
+- A persistent black box, blank portrait, empty info panel, or player-facing debug/admin UI appears after startup messaging.
 - Fresh load crashes in `comms_receive` with `error: 'name'` from a startup or scheduled packet.
 - Artemis starts free, undocked, or able to move away before Kestrel departure clearance.
 - The runtime crashes in `docking_dock_with_friendly_station` with the `NoneType`/`int` comparison.
@@ -485,7 +501,8 @@ Act I message ordering checklist:
 - Automatic launch-envelope detection.
 - Automatic Tarsis docking/resupply detection.
 - Whether Cosmos hides the Tarsis dock button before clearance or leaves it visible while the deny helper rejects docking.
-- Live lifeform/Comms UI ordering for Act I text packets; static tests only prove source guards and trigger wiring.
+- Live guarded text/Comms UI ordering for Act I text packets; static tests only prove source guards and trigger wiring.
+- True lifeform-style Dillon overlay without a black box; this remains deferred polish until live smoke proves a safe API/path.
 - True Kestrel docking lines, docking animation, or docked UI state at startup.
 - Actual generator-output performance reduction.
 - Actual torpedo inventory application; torpedo/ordnance crash remains out of scope.

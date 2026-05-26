@@ -33,9 +33,20 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
 
         playable_index = main.index("await task_schedule(khovan_reach_initialize_playable_bootstrap)")
         act1_index = main.index("await task_schedule(khovan_act1_initialize_generator_tarsis_gate)")
-        dillon_index = main.index("await task_schedule(khovan_reach_stub_dillon_clip_1)")
-        self.assertLess(playable_index, dillon_index)
-        self.assertLess(dillon_index, act1_index)
+        self.assertLess(playable_index, act1_index)
+        self.assertNotIn("await task_schedule(khovan_reach_stub_dillon_clip_1)", main)
+
+        act1 = read(ACT1_PATH)
+        setup_body = label_body(act1, "khovan_act1_setup_kestrel_and_tarsis_contacts")
+        self.assertIn("await task_schedule(khovan_reach_stub_dillon_clip_1)", setup_body)
+        self.assertLess(
+            setup_body.index("[KHOVAN ACT1 HOLD 002] Artemis mechanical hold fallback active at Kestrel pending departure clearance"),
+            setup_body.index("await task_schedule(khovan_reach_stub_dillon_clip_1)"),
+        )
+        self.assertLess(
+            setup_body.index("await task_schedule(khovan_reach_stub_dillon_clip_1)"),
+            setup_body.index("await task_schedule(khovan_act1_show_kestrel_yard_lock_visual_fallback)"),
+        )
 
     def test_act1_required_state_defaults_and_api_uncertainty_markers_exist(self) -> None:
         act1 = read(ACT1_PATH)
@@ -43,6 +54,7 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             "shared act1_generator_tarsis_gate_initialized = False",
             'shared act1_launch_detection_mode = "temporary_comms_confirmation"',
             'shared act1_docking_detection_mode = "temporary_comms_confirmation"',
+            'shared act1_text_delivery_mode = "guarded_comms_text_no_lifeform_overlay"',
             'shared act1_comms_archive_status = "trace_and_action_log_stub"',
             "shared kestrel_departure_clearance_granted = False",
             'shared kestrel_yard_lock_visual_mode = "mechanical_yard_lock_overlay_fallback"',
@@ -432,6 +444,7 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             "await task_schedule(khovan_reach_send_safe_startup_message",
             '"startup_sender": "Kestrel Yard Control"',
             '"startup_text": kestrel_yard_lock_visual_text',
+            '"startup_sender_id": kestrel_yards_id',
             "[KHOVAN ACT1 MSG KESTREL 001] Kestrel yard-lock message sent",
         ]:
             self.assertIn(phrase, visual_body)
@@ -526,8 +539,9 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             "await task_schedule(khovan_reach_send_safe_startup_message",
             '"startup_sender": "Kestrel Yard Control"',
             '"startup_text": kestrel_generator_advisory_text',
+            '"startup_sender_id": kestrel_yards_id',
             "[KHOVAN ACT1 MSG KESTREL 004] generator advisory packet sent",
-            "archive represented by trace/action log stub",
+            "delivered by guarded text packet; archive represented by Comms response/trace/action log",
             "await task_schedule(khovan_act1_send_training_speed_power_reminder)",
         ]:
             self.assertIn(phrase, body)
@@ -543,6 +557,7 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             "await task_schedule(khovan_reach_send_safe_startup_message",
             '"startup_sender": "Training Control"',
             '"startup_text": training_speed_power_reminder_text',
+            '"startup_sender_id": kestrel_yards_id',
             "[KHOVAN ACT1 MSG TRAINING 001] Training speed-power reminder sent",
         ]:
             self.assertIn(phrase, training_body)
@@ -614,8 +629,9 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
         docking_body = label_body(act1, "khovan_tarsis_request_docking_clearance")
         status_body = label_body(act1, "khovan_tarsis_report_gate_status")
         clear_body = label_body(act1, "khovan_tarsis_confirm_docking_and_resupply")
+        self.assertNotIn("sbs.send_story_dialog", act1)
         self.assertIn("[KHOVAN ACT1 COMMS TARSIS HAIL] Tarsis hail selected", hail_body)
-        self.assertIn('sbs.send_story_dialog(0, "Tarsis Station", tarsis_hail_text', hail_body)
+        self.assertNotIn("sbs.send_story_dialog", hail_body)
         self.assertIn("comms_receive(tarsis_hail_text, title=\"Tarsis Station\", title_color=\"green\")", hail_body)
         self.assertIn("[KHOVAN ACT1 MSG TARSIS 001] hail response sent", hail_body)
         self.assertIn("[KHOVAN ACT1 COMMS 008A] Tarsis homing-priority option selected", homing_body)
@@ -624,7 +640,8 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
         self.assertIn("tarsis_homing_priority_requested = True", homing_body)
         self.assertIn("[KHOVAN ACT1 COMMS TARSIS HOMING] homing priority requested", homing_body)
         self.assertIn("tarsis_homing_priority_response_sent = True", homing_body)
-        self.assertIn('sbs.send_story_dialog(0, "Tarsis Control", tarsis_homing_priority_text', homing_body)
+        self.assertNotIn("sbs.send_story_dialog", homing_body)
+        self.assertIn("comms_receive(tarsis_homing_priority_text, title=\"Tarsis Production Control\", title_color=\"green\")", homing_body)
         self.assertIn("[KHOVAN ACT1 MSG TARSIS 002] homing priority response sent", homing_body)
         self.assertIn("[KHOVAN ACT1 COMMS 008F] Tarsis homing-priority option response sent", homing_body)
         self.assertIn("[KHOVAN ACT1 COMMS 008B] Tarsis generator-acceptance option selected", generator_body)
@@ -633,7 +650,8 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
         self.assertIn("tarsis_generator_support_requested = True", generator_body)
         self.assertIn("[KHOVAN ACT1 COMMS TARSIS GENERATOR] generator support requested", generator_body)
         self.assertIn("tarsis_generator_support_response_sent = True", generator_body)
-        self.assertIn('sbs.send_story_dialog(0, "Tarsis Generator Acceptance", tarsis_generator_support_text', generator_body)
+        self.assertNotIn("sbs.send_story_dialog", generator_body)
+        self.assertIn("comms_receive(tarsis_generator_support_text, title=\"Tarsis Generator Acceptance\", title_color=\"green\")", generator_body)
         self.assertIn("[KHOVAN ACT1 MSG TARSIS 003] generator support response sent", generator_body)
         self.assertIn("[KHOVAN ACT1 COMMS 008G] Tarsis generator-acceptance option response sent", generator_body)
         self.assertIn("[KHOVAN ACT1 COMMS 008C] Tarsis docking-clearance option selected", docking_body)
@@ -646,7 +664,7 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
         self.assertIn("[KHOVAN ACT1 COMMS TARSIS CLEARANCE] docking clearance requested/granted", docking_body)
         self.assertIn("tarsis_docking_clearance_response_sent = True", docking_body)
         self.assertIn("await task_schedule(khovan_tarsis_enable_docking_after_clearance)", docking_body)
-        self.assertIn('sbs.send_story_dialog(0, "Tarsis Docking Control", tarsis_docking_clearance_text', docking_body)
+        self.assertNotIn("sbs.send_story_dialog", docking_body)
         self.assertIn("comms_receive(tarsis_docking_clearance_text, title=\"Tarsis Docking Control\", title_color=\"green\")", docking_body)
         self.assertIn("[KHOVAN ACT1 MSG TARSIS 004] docking clearance response sent", docking_body)
         self.assertIn("[KHOVAN ACT1 COMMS 008I] Tarsis docking-clearance option response sent", docking_body)
@@ -859,7 +877,10 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             "duplicate-suppression",
             "act i message ordering checklist",
             "training control speed-power reminder",
-            "live lifeform/comms ui ordering",
+            "dillon text stand-in / black-box ui regression",
+            "black-box overlay source disabled or replaced",
+            "lifeform overlay deferred",
+            "live guarded text/comms ui ordering",
             "current live regression evidence",
             "msg tarsis 001",
             "msg tarsis 006",

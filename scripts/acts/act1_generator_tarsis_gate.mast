@@ -5,7 +5,7 @@ shared act1_generator_tarsis_gate_initialized = False
 shared act1_generator_tarsis_gate_status = "not_initialized"
 shared act1_launch_detection_mode = "temporary_comms_confirmation"
 shared act1_docking_detection_mode = "temporary_comms_confirmation"
-shared act1_text_delivery_mode = "story_dialog_and_trace"
+shared act1_text_delivery_mode = "guarded_comms_text_no_lifeform_overlay"
 shared act1_comms_archive_status = "trace_and_action_log_stub"
 shared act1_last_progression_summary = "Act I generator/Tarsis gate not initialized."
 
@@ -259,6 +259,7 @@ shared tarsis_resupply_text = "Tarsis Station confirms resupply and generator ha
             kestrel_departure_hold_status = "active"
             kestrel_departure_hold_release_status = "waiting_for_clearance"
             script.write_khovan_startup_trace("[KHOVAN ACT1 HOLD 002] Artemis mechanical hold fallback active at Kestrel pending departure clearance")
+            await task_schedule(khovan_reach_stub_dillon_clip_1)
             await task_schedule(khovan_act1_show_kestrel_yard_lock_visual_fallback)
             task_schedule(khovan_act1_hold_artemis_at_kestrel_until_clearance)
         else:
@@ -304,7 +305,7 @@ distance: 600
     kestrel_yard_lock_message_sent = True
     kestrel_yard_lock_visual_status = "fallback_active_mechanical_yard_lock_overlay"
     script.write_khovan_startup_trace("[KHOVAN ACT1 VISUAL 002] Kestrel mechanical yard-lock visual fallback active")
-    await task_schedule(khovan_reach_send_safe_startup_message, {"startup_sender": "Kestrel Yard Control", "startup_text": kestrel_yard_lock_visual_text, "startup_color": "#464", "startup_breadcrumb": "[KHOVAN ACT1 MSG KESTREL 001] Kestrel yard-lock message sent"})
+    await task_schedule(khovan_reach_send_safe_startup_message, {"startup_sender": "Kestrel Yard Control", "startup_text": kestrel_yard_lock_visual_text, "startup_title_color": "green", "startup_sender_id": kestrel_yards_id, "startup_player_id": artemis_id, "startup_breadcrumb": "[KHOVAN ACT1 MSG KESTREL 001] Kestrel yard-lock message sent"})
     ->END
 
 === khovan_act1_hold_artemis_at_kestrel_until_clearance ===
@@ -444,8 +445,8 @@ distance: 600
     act1_comms_archive_status = "trace_and_action_log_stub; Comms archive UI not separately proven"
     current_beat = "kestrel_generator_advisory_delivered"
     script.write_khovan_startup_trace("[KHOVAN ACT1 006] Kestrel advisory delivered after 10-second timer")
-    await task_schedule(khovan_reach_send_safe_startup_message, {"startup_sender": "Kestrel Yard Control", "startup_text": kestrel_generator_advisory_text, "startup_color": "#464", "startup_breadcrumb": "[KHOVAN ACT1 MSG KESTREL 004] generator advisory packet sent"})
-    await task_schedule(khovan_act1_record_progression, {"action": "kestrel_generator_advisory", "detail": "delivered by story dialog; archive represented by trace/action log stub"})
+    await task_schedule(khovan_reach_send_safe_startup_message, {"startup_sender": "Kestrel Yard Control", "startup_text": kestrel_generator_advisory_text, "startup_title_color": "green", "startup_sender_id": kestrel_yards_id, "startup_player_id": artemis_id, "startup_breadcrumb": "[KHOVAN ACT1 MSG KESTREL 004] generator advisory packet sent"})
+    await task_schedule(khovan_act1_record_progression, {"action": "kestrel_generator_advisory", "detail": "delivered by guarded text packet; archive represented by Comms response/trace/action log"})
     await task_schedule(khovan_act1_send_training_speed_power_reminder)
     log("Khovan Act I Kestrel generator advisory delivered after launch-envelope timer.")
     ->END
@@ -459,7 +460,7 @@ distance: 600
 
     training_speed_power_reminder_sent = True
     script.write_khovan_startup_trace("[KHOVAN ACT1 MSG ORDER] Training Control speed-power reminder sent after advisory")
-    await task_schedule(khovan_reach_send_safe_startup_message, {"startup_sender": "Training Control", "startup_text": training_speed_power_reminder_text, "startup_color": "#4A7", "startup_breadcrumb": "[KHOVAN ACT1 MSG TRAINING 001] Training speed-power reminder sent"})
+    await task_schedule(khovan_reach_send_safe_startup_message, {"startup_sender": "Training Control", "startup_text": training_speed_power_reminder_text, "startup_title_color": "cyan", "startup_sender_id": kestrel_yards_id, "startup_player_id": artemis_id, "startup_breadcrumb": "[KHOVAN ACT1 MSG TRAINING 001] Training speed-power reminder sent"})
     ->END
 
 === khovan_kestrel_resend_generator_advisory ===
@@ -482,7 +483,6 @@ distance: 600
     current_beat = "tarsis_gate_active"
     await task_schedule(khovan_tarsis_update_gate_status)
     script.write_khovan_startup_trace("[KHOVAN ACT1 007] Tarsis hailed; gate active")
-    sbs.send_story_dialog(0, "Tarsis Station", tarsis_hail_text, "", "#4A7")
     comms_receive(tarsis_hail_text, title="Tarsis Station", title_color="green")
     script.write_khovan_startup_trace("[KHOVAN ACT1 MSG TARSIS 001] hail response sent")
     script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS 008H] Tarsis Hail option response sent")
@@ -500,7 +500,6 @@ distance: 600
     await task_schedule(khovan_tarsis_update_gate_status)
     await task_schedule(khovan_act1_record_progression, {"action": "tarsis_homing_priority", "detail": "homing torpedo production priority requested"})
     tarsis_homing_priority_response_sent = True
-    sbs.send_story_dialog(0, "Tarsis Control", tarsis_homing_priority_text, "", "#4A7")
     comms_receive(tarsis_homing_priority_text, title="Tarsis Production Control", title_color="green")
     script.write_khovan_startup_trace("[KHOVAN ACT1 MSG TARSIS 002] homing priority response sent")
     script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS 008F] Tarsis homing-priority option response sent")
@@ -518,7 +517,6 @@ distance: 600
     await task_schedule(khovan_tarsis_update_gate_status)
     await task_schedule(khovan_act1_record_progression, {"action": "tarsis_generator_support", "detail": "generator acceptance/support requested"})
     tarsis_generator_support_response_sent = True
-    sbs.send_story_dialog(0, "Tarsis Generator Acceptance", tarsis_generator_support_text, "", "#4A7")
     comms_receive(tarsis_generator_support_text, title="Tarsis Generator Acceptance", title_color="green")
     script.write_khovan_startup_trace("[KHOVAN ACT1 MSG TARSIS 003] generator support response sent")
     script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS 008G] Tarsis generator-acceptance option response sent")
@@ -547,7 +545,6 @@ distance: 600
     await task_schedule(khovan_tarsis_enable_docking_after_clearance)
     await task_schedule(khovan_act1_record_progression, {"action": "tarsis_docking_clearance", "detail": "docking clearance requested/granted after required prior requests"})
     tarsis_docking_clearance_response_sent = True
-    sbs.send_story_dialog(0, "Tarsis Docking Control", tarsis_docking_clearance_text, "", "#4A7")
     comms_receive(tarsis_docking_clearance_text, title="Tarsis Docking Control", title_color="green")
     script.write_khovan_startup_trace("[KHOVAN ACT1 MSG TARSIS 004] docking clearance response sent")
     script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS 008I] Tarsis docking-clearance option response sent")
@@ -641,7 +638,6 @@ distance: 600
     last_checkpoint = "tarsis_resupply_governor_cleared"
     tarsis_governor_clear_response_sent = True
     script.write_khovan_startup_trace("[KHOVAN ACT1 012] Tarsis resupply confirmed; generator governor cleared")
-    sbs.send_story_dialog(0, "Tarsis Station", "Yard-lock synchronization complete. Kestrel generator governor cleared. Artemis generator response is restored for departure.", "", "#464")
     await task_schedule(khovan_act1_record_progression, {"action": "tarsis_resupply_governor_cleared", "detail": "all three requests complete; temporary Comms confirmation cleared governor"})
     comms_receive(tarsis_resupply_text, title="Tarsis Station", title_color="green")
     script.write_khovan_startup_trace("[KHOVAN ACT1 MSG TARSIS 005] docking/resupply response sent")

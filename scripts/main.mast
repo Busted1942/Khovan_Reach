@@ -43,7 +43,6 @@ Properties:
     script.write_khovan_startup_trace("[KHOVAN BOOT 003B] jump registry initialized")
     script.write_khovan_startup_trace("[KHOVAN BOOT 004] before playable_bootstrap")
     await task_schedule(khovan_reach_initialize_playable_bootstrap)
-    await task_schedule(khovan_reach_stub_dillon_clip_1)
     await task_schedule(khovan_act1_initialize_generator_tarsis_gate)
     script.write_khovan_startup_trace("[KHOVAN BOOT 004A] Act I generator/Tarsis gate initialized")
     await task_schedule(khovan_comms_proof_station_initialize)
