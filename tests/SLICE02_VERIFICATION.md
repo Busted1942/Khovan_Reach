@@ -24,6 +24,44 @@ Purpose: Verify the Scenario Control Panel foundation without expanding into fut
 - No drones, DAMCON, pirates, debrief, or current-objective display.
 - No custom Khovan client selector.
 
+## Evidence Boundary
+
+Quick/static checks prove:
+
+- expected Slice 02 source files exist
+- the Scenario Control Panel module is imported and initialized after bootstrap state defaults
+- Test Mode and Live GM Recovery Mode are separate flags and default false
+- overview source includes mission phase, scene, beat, checkpoint, held status, mode flags, and action log
+- Hold, Release, and Refresh buttons are wired to named handlers
+- hold/release handlers update `transition_held`, update action-log state, and write smoke-trace lines
+- active runtime files do not reintroduce the custom Khovan client selector
+- active runtime files do not route directly into partial Legendary client lifecycle code
+- static GM-only guard shape uses the reference-backed `has_roles(COMMS_ORIGIN_ID, "gamemaster")` pattern
+
+Only live Cosmos smoke can prove:
+
+- the mission actually launches in Cosmos with the current package
+- the normal Cosmos/Legendary selector appears to clients
+- the Game Master option appears in the live selector
+- the GM can open the Khovan Scenario Control route
+- Hold, Release, and Refresh produce visible GM-side behavior in the live UI
+- player clients cannot see or access admin/debug controls through the live UI
+- Helm can still enter console and move Artemis after Slice 02 wiring
+- Change Console works, if it is explicitly exercised
+
+## Accepted Live-Smoke Result Already Observed
+
+Matt has already observed the Slice 01B/Slice 02 baseline through live Cosmos smoke:
+
+- no `PLAYER_COUNT` runtime error
+- no `TAB_CONSOLES` runtime error
+- mission launches
+- normal Cosmos/Legendary selector appears
+- Game Master option appears
+- Helm moves Artemis
+- Dillon Clip 1 stub appears
+- custom Khovan `Select a bridge console for Artemis` selector is gone
+
 ## What To Run Or Do
 
 Static/local:
@@ -78,6 +116,7 @@ Live Cosmos smoke:
 - Static tests prove source structure only. They do not prove live Comms route visibility, GM role behavior, or live hold/release rendering.
 - Static tests do not prove player clients are unable to reach the route through every possible Cosmos UI path.
 - Static tests do not prove future story-transition systems will honor `transition_held`; those systems do not exist in Slice 02.
+- Change Console remains unproven unless Matt explicitly exercises it during live smoke.
 - Weapons torpedo-load behavior remains a known out-of-scope issue.
 
 ## Next Action By Result
