@@ -21,6 +21,9 @@ shared scenario_control_panel_ui_api_status = "gm_comms_route_reference_backed"
     + "Hold Scene Transition" khovan_scenario_control_panel_hold_transition
     + "Release Scene Transition" khovan_scenario_control_panel_release_transition
     + "Refresh Overview" khovan_scenario_control_panel_refresh_overview
+    + "Enable Test Mode" khovan_scenario_control_panel_enable_test_mode if not test_mode_enabled
+    + "Disable Test Mode" khovan_scenario_control_panel_disable_test_mode if test_mode_enabled
+    + "Test Mode Story Jumps" //comms/gamemaster/khovan_story_jump_presets if test_mode_enabled
 
 === khovan_scenario_control_panel_initialize ===
     scenario_control_panel_initialized = True
@@ -66,6 +69,31 @@ shared scenario_control_panel_ui_api_status = "gm_comms_route_reference_backed"
     scenario_control_panel_action_log = f"{scenario_control_panel_action_log} | SCP REFRESH: transition_held={transition_held} scene={current_scene} beat={current_beat}"
     script.write_khovan_startup_trace("[KHOVAN SCP 004] refresh overview requested")
     log("Khovan Scenario Control: overview refresh requested.")
+    await task_schedule(khovan_scenario_control_panel_update_overview)
+    comms_receive(scenario_control_panel_overview_text, title="Khovan Scenario Control", title_color="cyan")
+    comms_navigate("//comms/gamemaster/khovan_scenario_control_panel")
+    ->END
+
+=== khovan_scenario_control_panel_enable_test_mode ===
+    test_mode_enabled = True
+    live_recovery_mode_enabled = False
+    story_jump_mode_access = "test_mode_only"
+    scenario_control_panel_last_action = "enable_test_mode"
+    scenario_control_panel_action_log = f"{scenario_control_panel_action_log} | SCP MODE: test_mode_enabled=True live_recovery_mode_enabled=False"
+    script.write_khovan_startup_trace("[KHOVAN SCP 005] test mode enabled")
+    log("Khovan Scenario Control: Test Mode enabled.")
+    await task_schedule(khovan_scenario_control_panel_update_overview)
+    comms_receive(scenario_control_panel_overview_text, title="Khovan Scenario Control", title_color="cyan")
+    comms_navigate("//comms/gamemaster/khovan_scenario_control_panel")
+    ->END
+
+=== khovan_scenario_control_panel_disable_test_mode ===
+    test_mode_enabled = False
+    story_jump_mode_access = "test_mode_disabled"
+    scenario_control_panel_last_action = "disable_test_mode"
+    scenario_control_panel_action_log = f"{scenario_control_panel_action_log} | SCP MODE: test_mode_enabled=False"
+    script.write_khovan_startup_trace("[KHOVAN SCP 006] test mode disabled")
+    log("Khovan Scenario Control: Test Mode disabled.")
     await task_schedule(khovan_scenario_control_panel_update_overview)
     comms_receive(scenario_control_panel_overview_text, title="Khovan Scenario Control", title_color="cyan")
     comms_navigate("//comms/gamemaster/khovan_scenario_control_panel")

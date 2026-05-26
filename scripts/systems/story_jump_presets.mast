@@ -1,0 +1,200 @@
+# Khovan Reach Slice 03 Story-jump preset framework.
+# GM-only Test Mode presets; gameplay systems for later slices are not spawned here.
+
+shared story_jump_registry_initialized = False
+shared story_jump_registry_ids = "mission_start|drill_2_guided_contact|anderson_orders|cascade_decision|pirate_arrival_cover_intact|debrief"
+shared story_jump_preset_count = 6
+shared story_jump_metadata_required_fields = "jump_id|display_name|target_scene|mode_access|mission_phase|required_prior_flags|seeded_state_summary|entities|timers|clips|gm_display|expected_next_event|validation_checks|recovery_notes|skipped_observations"
+shared story_jump_last_id = "none"
+shared story_jump_last_display_name = "none"
+shared story_jump_last_target_scene = 0
+shared story_jump_last_validation_result = "not_run"
+shared story_jump_last_summary = "No story jump has been executed."
+shared story_jump_generation_id = 0
+shared story_jump_mode_access = "test_mode_only"
+shared story_jump_expected_next_event = "none"
+shared story_jump_framework_warning = "none"
+shared story_jump_skipped_observations = "none"
+shared story_jump_required_prior_flags = "none"
+shared story_jump_seeded_state_summary = "none"
+shared story_jump_entities = "none"
+shared story_jump_timers = "none"
+shared story_jump_clips = "none"
+shared story_jump_gm_display = "none"
+shared story_jump_validation_checks = "none"
+shared story_jump_recovery_notes = "none"
+
+shared story_jump_preset_mission_start_metadata = "jump_id=mission_start; display_name=Mission Start; target_scene=1; mode_access=test_mode; mission_phase=act_1; required_prior_flags=none; seeded_state_summary=Scene 1 bootstrap state only; entities=reference Artemis player ship only; timers=none; clips=Dillon Clip 1 stub; gm_display=Mission start preset ready; expected_next_event=normal mission start / departure readiness; validation_checks=mission_phase,current_scene,current_beat,last_checkpoint; recovery_notes=use for fresh start validation; skipped_observations=none"
+shared story_jump_preset_drill_2_guided_contact_metadata = "jump_id=drill_2_guided_contact; display_name=Drill 2 Guided Contact; target_scene=3; mode_access=test_mode; mission_phase=act_1; required_prior_flags=framework_only; seeded_state_summary=Scene marker and GM summary only; entities=framework preset only; timers=none; clips=none; gm_display=Drill 2 framework preset only; expected_next_event=future guided contact setup; validation_checks=framework warning present; recovery_notes=gameplay systems not implemented yet; skipped_observations=Drill 1 and earlier qualification observations not observed"
+shared story_jump_preset_anderson_orders_metadata = "jump_id=anderson_orders; display_name=Anderson Orders; target_scene=5; mode_access=test_mode; mission_phase=act_2; required_prior_flags=framework_only; seeded_state_summary=Act II order handoff marker only; entities=framework preset only; timers=none; clips=none; gm_display=Anderson order framework preset only; expected_next_event=future Anderson diversion orders; validation_checks=framework warning present; recovery_notes=Act II systems not implemented yet; skipped_observations=Act I qualification observations not observed"
+shared story_jump_preset_cascade_decision_metadata = "jump_id=cascade_decision; display_name=Cascade Decision; target_scene=9; mode_access=test_mode; mission_phase=act_3; required_prior_flags=framework_only; seeded_state_summary=Future cascade decision marker only; entities=framework preset only; timers=none; clips=none; gm_display=Cascade decision framework preset only; expected_next_event=future cascade decision state; validation_checks=framework warning present; recovery_notes=DAMCON/cascade systems not implemented yet; skipped_observations=Act I and Act II observations not observed"
+shared story_jump_preset_pirate_arrival_cover_intact_metadata = "jump_id=pirate_arrival_cover_intact; display_name=Pirate Arrival Cover Intact; target_scene=12; mode_access=test_mode; mission_phase=act_3; required_prior_flags=framework_only; seeded_state_summary=Future pirate-cover marker only; entities=framework preset only; timers=none; clips=none; gm_display=Pirate arrival framework preset only; expected_next_event=future pirate arrival with cover intact; validation_checks=framework warning present; recovery_notes=pirate gameplay not implemented yet; skipped_observations=prior investigation observations not observed"
+shared story_jump_preset_debrief_metadata = "jump_id=debrief; display_name=Debrief; target_scene=14; mode_access=test_mode; mission_phase=debrief; required_prior_flags=framework_only; seeded_state_summary=Future debrief marker only; entities=none; timers=none; clips=none; gm_display=Debrief framework preset only; expected_next_event=future GM debrief support; validation_checks=framework warning present; recovery_notes=debrief UI not implemented yet; skipped_observations=mission observations not observed"
+
+//comms/gamemaster/khovan_story_jump_presets if has_roles(COMMS_ORIGIN_ID, "gamemaster") and test_mode_enabled
+    + "Back" //comms/gamemaster/khovan_scenario_control_panel
+    + "Mission Start" khovan_story_jump_preset_mission_start
+    + "Drill 2 Guided Contact" khovan_story_jump_preset_drill_2_guided_contact
+    + "Anderson Orders" khovan_story_jump_preset_anderson_orders
+    + "Cascade Decision" khovan_story_jump_preset_cascade_decision
+    + "Pirate Arrival Cover Intact" khovan_story_jump_preset_pirate_arrival_cover_intact
+    + "Debrief" khovan_story_jump_preset_debrief
+
+=== khovan_story_jump_initialize_registry ===
+    story_jump_registry_initialized = True
+    story_jump_last_id = "none"
+    story_jump_last_display_name = "none"
+    story_jump_last_target_scene = 0
+    story_jump_last_validation_result = "not_run"
+    story_jump_last_summary = "Story jump registry initialized. Test Mode presets are GM-only."
+    story_jump_generation_id = 0
+    story_jump_mode_access = "test_mode_only"
+    story_jump_expected_next_event = "none"
+    story_jump_framework_warning = "none"
+    story_jump_skipped_observations = "none"
+    log("Khovan Slice 03 story jump preset registry initialized.")
+    ->END
+
+=== khovan_story_jump_preset_mission_start ===
+    await task_schedule(khovan_story_jump_execute_preset, {"jump_id": "mission_start"})
+    comms_receive(story_jump_last_summary, title="Khovan Story Jump", title_color="cyan")
+    comms_navigate("//comms/gamemaster/khovan_story_jump_presets")
+    ->END
+
+=== khovan_story_jump_preset_drill_2_guided_contact ===
+    await task_schedule(khovan_story_jump_execute_preset, {"jump_id": "drill_2_guided_contact"})
+    comms_receive(story_jump_last_summary, title="Khovan Story Jump", title_color="yellow")
+    comms_navigate("//comms/gamemaster/khovan_story_jump_presets")
+    ->END
+
+=== khovan_story_jump_preset_anderson_orders ===
+    await task_schedule(khovan_story_jump_execute_preset, {"jump_id": "anderson_orders"})
+    comms_receive(story_jump_last_summary, title="Khovan Story Jump", title_color="yellow")
+    comms_navigate("//comms/gamemaster/khovan_story_jump_presets")
+    ->END
+
+=== khovan_story_jump_preset_cascade_decision ===
+    await task_schedule(khovan_story_jump_execute_preset, {"jump_id": "cascade_decision"})
+    comms_receive(story_jump_last_summary, title="Khovan Story Jump", title_color="yellow")
+    comms_navigate("//comms/gamemaster/khovan_story_jump_presets")
+    ->END
+
+=== khovan_story_jump_preset_pirate_arrival_cover_intact ===
+    await task_schedule(khovan_story_jump_execute_preset, {"jump_id": "pirate_arrival_cover_intact"})
+    comms_receive(story_jump_last_summary, title="Khovan Story Jump", title_color="yellow")
+    comms_navigate("//comms/gamemaster/khovan_story_jump_presets")
+    ->END
+
+=== khovan_story_jump_preset_debrief ===
+    await task_schedule(khovan_story_jump_execute_preset, {"jump_id": "debrief"})
+    comms_receive(story_jump_last_summary, title="Khovan Story Jump", title_color="yellow")
+    comms_navigate("//comms/gamemaster/khovan_story_jump_presets")
+    ->END
+
+=== khovan_story_jump_execute_preset ===
+    default jump_id = "mission_start"
+    story_jump_generation_id = story_jump_generation_id + 1
+    transition_held = False
+    story_jump_last_id = jump_id
+    story_jump_mode_access = "test_mode_only"
+    story_jump_required_prior_flags = "none"
+    story_jump_entities = "framework preset only; gameplay systems not implemented yet."
+    story_jump_timers = "none"
+    story_jump_clips = "none"
+    story_jump_validation_checks = "mission_phase,current_scene,current_beat,last_checkpoint,story_jump_generation_id"
+    story_jump_recovery_notes = "Test Mode framework preset."
+    story_jump_framework_warning = "framework preset only; gameplay systems not implemented yet."
+    story_jump_skipped_observations = "not_observed"
+
+    if jump_id == "mission_start":
+        mission_phase = "act_1"
+        current_scene = 1
+        current_beat = "scene_1_bootstrap"
+        last_checkpoint = "mission_start"
+        story_jump_last_display_name = "Mission Start"
+        story_jump_last_target_scene = 1
+        story_jump_last_validation_result = "valid_framework_seed"
+        story_jump_expected_next_event = "normal mission start / departure readiness"
+        story_jump_seeded_state_summary = "Scene 1 bootstrap state restored; reference Artemis player ship remains owned by Slice 01B lifecycle."
+        story_jump_entities = "reference Artemis player ship only"
+        story_jump_clips = "Dillon Clip 1 stub available"
+        story_jump_gm_display = "Mission Start preset seeded."
+        story_jump_framework_warning = "none"
+        story_jump_skipped_observations = "none"
+    elif jump_id == "drill_2_guided_contact":
+        mission_phase = "act_1"
+        current_scene = 3
+        current_beat = "framework_drill_2_guided_contact"
+        last_checkpoint = "story_jump_drill_2_guided_contact"
+        story_jump_last_display_name = "Drill 2 Guided Contact"
+        story_jump_last_target_scene = 3
+        story_jump_last_validation_result = "framework_warning"
+        story_jump_expected_next_event = "future Drill 2 guided contact setup"
+        story_jump_seeded_state_summary = "Scene marker and GM summary only; no drone or drill gates spawned."
+        story_jump_gm_display = "Drill 2 framework preset only."
+        story_jump_skipped_observations = "Drill 1 and earlier qualification observations not observed."
+    elif jump_id == "anderson_orders":
+        mission_phase = "act_2"
+        current_scene = 5
+        current_beat = "framework_anderson_orders"
+        last_checkpoint = "story_jump_anderson_orders"
+        story_jump_last_display_name = "Anderson Orders"
+        story_jump_last_target_scene = 5
+        story_jump_last_validation_result = "framework_warning"
+        story_jump_expected_next_event = "future Anderson diversion orders"
+        story_jump_seeded_state_summary = "Act II order handoff marker only; no Act II flow started."
+        story_jump_gm_display = "Anderson Orders framework preset only."
+        story_jump_skipped_observations = "Act I qualification observations not observed."
+    elif jump_id == "cascade_decision":
+        mission_phase = "act_3"
+        current_scene = 9
+        current_beat = "framework_cascade_decision"
+        last_checkpoint = "story_jump_cascade_decision"
+        story_jump_last_display_name = "Cascade Decision"
+        story_jump_last_target_scene = 9
+        story_jump_last_validation_result = "framework_warning"
+        story_jump_expected_next_event = "future cascade decision state"
+        story_jump_seeded_state_summary = "Future cascade decision marker only; no DAMCON/cascade systems started."
+        story_jump_gm_display = "Cascade Decision framework preset only."
+        story_jump_skipped_observations = "Act I and Act II observations not observed."
+    elif jump_id == "pirate_arrival_cover_intact":
+        mission_phase = "act_3"
+        current_scene = 12
+        current_beat = "framework_pirate_arrival_cover_intact"
+        last_checkpoint = "story_jump_pirate_arrival_cover_intact"
+        story_jump_last_display_name = "Pirate Arrival Cover Intact"
+        story_jump_last_target_scene = 12
+        story_jump_last_validation_result = "framework_warning"
+        story_jump_expected_next_event = "future pirate arrival with cover intact"
+        story_jump_seeded_state_summary = "Future pirate-cover marker only; no pirate gameplay spawned."
+        story_jump_gm_display = "Pirate Arrival framework preset only."
+        story_jump_skipped_observations = "prior investigation observations not observed."
+    elif jump_id == "debrief":
+        mission_phase = "debrief"
+        current_scene = 14
+        current_beat = "framework_debrief"
+        last_checkpoint = "story_jump_debrief"
+        story_jump_last_display_name = "Debrief"
+        story_jump_last_target_scene = 14
+        story_jump_last_validation_result = "framework_warning"
+        story_jump_expected_next_event = "future GM debrief support"
+        story_jump_seeded_state_summary = "Future debrief marker only; no debrief UI started."
+        story_jump_gm_display = "Debrief framework preset only."
+        story_jump_entities = "none"
+        story_jump_skipped_observations = "mission observations not observed."
+    else:
+        story_jump_last_display_name = "Unknown Story Jump"
+        story_jump_last_target_scene = 0
+        story_jump_last_validation_result = "invalid_jump_id"
+        story_jump_expected_next_event = "none"
+        story_jump_seeded_state_summary = "No state seeded."
+        story_jump_gm_display = "Unknown story jump id."
+        story_jump_framework_warning = "invalid story jump id."
+
+    story_jump_last_summary = f"STORY JUMP SUMMARY\njump_id. {story_jump_last_id}\ndisplay_name. {story_jump_last_display_name}\ntarget_scene. {story_jump_last_target_scene}\nmode_access. {story_jump_mode_access}\nmission_phase. {mission_phase}\ncurrent_scene. {current_scene}\ncurrent_beat. {current_beat}\nlast_checkpoint. {last_checkpoint}\ngeneration_id. {story_jump_generation_id}\nvalidation. {story_jump_last_validation_result}\nseeded_state. {story_jump_seeded_state_summary}\nentities. {story_jump_entities}\ntimers. {story_jump_timers}\nclips. {story_jump_clips}\nexpected_next_event. {story_jump_expected_next_event}\nwarning. {story_jump_framework_warning}\nskipped_observations. {story_jump_skipped_observations}"
+    scenario_control_panel_last_action = f"story_jump:{story_jump_last_id}"
+    scenario_control_panel_action_log = f"{scenario_control_panel_action_log} | STORY JUMP {story_jump_last_id}: validation={story_jump_last_validation_result} generation={story_jump_generation_id}"
+    script.write_khovan_startup_trace(f"[KHOVAN JUMP {story_jump_generation_id}] {story_jump_last_id} validation={story_jump_last_validation_result}")
+    log(f"Khovan story jump preset executed: {story_jump_last_id} validation={story_jump_last_validation_result} generation={story_jump_generation_id}.")
+    await task_schedule(khovan_scenario_control_panel_update_overview)
+    ->END
