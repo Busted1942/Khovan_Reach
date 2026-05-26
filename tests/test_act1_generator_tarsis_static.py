@@ -7,6 +7,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 ACT1_PATH = "scripts/acts/act1_generator_tarsis_gate.mast"
+OBJECTIVE_PATH = "scripts/systems/current_objective_panel.mast"
 
 
 def read(path: str) -> str:
@@ -27,8 +28,10 @@ def label_body(text: str, label: str) -> str:
 class Act1GeneratorTarsisStaticTests(unittest.TestCase):
     def test_slice04_module_exists_and_is_wired_after_playable_bootstrap(self) -> None:
         self.assertTrue((ROOT / ACT1_PATH).is_file())
+        self.assertTrue((ROOT / OBJECTIVE_PATH).is_file())
         main = read("scripts/main.mast")
         self.assertIn(f"import {ACT1_PATH}", main)
+        self.assertIn(f"import {OBJECTIVE_PATH}", main)
         self.assertIn("await task_schedule(khovan_act1_initialize_generator_tarsis_gate)", main)
 
         playable_index = main.index("await task_schedule(khovan_reach_initialize_playable_bootstrap)")
@@ -39,8 +42,13 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
         act1 = read(ACT1_PATH)
         setup_body = label_body(act1, "khovan_act1_setup_kestrel_and_tarsis_contacts")
         self.assertIn("await task_schedule(khovan_reach_stub_dillon_clip_1)", setup_body)
+        self.assertIn("await task_schedule(khovan_current_objective_init)", setup_body)
         self.assertLess(
             setup_body.index("[KHOVAN ACT1 HOLD 002] Artemis mechanical hold fallback active at Kestrel pending departure clearance"),
+            setup_body.index("await task_schedule(khovan_current_objective_init)"),
+        )
+        self.assertLess(
+            setup_body.index("await task_schedule(khovan_current_objective_init)"),
             setup_body.index("await task_schedule(khovan_reach_stub_dillon_clip_1)"),
         )
         self.assertLess(
@@ -159,6 +167,59 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
         ]:
             self.assertIn(phrase, body)
         self.assertNotIn('set_data_set_value(artemis_id, "energy"', body)
+
+    def test_current_objective_panel_owns_text_waterfall_updates(self) -> None:
+        objective = read(OBJECTIVE_PATH)
+        for phrase in [
+            "shared current_objective_panel_initialized = False",
+            'shared current_objective_delivery_mode = "text_waterfall_comms_broadcast"',
+            'shared current_objective_api_status = "reference_backed_comms_broadcast_live_smoke_required"',
+            'shared current_objective_id = "none"',
+            'shared current_objective_title = "Current Objective"',
+            'shared current_objective_mode = "text_waterfall"',
+            "shared current_objective_visible = False",
+            "shared current_objective_run_id = 0",
+            "=== khovan_current_objective_init ===",
+            "=== khovan_set_current_objective ===",
+            "=== khovan_clear_current_objective ===",
+            "[KHOVAN OBJECTIVE 001] current objective initialized",
+            "[KHOVAN OBJECTIVE 002] objective updated: Kestrel departure clearance",
+            "Current Objective: {objective_body}",
+            "comms_broadcast(artemis_id, current_objective_last_message, objective_color)",
+            "[KHOVAN OBJECTIVE SAFE] text_waterfall update skipped: missing Artemis id",
+        ]:
+            self.assertIn(phrase, objective)
+
+        for forbidden in [
+            "@gui",
+            "//gui",
+            "button",
+            "scenario_control",
+            "sbs.send_story_dialog",
+            "gui_info_panel_send_message(",
+        ]:
+            self.assertNotIn(forbidden, objective.lower())
+
+    def test_current_objective_updates_are_wired_to_slice04_triggers(self) -> None:
+        act1 = read(ACT1_PATH)
+        setup_body = label_body(act1, "khovan_act1_setup_kestrel_and_tarsis_contacts")
+        departure_body = label_body(act1, "khovan_kestrel_request_departure_clearance")
+        launch_body = label_body(act1, "khovan_kestrel_report_launch_envelope_clear")
+        advisory_body = label_body(act1, "khovan_act1_deliver_kestrel_generator_advisory_after_delay")
+        clearance_body = label_body(act1, "khovan_tarsis_request_docking_clearance")
+        resupply_body = label_body(act1, "khovan_tarsis_confirm_docking_and_resupply")
+
+        expectations = [
+            (setup_body, "khovan_current_objective_init", "await task_schedule(khovan_current_objective_init)"),
+            (departure_body, "Helm clear the Kestrel launch envelope.", "[KHOVAN OBJECTIVE 003] objective updated: launch envelope"),
+            (launch_body, "Stand by for Kestrel generator advisory.", "[KHOVAN OBJECTIVE 004] objective updated: generator advisory"),
+            (advisory_body, "Proceed to Tarsis. Comms request homing priority, generator support, and docking clearance.", "[KHOVAN OBJECTIVE 005] objective updated: Tarsis requests"),
+            (clearance_body, "Dock with Tarsis and confirm resupply/governor handoff.", "[KHOVAN OBJECTIVE 006] objective updated: Tarsis docking/resupply"),
+            (resupply_body, "Await next shakedown instruction.", "[KHOVAN OBJECTIVE 007] objective updated: await next shakedown instruction"),
+        ]
+        for body, text, breadcrumb in expectations:
+            self.assertIn(text, body)
+            self.assertIn(breadcrumb, body)
 
     def test_kestrel_and_tarsis_use_reference_backed_standard_station_primitives(self) -> None:
         act1 = read(ACT1_PATH)
@@ -804,6 +865,7 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
                 read("story.mast"),
                 read("scripts/main.mast"),
                 read("scripts/systems/playable_bootstrap.mast"),
+                read(OBJECTIVE_PATH),
                 read("scripts/systems/scenario_control_panel.mast"),
                 read(ACT1_PATH),
             ]
@@ -818,7 +880,6 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             "@gui",
             "//gui",
             "arbitrary variable",
-            "current objective",
             "drone",
             "damcon",
             "pirate",
