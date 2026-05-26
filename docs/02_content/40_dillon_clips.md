@@ -27,15 +27,23 @@ This file keeps the 12 Dillon recorded clips as the canonical audio set. It adds
 
 Trigger: ten seconds after launch-envelope exit.
 
-> "Artemis, Kestrel Yard Control. Advisory packet follows. Your generator assembly is still under observation. We are working a regulator-output problem on our end and have placed a temporary governor on your generator output. You may see sluggish acceleration and reduced sustained-speed response until Tarsis accepts the generator handoff and clears the governor."
->
-> "We have issued two homing torpedoes as emergency conversion reserve. That should be sufficient to get you to Tarsis if you need to trade ordnance for power margin. Tarsis has been notified to prioritize homing torpedo production and generator acceptance."
+Slice 04 live-clarity wording:
+
+> "Kestrel Yard Control: advisory packet follows. Artemis is operating under a temporary generator governor. Expect reduced acceleration and slower sustained-speed response. Tarsis has the generator acceptance package and will clear the handoff after docking/resupply."
+
+Emergency reserve response:
+
+> "Kestrel Yard Control: emergency homing reserve approved. Loading two homing torpedoes now. These are reserve margin under the generator governor, not a full combat load. No nukes, EMPs, or mines are released before Tarsis resupply."
 
 ### Dillon / Training Control speed-power reminder
 
 Trigger: immediately after Kestrel generator advisory.
 
 > "Training Control note: speed and energy consumption are not linear. The faster you go, the more sharply energy expenditure rises. High speed may solve a timing problem and create an energy problem. Captain and Engineering should keep that tradeoff visible."
+
+Slice 04 live-clarity wording:
+
+> "Training Control: keep speed and power changes deliberate. Treat the governor as active until Tarsis completes the handoff. Comms should coordinate homing priority, generator support, and docking clearance with Tarsis."
 
 ### Shakedown fork prompt
 
@@ -45,11 +53,21 @@ Trigger: after speed-power reminder.
 
 ### Tarsis homing-priority acknowledgment
 
-> "Tarsis Control acknowledges. Homing torpedo production priority set for Artemis. Other ordnance will load as available after homing complement is restored."
+> "Tarsis Control: homing production priority set for Artemis. Replacement torpedoes will be prioritized during resupply."
 
 ### Tarsis generator-support acknowledgment
 
-> "Generator acceptance packet received. We can clear the Kestrel governor after docking and yard-lock synchronization. Do not assume full acceleration response until transfer complete."
+> "Tarsis Generator Acceptance: Kestrel package received. We can clear the governor after docking and yard-lock synchronization."
+
+### Tarsis hail / docking-clearance / handoff packets
+
+> "Tarsis Station: Artemis, we read you. Production Control and Generator Acceptance are standing by. Request homing priority, generator support, and docking clearance before approach."
+
+> "Tarsis Docking Control: docking clearance granted. Helm, approach within tolerance and initiate docking."
+
+> "Tarsis Docking Control: docking clearance not granted. Complete Tarsis Comms traffic before approach."
+
+> "Tarsis Control: resupply and generator handoff confirmed. Governor clear is recorded. Await the next shakedown instruction."
 
 ### Direct Scenario bypass confirmation
 
@@ -83,6 +101,12 @@ Total: 12 clips. About 5-6 minutes of total audio.
 **Setup:** Bridge crew at stations. Dillon stands behind the captain's chair, addresses the bridge.
 
 **Script:**
+
+Slice 04 text stand-in:
+
+> "Dillon: Crew of Artemis, this is a qualification cruise. First task: get the ship out of Kestrel cleanly. Comms, request departure clearance. Helm, hold position until Kestrel releases the yard-lock. Captain, coordinate the sequence."
+
+Recorded-audio source text:
 
 > "Captain. Crew of Artemis.
 >

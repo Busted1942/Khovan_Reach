@@ -52,7 +52,7 @@ shared tarsis_resupply_confirmed = False
 shared tarsis_station_visibility_status = "known_for_slice04_comms_no_hard_science_gate"
 shared tarsis_docking_resupply_status = "blocked_until_docking_clearance"
 shared tarsis_docking_gate_status = "not_initialized"
-shared tarsis_docking_rejection_text = "Tarsis Docking Control: docking clearance not granted. Complete required traffic before approach."
+shared tarsis_docking_rejection_text = "Tarsis Docking Control: docking clearance not granted. Complete Tarsis Comms traffic before approach."
 shared tarsis_comms_options_status = "not_rendered"
 shared tarsis_homing_priority_response_sent = False
 shared tarsis_generator_support_response_sent = False
@@ -60,16 +60,16 @@ shared tarsis_docking_clearance_response_sent = False
 shared tarsis_governor_clear_response_sent = False
 shared generator_governor_cleared = False
 
-shared kestrel_yard_lock_visual_text = "Kestrel Yard Control: Artemis is held in yard-lock pending departure clearance. Comms, request clearance when the captain is ready."
-shared kestrel_generator_advisory_text = "Kestrel Yard Control: advisory packet follows. Your generator assembly is still under observation. We have placed a temporary governor on generator output. You may see sluggish acceleration and reduced sustained-speed response until Tarsis accepts the generator handoff and clears the governor. Tarsis has been notified to prioritize homing-torpedo production and generator acceptance."
-shared kestrel_homing_reserve_text = "We have issued two homing torpedoes as emergency conversion reserve. That should be sufficient to get you to Tarsis if you need to trade ordnance for power margin. Tarsis has been notified to prioritize homing torpedo production and generator acceptance."
-shared kestrel_homing_reserve_request_text = "Kestrel Yard Control: emergency homing reserve released. Artemis now carries two homing torpedoes as generator-governor margin. No nukes, EMPs, or mines are released before Tarsis resupply. Tarsis has been notified to prioritize homing replacement and generator acceptance."
-shared training_speed_power_reminder_text = "Training Control: keep speed and power changes deliberate. Treat the generator advisory as active until Tarsis completes the handoff. Comms should coordinate homing priority, generator support, and docking clearance with Tarsis."
-shared tarsis_homing_priority_text = "Tarsis Control acknowledges. Homing torpedo production priority set for Artemis. Other ordnance will load as available after homing complement is restored."
-shared tarsis_generator_support_text = "Generator acceptance packet received. We can clear the Kestrel governor after docking and yard-lock synchronization. Do not assume full acceleration response until transfer complete."
-shared tarsis_hail_text = "Tarsis Station: Artemis, we read you. Production Control and Generator Acceptance are standing by for the Kestrel handoff."
-shared tarsis_docking_clearance_text = "Tarsis Docking Control: docking clearance granted. Approach within tolerance and initiate docking."
-shared tarsis_resupply_text = "Tarsis Station confirms resupply and generator handoff. Kestrel governor is cleared."
+shared kestrel_yard_lock_visual_text = "Kestrel Yard Control: Artemis is held in yard-lock pending departure clearance. Comms, request departure clearance when the captain is ready."
+shared kestrel_generator_advisory_text = "Kestrel Yard Control: advisory packet follows. Artemis is operating under a temporary generator governor. Expect reduced acceleration and slower sustained-speed response. Tarsis has the generator acceptance package and will clear the handoff after docking/resupply."
+shared kestrel_homing_reserve_text = "Kestrel Yard Control: Artemis has no homing torpedoes loaded until Comms requests the emergency reserve. The reserve is two homing torpedoes only; Tarsis handles replacement and generator acceptance."
+shared kestrel_homing_reserve_request_text = "Kestrel Yard Control: emergency homing reserve approved. Loading two homing torpedoes now. These are reserve margin under the generator governor, not a full combat load. No nukes, EMPs, or mines are released before Tarsis resupply."
+shared training_speed_power_reminder_text = "Training Control: keep speed and power changes deliberate. Treat the governor as active until Tarsis completes the handoff. Comms should coordinate homing priority, generator support, and docking clearance with Tarsis."
+shared tarsis_homing_priority_text = "Tarsis Control: homing production priority set for Artemis. Replacement torpedoes will be prioritized during resupply."
+shared tarsis_generator_support_text = "Tarsis Generator Acceptance: Kestrel package received. We can clear the governor after docking and yard-lock synchronization."
+shared tarsis_hail_text = "Tarsis Station: Artemis, we read you. Production Control and Generator Acceptance are standing by. Request homing priority, generator support, and docking clearance before approach."
+shared tarsis_docking_clearance_text = "Tarsis Docking Control: docking clearance granted. Helm, approach within tolerance and initiate docking."
+shared tarsis_resupply_text = "Tarsis Control: resupply and generator handoff confirmed. Governor clear is recorded. Await the next shakedown instruction."
 
 //enable/comms if has_roles(COMMS_SELECTED_ID, "kestrel_yards")
     script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS 005] Kestrel standard station selected")
@@ -368,11 +368,11 @@ distance: 600
 === khovan_kestrel_hail ===
     script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS 006] Kestrel Hail option selected")
     if not kestrel_departure_clearance_granted:
-        comms_receive("Artemis, Kestrel Yard Control. You are inside the refit-yard control zone. Request departure clearance when your crew is ready to release from the yard.", title="Kestrel Yard Control", title_color="green")
+        comms_receive("Kestrel Yard Control: Artemis is in yard-lock. Comms, request departure clearance when the captain is ready; Helm should hold position until release.", title="Kestrel Yard Control", title_color="green")
         script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS 006H] Kestrel Hail option response sent")
         yield success
 
-    comms_receive("Artemis, Kestrel Yard Control. Departure clearance is logged. Report launch-envelope clear once Helm is outside the yard control zone.", title="Kestrel Yard Control", title_color="green")
+    comms_receive("Kestrel Yard Control: departure clearance is logged. Helm, clear the launch envelope. Comms, confirm once Artemis is outside the yard boundary.", title="Kestrel Yard Control", title_color="green")
     script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS 006H] Kestrel Hail option response sent")
     yield success
 
@@ -382,7 +382,7 @@ distance: 600
         homing_reserve_request_status = "duplicate_suppressed_already_loaded"
         script.write_khovan_startup_trace("[KHOVAN ACT1 MSG ORDER] duplicate suppressed Kestrel emergency homing reserve request")
         script.write_khovan_startup_trace("[KHOVAN ACT1 RESERVE 004] emergency homing reserve already loaded; homing remains 2")
-        comms_receive("Kestrel Yard Control: emergency homing reserve is already released. Artemis remains capped at two homing torpedoes until Tarsis resupply.", title="Kestrel Yard Control", title_color="yellow")
+        comms_receive("Kestrel Yard Control: emergency homing reserve is already loaded. Artemis remains capped at exactly two homing torpedoes until Tarsis resupply.", title="Kestrel Yard Control", title_color="yellow")
         yield success
 
     if artemis_id == 0:
@@ -413,10 +413,10 @@ distance: 600
     current_beat = "kestrel_departure_clearance_granted"
     script.write_khovan_startup_trace("[KHOVAN ACT1 004] Kestrel departure clearance granted")
     await task_schedule(khovan_act1_release_kestrel_departure_hold)
-    await task_schedule(khovan_set_current_objective, {"objective_id": "launch_envelope", "objective_body": "Helm clear the Kestrel launch envelope.", "objective_step": "Launch envelope", "objective_breadcrumb": "[KHOVAN OBJECTIVE 003] objective updated: launch envelope"})
+    await task_schedule(khovan_set_current_objective, {"objective_id": "launch_envelope", "objective_body": "Helm clear the Kestrel launch envelope, then Comms confirm exit.", "objective_step": "Launch envelope", "objective_breadcrumb": "[KHOVAN OBJECTIVE 003] objective updated: launch envelope"})
     await task_schedule(khovan_act1_record_progression, {"action": "kestrel_departure_clearance", "detail": "departure clearance granted; waiting for launch envelope confirmation"})
     kestrel_departure_clearance_response_sent = True
-    comms_receive("Kestrel Yard Control: departure clearance granted. Helm may clear the launch envelope.", title="Kestrel Yard Control", title_color="green")
+    comms_receive("Kestrel Yard Control: departure clearance granted. Helm, clear the launch envelope. Comms, confirm once Artemis is outside the yard boundary.", title="Kestrel Yard Control", title_color="green")
     script.write_khovan_startup_trace("[KHOVAN ACT1 MSG KESTREL 002] departure clearance packet sent")
     script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS 006D] Kestrel departure-clearance option response sent")
     yield success
@@ -424,7 +424,7 @@ distance: 600
 === khovan_kestrel_report_launch_envelope_clear ===
     script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS 006B] Kestrel launch-envelope option selected")
     if not kestrel_departure_clearance_granted:
-        comms_receive("Artemis, Kestrel Yard Control. Departure clearance is not in the log. Request clearance before reporting launch-envelope clear.", title="Kestrel Yard Control", title_color="yellow")
+        comms_receive("Kestrel Yard Control: departure clearance is not in the log. Comms, request departure clearance before reporting launch-envelope exit.", title="Kestrel Yard Control", title_color="yellow")
         script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS 006E] Kestrel launch-envelope option rejected before clearance")
         yield fail
 
@@ -445,7 +445,7 @@ distance: 600
     await task_schedule(khovan_act1_record_progression, {"action": "launch_envelope_cleared", "detail": "temporary Comms confirmation started 10-second advisory timer"})
     task_schedule(khovan_act1_deliver_kestrel_generator_advisory_after_delay, {"advisory_run_id": kestrel_generator_advisory_run_id})
     kestrel_launch_envelope_response_sent = True
-    comms_receive("Kestrel Yard Control logs Artemis clear of the launch envelope. Advisory packet will follow after yard telemetry catches up.", title="Kestrel Yard Control", title_color="green")
+    comms_receive("Kestrel Yard Control logs Artemis clear of the launch envelope. Stand by for generator advisory while yard telemetry catches up.", title="Kestrel Yard Control", title_color="green")
     script.write_khovan_startup_trace("[KHOVAN ACT1 MSG KESTREL 003] launch-envelope packet sent")
     script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS 006E] Kestrel launch-envelope option response sent")
     yield success
@@ -558,7 +558,7 @@ distance: 600
         script.write_khovan_startup_trace("[KHOVAN ACT1 010A] governor remains held; Tarsis required requests incomplete")
         await task_schedule(khovan_tarsis_update_gate_status)
         await task_schedule(khovan_act1_record_progression, {"action": "tarsis_docking_clearance_blocked", "detail": "homing priority and generator support must be logged first"})
-        comms_receive("Tarsis Docking Control: hold docking request. We need homing production priority and generator acceptance logged before clearing the yard-lock lane.", title="Tarsis Docking Control", title_color="yellow")
+        comms_receive("Tarsis Docking Control: hold docking request. Complete homing priority and generator support before requesting docking clearance.", title="Tarsis Docking Control", title_color="yellow")
         script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS 008I] Tarsis docking-clearance option rejected before prerequisites")
         yield fail
 
@@ -650,7 +650,7 @@ distance: 600
     if not tarsis_required_requests_complete:
         await task_schedule(khovan_tarsis_update_gate_status)
         script.write_khovan_startup_trace(f"[KHOVAN ACT1 011B] governor remains held; docking/resupply confirmation blocked status={tarsis_gate_status}")
-        comms_receive(f"Tarsis cannot clear the generator governor yet. Gate status: {tarsis_gate_status}.", title="Tarsis Station", title_color="yellow")
+        comms_receive(f"Tarsis cannot clear the governor yet. Complete homing priority, generator support, docking clearance, and docking/resupply handoff. Gate status: {tarsis_gate_status}.", title="Tarsis Station", title_color="yellow")
         script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS 008J] Tarsis docking/resupply confirmation option rejected before prerequisites")
         yield fail
 

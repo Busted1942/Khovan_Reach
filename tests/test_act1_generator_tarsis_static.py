@@ -84,11 +84,16 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             "shared artemis_start_emps = 0",
             "shared artemis_start_mines = 0",
             'shared artemis_start_ordnance_runtime_apply_status = "not_applied"',
-            'shared kestrel_homing_reserve_request_text = "Kestrel Yard Control: emergency homing reserve released. Artemis now carries two homing torpedoes as generator-governor margin. No nukes, EMPs, or mines are released before Tarsis resupply. Tarsis has been notified to prioritize homing replacement and generator acceptance."',
-            'shared training_speed_power_reminder_text = "Training Control: keep speed and power changes deliberate. Treat the generator advisory as active until Tarsis completes the handoff. Comms should coordinate homing priority, generator support, and docking clearance with Tarsis."',
-            'shared tarsis_hail_text = "Tarsis Station: Artemis, we read you. Production Control and Generator Acceptance are standing by for the Kestrel handoff."',
-            'shared tarsis_docking_clearance_text = "Tarsis Docking Control: docking clearance granted. Approach within tolerance and initiate docking."',
-            'shared tarsis_resupply_text = "Tarsis Station confirms resupply and generator handoff. Kestrel governor is cleared."',
+            'shared kestrel_yard_lock_visual_text = "Kestrel Yard Control: Artemis is held in yard-lock pending departure clearance. Comms, request departure clearance when the captain is ready."',
+            'shared kestrel_generator_advisory_text = "Kestrel Yard Control: advisory packet follows. Artemis is operating under a temporary generator governor. Expect reduced acceleration and slower sustained-speed response. Tarsis has the generator acceptance package and will clear the handoff after docking/resupply."',
+            'shared kestrel_homing_reserve_text = "Kestrel Yard Control: Artemis has no homing torpedoes loaded until Comms requests the emergency reserve. The reserve is two homing torpedoes only; Tarsis handles replacement and generator acceptance."',
+            'shared kestrel_homing_reserve_request_text = "Kestrel Yard Control: emergency homing reserve approved. Loading two homing torpedoes now. These are reserve margin under the generator governor, not a full combat load. No nukes, EMPs, or mines are released before Tarsis resupply."',
+            'shared training_speed_power_reminder_text = "Training Control: keep speed and power changes deliberate. Treat the governor as active until Tarsis completes the handoff. Comms should coordinate homing priority, generator support, and docking clearance with Tarsis."',
+            'shared tarsis_homing_priority_text = "Tarsis Control: homing production priority set for Artemis. Replacement torpedoes will be prioritized during resupply."',
+            'shared tarsis_generator_support_text = "Tarsis Generator Acceptance: Kestrel package received. We can clear the governor after docking and yard-lock synchronization."',
+            'shared tarsis_hail_text = "Tarsis Station: Artemis, we read you. Production Control and Generator Acceptance are standing by. Request homing priority, generator support, and docking clearance before approach."',
+            'shared tarsis_docking_clearance_text = "Tarsis Docking Control: docking clearance granted. Helm, approach within tolerance and initiate docking."',
+            'shared tarsis_resupply_text = "Tarsis Control: resupply and generator handoff confirmed. Governor clear is recorded. Await the next shakedown instruction."',
             "shared tarsis_homing_priority_requested = False",
             "shared tarsis_generator_support_requested = False",
             "shared tarsis_docking_clearance_requested = False",
@@ -100,7 +105,7 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             'shared tarsis_station_visibility_status = "known_for_slice04_comms_no_hard_science_gate"',
             'shared tarsis_docking_resupply_status = "blocked_until_docking_clearance"',
             'shared tarsis_docking_gate_status = "not_initialized"',
-            'shared tarsis_docking_rejection_text = "Tarsis Docking Control: docking clearance not granted. Complete required traffic before approach."',
+            'shared tarsis_docking_rejection_text = "Tarsis Docking Control: docking clearance not granted. Complete Tarsis Comms traffic before approach."',
             'shared tarsis_comms_options_status = "not_rendered"',
             "shared generator_governor_cleared = False",
         ]:
@@ -211,7 +216,7 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
 
         expectations = [
             (setup_body, "khovan_current_objective_init", "await task_schedule(khovan_current_objective_init)"),
-            (departure_body, "Helm clear the Kestrel launch envelope.", "[KHOVAN OBJECTIVE 003] objective updated: launch envelope"),
+            (departure_body, "Helm clear the Kestrel launch envelope, then Comms confirm exit.", "[KHOVAN OBJECTIVE 003] objective updated: launch envelope"),
             (launch_body, "Stand by for Kestrel generator advisory.", "[KHOVAN OBJECTIVE 004] objective updated: generator advisory"),
             (advisory_body, "Proceed to Tarsis. Comms request homing priority, generator support, and docking clearance.", "[KHOVAN OBJECTIVE 005] objective updated: Tarsis requests"),
             (clearance_body, "Dock with Tarsis and confirm resupply/governor handoff.", "[KHOVAN OBJECTIVE 006] objective updated: Tarsis docking/resupply"),
@@ -220,6 +225,51 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
         for body, text, breadcrumb in expectations:
             self.assertIn(text, body)
             self.assertIn(breadcrumb, body)
+
+    def test_slice04_player_instruction_clarity_copy_is_source_aligned(self) -> None:
+        active_copy = "\n".join(
+            [
+                read(ACT1_PATH),
+                read(OBJECTIVE_PATH),
+                read("scripts/systems/audio_runtime.mast"),
+            ]
+        )
+
+        for phrase in [
+            "Dillon: Crew of Artemis, this is a qualification cruise. First task: get the ship out of Kestrel cleanly. Comms, request departure clearance. Helm, hold position until Kestrel releases the yard-lock. Captain, coordinate the sequence.",
+            "Comms request Kestrel departure clearance.",
+            "Kestrel Yard Control: emergency homing reserve approved. Loading two homing torpedoes now. These are reserve margin under the generator governor, not a full combat load. No nukes, EMPs, or mines are released before Tarsis resupply.",
+            "Kestrel Yard Control: departure clearance granted. Helm, clear the launch envelope. Comms, confirm once Artemis is outside the yard boundary.",
+            "Helm clear the Kestrel launch envelope, then Comms confirm exit.",
+            "Kestrel Yard Control logs Artemis clear of the launch envelope. Stand by for generator advisory while yard telemetry catches up.",
+            "Kestrel Yard Control: advisory packet follows. Artemis is operating under a temporary generator governor. Expect reduced acceleration and slower sustained-speed response. Tarsis has the generator acceptance package and will clear the handoff after docking/resupply.",
+            "Training Control: keep speed and power changes deliberate. Treat the governor as active until Tarsis completes the handoff. Comms should coordinate homing priority, generator support, and docking clearance with Tarsis.",
+            "Proceed to Tarsis. Comms request homing priority, generator support, and docking clearance.",
+            "Tarsis Station: Artemis, we read you. Production Control and Generator Acceptance are standing by. Request homing priority, generator support, and docking clearance before approach.",
+            "Tarsis Control: homing production priority set for Artemis. Replacement torpedoes will be prioritized during resupply.",
+            "Tarsis Generator Acceptance: Kestrel package received. We can clear the governor after docking and yard-lock synchronization.",
+            "Tarsis Docking Control: docking clearance granted. Helm, approach within tolerance and initiate docking.",
+            "Dock with Tarsis and confirm resupply/governor handoff.",
+            "Tarsis Docking Control: docking clearance not granted. Complete Tarsis Comms traffic before approach.",
+            "Tarsis Control: resupply and generator handoff confirmed. Governor clear is recorded. Await the next shakedown instruction.",
+            "Await next shakedown instruction.",
+        ]:
+            self.assertIn(phrase, active_copy)
+
+        for forbidden in [
+            "Our docking systems aren't compatible with yours",
+            "Artemis now carries two homing torpedoes as generator-governor margin",
+            "We have issued two homing torpedoes as emergency conversion reserve",
+            "Other ordnance will load as available after homing complement is restored",
+            "Do not assume full acceleration response until transfer complete",
+            "Your generator assembly is still under observation",
+            "Treat the generator advisory as active until Tarsis completes the handoff",
+            "Helm may clear the launch envelope.",
+            "Complete required traffic before approach.",
+            "Captain. Crew of Artemis. This is a qualification cruise. Standard pattern",
+            "Captain, the ship is yours.",
+        ]:
+            self.assertNotIn(forbidden, active_copy)
 
     def test_kestrel_and_tarsis_use_reference_backed_standard_station_primitives(self) -> None:
         act1 = read(ACT1_PATH)
@@ -472,7 +522,7 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
     def test_kestrel_yard_lock_visual_fallback_is_overlay_only_and_guarded(self) -> None:
         act1 = read(ACT1_PATH)
         self.assertIn(
-            'shared kestrel_yard_lock_visual_text = "Kestrel Yard Control: Artemis is held in yard-lock pending departure clearance. Comms, request clearance when the captain is ready."',
+            'shared kestrel_yard_lock_visual_text = "Kestrel Yard Control: Artemis is held in yard-lock pending departure clearance. Comms, request departure clearance when the captain is ready."',
             act1,
         )
         self.assertIn('shared kestrel_yard_lock_visual_mode = "mechanical_yard_lock_overlay_fallback"', act1)
@@ -898,6 +948,11 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             "expected observation",
             "failure/ambiguous observation",
             "what remains unproven",
+            "player instruction clarity",
+            "first-time player",
+            "who acts next",
+            "current objective text and comms message text agree",
+            "objective text and comms text disagree",
             "quick tests do not prove live runtime behavior",
             "temporary comms confirmation",
             "live mechanics/api issue",
@@ -941,8 +996,14 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             "option buttons",
             "tarsis comms option rendering checklist",
             "confirm tarsis options are visible",
-            "act i message-ordering bug",
+            "act i message-ordering and player instruction clarity bug",
             "intended sequence",
+            "dillon: crew of artemis, this is a qualification cruise",
+            "loading two homing torpedoes now",
+            "temporary generator governor",
+            "treat the governor as active",
+            "complete tarsis comms traffic before approach",
+            "player instruction clarity checklist",
             "duplicate-suppression",
             "act i message ordering checklist",
             "training control speed-power reminder",
