@@ -7,9 +7,9 @@
 - Kept the Slice 01B client lifecycle intact; LegendaryMissions still owns normal console selection, Game Master, and Change Console behavior.
 - Added the first real Act I progression state:
   - generator governor starts active.
-  - 2-homing reserve is requested on Artemis at runtime, with nukes, EMPs, and mines requested as `0`.
+  - fresh load requests Homing `0`, Nukes `0`, EMPs `0`, and Mines `0`.
   - literal zero ship energy is not applied because the active source specifies generator governor, not a no-energy start.
-  - Kestrel can explain the two homing torpedoes as emergency conversion reserve through a status-only Comms packet.
+  - Kestrel can release two homing torpedoes as emergency reserve through `Khovan: Request Emergency Homing Reserve`.
   - Artemis starts mechanically held at Kestrel Yards by a position and throttle clamp loop.
   - Kestrel yard-lock presentation uses an in-fiction guarded text packet and trace breadcrumbs as a fallback visual cue.
   - Kestrel departure clearance is required before launch-envelope confirmation.
@@ -59,21 +59,22 @@ The station_comms_docking_kernel spike remains evidence only. Slice 04 ports the
 Starting-condition audit: energy and ordnance:
 
 - User-reported issue: Artemis was expected to start with 0 energy and no weapons.
-- Source finding: active Slice 04 source does not authorize a literal zero-energy/no-weapons start. `docs/01_design/00_scenario_play_guide.md` states the Rev 2.1 change replaced visible low-energy start with a generator-output governor, and the mission-start state is generator governor active, 2 homing torpedoes as emergency conversion reserve, and no nukes/EMPs/mines until Tarsis resupply. `docs/01_design/10_mast_requirements.md` and `docs/01_design/50_implementation_slice_plan.md` also specify `generator_governor_active = true` and `starting_homing_torpedoes = 2`.
-- Classification: the zero-energy/no-weapons report conflicts with current active Slice 04 source. The source-aligned start is generator governor active, 2 homing torpedoes, no nukes, no EMPs, no mines, and no literal zero-energy override.
-- Change: Slice 04 now requests Artemis starting ordnance through data-set values: `Homing_NUM = 2`, `Nuke_NUM = 0`, `EMP_NUM = 0`, and `Mine_NUM = 0`. It intentionally does not call `set_data_set_value(artemis_id, "energy", ...)`.
-- Breadcrumbs: `[KHOVAN ACT1 START STATE] Artemis starting energy set to Cosmos default with generator governor active; zero-energy start not source-authorized` and `[KHOVAN ACT1 START STATE] Artemis starting ordnance set to Homing=2 Nuke=0 EMP=0 Mine=0`.
-- Fallback/uncertainty: quick/static checks can prove the runtime requests these values, but only live Cosmos smoke can prove whether the Weapons UI immediately reflects them. If the UI still shows a default loadout such as 10/10 homing, treat that as a live mechanics/API issue, not source authority for changing the mission to zero energy/no weapons.
+- Source finding update: active Slice 04 still does not authorize a literal zero-energy start. The current runtime design now treats the two homing torpedoes as a Kestrel-held emergency reserve instead of a fresh-load inventory item.
+- Classification: literal zero energy remains out of scope, but zero fresh-load ordnance is now source-aligned for this branch's live behavior target.
+- Change: Slice 04 now requests Artemis starting ordnance through data-set values: `Homing_NUM = 0`, `Nuke_NUM = 0`, `EMP_NUM = 0`, and `Mine_NUM = 0`. It intentionally does not call `set_data_set_value(artemis_id, "energy", ...)`.
+- Breadcrumbs: `[KHOVAN ACT1 START STATE] Artemis starting energy set to Cosmos default with generator governor active; zero-energy start not source-authorized`, `[KHOVAN ACT1 START STATE] Artemis starting ordnance set to Homing=0 Nuke=0 EMP=0 Mine=0`, and `[KHOVAN ACT1 START STATE FINAL] homing=0 nuke=0 emp=0 mine=0 reserve=held_by_kestrel`.
+- Fallback/uncertainty: quick/static checks can prove the runtime requests these values, but only live Cosmos smoke can prove whether the Weapons/Engineering UI immediately reflects them. If the UI still shows a default loadout after the final breadcrumb, treat that as a live mechanics/API issue.
 
 Emergency reserve behavior:
 
-- Purpose: make the two starting homing torpedoes meaningful before departure/Tarsis transit as an emergency conversion reserve under the generator governor.
-- Source intent preserved: generator governor remains active, Artemis still starts with 2 homing torpedoes and no nukes/EMPs/mines, Kestrel explains the reserve, and Tarsis remains required for homing replacement plus generator acceptance.
-- Change: Kestrel Comms now includes `Khovan: Review Emergency Homing Reserve`.
-- Response text: `Kestrel Yard Control: Artemis has two homing torpedoes loaded as emergency conversion reserve. Under the generator governor, treat them as energy margin, not tactical inventory. No nukes, EMPs, or mines are released before Tarsis resupply. Tarsis has been notified to prioritize homing replacement and generator acceptance.`
-- Conversion status: status-only. Mechanical conversion is not implemented because the active runtime does not yet have a proven source-approved read/decrement homing count plus increase-energy path with before/after logs. Old reference files show `set_data_set_value(..., "energy", ...)`, but `docs/01_design/10_mast_requirements.md` warns not to copy old launch energy/torpedo assumptions that conflict with current source.
-- Breadcrumbs: `[KHOVAN ACT1 RESERVE 001] emergency homing reserve status requested` and `[KHOVAN ACT1 RESERVE BLOCKED] mechanical conversion API unproven; status-only packet sent`.
-- Guardrail: no `Khovan: Convert Homing Reserve to Energy` option is exposed until a spike proves the read/decrement/increase APIs safely. The reserve review does not clear the generator governor and does not replace the Tarsis handoff.
+- Purpose: make the two Kestrel-held homing torpedoes meaningful before departure/Tarsis transit as an emergency reserve under the generator governor.
+- Source intent preserved: generator governor remains active, Artemis starts with 0 homing torpedoes and no nukes/EMPs/mines, Kestrel can release exactly 2 homing torpedoes through Comms, and Tarsis remains required for homing replacement plus generator acceptance.
+- Live failure fixed: fresh load showed `Homing 2/10` because the Slice 04 start-state code explicitly set `Homing_NUM = 2`.
+- Change: Kestrel Comms now includes `Khovan: Request Emergency Homing Reserve`.
+- Response text: `Kestrel Yard Control: emergency homing reserve released. Artemis now carries two homing torpedoes as generator-governor margin. No nukes, EMPs, or mines are released before Tarsis resupply. Tarsis has been notified to prioritize homing replacement and generator acceptance.`
+- Runtime behavior: fresh load requests Homing `0`; the Kestrel reserve request sets `Homing_NUM` to `2` once; repeat selection is suppressed and cannot raise the count above 2.
+- Breadcrumbs: `[KHOVAN ACT1 RESERVE 001] emergency homing reserve requested`, `[KHOVAN ACT1 RESERVE 002] emergency homing reserve load requested`, `[KHOVAN ACT1 RESERVE 003] emergency homing reserve applied homing=2`, and `[KHOVAN ACT1 RESERVE 004] emergency homing reserve already loaded; homing remains 2` on repeat.
+- Guardrail: this is not torpedo-to-energy conversion and does not clear the generator governor or replace the Tarsis handoff.
 
 Kestrel startup docking crash:
 
@@ -194,12 +195,12 @@ Quick/static checks prove source structure only:
 - Slice 04 initialization runs after playable bootstrap wiring.
 - Required Act I state variables and default flags are present.
 - `generator_governor_active` starts true.
-- `starting_homing_torpedoes` and `homing_reserve_count` are set to 2.
-- Artemis starting ordnance is requested as Homing=2, Nuke=0, EMP=0, Mine=0.
+- `starting_homing_torpedoes` and `artemis_start_homing_torpedoes` are set to 0, while `homing_reserve_count` is set to 2.
+- Artemis starting ordnance is requested as Homing=0, Nuke=0, EMP=0, Mine=0.
 - Artemis starting energy is not set to 0; Slice 04 uses the generator governor as the source-authorized constraint.
-- Homing reserve runtime application remains live-smoke verified, because static checks cannot prove the Weapons UI accepted the data-set values.
-- Kestrel has a `Khovan: Review Emergency Homing Reserve` option.
-- The reserve review is status-only, logs `[KHOVAN ACT1 RESERVE 001]` and `[KHOVAN ACT1 RESERVE BLOCKED]`, and does not mutate energy or ordnance.
+- Final start-state breadcrumb `[KHOVAN ACT1 START STATE FINAL] homing=0 ...` exists so live smoke can verify the last Slice 04 ordnance request.
+- Kestrel has a `Khovan: Request Emergency Homing Reserve` option.
+- The reserve request sets `Homing_NUM` to 2 exactly once, logs `[KHOVAN ACT1 RESERVE 001/002/003]`, suppresses repeats with `[KHOVAN ACT1 RESERVE 004]`, and does not mutate energy or governor state.
 - Kestrel/Tarsis use reference-backed standard station primitives.
 - Kestrel/Tarsis Comms routes and gate handlers are present.
 - Kestrel departure hold state defaults are present.
@@ -261,9 +262,9 @@ Only live Cosmos smoke can prove:
 - Act I messages appear only at their intended trigger points and in the intended sequence.
 - Duplicate Kestrel/Tarsis option selections do not replay one-time briefing or acknowledgment packets.
 - The Training Control speed-power reminder appears immediately after the Kestrel generator advisory.
-- Artemis starting energy/ordnance UI matches the source-authorized start as closely as Cosmos allows: generator governor active, 2 homing torpedoes, no nukes, no EMPs, no mines.
-- Kestrel's emergency homing reserve review option appears and sends the reserve explanation through Comms.
-- The reserve review does not change homing count, does not change energy, and does not clear the governor.
+- Artemis starting energy/ordnance UI matches the intended fresh-load start: generator governor active, Homing 0/10, Nukes 0/3, EMP 0/6, Mines 0/6.
+- Kestrel's emergency homing reserve request option appears and releases the reserve through Comms.
+- The reserve request changes Homing from 0/10 to 2/10 once, does not increase above 2 on repeat, does not change energy, and does not clear the governor.
 - Khovan-specific Kestrel/Tarsis options appear. If any stock Tarsis station options still appear despite uppercase `Station` suppression, document them as unsuppressed stock options and do not use them as proof of Khovan handler wiring.
 - Before Tarsis docking clearance, the dock button is unavailable, or docking is rejected by the pre-clearance deny helper, or the behavior is otherwise documented as a live mechanical blocker.
 - If docking is rejected before Tarsis clearance, the visible rejection text says docking clearance is not granted and does not say docking systems are incompatible.
@@ -279,52 +280,55 @@ Only live Cosmos smoke can prove:
 1. Run `python .\run_tests.py quick`.
 2. Run `git diff --check`.
 3. Run `Remove-Item .\tests\live_startup_trace.txt -ErrorAction SilentlyContinue`.
-4. Launch Cosmos from branch `slice04-homing-reserve-conversion-prompt`.
+4. Launch Cosmos from branch `slice04-homing-reserve-load-route`.
 5. Load Khovan Reach.
 6. Confirm normal player console selection still works.
 7. Confirm Helm can control Artemis.
 8. Confirm Artemis starts near/at Kestrel.
 9. Confirm no runtime crash occurs for at least 30 seconds.
 10. Confirm `tests/live_startup_trace.txt` logs `[KHOVAN ACT1 START STATE] Artemis starting energy set to Cosmos default with generator governor active; zero-energy start not source-authorized`.
-11. Confirm `tests/live_startup_trace.txt` logs `[KHOVAN ACT1 START STATE] Artemis starting ordnance set to Homing=2 Nuke=0 EMP=0 Mine=0`.
-12. Confirm Weapons/Engineering UI state matches the source-authorized start as closely as Cosmos allows: generator governor active, 2 homing torpedoes, no nukes, no EMPs, no mines.
-13. Confirm the Kestrel Yard Control yard-lock overlay appears.
-14. Confirm whether docking lines, docking animation, or docked UI state appear. If they do not, classify the result as fallback-only rather than failure.
-15. Before using Kestrel Comms, attempt a gentle Helm move/depart input.
-16. Confirm Artemis remains mechanically held at Kestrel and does not depart.
-17. Use Comms to select Kestrel Yards without an initial Science scan.
-18. Confirm Khovan Kestrel options appear.
-19. Select `Khovan: Review Emergency Homing Reserve`.
-20. Confirm the message explains the two homing torpedoes as energy margin, says no nukes/EMPs/mines are released before Tarsis, and says Tarsis will prioritize homing replacement and generator acceptance.
-21. Confirm trace includes `[KHOVAN ACT1 RESERVE 001]` and `[KHOVAN ACT1 RESERVE BLOCKED]`.
-22. Confirm no mechanical conversion occurs: homing count, energy, and generator governor state do not change from the review packet.
-23. Select `Khovan: Request Departure Clearance`.
-24. After clearance, attempt Helm movement/departure again.
-25. Confirm Artemis can move/depart after clearance.
-26. Select `Khovan: Confirm Launch-Envelope Exit`.
-27. Wait 10 seconds and confirm Kestrel generator advisory appears/logs.
-28. If Kestrel remains unknown/blank, stop and inspect the Kestrel scan-known setup.
-29. If Kestrel options are blank, select `Comms Test Station`.
-30. Confirm `Proof Option` appears for the proof station.
-31. If the proof station works but Kestrel does not, compare Kestrel known/scan state and route condition against the proof station.
-32. Approach Tarsis.
-33. Use Comms to select Tarsis Station without treating Science scan as a required unlock.
-34. Confirm Khovan Tarsis options appear and are story-guided.
-35. Select `Khovan: Hail Tarsis Station`.
-36. Confirm `[KHOVAN ACT1 COMMS TARSIS HAIL]` and `[KHOVAN ACT1 MSG TARSIS 001]`.
-37. Before docking clearance, try to dock with Tarsis.
-38. Confirm docking is blocked, unavailable, rejected, or does not advance Slice 04 state.
-39. Select `Khovan: Request Homing-Torpedo Priority`.
-40. Confirm `[KHOVAN ACT1 COMMS TARSIS HOMING]` and `[KHOVAN ACT1 MSG TARSIS 002]`.
-41. Select `Khovan: Request Generator Support`.
-42. Confirm `[KHOVAN ACT1 COMMS TARSIS GENERATOR]` and `[KHOVAN ACT1 MSG TARSIS 003]`.
-43. Select `Khovan: Request Docking Clearance`.
-44. Confirm `[KHOVAN ACT1 COMMS TARSIS CLEARANCE]`, `[KHOVAN ACT1 MSG TARSIS 004]`, and `[KHOVAN ACT1 DOCK 004]`.
-45. Attempt normal docking if available.
-46. If docking remains unavailable, use `Khovan: Confirm Docking/Resupply` as the temporary Slice 04 fallback.
-47. Confirm `[KHOVAN ACT1 COMMS TARSIS RESUPPLY]` and `[KHOVAN ACT1 MSG TARSIS 005]` only after required requests plus docking/fallback confirmation.
-48. Confirm status option logs `[KHOVAN ACT1 COMMS TARSIS STATUS]` and `[KHOVAN ACT1 MSG TARSIS 006]`.
-49. Inspect `tests/live_startup_trace.txt`.
+11. Confirm `tests/live_startup_trace.txt` logs `[KHOVAN ACT1 START STATE] Artemis starting ordnance set to Homing=0 Nuke=0 EMP=0 Mine=0`.
+12. Confirm `tests/live_startup_trace.txt` logs `[KHOVAN ACT1 START STATE FINAL] homing=0`.
+13. Confirm Weapons/Engineering UI state matches the intended fresh-load start: generator governor active, Homing 0/10, Nukes 0/3, EMP 0/6, Mines 0/6.
+14. Confirm the Kestrel Yard Control yard-lock overlay appears.
+15. Confirm whether docking lines, docking animation, or docked UI state appear. If they do not, classify the result as fallback-only rather than failure.
+16. Before using Kestrel Comms, attempt a gentle Helm move/depart input.
+17. Confirm Artemis remains mechanically held at Kestrel and does not depart.
+18. Use Comms to select Kestrel Yards without an initial Science scan.
+19. Confirm Khovan Kestrel options appear.
+20. Select `Khovan: Request Emergency Homing Reserve`.
+21. Confirm the message explains the two homing torpedoes as generator-governor margin, says no nukes/EMPs/mines are released before Tarsis, and says Tarsis will prioritize homing replacement and generator acceptance.
+22. Confirm trace includes `[KHOVAN ACT1 RESERVE 001]`, `[KHOVAN ACT1 RESERVE 002]`, and `[KHOVAN ACT1 RESERVE 003]`.
+23. Confirm Homing changes from 0/10 to 2/10.
+24. Select `Khovan: Request Emergency Homing Reserve` again.
+25. Confirm Homing remains 2/10 and trace includes `[KHOVAN ACT1 RESERVE 004]`.
+26. Select `Khovan: Request Departure Clearance`.
+27. After clearance, attempt Helm movement/departure again.
+28. Confirm Artemis can move/depart after clearance.
+29. Select `Khovan: Confirm Launch-Envelope Exit`.
+30. Wait 10 seconds and confirm Kestrel generator advisory appears/logs.
+31. If Kestrel remains unknown/blank, stop and inspect the Kestrel scan-known setup.
+32. If Kestrel options are blank, select `Comms Test Station`.
+33. Confirm `Proof Option` appears for the proof station.
+34. If the proof station works but Kestrel does not, compare Kestrel known/scan state and route condition against the proof station.
+35. Approach Tarsis.
+36. Use Comms to select Tarsis Station without treating Science scan as a required unlock.
+37. Confirm Khovan Tarsis options appear and are story-guided.
+38. Select `Khovan: Hail Tarsis Station`.
+39. Confirm `[KHOVAN ACT1 COMMS TARSIS HAIL]` and `[KHOVAN ACT1 MSG TARSIS 001]`.
+40. Before docking clearance, try to dock with Tarsis.
+41. Confirm docking is blocked, unavailable, rejected, or does not advance Slice 04 state.
+42. Select `Khovan: Request Homing-Torpedo Priority`.
+43. Confirm `[KHOVAN ACT1 COMMS TARSIS HOMING]` and `[KHOVAN ACT1 MSG TARSIS 002]`.
+44. Select `Khovan: Request Generator Support`.
+45. Confirm `[KHOVAN ACT1 COMMS TARSIS GENERATOR]` and `[KHOVAN ACT1 MSG TARSIS 003]`.
+46. Select `Khovan: Request Docking Clearance`.
+47. Confirm `[KHOVAN ACT1 COMMS TARSIS CLEARANCE]`, `[KHOVAN ACT1 MSG TARSIS 004]`, and `[KHOVAN ACT1 DOCK 004]`.
+48. Attempt normal docking if available.
+49. If docking remains unavailable, use `Khovan: Confirm Docking/Resupply` as the temporary Slice 04 fallback.
+50. Confirm `[KHOVAN ACT1 COMMS TARSIS RESUPPLY]` and `[KHOVAN ACT1 MSG TARSIS 005]` only after required requests plus docking/fallback confirmation.
+51. Confirm status option logs `[KHOVAN ACT1 COMMS TARSIS STATUS]` and `[KHOVAN ACT1 MSG TARSIS 006]`.
+52. Inspect `tests/live_startup_trace.txt`.
 
 Tarsis docking-clearance regression checklist:
 
@@ -422,8 +426,8 @@ Act I message ordering checklist:
 - Before Kestrel departure clearance, Helm input does not let Artemis leave Kestrel.
 - Selecting `Khovan: Request Departure Clearance` produces `[KHOVAN ACT1 HOLD 003]` in the trace.
 - After clearance, Artemis is no longer mechanically held at Kestrel and Helm can depart.
-- Homing reserve initializes as a clear state/log stub with ordnance API uncertainty documented.
-- If live inventory still shows 10/10 homing, treat that as engine/default behavior separate from Khovan's 2-homing reserve state/stub.
+- Fresh load shows Homing 0/10 and logs `[KHOVAN ACT1 START STATE FINAL] homing=0`.
+- Kestrel reserve request changes Homing to 2/10 and repeat selection leaves it at 2/10.
 - Kestrel is known at startup and shows visible Comms options without Science initial scan.
 - `Comms Test Station` appears and shows `Proof Option` as a diagnostic comparison route.
 - Tarsis shows visible Khovan Comms options without requiring Science scan as a hard gate.
@@ -461,11 +465,13 @@ Act I message ordering checklist:
 - `[KHOVAN ACT1 START STATE]` energy or ordnance breadcrumbs are missing from `tests/live_startup_trace.txt` after fresh load.
 - Artemis starts with literal zero energy, because that would indicate an unauthorized low-energy/no-weapons design change rather than the current generator-governor design.
 - Artemis starts with nukes, EMPs, or mines available before Tarsis resupply.
-- Artemis starts with a homing count other than 2 after the runtime set request, unless live smoke documents the mismatch as a Cosmos/UI API blocker.
-- `Khovan: Review Emergency Homing Reserve` is missing from Kestrel Comms.
-- The reserve review does not explain why the two homing torpedoes exist, why other ordnance is unavailable, or why Tarsis matters.
-- Reserve review changes energy, homing count, or governor state despite conversion being status-only.
-- `[KHOVAN ACT1 RESERVE 001]` or `[KHOVAN ACT1 RESERVE BLOCKED]` is missing after the reserve review.
+- Artemis starts with Homing 2/10 before the Kestrel reserve request.
+- `[KHOVAN ACT1 START STATE FINAL] homing=0` is missing after fresh load.
+- `Khovan: Request Emergency Homing Reserve` is missing from Kestrel Comms.
+- The reserve request does not explain why the two homing torpedoes exist, why other ordnance is unavailable, or why Tarsis matters.
+- Reserve request changes energy or governor state, fails to set Homing to 2/10, or repeat selection increases Homing above 2/10.
+- `[KHOVAN ACT1 RESERVE 001]`, `[KHOVAN ACT1 RESERVE 002]`, or `[KHOVAN ACT1 RESERVE 003]` is missing after the first reserve request.
+- `[KHOVAN ACT1 RESERVE 004]` is missing after a repeat reserve request.
 - Kestrel departure clearance does not produce `[KHOVAN ACT1 HOLD 003]`.
 - Artemis remains stuck after Kestrel departure clearance.
 - Tarsis remains unavailable to Comms during the Slice 04 handoff.
@@ -491,7 +497,7 @@ Act I message ordering checklist:
 - Tarsis gate cannot be exercised.
 - Governor clears early.
 - Docking remains unavailable and no temporary Comms confirmation exists.
-- Homing inventory is claimed correct while the screen shows an incompatible value such as 10/10 homing.
+- Homing inventory is claimed correct while the screen shows an incompatible value such as 2/10 at fresh load or 10/10 after the reserve request.
 - `init.mast` warning appears and cannot be classified from current source evidence.
 - Quick tests pass but live behavior is unproven.
 - This verification doc overclaims automatic launch-envelope, docking, Comms archive, or ordnance behavior.
@@ -506,7 +512,7 @@ Act I message ordering checklist:
 - True Kestrel docking lines, docking animation, or docked UI state at startup.
 - Actual generator-output performance reduction.
 - Actual torpedo inventory application; torpedo/ordnance crash remains out of scope.
-- Mechanical homing-reserve conversion to energy; current behavior is status-only until the conversion APIs are proven.
+- Mechanical homing-reserve conversion to energy; current behavior only loads the Kestrel-held reserve as two homing torpedoes.
 - Custom Kestrel/Tarsis station profile/portrait/menu polish.
 - Shakedown profile selection.
 - Drone 01/02.

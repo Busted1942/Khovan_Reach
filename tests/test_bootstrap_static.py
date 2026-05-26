@@ -19,7 +19,7 @@ REQUIRED_STATE = {
     "test_mode_enabled": "False",
     "live_recovery_mode_enabled": "False",
     "generator_governor_active": "True",
-    "starting_homing_torpedoes": "2",
+    "starting_homing_torpedoes": "0",
     "kestrel_generator_packet_sent": "False",
     "launch_envelope_cleared": "False",
     "dillon_clip_1_stub_sent": "False",
