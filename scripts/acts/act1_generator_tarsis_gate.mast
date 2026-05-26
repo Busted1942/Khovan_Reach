@@ -31,6 +31,8 @@ shared homing_reserve_status = "pending"
 shared homing_reserve_count = 2
 shared homing_reserve_runtime_apply_status = "stubbed_due_to_ordnance_api_uncertainty"
 shared homing_reserve_live_inventory_status = "not_verified"
+shared homing_reserve_review_status = "not_requested"
+shared homing_reserve_conversion_mode = "status_only_mechanical_conversion_api_unproven"
 shared artemis_start_condition_status = "not_applied"
 shared artemis_start_energy_policy = "cosmos_default_energy_with_generator_governor_not_zero_energy"
 shared artemis_start_energy_runtime_apply_status = "not_overridden"
@@ -61,6 +63,7 @@ shared generator_governor_cleared = False
 shared kestrel_yard_lock_visual_text = "Kestrel Yard Control: Artemis is held in yard-lock pending departure clearance. Comms, request clearance when the captain is ready."
 shared kestrel_generator_advisory_text = "Kestrel Yard Control: advisory packet follows. Your generator assembly is still under observation. We have placed a temporary governor on generator output. You may see sluggish acceleration and reduced sustained-speed response until Tarsis accepts the generator handoff and clears the governor. Tarsis has been notified to prioritize homing-torpedo production and generator acceptance."
 shared kestrel_homing_reserve_text = "We have issued two homing torpedoes as emergency conversion reserve. That should be sufficient to get you to Tarsis if you need to trade ordnance for power margin. Tarsis has been notified to prioritize homing torpedo production and generator acceptance."
+shared kestrel_homing_reserve_review_text = "Kestrel Yard Control: Artemis has two homing torpedoes loaded as emergency conversion reserve. Under the generator governor, treat them as energy margin, not tactical inventory. No nukes, EMPs, or mines are released before Tarsis resupply. Tarsis has been notified to prioritize homing replacement and generator acceptance."
 shared training_speed_power_reminder_text = "Training Control: keep speed and power changes deliberate. Treat the generator advisory as active until Tarsis completes the handoff. Comms should coordinate homing priority, generator support, and docking clearance with Tarsis."
 shared tarsis_homing_priority_text = "Tarsis Control acknowledges. Homing torpedo production priority set for Artemis. Other ordnance will load as available after homing complement is restored."
 shared tarsis_generator_support_text = "Generator acceptance packet received. We can clear the Kestrel governor after docking and yard-lock synchronization. Do not assume full acceleration response until transfer complete."
@@ -74,6 +77,7 @@ shared tarsis_resupply_text = "Tarsis Station confirms resupply and generator ha
 //comms if has_roles(COMMS_SELECTED_ID, "kestrel_yards")
     + "Khovan: Hail Kestrel Yards" khovan_kestrel_hail
     + "Khovan: Request Departure Clearance" khovan_kestrel_request_departure_clearance
+    + "Khovan: Review Emergency Homing Reserve" khovan_kestrel_review_emergency_homing_reserve
     + "Khovan: Confirm Launch-Envelope Exit" khovan_kestrel_report_launch_envelope_clear
     + "Khovan: Resend Generator Advisory" khovan_kestrel_resend_generator_advisory
 
@@ -113,6 +117,8 @@ shared tarsis_resupply_text = "Tarsis Station confirms resupply and generator ha
     homing_reserve_status = "initialized_as_state_only"
     homing_reserve_runtime_apply_status = "pending_source_authorized_ordnance_apply"
     homing_reserve_live_inventory_status = "runtime_set_requested_live_smoke_required"
+    homing_reserve_review_status = "not_requested"
+    homing_reserve_conversion_mode = "status_only_mechanical_conversion_api_unproven"
     artemis_start_condition_status = "pending_apply"
     artemis_start_energy_policy = "cosmos_default_energy_with_generator_governor_not_zero_energy"
     artemis_start_energy_runtime_apply_status = "not_overridden_zero_energy_not_source_authorized"
@@ -364,6 +370,14 @@ distance: 600
 
     comms_receive("Artemis, Kestrel Yard Control. Departure clearance is logged. Report launch-envelope clear once Helm is outside the yard control zone.", title="Kestrel Yard Control", title_color="green")
     script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS 006H] Kestrel Hail option response sent")
+    yield success
+
+=== khovan_kestrel_review_emergency_homing_reserve ===
+    homing_reserve_review_status = "status_packet_sent"
+    script.write_khovan_startup_trace("[KHOVAN ACT1 RESERVE 001] emergency homing reserve status requested")
+    comms_receive(kestrel_homing_reserve_review_text, title="Kestrel Yard Control", title_color="green")
+    script.write_khovan_startup_trace("[KHOVAN ACT1 RESERVE BLOCKED] mechanical conversion API unproven; status-only packet sent")
+    await task_schedule(khovan_act1_record_progression, {"action": "kestrel_homing_reserve_review", "detail": "status-only emergency homing reserve packet sent; mechanical conversion API unproven"})
     yield success
 
 === khovan_kestrel_request_departure_clearance ===

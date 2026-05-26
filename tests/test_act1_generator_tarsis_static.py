@@ -56,12 +56,15 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             "shared homing_reserve_count = 2",
             'shared homing_reserve_runtime_apply_status = "stubbed_due_to_ordnance_api_uncertainty"',
             'shared homing_reserve_live_inventory_status = "not_verified"',
+            'shared homing_reserve_review_status = "not_requested"',
+            'shared homing_reserve_conversion_mode = "status_only_mechanical_conversion_api_unproven"',
             'shared artemis_start_energy_policy = "cosmos_default_energy_with_generator_governor_not_zero_energy"',
             "shared artemis_start_homing_torpedoes = 2",
             "shared artemis_start_nukes = 0",
             "shared artemis_start_emps = 0",
             "shared artemis_start_mines = 0",
             'shared artemis_start_ordnance_runtime_apply_status = "not_applied"',
+            'shared kestrel_homing_reserve_review_text = "Kestrel Yard Control: Artemis has two homing torpedoes loaded as emergency conversion reserve. Under the generator governor, treat them as energy margin, not tactical inventory. No nukes, EMPs, or mines are released before Tarsis resupply. Tarsis has been notified to prioritize homing replacement and generator acceptance."',
             'shared training_speed_power_reminder_text = "Training Control: keep speed and power changes deliberate. Treat the generator advisory as active until Tarsis completes the handoff. Comms should coordinate homing priority, generator support, and docking clearance with Tarsis."',
             'shared tarsis_hail_text = "Tarsis Station: Artemis, we read you. Production Control and Generator Acceptance are standing by for the Kestrel handoff."',
             'shared tarsis_docking_clearance_text = "Tarsis Docking Control: docking clearance granted. Approach within tolerance and initiate docking."',
@@ -97,6 +100,8 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             'homing_reserve_status = "initialized_as_state_only"',
             'homing_reserve_runtime_apply_status = "pending_source_authorized_ordnance_apply"',
             'homing_reserve_live_inventory_status = "runtime_set_requested_live_smoke_required"',
+            'homing_reserve_review_status = "not_requested"',
+            'homing_reserve_conversion_mode = "status_only_mechanical_conversion_api_unproven"',
             'artemis_start_energy_runtime_apply_status = "not_overridden_zero_energy_not_source_authorized"',
             "artemis_start_homing_torpedoes = 2",
             "artemis_start_nukes = 0",
@@ -448,6 +453,7 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             '//comms if has_roles(COMMS_SELECTED_ID, "kestrel_yards")',
             '+ "Khovan: Hail Kestrel Yards" khovan_kestrel_hail',
             '+ "Khovan: Request Departure Clearance" khovan_kestrel_request_departure_clearance',
+            '+ "Khovan: Review Emergency Homing Reserve" khovan_kestrel_review_emergency_homing_reserve',
             '+ "Khovan: Confirm Launch-Envelope Exit" khovan_kestrel_report_launch_envelope_clear',
             '+ "Khovan: Resend Generator Advisory" khovan_kestrel_resend_generator_advisory',
             "[KHOVAN ACT1 COMMS 006] Kestrel Hail option selected",
@@ -455,6 +461,7 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             "[KHOVAN ACT1 COMMS 006B] Kestrel launch-envelope option selected",
             "[KHOVAN ACT1 COMMS 006C] Kestrel resend-advisory option selected",
             "=== khovan_kestrel_request_departure_clearance ===",
+            "=== khovan_kestrel_review_emergency_homing_reserve ===",
             "=== khovan_kestrel_report_launch_envelope_clear ===",
         ]:
             self.assertIn(phrase, act1)
@@ -475,6 +482,18 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
         self.assertIn("[KHOVAN ACT1 004] Kestrel departure clearance granted", clearance_body)
         self.assertIn("kestrel_departure_clearance_response_sent = True", clearance_body)
         self.assertIn("[KHOVAN ACT1 COMMS 006D] Kestrel departure-clearance option response sent", clearance_body)
+
+        reserve_body = label_body(act1, "khovan_kestrel_review_emergency_homing_reserve")
+        for phrase in [
+            'homing_reserve_review_status = "status_packet_sent"',
+            "[KHOVAN ACT1 RESERVE 001] emergency homing reserve status requested",
+            "comms_receive(kestrel_homing_reserve_review_text, title=\"Kestrel Yard Control\", title_color=\"green\")",
+            "[KHOVAN ACT1 RESERVE BLOCKED] mechanical conversion API unproven; status-only packet sent",
+            '"detail": "status-only emergency homing reserve packet sent; mechanical conversion API unproven"',
+        ]:
+            self.assertIn(phrase, reserve_body)
+        self.assertNotIn("set_data_set_value", reserve_body)
+        self.assertNotIn("[KHOVAN ACT1 RESERVE 003]", reserve_body)
 
         launch_body = label_body(act1, "khovan_kestrel_report_launch_envelope_clear")
         self.assertIn("[KHOVAN ACT1 COMMS 006B] Kestrel launch-envelope option selected", launch_body)
@@ -699,6 +718,8 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             "[KHOVAN ACT1 COMMS TARSIS RESUPPLY]",
             "[KHOVAN ACT1 COMMS TARSIS STATUS]",
             "[KHOVAN ACT1 START STATE]",
+            "[KHOVAN ACT1 RESERVE 001]",
+            "[KHOVAN ACT1 RESERVE BLOCKED]",
             "[KHOVAN ACT1 MSG KESTREL 001]",
             "[KHOVAN ACT1 MSG KESTREL 002]",
             "[KHOVAN ACT1 MSG KESTREL 003]",
@@ -800,6 +821,10 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             "emp_num = 0",
             "mine_num = 0",
             "does not call `set_data_set_value(artemis_id, \"energy\", ...)`",
+            "emergency reserve behavior",
+            "status-only",
+            "mechanical conversion api unproven",
+            "review emergency homing reserve",
             "options panel stayed empty",
             "10/10 homing",
             "standard station fallback",
