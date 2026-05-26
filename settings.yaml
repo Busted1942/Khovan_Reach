@@ -1,0 +1,53 @@
+# Khovan Reach Slice 01B client lifecycle settings.
+# Mirrors the old/reference LegendaryMissions startup contract without copying old gameplay.
+
+AUTO_START: false
+
+AUTO_PLAY:
+    enable: false
+
+OPERATOR_MODE:
+    enable: false
+    logo: "media/LegendaryMissions/operator"
+    show_logo_on_main: true
+    pin: "000000"
+
+SHIP_PICK_READ_ONLY: false
+CAN_CHANGE_CONSOLE: true
+
+GAMEMASTER:
+    enable: true
+    beta: false
+    menu_icon_size: 45
+
+DOCKING:
+    refuel_amount: 20
+    refuel_delay: 2
+    shield_delay: 2
+    shield_coeff: 2
+    torps_delay: 6
+    interior_delay: 2
+    interior_count: 2
+
+GRID_THEME: 0
+
+DIFFICULTY: 5
+
+WORLD_SELECT: "khovan_reach"
+
+TERRAIN_SELECT: "none"
+LETHAL_SELECT: "none"
+FRIENDLY_SELECT: "none"
+MONSTER_SELECT: "none"
+UPGRADE_SELECT: "none"
+GAME_TIME_LIMIT: 0
+WAR_TIME_DELAY: 10
+
+PLAYER_CREATE_DEFAULT: true
+PLAYER_COUNT: 1
+PLAYER_SHIP_RESPAWN: false
+PLAYER_LIST:
+    -   name: "Artemis"
+        side: "tsn"
+        ship: "tsn_battle_cruiser"
+        face: "terran"

@@ -27,8 +27,29 @@ REQUIRED_STATE = {
     "comms_archive_enabled": "True",
     "artemis_player_ship_status": "\"pending_playable_bootstrap\"",
     "scene_1_runtime_presence": "\"pending_playable_bootstrap\"",
-    "player_console_select_status": "\"client_select_page_enabled\"",
+    "player_console_select_status": "\"legendary_reference_lifecycle\"",
 }
+
+REQUIRED_LEGENDARY_MASTLIB_STACK = [
+    "artemis-sbs.LegendaryMissions.autoplay.v1.3.0.mastlib",
+    "artemis-sbs.LegendaryMissions.ai.v1.3.0.mastlib",
+    "artemis-sbs.LegendaryMissions.commerce.v1.3.0.mastlib",
+    "artemis-sbs.LegendaryMissions.comms.v1.3.0.mastlib",
+    "artemis-sbs.LegendaryMissions.consoles.v1.3.0.mastlib",
+    "artemis-sbs.LegendaryMissions.damage.v1.3.0.mastlib",
+    "artemis-sbs.LegendaryMissions.docking.v1.3.0.mastlib",
+    "artemis-sbs.LegendaryMissions.fleets.v1.3.0.mastlib",
+    "artemis-sbs.LegendaryMissions.grid_comms.v1.3.0.mastlib",
+    "artemis-sbs.LegendaryMissions.hangar.v1.3.0.mastlib",
+    "artemis-sbs.LegendaryMissions.internal_comms.v1.3.0.mastlib",
+    "artemis-sbs.LegendaryMissions.prefabs.v1.3.0.mastlib",
+    "artemis-sbs.LegendaryMissions.operator.v1.3.0.mastlib",
+    "artemis-sbs.LegendaryMissions.science_scans.v1.3.0.mastlib",
+    "artemis-sbs.LegendaryMissions.upgrades.v1.3.0.mastlib",
+    "artemis-sbs.LegendaryMissions.gamemaster.v1.3.0.mastlib",
+    "artemis-sbs.LegendaryMissions.gamemaster_comms.v1.3.0.mastlib",
+    "artemis-sbs.LegendaryMissions.basic_player_destroy.v1.3.0.mastlib",
+]
 
 LEGACY_MAST_NAMES = {
     "dev_jump.mast",
@@ -83,6 +104,25 @@ class BootstrapStaticTests(unittest.TestCase):
         self.assertIn("sbslib", data)
         self.assertIn("artemis-sbs.sbs_utils.v1.3.0.sbslib", data["sbslib"])
         self.assertIn("mastlib", data)
+        self.assertEqual(REQUIRED_LEGENDARY_MASTLIB_STACK, data["mastlib"])
+
+    def test_settings_yaml_contains_reference_lifecycle_contract(self) -> None:
+        settings = read("settings.yaml")
+        for phrase in [
+            "AUTO_START: false",
+            "SHIP_PICK_READ_ONLY: false",
+            "CAN_CHANGE_CONSOLE: true",
+            "GAMEMASTER:",
+            "enable: true",
+            "PLAYER_CREATE_DEFAULT: true",
+            "PLAYER_COUNT: 1",
+            "PLAYER_LIST:",
+            'name: "Artemis"',
+            'side: "tsn"',
+            'ship: "tsn_battle_cruiser"',
+            'WORLD_SELECT: "khovan_reach"',
+        ]:
+            self.assertIn(phrase, settings)
 
     def test_lib_json_is_reference_aligned_metadata(self) -> None:
         data = json.loads(read("__lib__.json"))
@@ -97,8 +137,8 @@ class BootstrapStaticTests(unittest.TestCase):
         self.assertIn("[KHOVAN EARLY 001] script.py entered", script)
         self.assertIn("[KHOVAN EARLY 002] before sbs_utils import", script)
         self.assertIn("[KHOVAN EARLY 003] after sbs_utils import", script)
-        self.assertIn("[KHOVAN EARLY 004] before client StoryPage setup", script)
-        self.assertIn("[KHOVAN EARLY 005] after client StoryPage setup", script)
+        self.assertIn("[KHOVAN EARLY 004] before reference StoryPage registration", script)
+        self.assertIn("[KHOVAN EARLY 005] after reference StoryPage registration", script)
         self.assertIn("[KHOVAN EARLY 006] before story.mast load/handoff", script)
         self.assertIn("[KHOVAN EARLY 007] after story.mast load/handoff", script)
         self.assertIn("[KHOVAN EARLY EXCEPTION]", script)
@@ -108,8 +148,8 @@ class BootstrapStaticTests(unittest.TestCase):
         self.assertNotIn("ClientSelectPage", script)
         self.assertIn("class KhovanReachStoryPage(StoryPage):", script)
         self.assertIn('story_file = "story.mast"', script)
-        self.assertIn('main_server = "khovan_reach_slice01_entry"', script)
-        self.assertIn('main_client = "khovan_reach_slice01_client_entry"', script)
+        self.assertNotIn("main_server", script)
+        self.assertNotIn("main_client", script)
         self.assertIn("SLICE01_SMOKE_MARKER_PATH", script)
         self.assertIn("tests\" / \"live_smoke_last_bootstrap.txt", script)
         self.assertIn("def write_slice01_live_smoke_marker(client_id):", script)
@@ -121,7 +161,8 @@ class BootstrapStaticTests(unittest.TestCase):
         self.assertIn("dillon_clip_1_status=stubbed", script)
         self.assertIn("artemis_player_ship_status=initialized_by_reference_pattern", script)
         self.assertIn("scene_1_runtime_presence=artemis_player_ship_and_dillon_stub", script)
-        self.assertIn("client_start_page=KhovanReachStoryPage", script)
+        self.assertIn("client_start_page=LegendaryMissions.server_console/client_main", script)
+        self.assertIn("LegendaryMissions.server_console -> scripts/main.mast @map/khovan_reach", script)
         self.assertIn("Gui.server_start_page_class(KhovanReachStoryPage)", script)
         self.assertIn("Gui.client_start_page_class(KhovanReachStoryPage)", script)
 
@@ -143,45 +184,40 @@ class BootstrapStaticTests(unittest.TestCase):
         self.assertRegex(main, r"(?m)^\s*shared\s+artemis_id\s*=\s*0\s*$")
         self.assertIn("@map/khovan_reach", main)
         self.assertIn("=== khovan_reach_slice01_entry ===", main)
-        self.assertIn("=== khovan_reach_slice01_client_entry ===", main)
-        self.assertIn("=== khovan_reach_slice01_client_main ===", main)
-        self.assertIn("=== khovan_reach_slice01_console_selected ===", main)
+        self.assertNotIn("=== khovan_reach_slice01_client_entry ===", main)
+        self.assertNotIn("=== khovan_reach_slice01_client_main ===", main)
+        self.assertNotIn("=== khovan_reach_slice01_console_selected ===", main)
         self.assertIn("khovan_reach_slice01_bootstrap", main)
-        self.assertIn("jump khovan_reach_slice01_server_playable", main)
-        self.assertIn("=== khovan_reach_slice01_server_playable ===", main)
-        self.assertIn(
-            "Khovan Reach Slice 01A playable bootstrap loaded. Scene 1 initialized.",
-            main,
-        )
+        self.assertNotIn("jump khovan_reach_slice01_server_playable", main)
+        self.assertNotIn("=== khovan_reach_slice01_server_playable ===", main)
+        self.assertNotIn("Select a bridge console for Artemis", main)
         self.assertIn("khovan_reach_initialize_playable_bootstrap", main)
         self.assertIn("[KHOVAN BOOT 001] scripts/main.mast entered", main)
         self.assertIn("[KHOVAN BOOT 002] before state defaults", main)
         self.assertIn("[KHOVAN BOOT 003] after state defaults", main)
         self.assertIn("[KHOVAN BOOT 004] before playable_bootstrap", main)
-        self.assertIn("[KHOVAN BOOT 007A] before client/page playable transition", main)
-        self.assertIn("[KHOVAN BOOT 007B] after client/page playable transition", main)
-        self.assertIn("[KHOVAN BOOT 007C] before player/client assignment confirmation", main)
-        self.assertIn("[KHOVAN BOOT 007D] after player/client assignment confirmation", main)
+        self.assertNotIn("[KHOVAN BOOT 007A] before client/page playable transition", main)
+        self.assertNotIn("[KHOVAN BOOT 007B] after client/page playable transition", main)
+        self.assertNotIn("[KHOVAN BOOT 007C] before player/client assignment confirmation", main)
+        self.assertNotIn("[KHOVAN BOOT 007D] after player/client assignment confirmation", main)
         self.assertIn("[KHOVAN BOOT 009] mission_phase=act_1 current_scene=1", main)
         self.assertIn("[KHOVAN BOOT 010] playable bootstrap complete", main)
         self.assertIn("[KHOVAN ROUTE 001] map selected", main)
-        self.assertIn("[KHOVAN ROUTE 002] player ship initialized", main)
-        self.assertIn("[KHOVAN ROUTE 003] playable bridge transition reached", main)
-        self.assertIn("[KHOVAN ROUTE 004] console selected", main)
-        self.assertIn("[KHOVAN ROUTE 005] client assigned to Artemis", main)
+        self.assertIn("[KHOVAN ROUTE 002] before spawn_players", main)
+        self.assertIn("[KHOVAN ROUTE 003] after spawn_players", main)
+        self.assertNotIn("[KHOVAN ROUTE 004] console selected", main)
+        self.assertNotIn("[KHOVAN ROUTE 005] client assigned to Artemis", main)
         self.assertIn("script.write_slice01_live_smoke_marker(0)", main)
         self.assertIn('logger("mast.runtime")', main)
         self.assertIn('"mast.runtime"', main)
         self.assertIn("mission_phase = act_1; current_scene = 1", main)
         self.assertIn("dillon_clip_1_status = stubbed", main)
         self.assertIn("artemis_player_ship_status = initialized", main)
-        self.assertIn("sim_resume()", main)
-        self.assertIn("assign_client_to_ship(0, artemis_id)", main)
-        self.assertIn('link(artemis_id, "consoles", client_id)', main)
-        self.assertIn('add_role(client_id, "console, mainscreen")', main)
-        self.assertIn('gui_console("mainscreen")', main)
-        self.assertIn("assign_client_to_ship(client_id, artemis_id)", main)
-        self.assertIn("gui_console(console_select)", main)
+        self.assertNotIn("sim_resume()", main)
+        self.assertNotIn("assign_client_to_ship(0, artemis_id)", main)
+        self.assertNotIn("assign_client_to_ship(client_id, artemis_id)", main)
+        self.assertNotIn("gui_console(console_select)", main)
+        self.assertIn("await task_schedule(spawn_players)", main)
 
     def test_map_route_enters_reference_backed_playable_server_route(self) -> None:
         main = read("scripts/main.mast")
@@ -193,36 +229,29 @@ class BootstrapStaticTests(unittest.TestCase):
         self.assertIsNotNone(match)
         map_body = match.group("body")
         self.assertIn("[KHOVAN ROUTE 001] map selected", map_body)
-        self.assertIn("jump khovan_reach_slice01_entry", map_body)
+        self.assertIn("await task_schedule(khovan_reach_slice01_entry)", map_body)
         self.assertNotIn("task_schedule(khovan_reach_slice01_server_playable)", map_body)
-        self.assertNotIn("->END", map_body)
+        self.assertIn("->END", map_body)
 
-    def test_storypage_entry_labels_are_defined_and_persistent(self) -> None:
+    def test_storypage_uses_reference_reroute_lifecycle(self) -> None:
         script = read("script.py")
         main = read("scripts/main.mast")
-        self.assertIn('main_server = "khovan_reach_slice01_entry"', script)
-        self.assertIn('main_client = "khovan_reach_slice01_client_entry"', script)
+        self.assertNotIn("main_server", script)
+        self.assertNotIn("main_client", script)
+        self.assertIn("Gui.server_start_page_class(KhovanReachStoryPage)", script)
+        self.assertIn("Gui.client_start_page_class(KhovanReachStoryPage)", script)
 
         server_match = re.search(
-            r"^=== khovan_reach_slice01_entry ===(?P<body>.*?)^=== khovan_reach_slice01_client_entry ===",
+            r"^=== khovan_reach_slice01_entry ===(?P<body>.*?)^=== khovan_reach_slice01_bootstrap ===",
             main,
             flags=re.MULTILINE | re.DOTALL,
         )
         self.assertIsNotNone(server_match)
         server_body = server_match.group("body")
+        self.assertIn("await task_schedule(spawn_players)", server_body)
         self.assertIn("await task_schedule(khovan_reach_slice01_bootstrap)", server_body)
-        self.assertIn("jump khovan_reach_slice01_server_playable", server_body)
-        self.assertNotIn("->END", server_body)
-
-        client_match = re.search(
-            r"^=== khovan_reach_slice01_client_entry ===(?P<body>.*?)^=== khovan_reach_slice01_bootstrap ===",
-            main,
-            flags=re.MULTILINE | re.DOTALL,
-        )
-        self.assertIsNotNone(client_match)
-        client_body = client_match.group("body")
-        self.assertIn("jump khovan_reach_slice01_client_main", client_body)
-        self.assertNotIn("->END", client_body)
+        self.assertIn("script.write_slice01_live_smoke_marker(0)", server_body)
+        self.assertIn("->END", server_body)
 
     def test_required_bootstrap_system_files_exist(self) -> None:
         for path in [
@@ -241,38 +270,66 @@ class BootstrapStaticTests(unittest.TestCase):
             pattern = rf"(?m)^\s*{re.escape(name)}\s*=\s*{re.escape(value)}\s*$"
             self.assertRegex(state, pattern, name)
 
-    def test_slice01a_playable_bootstrap_uses_reference_spawn_pattern(self) -> None:
+    def test_slice01b_playable_bootstrap_binds_reference_spawned_ship(self) -> None:
         playable = read("scripts/systems/playable_bootstrap.mast")
         self.assertIn("=== khovan_reach_initialize_playable_bootstrap ===", playable)
         self.assertIn("[KHOVAN BOOT 005] playable_bootstrap entered", playable)
         self.assertIn("[KHOVAN BOOT 006] before Artemis/player ship init or confirmation", playable)
-        self.assertIn("[KHOVAN BOOT 006A] before sim_create", playable)
-        self.assertIn("[KHOVAN BOOT 006B] after sim_create", playable)
-        self.assertIn("[KHOVAN BOOT 006E] before ship spawn call", playable)
-        self.assertIn("[KHOVAN BOOT 006F] after ship spawn call", playable)
-        self.assertIn("[KHOVAN BOOT 006J] before client/player assignment", playable)
-        self.assertIn("[KHOVAN BOOT 006K] after client/player assignment", playable)
+        self.assertIn("[KHOVAN BOOT 006A] before reference player ship query", playable)
+        self.assertIn("[KHOVAN BOOT 006B] after reference player ship query", playable)
+        self.assertIn("[KHOVAN BOOT 006C] before Khovan ship binding", playable)
+        self.assertIn("[KHOVAN BOOT 006D] after Khovan ship binding", playable)
         self.assertIn("[KHOVAN BOOT 007] after Artemis/player ship init or confirmation", playable)
         self.assertNotIn("artemis_ship_name", playable)
-        self.assertIn("sim_create()", playable)
-        self.assertIn("shared artemis_id = to_id(player_spawn(0, 0, 0, \"Artemis\", \"tsn\", \"tsn_battle_cruiser\"))", playable)
-        self.assertIn("assign_client_to_ship(0, artemis_id)", playable)
+        self.assertNotIn("sim_create()", playable)
+        self.assertNotIn("player_spawn(", playable)
+        self.assertNotIn("assign_client_to_ship", playable)
         self.assertIn('if player_ship.name == "Artemis":', playable)
         self.assertIn('artemis_object.name = "Artemis"', playable)
         self.assertIn('role("__player__") & role("tsn")', playable)
-        self.assertIn('add_role(artemis_id, "default_player_ship")', playable)
         self.assertIn('artemis_player_ship_status = "initialized"', playable)
         self.assertIn('scene_1_runtime_presence = "artemis_player_ship_and_dillon_stub"', playable)
-        self.assertIn('player_console_select_status = "client_select_page_enabled"', playable)
+        self.assertIn('player_console_select_status = "legendary_reference_lifecycle"', playable)
 
-    def test_artemis_id_is_shared_before_assignment_routes_use_it(self) -> None:
+    def test_artemis_id_is_shared_after_reference_spawn_players(self) -> None:
         main = read("scripts/main.mast")
         playable = read("scripts/systems/playable_bootstrap.mast")
         self.assertRegex(main, r"(?m)^\s*shared\s+artemis_id\s*=\s*0\s*$")
-        self.assertIn("shared artemis_id = to_id(player_spawn", playable)
         self.assertIn("shared artemis_id = artemis_object.id", playable)
-        self.assertIn("assign_client_to_ship(0, artemis_id)", main)
-        self.assertIn("assign_client_to_ship(client_id, artemis_id)", main)
+        self.assertIn("await task_schedule(spawn_players)", main)
+        self.assertNotIn("assign_client_to_ship(client_id, artemis_id)", main)
+        self.assertNotIn("gui_console(console_select)", main)
+
+    def test_slice01b_rejects_partial_legendary_or_custom_selector(self) -> None:
+        data = json.loads(read("story.json"))
+        script = read("script.py")
+        runtime_text = "\n".join(
+            [
+                script,
+                read("story.mast"),
+                read("scripts/main.mast"),
+                read("scripts/systems/playable_bootstrap.mast"),
+            ]
+        )
+
+        self.assertEqual(REQUIRED_LEGENDARY_MASTLIB_STACK, data["mastlib"])
+        self.assertNotEqual(
+            [
+                "artemis-sbs.LegendaryMissions.consoles.v1.3.0.mastlib",
+                "artemis-sbs.LegendaryMissions.gamemaster.v1.3.0.mastlib",
+            ],
+            data["mastlib"],
+        )
+        for forbidden in [
+            "Select a bridge console for Artemis",
+            "khovan_reach_slice01_client_main",
+            "khovan_reach_slice01_console_selected",
+            "assign_client_to_ship(client_id, artemis_id)",
+            "gui_console(console_select)",
+            'main_client = "client_main"',
+            'main_client = "khovan_reach_slice01_client_entry"',
+        ]:
+            self.assertNotIn(forbidden, runtime_text)
 
     def test_dillon_clip_1_is_stubbed(self) -> None:
         audio = read("scripts/systems/audio_runtime.mast")

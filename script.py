@@ -53,8 +53,8 @@ try:
                     "dillon_clip_1_status=stubbed",
                     "artemis_player_ship_status=initialized_by_reference_pattern",
                     "scene_1_runtime_presence=artemis_player_ship_and_dillon_stub",
-                    "client_start_page=KhovanReachStoryPage",
-                    "entry_chain=story.json -> script.py -> story.mast -> scripts/main.mast -> khovan_reach_slice01_entry",
+                    "client_start_page=LegendaryMissions.server_console/client_main",
+                    "entry_chain=story.json -> script.py -> story.mast -> LegendaryMissions.server_console -> scripts/main.mast @map/khovan_reach -> khovan_reach_slice01_entry",
                     "",
                 ]
             ),
@@ -64,8 +64,6 @@ try:
 
     class KhovanReachStoryPage(StoryPage):
         story_file = "story.mast"
-        main_server = "khovan_reach_slice01_entry"
-        main_client = "khovan_reach_slice01_client_entry"
 
         def start_story(self, client_id):
             try:
@@ -81,10 +79,10 @@ try:
 
     Mast.include_code = True
 
+    write_khovan_startup_trace("[KHOVAN EARLY 004] before reference StoryPage registration")
     Gui.server_start_page_class(KhovanReachStoryPage)
-    write_khovan_startup_trace("[KHOVAN EARLY 004] before client StoryPage setup")
     Gui.client_start_page_class(KhovanReachStoryPage)
-    write_khovan_startup_trace("[KHOVAN EARLY 005] after client StoryPage setup")
+    write_khovan_startup_trace("[KHOVAN EARLY 005] after reference StoryPage registration")
 except Exception as e:
     write_khovan_startup_trace(
         f"[KHOVAN EARLY EXCEPTION] {type(e).__name__}: {e}\n{traceback.format_exc()}"

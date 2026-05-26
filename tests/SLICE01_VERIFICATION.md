@@ -114,7 +114,7 @@ Matt's current live smoke confirms:
 - mission launches without missing-file/package/import/GUI lifecycle errors
 - server reaches playable/ready state
 - two clients can connect
-- Khovan console selection works
+- player consoles work
 - Helm console can move Artemis
 - Dillon Clip 1 text stub is active
 - `mission_phase = act_1`
@@ -124,11 +124,13 @@ This is accepted as Slice 01A minimum playable bootstrap evidence. It is not Act
 
 Implemented static evidence:
 
-- server entry chain remains `story.json -> script.py -> story.mast -> scripts/main.mast -> khovan_reach_slice01_entry`
-- `scripts/systems/playable_bootstrap.mast` now uses the local tutorial/reference pattern: `sim_create()`, `player_spawn(...)`, `assign_client_to_ship(...)`
-- the spawn step is surrounded by BOOT 006 sub-step trace markers so any repeat crash identifies the exact failing sub-step
-- `script.py` routes clients through the Khovan StoryPage, matching local known-good MAST mission startup shape
-- `scripts/main.mast` provides a minimal reference-backed client console selection route using `assign_client_to_ship(client_id, artemis_id)` and `gui_console(console_select)`
+- Slice 01B replaces the custom Khovan selector with the full old/reference LegendaryMissions client lifecycle subset.
+- `story.json` loads the complete old/reference mastlib stack needed by `server_console`, `common_console_select`, `spawn_players`, and `gamemaster`.
+- `settings.yaml` provides the settings contract for `PLAYER_COUNT`, `PLAYER_LIST`, `CAN_CHANGE_CONSOLE`, `GAMEMASTER`, and `WORLD_SELECT`.
+- `script.py` uses the old/reference `StoryPage` pattern with only `story_file = "story.mast"`; it does not override `main_server` or `main_client`.
+- Legendary `server_console` owns the server/client reroute lifecycle.
+- the selected Khovan `@map` schedules `spawn_players` before Khovan Scene 1 bootstrap content.
+- `scripts/systems/playable_bootstrap.mast` binds to the reference-created Artemis player ship instead of raw-spawning or assigning clients.
 - `mission_phase = act_1`
 - `current_scene = 1`
 - Dillon Clip 1 is represented by an operator-visible text stub
@@ -152,10 +154,80 @@ Live Cosmos smoke has proved for Slice 01A:
 - Helm can move Artemis
 - Dillon Clip 1 text stub is visible enough for operator acceptance
 
+Slice 01B live smoke confirmed:
+
+- no `PLAYER_COUNT` error
+- no `TAB_CONSOLES` error
+- mission launches cleanly
+- server reaches playable space view
+- normal player console selection is available
+- Helm can still move Artemis
+- Game Master console option appears
+- Dillon Clip 1 text stub appears
+- the custom Khovan `Select a bridge console for Artemis` selector does not appear
+
 Remaining unproven after Slice 01A live smoke:
 
 - Weapons torpedo loadout/UI behavior
 - full Act I gates, Kestrel/Tarsis flow, drones, Scenario Control Panel, story jumps, DAMCON, pirates, cache run, debrief, and current-objective display
+
+### Slice 01B reference client lifecycle rebuild
+
+Slice 01B exists because the Slice 01A custom client selector was sufficient to prove minimum playability, but it blocked the normal Cosmos/Legendary client lifecycle needed before Slice 02 GM work.
+
+Partial Legendary integration failed and must not be repeated:
+
+```text
+common_console_select.mast
+name 'PLAYER_COUNT' is not defined
+
+common_console_select.mast
+name 'TAB_CONSOLES' is not defined
+```
+
+Classification:
+
+- partial lifecycle integration
+- not a reason to patch globals one at a time
+- `common_console_select.client_main` depends on the full Legendary `server_console` / settings / player-spawn setup contract
+
+Slice 01B ports only the lifecycle subset:
+
+- old/reference `script.py` StoryPage registration pattern
+- full old/reference `story.json` mastlib stack
+- `settings.yaml` settings contract
+- Legendary `server_console` server/client reroutes
+- Khovan map scheduling `spawn_players`
+- Legendary `common_console_select` console selection / Change Console
+- Legendary `gamemaster.mast` Game Master console route
+
+Deliberately not copied:
+
+- old Act I flow
+- Kestrel/Tarsis gates
+- drones
+- dev/story jumps
+- pirate/salvager flow
+- DAMCON
+- debrief
+- torpedo/ordnance behavior
+- Scenario Control Panel
+
+Quick/static checks verify the source contract only. They do not prove Game Master visibility, Change Console behavior, or live console switching.
+
+Matt's Slice 01B live smoke confirms the source contract now reaches the intended runtime behavior for the prerequisite lifecycle:
+
+- no `PLAYER_COUNT` runtime error
+- no `TAB_CONSOLES` runtime error
+- mission launches cleanly
+- server reaches playable space view
+- normal Cosmos/Legendary console selector appears
+- Game Master option appears
+- Helm can enter console and move Artemis
+- Dillon Clip 1 stub appears
+- custom Khovan selector is gone
+
+Change Console remains part of the expected baseline to verify during follow-up multi-station smoke before rebuilding Slice 02, unless Matt separately confirms it in the same live pass.
 
 ### Slice 01A known issue: Weapons torpedo-load client crash
 

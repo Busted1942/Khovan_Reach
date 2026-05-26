@@ -17,7 +17,7 @@ shared comms_archive_enabled = True
 shared dillon_clip_1_status = "queued"
 shared artemis_player_ship_status = "pending_playable_bootstrap"
 shared scene_1_runtime_presence = "pending_playable_bootstrap"
-shared player_console_select_status = "client_select_page_enabled"
+shared player_console_select_status = "legendary_reference_lifecycle"
 
 === khovan_reach_initialize_bootstrap_state ===
     mission_phase = "act_1"
@@ -37,6 +37,6 @@ shared player_console_select_status = "client_select_page_enabled"
     dillon_clip_1_status = "queued"
     artemis_player_ship_status = "pending_playable_bootstrap"
     scene_1_runtime_presence = "pending_playable_bootstrap"
-    player_console_select_status = "client_select_page_enabled"
+    player_console_select_status = "legendary_reference_lifecycle"
     log("Slice 01 bootstrap state initialized.")
     ->END
