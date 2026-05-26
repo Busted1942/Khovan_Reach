@@ -7,7 +7,8 @@
 - Kept the Slice 01B client lifecycle intact; LegendaryMissions still owns normal console selection, Game Master, and Change Console behavior.
 - Added the first real Act I progression state:
   - generator governor starts active.
-  - 2-homing reserve is represented as state/log evidence pending ordnance API proof.
+  - 2-homing reserve is requested on Artemis at runtime, with nukes, EMPs, and mines requested as `0`.
+  - literal zero ship energy is not applied because the active source specifies generator governor, not a no-energy start.
   - Artemis starts mechanically held at Kestrel Yards by a position and throttle clamp loop.
   - Kestrel yard-lock presentation uses an in-fiction startup overlay and trace breadcrumbs as a fallback visual cue.
   - Kestrel departure clearance is required before launch-envelope confirmation.
@@ -53,6 +54,15 @@ Custom Khovan station/profile/Comms binding is deferred. Custom station presenta
 The restored `Comms Test Station` is diagnostic only. It exists to compare a known-visible proof route against Kestrel/Tarsis while Slice 04 Comms is being stabilized. It is not part of the Khovan scenario design and should be removed once the real Kestrel/Tarsis route is stable.
 
 The station_comms_docking_kernel spike remains evidence only. Slice 04 ports the proven station pattern into Tarsis through stock station spawn, explicit roles, `set_face`, `sim.add_navproxy`, role-owned Comms routes, handler breadcrumbs, docking setup attempts, and fallback confirmation. It does not add `Kernel Known Station`, `Kernel Scan-Gated Station`, or `Kernel Dock Station` to production Slice 04.
+
+Starting-condition audit: energy and ordnance:
+
+- User-reported issue: Artemis was expected to start with 0 energy and no weapons.
+- Source finding: active Slice 04 source does not authorize a literal zero-energy/no-weapons start. `docs/01_design/00_scenario_play_guide.md` states the Rev 2.1 change replaced visible low-energy start with a generator-output governor, and the mission-start state is generator governor active, 2 homing torpedoes as emergency conversion reserve, and no nukes/EMPs/mines until Tarsis resupply. `docs/01_design/10_mast_requirements.md` and `docs/01_design/50_implementation_slice_plan.md` also specify `generator_governor_active = true` and `starting_homing_torpedoes = 2`.
+- Classification: the zero-energy/no-weapons report conflicts with current active Slice 04 source. The source-aligned start is generator governor active, 2 homing torpedoes, no nukes, no EMPs, no mines, and no literal zero-energy override.
+- Change: Slice 04 now requests Artemis starting ordnance through data-set values: `Homing_NUM = 2`, `Nuke_NUM = 0`, `EMP_NUM = 0`, and `Mine_NUM = 0`. It intentionally does not call `set_data_set_value(artemis_id, "energy", ...)`.
+- Breadcrumbs: `[KHOVAN ACT1 START STATE] Artemis starting energy set to Cosmos default with generator governor active; zero-energy start not source-authorized` and `[KHOVAN ACT1 START STATE] Artemis starting ordnance set to Homing=2 Nuke=0 EMP=0 Mine=0`.
+- Fallback/uncertainty: quick/static checks can prove the runtime requests these values, but only live Cosmos smoke can prove whether the Weapons UI immediately reflects them. If the UI still shows a default loadout such as 10/10 homing, treat that as a live mechanics/API issue, not source authority for changing the mission to zero energy/no weapons.
 
 Kestrel startup docking crash:
 
@@ -165,7 +175,9 @@ Quick/static checks prove source structure only:
 - Required Act I state variables and default flags are present.
 - `generator_governor_active` starts true.
 - `starting_homing_torpedoes` and `homing_reserve_count` are set to 2.
-- Homing reserve runtime application is explicitly stubbed because ordnance API behavior remains uncertain.
+- Artemis starting ordnance is requested as Homing=2, Nuke=0, EMP=0, Mine=0.
+- Artemis starting energy is not set to 0; Slice 04 uses the generator governor as the source-authorized constraint.
+- Homing reserve runtime application remains live-smoke verified, because static checks cannot prove the Weapons UI accepted the data-set values.
 - Kestrel/Tarsis use reference-backed standard station primitives.
 - Kestrel/Tarsis Comms routes and gate handlers are present.
 - Kestrel departure hold state defaults are present.
@@ -226,6 +238,7 @@ Only live Cosmos smoke can prove:
 - Act I messages appear only at their intended trigger points and in the intended sequence.
 - Duplicate Kestrel/Tarsis option selections do not replay one-time briefing or acknowledgment packets.
 - The Training Control speed-power reminder appears immediately after the Kestrel generator advisory.
+- Artemis starting energy/ordnance UI matches the source-authorized start as closely as Cosmos allows: generator governor active, 2 homing torpedoes, no nukes, no EMPs, no mines.
 - Khovan-specific Kestrel/Tarsis options appear. If any stock Tarsis station options still appear despite uppercase `Station` suppression, document them as unsuppressed stock options and do not use them as proof of Khovan handler wiring.
 - Before Tarsis docking clearance, the dock button is unavailable, or docking is rejected by the pre-clearance deny helper, or the behavior is otherwise documented as a live mechanical blocker.
 - If docking is rejected before Tarsis clearance, the visible rejection text says docking clearance is not granted and does not say docking systems are incompatible.
@@ -241,45 +254,48 @@ Only live Cosmos smoke can prove:
 1. Run `python .\run_tests.py quick`.
 2. Run `git diff --check`.
 3. Run `Remove-Item .\tests\live_startup_trace.txt -ErrorAction SilentlyContinue`.
-4. Launch Cosmos from branch `slice04-act1-message-ordering`.
+4. Launch Cosmos from branch `slice04-starting-condition-audit`.
 5. Load Khovan Reach.
 6. Confirm normal player console selection still works.
 7. Confirm Helm can control Artemis.
 8. Confirm Artemis starts near/at Kestrel.
 9. Confirm no runtime crash occurs for at least 30 seconds.
-10. Confirm the Kestrel Yard Control yard-lock overlay appears.
-11. Confirm whether docking lines, docking animation, or docked UI state appear. If they do not, classify the result as fallback-only rather than failure.
-12. Before using Kestrel Comms, attempt a gentle Helm move/depart input.
-13. Confirm Artemis remains mechanically held at Kestrel and does not depart.
-14. Use Comms to select Kestrel Yards without an initial Science scan.
-15. Confirm Khovan Kestrel options appear.
-16. Select `Khovan: Request Departure Clearance`.
-17. After clearance, attempt Helm movement/departure again.
-18. Confirm Artemis can move/depart after clearance.
-19. Select `Khovan: Confirm Launch-Envelope Exit`.
-20. Wait 10 seconds and confirm Kestrel generator advisory appears/logs.
-21. If Kestrel remains unknown/blank, stop and inspect the Kestrel scan-known setup.
-22. If Kestrel options are blank, select `Comms Test Station`.
-23. Confirm `Proof Option` appears for the proof station.
-24. If the proof station works but Kestrel does not, compare Kestrel known/scan state and route condition against the proof station.
-25. Approach Tarsis.
-26. Use Comms to select Tarsis Station without treating Science scan as a required unlock.
-27. Confirm Khovan Tarsis options appear and are story-guided.
-28. Select `Khovan: Hail Tarsis Station`.
-29. Confirm `[KHOVAN ACT1 COMMS TARSIS HAIL]` and `[KHOVAN ACT1 MSG TARSIS 001]`.
-30. Before docking clearance, try to dock with Tarsis.
-31. Confirm docking is blocked, unavailable, rejected, or does not advance Slice 04 state.
-32. Select `Khovan: Request Homing-Torpedo Priority`.
-33. Confirm `[KHOVAN ACT1 COMMS TARSIS HOMING]` and `[KHOVAN ACT1 MSG TARSIS 002]`.
-34. Select `Khovan: Request Generator Support`.
-35. Confirm `[KHOVAN ACT1 COMMS TARSIS GENERATOR]` and `[KHOVAN ACT1 MSG TARSIS 003]`.
-36. Select `Khovan: Request Docking Clearance`.
-37. Confirm `[KHOVAN ACT1 COMMS TARSIS CLEARANCE]`, `[KHOVAN ACT1 MSG TARSIS 004]`, and `[KHOVAN ACT1 DOCK 004]`.
-38. Attempt normal docking if available.
-39. If docking remains unavailable, use `Khovan: Confirm Docking/Resupply` as the temporary Slice 04 fallback.
-40. Confirm `[KHOVAN ACT1 COMMS TARSIS RESUPPLY]` and `[KHOVAN ACT1 MSG TARSIS 005]` only after required requests plus docking/fallback confirmation.
-41. Confirm status option logs `[KHOVAN ACT1 COMMS TARSIS STATUS]` and `[KHOVAN ACT1 MSG TARSIS 006]`.
-42. Inspect `tests/live_startup_trace.txt`.
+10. Confirm `tests/live_startup_trace.txt` logs `[KHOVAN ACT1 START STATE] Artemis starting energy set to Cosmos default with generator governor active; zero-energy start not source-authorized`.
+11. Confirm `tests/live_startup_trace.txt` logs `[KHOVAN ACT1 START STATE] Artemis starting ordnance set to Homing=2 Nuke=0 EMP=0 Mine=0`.
+12. Confirm Weapons/Engineering UI state matches the source-authorized start as closely as Cosmos allows: generator governor active, 2 homing torpedoes, no nukes, no EMPs, no mines.
+13. Confirm the Kestrel Yard Control yard-lock overlay appears.
+14. Confirm whether docking lines, docking animation, or docked UI state appear. If they do not, classify the result as fallback-only rather than failure.
+15. Before using Kestrel Comms, attempt a gentle Helm move/depart input.
+16. Confirm Artemis remains mechanically held at Kestrel and does not depart.
+17. Use Comms to select Kestrel Yards without an initial Science scan.
+18. Confirm Khovan Kestrel options appear.
+19. Select `Khovan: Request Departure Clearance`.
+20. After clearance, attempt Helm movement/departure again.
+21. Confirm Artemis can move/depart after clearance.
+22. Select `Khovan: Confirm Launch-Envelope Exit`.
+23. Wait 10 seconds and confirm Kestrel generator advisory appears/logs.
+24. If Kestrel remains unknown/blank, stop and inspect the Kestrel scan-known setup.
+25. If Kestrel options are blank, select `Comms Test Station`.
+26. Confirm `Proof Option` appears for the proof station.
+27. If the proof station works but Kestrel does not, compare Kestrel known/scan state and route condition against the proof station.
+28. Approach Tarsis.
+29. Use Comms to select Tarsis Station without treating Science scan as a required unlock.
+30. Confirm Khovan Tarsis options appear and are story-guided.
+31. Select `Khovan: Hail Tarsis Station`.
+32. Confirm `[KHOVAN ACT1 COMMS TARSIS HAIL]` and `[KHOVAN ACT1 MSG TARSIS 001]`.
+33. Before docking clearance, try to dock with Tarsis.
+34. Confirm docking is blocked, unavailable, rejected, or does not advance Slice 04 state.
+35. Select `Khovan: Request Homing-Torpedo Priority`.
+36. Confirm `[KHOVAN ACT1 COMMS TARSIS HOMING]` and `[KHOVAN ACT1 MSG TARSIS 002]`.
+37. Select `Khovan: Request Generator Support`.
+38. Confirm `[KHOVAN ACT1 COMMS TARSIS GENERATOR]` and `[KHOVAN ACT1 MSG TARSIS 003]`.
+39. Select `Khovan: Request Docking Clearance`.
+40. Confirm `[KHOVAN ACT1 COMMS TARSIS CLEARANCE]`, `[KHOVAN ACT1 MSG TARSIS 004]`, and `[KHOVAN ACT1 DOCK 004]`.
+41. Attempt normal docking if available.
+42. If docking remains unavailable, use `Khovan: Confirm Docking/Resupply` as the temporary Slice 04 fallback.
+43. Confirm `[KHOVAN ACT1 COMMS TARSIS RESUPPLY]` and `[KHOVAN ACT1 MSG TARSIS 005]` only after required requests plus docking/fallback confirmation.
+44. Confirm status option logs `[KHOVAN ACT1 COMMS TARSIS STATUS]` and `[KHOVAN ACT1 MSG TARSIS 006]`.
+45. Inspect `tests/live_startup_trace.txt`.
 
 Tarsis docking-clearance regression checklist:
 
@@ -407,6 +423,10 @@ Act I message ordering checklist:
 - The runtime crashes in `docking_dock_with_friendly_station` with the `NoneType`/`int` comparison.
 - The Kestrel Yard Control yard-lock overlay does not appear.
 - `[KHOVAN ACT1 DOCK 001K]`, `[KHOVAN ACT1 VISUAL 001]`, `[KHOVAN ACT1 VISUAL 002]`, `[KHOVAN ACT1 HOLD 001]`, or `[KHOVAN ACT1 HOLD 002]` is missing from `tests/live_startup_trace.txt` after fresh load.
+- `[KHOVAN ACT1 START STATE]` energy or ordnance breadcrumbs are missing from `tests/live_startup_trace.txt` after fresh load.
+- Artemis starts with literal zero energy, because that would indicate an unauthorized low-energy/no-weapons design change rather than the current generator-governor design.
+- Artemis starts with nukes, EMPs, or mines available before Tarsis resupply.
+- Artemis starts with a homing count other than 2 after the runtime set request, unless live smoke documents the mismatch as a Cosmos/UI API blocker.
 - Kestrel departure clearance does not produce `[KHOVAN ACT1 HOLD 003]`.
 - Artemis remains stuck after Kestrel departure clearance.
 - Tarsis remains unavailable to Comms during the Slice 04 handoff.

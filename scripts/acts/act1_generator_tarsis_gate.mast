@@ -31,6 +31,14 @@ shared homing_reserve_status = "pending"
 shared homing_reserve_count = 2
 shared homing_reserve_runtime_apply_status = "stubbed_due_to_ordnance_api_uncertainty"
 shared homing_reserve_live_inventory_status = "not_verified"
+shared artemis_start_condition_status = "not_applied"
+shared artemis_start_energy_policy = "cosmos_default_energy_with_generator_governor_not_zero_energy"
+shared artemis_start_energy_runtime_apply_status = "not_overridden"
+shared artemis_start_homing_torpedoes = 2
+shared artemis_start_nukes = 0
+shared artemis_start_emps = 0
+shared artemis_start_mines = 0
+shared artemis_start_ordnance_runtime_apply_status = "not_applied"
 
 shared tarsis_station_id = 0
 shared tarsis_gate_status = "not_started"
@@ -103,8 +111,16 @@ shared tarsis_resupply_text = "Tarsis Station confirms resupply and generator ha
     starting_homing_torpedoes = 2
     homing_reserve_count = 2
     homing_reserve_status = "initialized_as_state_only"
-    homing_reserve_runtime_apply_status = "stubbed_due_to_ordnance_api_uncertainty"
-    homing_reserve_live_inventory_status = "live smoke reported 10/10 homing; not claimed correct until ordnance API is proven"
+    homing_reserve_runtime_apply_status = "pending_source_authorized_ordnance_apply"
+    homing_reserve_live_inventory_status = "runtime_set_requested_live_smoke_required"
+    artemis_start_condition_status = "pending_apply"
+    artemis_start_energy_policy = "cosmos_default_energy_with_generator_governor_not_zero_energy"
+    artemis_start_energy_runtime_apply_status = "not_overridden_zero_energy_not_source_authorized"
+    artemis_start_homing_torpedoes = 2
+    artemis_start_nukes = 0
+    artemis_start_emps = 0
+    artemis_start_mines = 0
+    artemis_start_ordnance_runtime_apply_status = "pending_apply"
     kestrel_departure_clearance_granted = False
     kestrel_departure_gate_status = "waiting_for_clearance"
     kestrel_departure_hold_status = "waiting_for_contact_setup"
@@ -140,9 +156,35 @@ shared tarsis_resupply_text = "Tarsis Station confirms resupply and generator ha
     script.write_khovan_startup_trace("[KHOVAN ACT1 002] homing reserve initialized as state/log stub count=2")
     script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS 001] Kestrel route registered")
     script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS 002] Tarsis route registered")
+    await task_schedule(khovan_act1_apply_source_authorized_start_state)
     await task_schedule(khovan_act1_setup_kestrel_and_tarsis_contacts)
     await task_schedule(khovan_scenario_control_panel_update_overview)
-    log("Khovan Slice 04 Act I generator/Tarsis gate initialized. Homing reserve is state/log stubbed pending ordnance API proof.")
+    log("Khovan Slice 04 Act I generator/Tarsis gate initialized. Source-authorized starting ordnance set requested; live smoke must verify the Weapons UI.")
+    ->END
+
+=== khovan_act1_apply_source_authorized_start_state ===
+    generator_governor_active = True
+    starting_homing_torpedoes = 2
+    homing_reserve_count = 2
+    artemis_start_energy_runtime_apply_status = "not_overridden_zero_energy_not_source_authorized"
+    if artemis_id == 0:
+        artemis_start_condition_status = "skipped_missing_artemis_id"
+        artemis_start_ordnance_runtime_apply_status = "skipped_missing_artemis_id"
+        script.write_khovan_startup_trace("[KHOVAN ACT1 START STATE] Artemis starting energy set to Cosmos default with generator governor active; zero-energy start not source-authorized")
+        script.write_khovan_startup_trace("[KHOVAN ACT1 START STATE] Artemis starting ordnance not set: missing Artemis id")
+        ->END
+
+    set_data_set_value(artemis_id, "Homing_NUM", artemis_start_homing_torpedoes, 0)
+    set_data_set_value(artemis_id, "Nuke_NUM", artemis_start_nukes, 0)
+    set_data_set_value(artemis_id, "EMP_NUM", artemis_start_emps, 0)
+    set_data_set_value(artemis_id, "Mine_NUM", artemis_start_mines, 0)
+    homing_reserve_status = "runtime_set_requested"
+    homing_reserve_runtime_apply_status = "runtime_set_requested_live_smoke_required"
+    homing_reserve_live_inventory_status = "runtime_set_requested_live_smoke_required"
+    artemis_start_condition_status = "source_authorized_generator_governor_two_homing_no_other_ordnance"
+    artemis_start_ordnance_runtime_apply_status = "requested_homing_2_nuke_0_emp_0_mine_0"
+    script.write_khovan_startup_trace("[KHOVAN ACT1 START STATE] Artemis starting energy set to Cosmos default with generator governor active; zero-energy start not source-authorized")
+    script.write_khovan_startup_trace("[KHOVAN ACT1 START STATE] Artemis starting ordnance set to Homing=2 Nuke=0 EMP=0 Mine=0")
     ->END
 
 === khovan_act1_setup_kestrel_and_tarsis_contacts ===

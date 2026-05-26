@@ -56,6 +56,12 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             "shared homing_reserve_count = 2",
             'shared homing_reserve_runtime_apply_status = "stubbed_due_to_ordnance_api_uncertainty"',
             'shared homing_reserve_live_inventory_status = "not_verified"',
+            'shared artemis_start_energy_policy = "cosmos_default_energy_with_generator_governor_not_zero_energy"',
+            "shared artemis_start_homing_torpedoes = 2",
+            "shared artemis_start_nukes = 0",
+            "shared artemis_start_emps = 0",
+            "shared artemis_start_mines = 0",
+            'shared artemis_start_ordnance_runtime_apply_status = "not_applied"',
             'shared training_speed_power_reminder_text = "Training Control: keep speed and power changes deliberate. Treat the generator advisory as active until Tarsis completes the handoff. Comms should coordinate homing priority, generator support, and docking clearance with Tarsis."',
             'shared tarsis_hail_text = "Tarsis Station: Artemis, we read you. Production Control and Generator Acceptance are standing by for the Kestrel handoff."',
             'shared tarsis_docking_clearance_text = "Tarsis Docking Control: docking clearance granted. Approach within tolerance and initiate docking."',
@@ -89,8 +95,14 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             "starting_homing_torpedoes = 2",
             "homing_reserve_count = 2",
             'homing_reserve_status = "initialized_as_state_only"',
-            'homing_reserve_runtime_apply_status = "stubbed_due_to_ordnance_api_uncertainty"',
-            'homing_reserve_live_inventory_status = "live smoke reported 10/10 homing; not claimed correct until ordnance API is proven"',
+            'homing_reserve_runtime_apply_status = "pending_source_authorized_ordnance_apply"',
+            'homing_reserve_live_inventory_status = "runtime_set_requested_live_smoke_required"',
+            'artemis_start_energy_runtime_apply_status = "not_overridden_zero_energy_not_source_authorized"',
+            "artemis_start_homing_torpedoes = 2",
+            "artemis_start_nukes = 0",
+            "artemis_start_emps = 0",
+            "artemis_start_mines = 0",
+            'artemis_start_ordnance_runtime_apply_status = "pending_apply"',
             "kestrel_yard_lock_message_sent = False",
             "kestrel_departure_clearance_response_sent = False",
             "kestrel_launch_envelope_response_sent = False",
@@ -105,9 +117,30 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             "[KHOVAN ACT1 002] homing reserve initialized as state/log stub count=2",
             "[KHOVAN ACT1 COMMS 001] Kestrel route registered",
             "[KHOVAN ACT1 COMMS 002] Tarsis route registered",
+            "await task_schedule(khovan_act1_apply_source_authorized_start_state)",
             "await task_schedule(khovan_act1_setup_kestrel_and_tarsis_contacts)",
         ]:
             self.assertIn(phrase, body)
+
+    def test_act1_applies_source_authorized_starting_condition_without_zero_energy(self) -> None:
+        act1 = read(ACT1_PATH)
+        body = label_body(act1, "khovan_act1_apply_source_authorized_start_state")
+        for phrase in [
+            "generator_governor_active = True",
+            "starting_homing_torpedoes = 2",
+            "homing_reserve_count = 2",
+            'artemis_start_energy_runtime_apply_status = "not_overridden_zero_energy_not_source_authorized"',
+            'set_data_set_value(artemis_id, "Homing_NUM", artemis_start_homing_torpedoes, 0)',
+            'set_data_set_value(artemis_id, "Nuke_NUM", artemis_start_nukes, 0)',
+            'set_data_set_value(artemis_id, "EMP_NUM", artemis_start_emps, 0)',
+            'set_data_set_value(artemis_id, "Mine_NUM", artemis_start_mines, 0)',
+            'artemis_start_condition_status = "source_authorized_generator_governor_two_homing_no_other_ordnance"',
+            'artemis_start_ordnance_runtime_apply_status = "requested_homing_2_nuke_0_emp_0_mine_0"',
+            "[KHOVAN ACT1 START STATE] Artemis starting energy set to Cosmos default with generator governor active; zero-energy start not source-authorized",
+            "[KHOVAN ACT1 START STATE] Artemis starting ordnance set to Homing=2 Nuke=0 EMP=0 Mine=0",
+        ]:
+            self.assertIn(phrase, body)
+        self.assertNotIn('set_data_set_value(artemis_id, "energy"', body)
 
     def test_kestrel_and_tarsis_use_reference_backed_standard_station_primitives(self) -> None:
         act1 = read(ACT1_PATH)
@@ -665,6 +698,7 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             "[KHOVAN ACT1 COMMS TARSIS CLEARANCE]",
             "[KHOVAN ACT1 COMMS TARSIS RESUPPLY]",
             "[KHOVAN ACT1 COMMS TARSIS STATUS]",
+            "[KHOVAN ACT1 START STATE]",
             "[KHOVAN ACT1 MSG KESTREL 001]",
             "[KHOVAN ACT1 MSG KESTREL 002]",
             "[KHOVAN ACT1 MSG KESTREL 003]",
@@ -758,6 +792,14 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             "quick tests do not prove live runtime behavior",
             "temporary comms confirmation",
             "ordnance api uncertainty",
+            "starting-condition audit",
+            "zero-energy/no-weapons",
+            "generator governor active, 2 homing torpedoes, no nukes, no emps, no mines",
+            "homing_num = 2",
+            "nuke_num = 0",
+            "emp_num = 0",
+            "mine_num = 0",
+            "does not call `set_data_set_value(artemis_id, \"energy\", ...)`",
             "options panel stayed empty",
             "10/10 homing",
             "standard station fallback",
