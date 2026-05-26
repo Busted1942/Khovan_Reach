@@ -49,8 +49,9 @@ class ScenarioControlPanelStaticTests(unittest.TestCase):
         panel = read("scripts/systems/scenario_control_panel.mast")
         self.assertIn("test_mode_enabled", panel)
         self.assertIn("live_recovery_mode_enabled", panel)
-        self.assertNotIn("test_mode_enabled = True", panel)
-        self.assertNotIn("live_recovery_mode_enabled = True", panel)
+        self.assertNotRegex(panel, r"(?m)^\s*shared\s+test_mode_enabled\s*=\s*True\s*$")
+        self.assertNotRegex(panel, r"(?m)^\s*shared\s+live_recovery_mode_enabled\s*=\s*True\s*$")
+        self.assertIn("live_recovery_mode_enabled = False", panel)
 
     def test_admin_004_overview_contains_required_mission_state(self) -> None:
         panel = read("scripts/systems/scenario_control_panel.mast")
@@ -75,6 +76,9 @@ class ScenarioControlPanelStaticTests(unittest.TestCase):
             '+ "Hold Scene Transition" khovan_scenario_control_panel_hold_transition',
             '+ "Release Scene Transition" khovan_scenario_control_panel_release_transition',
             '+ "Refresh Overview" khovan_scenario_control_panel_refresh_overview',
+            '+ "Enable Test Mode" khovan_scenario_control_panel_enable_test_mode if not test_mode_enabled',
+            '+ "Disable Test Mode" khovan_scenario_control_panel_disable_test_mode if test_mode_enabled',
+            '+ "Test Mode Story Jumps" //comms/gamemaster/khovan_story_jump_presets if test_mode_enabled',
             "=== khovan_scenario_control_panel_hold_transition ===",
             "=== khovan_scenario_control_panel_release_transition ===",
             "=== khovan_scenario_control_panel_refresh_overview ===",
@@ -156,8 +160,6 @@ class ScenarioControlPanelStaticTests(unittest.TestCase):
     def test_slice02_foundation_does_not_include_future_admin_features(self) -> None:
         panel = read("scripts/systems/scenario_control_panel.mast").lower()
         for forbidden in [
-            "story jump",
-            "jump preset",
             "checkpoint reload",
             "arbitrary variable",
             "current objective",
