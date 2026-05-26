@@ -45,6 +45,8 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             'shared act1_docking_detection_mode = "temporary_comms_confirmation"',
             'shared act1_comms_archive_status = "trace_and_action_log_stub"',
             "shared kestrel_departure_clearance_granted = False",
+            'shared kestrel_yard_lock_visual_mode = "mechanical_yard_lock_overlay_fallback"',
+            'shared kestrel_yard_lock_visual_status = "not_initialized"',
             "shared homing_reserve_count = 2",
             'shared homing_reserve_runtime_apply_status = "stubbed_due_to_ordnance_api_uncertainty"',
             'shared homing_reserve_live_inventory_status = "not_verified"',
@@ -91,7 +93,7 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             "set_face(tarsis_station_id, random_terran(civilian=True))",
             'sim.add_navproxy(tarsis_station_id, "Tarsis Station", "starbase_command", "#4A7")',
             'add_role(kestrel_yards_id, "Station")',
-            'add_role(kestrel_yards_id, "station")',
+            'remove_role(kestrel_yards_id, "station")',
             'add_role(tarsis_station_id, "Station")',
             'add_role(tarsis_station_id, "station")',
             'add_role(kestrel_yards_id, "kestrel_yards")',
@@ -101,9 +103,9 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             "[KHOVAN ACT1 COMMS 003] Kestrel standard station setup complete roles=",
             "[KHOVAN ACT1 COMMS 004] Tarsis standard station setup complete roles=",
             "[KHOVAN ACT1 DOCK 001] docking setup scheduled",
+            "[KHOVAN ACT1 DOCK 001K] Kestrel Legendary docking helper skipped for startup mechanical hold fallback",
             "await task_schedule(docking_standard_player_station)",
             'science_set_scan_data(player_id, kestrel_yards_id, "Kestrel Yards is Artemis\' launch yard and active departure-control contact.")',
-            "docking_set_docking_logic(player_id, kestrel_yards_id, docking_dock_with_friendly_station)",
             "docking_set_docking_logic(player_id, tarsis_station_id, docking_dock_with_friendly_station)",
             "[KHOVAN ACT1 DOCK 002] docking setup applied or failed/stubbed",
             'tarsis_docking_resupply_status = "docking_setup_attempted_resupply_unproven"',
@@ -118,7 +120,6 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
         for forbidden in [
             '"tsn, friendly, kestrel_yards, khovan_origin"',
             '"tsn, friendly, tarsis_station, khovan_drill_resupply"',
-            'remove_role(kestrel_yards_id, "station")',
             'remove_role(kestrel_yards_id, "Station")',
             'remove_role(tarsis_station_id, "Station")',
             "khovan_act1_comms_test_option",
@@ -132,6 +133,154 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             "khovan_station_comms_docking_kernel_init",
         ]:
             self.assertNotIn(forbidden, body)
+
+    def test_kestrel_start_hold_skips_transition_only_docking_helper(self) -> None:
+        act1 = read(ACT1_PATH)
+        setup_body = label_body(act1, "khovan_act1_setup_kestrel_and_tarsis_contacts")
+        self.assertIn('remove_role(kestrel_yards_id, "station")', setup_body)
+        self.assertIn(
+            'kestrel_start_docking_helper_status = "skipped_startup_hold_uses_mechanical_fallback"',
+            setup_body,
+        )
+        self.assertIn(
+            "[KHOVAN ACT1 DOCK 001K] Kestrel Legendary docking helper skipped for startup mechanical hold fallback",
+            setup_body,
+        )
+        self.assertNotIn(
+            "docking_set_docking_logic(player_id, kestrel_yards_id, docking_dock_with_friendly_station)",
+            setup_body,
+        )
+        self.assertIn(
+            "docking_set_docking_logic(player_id, tarsis_station_id, docking_dock_with_friendly_station)",
+            setup_body,
+        )
+        self.assertLess(
+            setup_body.index('remove_role(kestrel_yards_id, "station")'),
+            setup_body.index("await task_schedule(docking_standard_player_station)"),
+        )
+
+    def test_kestrel_departure_hold_clamps_artemis_until_comms_clearance(self) -> None:
+        act1 = read(ACT1_PATH)
+        for phrase in [
+            'shared kestrel_departure_hold_status = "not_initialized"',
+            'shared kestrel_departure_hold_release_status = "not_released"',
+            'shared kestrel_departure_hold_detection_mode = "mechanical_position_throttle_hold_no_legendary_docking"',
+            'shared kestrel_start_docking_helper_status = "not_initialized"',
+        ]:
+            self.assertIn(phrase, act1)
+
+        init_body = label_body(act1, "khovan_act1_initialize_generator_tarsis_gate")
+        self.assertIn('kestrel_departure_hold_status = "waiting_for_contact_setup"', init_body)
+        self.assertIn('kestrel_departure_hold_release_status = "not_released"', init_body)
+        self.assertIn('kestrel_start_docking_helper_status = "not_initialized"', init_body)
+
+        setup_body = label_body(act1, "khovan_act1_setup_kestrel_and_tarsis_contacts")
+        self.assertIn('kestrel_departure_hold_status = "scheduled"', setup_body)
+        self.assertIn("[KHOVAN ACT1 HOLD 001] Kestrel departure hold scheduled", setup_body)
+        for phrase in [
+            "artemis_object = to_object(artemis_id)",
+            "artemis_object.pos = Vec3(0, 0, 500)",
+            'artemis_object.data_set.set("dock_base_id", 0, 0)',
+            'artemis_object.data_set.set("dock_state", "undocked", 0)',
+            'artemis_object.data_set.set("playerThrottle", 0, 0)',
+            'kestrel_departure_hold_status = "active"',
+            'kestrel_departure_hold_release_status = "waiting_for_clearance"',
+            "[KHOVAN ACT1 HOLD 002] Artemis mechanical hold fallback active at Kestrel pending departure clearance",
+        ]:
+            self.assertIn(phrase, setup_body)
+        self.assertIn("task_schedule(khovan_act1_hold_artemis_at_kestrel_until_clearance)", setup_body)
+        self.assertLess(
+            setup_body.index("[KHOVAN ACT1 DOCK 002] docking setup applied or failed/stubbed"),
+            setup_body.index("[KHOVAN ACT1 HOLD 001] Kestrel departure hold scheduled"),
+        )
+        self.assertLess(
+            setup_body.index("[KHOVAN ACT1 HOLD 001] Kestrel departure hold scheduled"),
+            setup_body.index("[KHOVAN ACT1 HOLD 002] Artemis mechanical hold fallback active at Kestrel pending departure clearance"),
+        )
+        self.assertLess(
+            setup_body.index("[KHOVAN ACT1 HOLD 002] Artemis mechanical hold fallback active at Kestrel pending departure clearance"),
+            setup_body.index("task_schedule(khovan_act1_hold_artemis_at_kestrel_until_clearance)"),
+        )
+
+        hold_body = label_body(act1, "khovan_act1_hold_artemis_at_kestrel_until_clearance")
+        for phrase in [
+            "if kestrel_departure_clearance_granted:",
+            "await task_schedule(khovan_act1_release_kestrel_departure_hold)",
+            "artemis_object.pos = Vec3(0, 0, 500)",
+            'artemis_object.data_set.set("dock_base_id", 0, 0)',
+            'artemis_object.data_set.set("dock_state", "undocked", 0)',
+            'artemis_object.data_set.set("playerThrottle", 0, 0)',
+            'kestrel_departure_hold_status = "active"',
+            'kestrel_departure_hold_release_status = "waiting_for_clearance"',
+            "[KHOVAN ACT1 HOLD 002] Artemis mechanical hold fallback active at Kestrel pending departure clearance",
+            "await delay_sim(seconds=1)",
+            "jump khovan_act1_hold_artemis_at_kestrel_until_clearance",
+        ]:
+            self.assertIn(phrase, hold_body)
+        self.assertNotIn('artemis_object.data_set.set("dock_base_id", kestrel_yards_id, 0)', hold_body)
+        self.assertNotIn('artemis_object.data_set.set("dock_state", "docked", 0)', hold_body)
+
+        release_body = label_body(act1, "khovan_act1_release_kestrel_departure_hold")
+        for phrase in [
+            'artemis_object.data_set.set("dock_base_id", 0, 0)',
+            'artemis_object.data_set.set("dock_state", "undocked", 0)',
+            'artemis_object.data_set.set("playerThrottle", 0, 0)',
+            "[KHOVAN ACT1 HOLD 003] Kestrel departure hold released after clearance",
+            'kestrel_departure_hold_status = "released_after_clearance"',
+            'kestrel_departure_hold_release_status = "released"',
+        ]:
+            self.assertIn(phrase, release_body)
+
+        clearance_body = label_body(act1, "khovan_kestrel_request_departure_clearance")
+        self.assertIn("kestrel_departure_clearance_granted = True", clearance_body)
+        self.assertIn("await task_schedule(khovan_act1_release_kestrel_departure_hold)", clearance_body)
+        self.assertLess(
+            clearance_body.index("kestrel_departure_clearance_granted = True"),
+            clearance_body.index("await task_schedule(khovan_act1_release_kestrel_departure_hold)"),
+        )
+
+    def test_kestrel_yard_lock_visual_fallback_is_overlay_only_and_guarded(self) -> None:
+        act1 = read(ACT1_PATH)
+        self.assertIn(
+            'shared kestrel_yard_lock_visual_text = "Artemis, Kestrel Yard Control. Yard-lock is engaged. Hold position on the launch ramp until Comms requests departure clearance."',
+            act1,
+        )
+        self.assertIn('shared kestrel_yard_lock_visual_mode = "mechanical_yard_lock_overlay_fallback"', act1)
+
+        init_body = label_body(act1, "khovan_act1_initialize_generator_tarsis_gate")
+        self.assertIn('kestrel_yard_lock_visual_status = "pending_contact_setup"', init_body)
+
+        setup_body = label_body(act1, "khovan_act1_setup_kestrel_and_tarsis_contacts")
+        for phrase in [
+            'kestrel_yard_lock_visual_status = "attempted_mechanical_fallback"',
+            "[KHOVAN ACT1 VISUAL 001] Kestrel yard-lock visual setup attempted",
+            "await task_schedule(khovan_act1_show_kestrel_yard_lock_visual_fallback)",
+        ]:
+            self.assertIn(phrase, setup_body)
+        self.assertLess(
+            setup_body.index("[KHOVAN ACT1 VISUAL 001] Kestrel yard-lock visual setup attempted"),
+            setup_body.index("[KHOVAN ACT1 HOLD 002] Artemis mechanical hold fallback active at Kestrel pending departure clearance"),
+        )
+        self.assertLess(
+            setup_body.index("[KHOVAN ACT1 HOLD 002] Artemis mechanical hold fallback active at Kestrel pending departure clearance"),
+            setup_body.index("await task_schedule(khovan_act1_show_kestrel_yard_lock_visual_fallback)"),
+        )
+
+        visual_body = label_body(act1, "khovan_act1_show_kestrel_yard_lock_visual_fallback")
+        for phrase in [
+            'kestrel_yard_lock_visual_status = "fallback_active_mechanical_yard_lock_overlay"',
+            "[KHOVAN ACT1 VISUAL 002] Kestrel mechanical yard-lock visual fallback active",
+            'sbs.send_story_dialog(0, "Kestrel Yard Control", kestrel_yard_lock_visual_text',
+        ]:
+            self.assertIn(phrase, visual_body)
+
+        for unsafe in [
+            "docking_set_docking_logic(player_id, kestrel_yards_id, docking_dock_with_friendly_station)",
+            'artemis_object.data_set.set("dock_base_id", kestrel_yards_id, 0)',
+            'artemis_object.data_set.set("dock_state", "docked", 0)',
+            'add_role(kestrel_yards_id, "station")',
+        ]:
+            self.assertNotIn(unsafe, act1)
 
     def test_kestrel_routes_gate_departure_and_launch_envelope_confirmation(self) -> None:
         act1 = read(ACT1_PATH)
@@ -303,8 +452,14 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             "[KHOVAN ACT1 COMMS 007]",
             "[KHOVAN ACT1 COMMS 008]",
             "[KHOVAN ACT1 DOCK 001]",
+            "[KHOVAN ACT1 DOCK 001K]",
             "[KHOVAN ACT1 DOCK 002]",
             "[KHOVAN ACT1 DOCK 002A]",
+            "[KHOVAN ACT1 HOLD 001]",
+            "[KHOVAN ACT1 HOLD 002]",
+            "[KHOVAN ACT1 HOLD 003]",
+            "[KHOVAN ACT1 VISUAL 001]",
+            "[KHOVAN ACT1 VISUAL 002]",
             "[KHOVAN ACT1 004]",
             "[KHOVAN ACT1 005]",
             "[KHOVAN ACT1 006]",
