@@ -34,8 +34,8 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
         playable_index = main.index("await task_schedule(khovan_reach_initialize_playable_bootstrap)")
         act1_index = main.index("await task_schedule(khovan_act1_initialize_generator_tarsis_gate)")
         dillon_index = main.index("await task_schedule(khovan_reach_stub_dillon_clip_1)")
-        self.assertLess(playable_index, act1_index)
-        self.assertLess(act1_index, dillon_index)
+        self.assertLess(playable_index, dillon_index)
+        self.assertLess(dillon_index, act1_index)
 
     def test_act1_required_state_defaults_and_api_uncertainty_markers_exist(self) -> None:
         act1 = read(ACT1_PATH)
@@ -47,17 +47,31 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             "shared kestrel_departure_clearance_granted = False",
             'shared kestrel_yard_lock_visual_mode = "mechanical_yard_lock_overlay_fallback"',
             'shared kestrel_yard_lock_visual_status = "not_initialized"',
+            "shared kestrel_yard_lock_message_sent = False",
+            "shared kestrel_departure_clearance_response_sent = False",
+            "shared kestrel_launch_envelope_response_sent = False",
+            "shared kestrel_generator_advisory_sent = False",
+            "shared training_speed_power_reminder_sent = False",
+            "shared shakedown_prompt_sent = False",
             "shared homing_reserve_count = 2",
             'shared homing_reserve_runtime_apply_status = "stubbed_due_to_ordnance_api_uncertainty"',
             'shared homing_reserve_live_inventory_status = "not_verified"',
+            'shared training_speed_power_reminder_text = "Training Control: keep speed and power changes deliberate. Treat the generator advisory as active until Tarsis completes the handoff. Comms should coordinate homing priority, generator support, and docking clearance with Tarsis."',
+            'shared tarsis_hail_text = "Tarsis Station: Artemis, we read you. Production Control and Generator Acceptance are standing by for the Kestrel handoff."',
+            'shared tarsis_docking_clearance_text = "Tarsis Docking Control: docking clearance granted. Approach within tolerance and initiate docking."',
+            'shared tarsis_resupply_text = "Tarsis Station confirms resupply and generator handoff. Kestrel governor is cleared."',
             "shared tarsis_homing_priority_requested = False",
             "shared tarsis_generator_support_requested = False",
             "shared tarsis_docking_clearance_requested = False",
+            "shared tarsis_homing_priority_response_sent = False",
+            "shared tarsis_generator_support_response_sent = False",
+            "shared tarsis_docking_clearance_response_sent = False",
+            "shared tarsis_governor_clear_response_sent = False",
             "shared tarsis_required_requests_complete = False",
-            'shared tarsis_station_visibility_status = "scan_gated_until_science_initial_scan"',
+            'shared tarsis_station_visibility_status = "known_for_slice04_comms_no_hard_science_gate"',
             'shared tarsis_docking_resupply_status = "blocked_until_docking_clearance"',
             'shared tarsis_docking_gate_status = "not_initialized"',
-            'shared tarsis_docking_rejection_text = "Tarsis Control: docking clearance not granted. Complete required traffic before approach."',
+            'shared tarsis_docking_rejection_text = "Tarsis Docking Control: docking clearance not granted. Complete required traffic before approach."',
             'shared tarsis_comms_options_status = "not_rendered"',
             "shared generator_governor_cleared = False",
         ]:
@@ -77,6 +91,16 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             'homing_reserve_status = "initialized_as_state_only"',
             'homing_reserve_runtime_apply_status = "stubbed_due_to_ordnance_api_uncertainty"',
             'homing_reserve_live_inventory_status = "live smoke reported 10/10 homing; not claimed correct until ordnance API is proven"',
+            "kestrel_yard_lock_message_sent = False",
+            "kestrel_departure_clearance_response_sent = False",
+            "kestrel_launch_envelope_response_sent = False",
+            "kestrel_generator_advisory_sent = False",
+            "training_speed_power_reminder_sent = False",
+            "shakedown_prompt_sent = False",
+            "tarsis_homing_priority_response_sent = False",
+            "tarsis_generator_support_response_sent = False",
+            "tarsis_docking_clearance_response_sent = False",
+            "tarsis_governor_clear_response_sent = False",
             "[KHOVAN ACT1 001] generator governor initialized active",
             "[KHOVAN ACT1 002] homing reserve initialized as state/log stub count=2",
             "[KHOVAN ACT1 COMMS 001] Kestrel route registered",
@@ -105,14 +129,16 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             "[KHOVAN ACT1 COMMS 004B] Tarsis Station spawned id=",
             "[KHOVAN ACT1 COMMS 003] Kestrel standard station setup complete roles=",
             "[KHOVAN ACT1 COMMS 004] Tarsis standard station setup complete roles=",
-            "[KHOVAN ACT1 SCAN 001] Tarsis scan-gated contact setup retained until Science initial scan",
+            "[KHOVAN ACT1 SCAN 001] Tarsis contact available for Slice 04 Comms; Science scan remains observational only",
             "[KHOVAN ACT1 DOCK 001] docking setup scheduled",
             "[KHOVAN ACT1 DOCK 001K] Kestrel Legendary docking helper skipped for startup mechanical hold fallback",
             "await task_schedule(docking_standard_player_station)",
             'add_role(tarsis_station_id, "station")',
+            'remove_role(tarsis_station_id, "Station")',
             'tarsis_comms_options_status = "station_role_restored_after_docking_helper_pass"',
-            "[KHOVAN ACT1 COMMS 004D] Tarsis station role restored after docking helper pass for Comms options",
+            "[KHOVAN ACT1 COMMS 004D] Tarsis station role restored and stock Station role removed after docking helper pass for Khovan Comms options",
             'science_set_scan_data(player_id, kestrel_yards_id, "Kestrel Yards is Artemis\' launch yard and active departure-control contact.")',
+            'science_set_scan_data(player_id, tarsis_station_id, "Tarsis Station is the Kestrel generator handoff and resupply contact for Artemis.")',
             "docking_set_docking_logic(player_id, tarsis_station_id, khovan_tarsis_docking_rejected_before_clearance)",
             'tarsis_docking_gate_status = "blocked_until_docking_clearance"',
             "[KHOVAN ACT1 DOCK 002] docking setup applied or failed/stubbed",
@@ -121,7 +147,7 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             "[KHOVAN ACT1 DOCK 003] Tarsis docking setup held behind docking clearance",
             "[KHOVAN ACT1 DOCK 003A] Premature Tarsis docking uses Khovan clearance-denied handler until clearance; dock-button visibility requires live proof",
             "[KHOVAN ACT1 COMMS 003A] Kestrel marked known to player ships for departure Comms",
-            "[KHOVAN ACT1 COMMS 004C] Tarsis scan-gated visibility retained; do not claim before/after scan unless live observed",
+            "[KHOVAN ACT1 COMMS 004C] Tarsis Slice 04 Comms contact available without hard Science-scan gate",
             "[KHOVAN ACT1 003C] Kestrel/Tarsis use reference-backed standard station primitives",
             "[KHOVAN ACT1 003D] Khovan station presentation polish deferred until standard Comms/docking path is proven",
         ]:
@@ -131,7 +157,6 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             '"tsn, friendly, kestrel_yards, khovan_origin"',
             '"tsn, friendly, tarsis_station, khovan_drill_resupply"',
             'remove_role(kestrel_yards_id, "Station")',
-            'remove_role(tarsis_station_id, "Station")',
             "khovan_act1_comms_test_option",
             "Khovan Test Option",
             "khovan_reach_keep_tarsis_priority_docking_hidden",
@@ -229,6 +254,10 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
         self.assertIn("yield fail", blocked_body)
         self.assertNotIn("Our docking systems aren't compatible with yours", blocked_body)
         self.assertNotIn("docking_dock_not_allowed", blocked_body)
+        self.assertEqual(
+            1,
+            act1.count("[KHOVAN ACT1 DOCK BLOCKED] Tarsis docking rejected: clearance not granted"),
+        )
 
         self.assertIn(
             '//shared/signal/docked if has_roles(ORIGIN_ID, "__player__") and has_roles(SELECTED_ID, "tarsis_station")',
@@ -331,7 +360,7 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
     def test_kestrel_yard_lock_visual_fallback_is_overlay_only_and_guarded(self) -> None:
         act1 = read(ACT1_PATH)
         self.assertIn(
-            'shared kestrel_yard_lock_visual_text = "Artemis, Kestrel Yard Control. Yard-lock is engaged. Hold position on the launch ramp until Comms requests departure clearance."',
+            'shared kestrel_yard_lock_visual_text = "Kestrel Yard Control: Artemis is held in yard-lock pending departure clearance. Comms, request clearance when the captain is ready."',
             act1,
         )
         self.assertIn('shared kestrel_yard_lock_visual_mode = "mechanical_yard_lock_overlay_fallback"', act1)
@@ -357,11 +386,18 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
 
         visual_body = label_body(act1, "khovan_act1_show_kestrel_yard_lock_visual_fallback")
         for phrase in [
+            "if kestrel_yard_lock_message_sent:",
+            "[KHOVAN ACT1 MSG ORDER] duplicate suppressed Kestrel yard-lock startup message",
+            "kestrel_yard_lock_message_sent = True",
             'kestrel_yard_lock_visual_status = "fallback_active_mechanical_yard_lock_overlay"',
             "[KHOVAN ACT1 VISUAL 002] Kestrel mechanical yard-lock visual fallback active",
-            'sbs.send_story_dialog(0, "Kestrel Yard Control", kestrel_yard_lock_visual_text',
+            "await task_schedule(khovan_reach_send_safe_startup_message",
+            '"startup_sender": "Kestrel Yard Control"',
+            '"startup_text": kestrel_yard_lock_visual_text',
+            "[KHOVAN ACT1 MSG KESTREL 001] Kestrel yard-lock message sent",
         ]:
             self.assertIn(phrase, visual_body)
+        self.assertNotIn("comms_receive(", visual_body)
 
         for unsafe in [
             "docking_set_docking_logic(player_id, kestrel_yards_id, docking_dock_with_friendly_station)",
@@ -400,8 +436,11 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
 
         clearance_body = label_body(act1, "khovan_kestrel_request_departure_clearance")
         self.assertIn("[KHOVAN ACT1 COMMS 006A] Kestrel departure-clearance option selected", clearance_body)
+        self.assertIn("if kestrel_departure_clearance_response_sent:", clearance_body)
+        self.assertIn("[KHOVAN ACT1 MSG ORDER] duplicate suppressed Kestrel departure clearance response", clearance_body)
         self.assertIn("kestrel_departure_clearance_granted = True", clearance_body)
         self.assertIn("[KHOVAN ACT1 004] Kestrel departure clearance granted", clearance_body)
+        self.assertIn("kestrel_departure_clearance_response_sent = True", clearance_body)
         self.assertIn("[KHOVAN ACT1 COMMS 006D] Kestrel departure-clearance option response sent", clearance_body)
 
         launch_body = label_body(act1, "khovan_kestrel_report_launch_envelope_clear")
@@ -409,33 +448,64 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
         self.assertIn("if not kestrel_departure_clearance_granted:", launch_body)
         self.assertIn("yield fail", launch_body)
         self.assertIn("[KHOVAN ACT1 COMMS 006E] Kestrel launch-envelope option rejected before clearance", launch_body)
+        self.assertIn("if kestrel_launch_envelope_response_sent:", launch_body)
+        self.assertIn("[KHOVAN ACT1 MSG ORDER] advisory timer ignored because already sent after duplicate launch-envelope confirmation", launch_body)
+        self.assertIn("[KHOVAN ACT1 MSG ORDER] duplicate suppressed Kestrel launch-envelope response", launch_body)
         self.assertIn("launch_envelope_cleared = True", launch_body)
         self.assertIn("kestrel_generator_advisory_run_id = kestrel_generator_advisory_run_id + 1", launch_body)
         self.assertIn("[KHOVAN ACT1 005] launch envelope clear confirmed; Kestrel advisory timer started", launch_body)
+        self.assertIn("kestrel_launch_envelope_response_sent = True", launch_body)
         self.assertIn("[KHOVAN ACT1 COMMS 006E] Kestrel launch-envelope option response sent", launch_body)
         self.assertIn("task_schedule(khovan_act1_deliver_kestrel_generator_advisory_after_delay", launch_body)
 
-    def test_kestrel_advisory_waits_ten_seconds_and_does_not_add_profile_selection(self) -> None:
+    def test_kestrel_advisory_waits_ten_seconds_sends_training_reminder_and_does_not_add_profile_selection(self) -> None:
         act1 = read(ACT1_PATH)
         body = label_body(act1, "khovan_act1_deliver_kestrel_generator_advisory_after_delay")
         for phrase in [
             "await delay_sim(seconds=10)",
             "if advisory_run_id != kestrel_generator_advisory_run_id:",
+            "[KHOVAN ACT1 MSG ORDER] duplicate suppressed stale Kestrel advisory timer",
             "if not launch_envelope_cleared:",
-            "if kestrel_generator_packet_sent:",
+            "if kestrel_generator_packet_sent or kestrel_generator_advisory_sent:",
+            "[KHOVAN ACT1 MSG ORDER] advisory timer ignored because already sent",
             "kestrel_generator_packet_sent = True",
+            "kestrel_generator_advisory_sent = True",
             "[KHOVAN ACT1 006] Kestrel advisory delivered after 10-second timer",
-            "sbs.send_story_dialog(0, \"Kestrel Yard Control\", kestrel_generator_advisory_text",
+            "await task_schedule(khovan_reach_send_safe_startup_message",
+            '"startup_sender": "Kestrel Yard Control"',
+            '"startup_text": kestrel_generator_advisory_text',
+            "[KHOVAN ACT1 MSG KESTREL 004] generator advisory packet sent",
             "archive represented by trace/action log stub",
+            "await task_schedule(khovan_act1_send_training_speed_power_reminder)",
         ]:
             self.assertIn(phrase, body)
+        self.assertNotIn("comms_receive(kestrel_generator_advisory_text", body)
+
+        training_body = label_body(act1, "khovan_act1_send_training_speed_power_reminder")
+        for phrase in [
+            "if training_speed_power_reminder_sent:",
+            "[KHOVAN ACT1 MSG ORDER] duplicate suppressed Training Control speed-power reminder",
+            "if not kestrel_generator_advisory_sent:",
+            "training_speed_power_reminder_sent = True",
+            "[KHOVAN ACT1 MSG ORDER] Training Control speed-power reminder sent after advisory",
+            "await task_schedule(khovan_reach_send_safe_startup_message",
+            '"startup_sender": "Training Control"',
+            '"startup_text": training_speed_power_reminder_text',
+            "[KHOVAN ACT1 MSG TRAINING 001] Training speed-power reminder sent",
+        ]:
+            self.assertIn(phrase, training_body)
+        self.assertNotIn("comms_receive(", training_body)
+
+        resend_body = label_body(act1, "khovan_kestrel_resend_generator_advisory")
+        self.assertIn("if not kestrel_generator_packet_sent or not kestrel_generator_advisory_sent:", resend_body)
+        self.assertIn("[KHOVAN ACT1 MSG ORDER] Kestrel advisory resend did not restart timer", resend_body)
+        self.assertNotIn("kestrel_generator_advisory_run_id = kestrel_generator_advisory_run_id + 1", resend_body)
 
         for forbidden in [
             "Training Control has three profiles",
             "FULL_SHAKEDOWN",
             "COMPRESSED_SHAKEDOWN",
             "DIRECT_SCENARIO",
-            "shakedown profile",
         ]:
             self.assertNotIn(forbidden, act1)
 
@@ -449,17 +519,19 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             'tarsis_comms_options_status = "rendered_after_known_state"',
             '[KHOVAN ACT1 COMMS TARSIS OPTIONS] Tarsis options rendered',
             '+ "Khovan: Hail Tarsis Station" khovan_tarsis_hail',
-            '+ "Khovan: Request Homing-Torpedo Priority" khovan_tarsis_request_homing_priority',
-            '+ "Khovan: Request Generator Support" khovan_tarsis_request_generator_support',
-            '+ "Khovan: Request Docking Clearance" khovan_tarsis_request_docking_clearance',
-            '+ "Khovan: Confirm Docking/Resupply" khovan_tarsis_confirm_docking_and_resupply',
+            '+ "Khovan: Request Homing-Torpedo Priority" khovan_tarsis_request_homing_priority if not tarsis_required_requests_complete',
+            '+ "Khovan: Request Generator Support" khovan_tarsis_request_generator_support if not tarsis_required_requests_complete',
+            '+ "Khovan: Request Docking Clearance" khovan_tarsis_request_docking_clearance if not tarsis_docking_clearance_requested',
+            '+ "Khovan: Confirm Docking/Resupply" khovan_tarsis_confirm_docking_and_resupply if tarsis_docking_clearance_requested',
             '+ "Khovan: Report Tarsis Gate Status" khovan_tarsis_report_gate_status',
             "[KHOVAN ACT1 COMMS 008] Tarsis Hail option selected",
+            "[KHOVAN ACT1 COMMS TARSIS HAIL] Tarsis hail selected",
             "[KHOVAN ACT1 COMMS 008A] Tarsis homing-priority option selected",
             "[KHOVAN ACT1 COMMS 008B] Tarsis generator-acceptance option selected",
             "[KHOVAN ACT1 COMMS 008C] Tarsis docking-clearance option selected",
             "[KHOVAN ACT1 COMMS 008D] Tarsis docking/resupply confirmation option selected",
             "[KHOVAN ACT1 COMMS 008E] Tarsis status-report option selected",
+            "[KHOVAN ACT1 COMMS TARSIS STATUS] Tarsis gate status requested",
         ]:
             self.assertIn(phrase, act1)
         self.assertNotIn("//comms/khovan/tarsis", act1)
@@ -474,35 +546,69 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
         )
         self.assertIsNotNone(tarsis_menu)
         self.assertIn('+ "Khovan: Hail Tarsis Station" khovan_tarsis_hail', tarsis_menu.group("body"))
-        self.assertIn('+ "Khovan: Request Homing-Torpedo Priority" khovan_tarsis_request_homing_priority', tarsis_menu.group("body"))
-        self.assertIn('+ "Khovan: Request Generator Support" khovan_tarsis_request_generator_support', tarsis_menu.group("body"))
-        self.assertIn('+ "Khovan: Request Docking Clearance" khovan_tarsis_request_docking_clearance', tarsis_menu.group("body"))
-        self.assertIn('+ "Khovan: Confirm Docking/Resupply" khovan_tarsis_confirm_docking_and_resupply', tarsis_menu.group("body"))
+        self.assertIn('+ "Khovan: Request Homing-Torpedo Priority" khovan_tarsis_request_homing_priority if not tarsis_required_requests_complete', tarsis_menu.group("body"))
+        self.assertIn('+ "Khovan: Request Generator Support" khovan_tarsis_request_generator_support if not tarsis_required_requests_complete', tarsis_menu.group("body"))
+        self.assertIn('+ "Khovan: Request Docking Clearance" khovan_tarsis_request_docking_clearance if not tarsis_docking_clearance_requested', tarsis_menu.group("body"))
+        self.assertIn('+ "Khovan: Confirm Docking/Resupply" khovan_tarsis_confirm_docking_and_resupply if tarsis_docking_clearance_requested', tarsis_menu.group("body"))
         self.assertIn('+ "Khovan: Report Tarsis Gate Status" khovan_tarsis_report_gate_status', tarsis_menu.group("body"))
         self.assertNotIn(
             '//comms if side_are_allies(COMMS_ORIGIN_ID, COMMS_SELECTED_ID) and has_roles(COMMS_SELECTED_ID, "Station,tarsis_station") and not has_role(COMMS_ORIGIN_ID, "gamemaster")',
             act1,
         )
 
+        hail_body = label_body(act1, "khovan_tarsis_hail")
         homing_body = label_body(act1, "khovan_tarsis_request_homing_priority")
         generator_body = label_body(act1, "khovan_tarsis_request_generator_support")
         docking_body = label_body(act1, "khovan_tarsis_request_docking_clearance")
+        status_body = label_body(act1, "khovan_tarsis_report_gate_status")
+        clear_body = label_body(act1, "khovan_tarsis_confirm_docking_and_resupply")
+        self.assertIn("[KHOVAN ACT1 COMMS TARSIS HAIL] Tarsis hail selected", hail_body)
+        self.assertIn('sbs.send_story_dialog(0, "Tarsis Station", tarsis_hail_text', hail_body)
+        self.assertIn("comms_receive(tarsis_hail_text, title=\"Tarsis Station\", title_color=\"green\")", hail_body)
+        self.assertIn("[KHOVAN ACT1 MSG TARSIS 001] hail response sent", hail_body)
         self.assertIn("[KHOVAN ACT1 COMMS 008A] Tarsis homing-priority option selected", homing_body)
+        self.assertIn("if tarsis_homing_priority_response_sent:", homing_body)
+        self.assertIn("[KHOVAN ACT1 MSG ORDER] duplicate suppressed Tarsis homing-priority response", homing_body)
         self.assertIn("tarsis_homing_priority_requested = True", homing_body)
         self.assertIn("[KHOVAN ACT1 COMMS TARSIS HOMING] homing priority requested", homing_body)
+        self.assertIn("tarsis_homing_priority_response_sent = True", homing_body)
+        self.assertIn('sbs.send_story_dialog(0, "Tarsis Control", tarsis_homing_priority_text', homing_body)
+        self.assertIn("[KHOVAN ACT1 MSG TARSIS 002] homing priority response sent", homing_body)
         self.assertIn("[KHOVAN ACT1 COMMS 008F] Tarsis homing-priority option response sent", homing_body)
         self.assertIn("[KHOVAN ACT1 COMMS 008B] Tarsis generator-acceptance option selected", generator_body)
+        self.assertIn("if tarsis_generator_support_response_sent:", generator_body)
+        self.assertIn("[KHOVAN ACT1 MSG ORDER] duplicate suppressed Tarsis generator-support response", generator_body)
         self.assertIn("tarsis_generator_support_requested = True", generator_body)
         self.assertIn("[KHOVAN ACT1 COMMS TARSIS GENERATOR] generator support requested", generator_body)
+        self.assertIn("tarsis_generator_support_response_sent = True", generator_body)
+        self.assertIn('sbs.send_story_dialog(0, "Tarsis Generator Acceptance", tarsis_generator_support_text', generator_body)
+        self.assertIn("[KHOVAN ACT1 MSG TARSIS 003] generator support response sent", generator_body)
         self.assertIn("[KHOVAN ACT1 COMMS 008G] Tarsis generator-acceptance option response sent", generator_body)
         self.assertIn("[KHOVAN ACT1 COMMS 008C] Tarsis docking-clearance option selected", docking_body)
+        self.assertIn("if tarsis_docking_clearance_response_sent:", docking_body)
+        self.assertIn("[KHOVAN ACT1 MSG ORDER] duplicate suppressed Tarsis docking-clearance response", docking_body)
         self.assertIn("if not tarsis_homing_priority_requested or not tarsis_generator_support_requested:", docking_body)
         self.assertIn("yield fail", docking_body)
         self.assertIn("[KHOVAN ACT1 COMMS 008I] Tarsis docking-clearance option rejected before prerequisites", docking_body)
         self.assertIn("tarsis_docking_clearance_requested = True", docking_body)
         self.assertIn("[KHOVAN ACT1 COMMS TARSIS CLEARANCE] docking clearance requested/granted", docking_body)
+        self.assertIn("tarsis_docking_clearance_response_sent = True", docking_body)
         self.assertIn("await task_schedule(khovan_tarsis_enable_docking_after_clearance)", docking_body)
+        self.assertIn('sbs.send_story_dialog(0, "Tarsis Docking Control", tarsis_docking_clearance_text', docking_body)
+        self.assertIn("comms_receive(tarsis_docking_clearance_text, title=\"Tarsis Docking Control\", title_color=\"green\")", docking_body)
+        self.assertIn("[KHOVAN ACT1 MSG TARSIS 004] docking clearance response sent", docking_body)
         self.assertIn("[KHOVAN ACT1 COMMS 008I] Tarsis docking-clearance option response sent", docking_body)
+        self.assertIn("[KHOVAN ACT1 COMMS TARSIS STATUS] Tarsis gate status requested", status_body)
+        self.assertIn("homing_status_text = \"not set\"", status_body)
+        self.assertIn("generator_status_text = \"not received\"", status_body)
+        self.assertIn("docking_status_text = \"not granted\"", status_body)
+        self.assertIn("Tarsis gate status: all required traffic complete. Docking/resupply handoff may proceed.", status_body)
+        self.assertIn("Complete all three before docking/resupply handoff.", status_body)
+        self.assertIn("comms_receive(tarsis_gate_status_text", status_body)
+        self.assertIn("[KHOVAN ACT1 MSG TARSIS 006] gate status response sent", status_body)
+        self.assertIn("[KHOVAN ACT1 COMMS TARSIS RESUPPLY] docking/resupply confirmed", clear_body)
+        self.assertIn("comms_receive(tarsis_resupply_text, title=\"Tarsis Station\", title_color=\"green\")", clear_body)
+        self.assertIn("[KHOVAN ACT1 MSG TARSIS 005] docking/resupply response sent", clear_body)
 
         update_body = label_body(act1, "khovan_tarsis_update_gate_status")
         self.assertIn(
@@ -519,12 +625,15 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
         ]
         self.assertEqual(1, len(clear_hits))
         clear_body = label_body(act1, "khovan_tarsis_confirm_docking_and_resupply")
+        self.assertIn("if tarsis_governor_clear_response_sent:", clear_body)
+        self.assertIn("[KHOVAN ACT1 MSG ORDER] duplicate suppressed Tarsis governor-clear response", clear_body)
         self.assertIn("if not tarsis_required_requests_complete:", clear_body)
         self.assertIn("yield fail", clear_body)
         self.assertIn("tarsis_resupply_confirmed = True", clear_body)
         self.assertIn("generator_governor_active = False", clear_body)
         self.assertIn("generator_governor_cleared = True", clear_body)
         self.assertIn("last_checkpoint = \"tarsis_resupply_governor_cleared\"", clear_body)
+        self.assertIn("tarsis_governor_clear_response_sent = True", clear_body)
         self.assertIn("[KHOVAN ACT1 012] Tarsis resupply confirmed; generator governor cleared", clear_body)
 
     def test_slice04_breadcrumbs_and_action_log_hooks_are_present(self) -> None:
@@ -550,9 +659,24 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             "[KHOVAN ACT1 COMMS 007A]",
             "[KHOVAN ACT1 COMMS 008]",
             "[KHOVAN ACT1 COMMS TARSIS OPTIONS]",
+            "[KHOVAN ACT1 COMMS TARSIS HAIL]",
             "[KHOVAN ACT1 COMMS TARSIS HOMING]",
             "[KHOVAN ACT1 COMMS TARSIS GENERATOR]",
             "[KHOVAN ACT1 COMMS TARSIS CLEARANCE]",
+            "[KHOVAN ACT1 COMMS TARSIS RESUPPLY]",
+            "[KHOVAN ACT1 COMMS TARSIS STATUS]",
+            "[KHOVAN ACT1 MSG KESTREL 001]",
+            "[KHOVAN ACT1 MSG KESTREL 002]",
+            "[KHOVAN ACT1 MSG KESTREL 003]",
+            "[KHOVAN ACT1 MSG KESTREL 004]",
+            "[KHOVAN ACT1 MSG TRAINING 001]",
+            "[KHOVAN ACT1 MSG TARSIS 001]",
+            "[KHOVAN ACT1 MSG TARSIS 002]",
+            "[KHOVAN ACT1 MSG TARSIS 003]",
+            "[KHOVAN ACT1 MSG TARSIS 004]",
+            "[KHOVAN ACT1 MSG TARSIS 005]",
+            "[KHOVAN ACT1 MSG TARSIS 006]",
+            "[KHOVAN ACT1 MSG ORDER]",
             "[KHOVAN ACT1 SCAN 001]",
             "[KHOVAN ACT1 DOCK 001]",
             "[KHOVAN ACT1 DOCK 001K]",
@@ -616,7 +740,6 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             "drone",
             "damcon",
             "pirate",
-            "debrief",
         ]:
             self.assertNotIn(forbidden.lower(), active_runtime)
 
@@ -635,13 +758,13 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             "quick tests do not prove live runtime behavior",
             "temporary comms confirmation",
             "ordnance api uncertainty",
-            "options panel stayed blank",
+            "options panel stayed empty",
             "10/10 homing",
             "standard station fallback",
             "reference-backed standard station primitives",
-            "uppercase `station` compatibility role",
-            "science initial scan",
-            "station comms options are hidden until science initial scan",
+            "uppercase `station` role only during",
+            "without requiring science scan as a hard gate",
+            "science scanning may still provide observational context",
             "custom khovan station/profile/comms binding is deferred",
             "custom station presentation",
             "init.mast",
@@ -660,9 +783,19 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             "confirm docking is blocked, unavailable, or does not advance slice 04 state",
             "tarsis comms options render bug",
             "station-role restoration",
+            "stock-role suppression",
             "option buttons",
             "tarsis comms option rendering checklist",
             "confirm tarsis options are visible",
+            "act i message-ordering bug",
+            "intended sequence",
+            "duplicate-suppression",
+            "act i message ordering checklist",
+            "training control speed-power reminder",
+            "live lifeform/comms ui ordering",
+            "current live regression evidence",
+            "msg tarsis 001",
+            "msg tarsis 006",
         ]:
             self.assertIn(phrase, text)
 

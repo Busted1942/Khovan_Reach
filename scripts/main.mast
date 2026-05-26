@@ -43,12 +43,12 @@ Properties:
     script.write_khovan_startup_trace("[KHOVAN BOOT 003B] jump registry initialized")
     script.write_khovan_startup_trace("[KHOVAN BOOT 004] before playable_bootstrap")
     await task_schedule(khovan_reach_initialize_playable_bootstrap)
+    await task_schedule(khovan_reach_stub_dillon_clip_1)
     await task_schedule(khovan_act1_initialize_generator_tarsis_gate)
     script.write_khovan_startup_trace("[KHOVAN BOOT 004A] Act I generator/Tarsis gate initialized")
     await task_schedule(khovan_comms_proof_station_initialize)
     script.write_khovan_startup_trace("[KHOVAN BOOT 004B] Comms proof station initialized")
     await task_schedule(khovan_reach_initialize_debug_runtime)
-    await task_schedule(khovan_reach_stub_dillon_clip_1)
     script.write_khovan_startup_trace("[KHOVAN BOOT 009] mission_phase=act_1 current_scene=1")
     current_beat = "scene_1_bootstrap"
     logger("mast.runtime")

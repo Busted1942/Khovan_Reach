@@ -22,6 +22,7 @@ REQUIRED_STATE = {
     "starting_homing_torpedoes": "2",
     "kestrel_generator_packet_sent": "False",
     "launch_envelope_cleared": "False",
+    "dillon_clip_1_stub_sent": "False",
     "shakedown_mode": "\"unset\"",
     "training_overlay_active": "True",
     "comms_archive_enabled": "True",
@@ -334,9 +335,24 @@ class BootstrapStaticTests(unittest.TestCase):
     def test_dillon_clip_1_is_stubbed(self) -> None:
         audio = read("scripts/systems/audio_runtime.mast")
         self.assertIn("shared dillon_clip_1_stub_text", audio)
+        self.assertIn("Captain. Crew of Artemis. This is a qualification cruise.", audio)
+        self.assertIn("dock and resupply at Tarsis", audio)
+        self.assertIn("Captain, the ship is yours.", audio)
+        self.assertIn("shared dillon_clip_1_stub_sent = False", audio)
         self.assertIn("=== khovan_reach_stub_dillon_clip_1 ===", audio)
+        self.assertIn("if dillon_clip_1_stub_sent:", audio)
+        self.assertIn("[KHOVAN ACT1 MSG ORDER] duplicate suppressed Dillon Clip 1 stub", audio)
+        self.assertIn("dillon_clip_1_stub_sent = True", audio)
         self.assertIn('dillon_clip_1_status = "stubbed"', audio)
-        self.assertIn("Dillon Clip 1 text stub active", audio)
+        self.assertIn("=== khovan_reach_send_safe_startup_message ===", audio)
+        self.assertIn('sbs.send_story_dialog(0, startup_sender, startup_text, "", startup_color)', audio)
+        self.assertIn("[KHOVAN ACT1 MSG SAFE] startup message sent via safe visible fallback", audio)
+        self.assertIn("[KHOVAN ACT1 MSG SAFE] comms_receive skipped: no valid sender/context", audio)
+        self.assertIn("await task_schedule(khovan_reach_send_safe_startup_message", audio)
+        self.assertIn('"startup_sender": "Dillon / Training Control"', audio)
+        self.assertIn('"startup_text": dillon_clip_1_stub_text', audio)
+        self.assertIn("[KHOVAN ACT1 MSG DILLON 001] Dillon opening briefing sent", audio)
+        self.assertNotIn('comms_receive(dillon_clip_1_stub_text', audio)
         self.assertIn("[KHOVAN BOOT 008] Dillon Clip 1 stub/queue reached", audio)
         self.assertIn("sbs.send_story_dialog(0", audio)
 
