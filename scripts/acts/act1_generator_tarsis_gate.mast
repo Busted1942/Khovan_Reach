@@ -36,6 +36,8 @@ shared tarsis_resupply_confirmed = False
 shared tarsis_station_visibility_status = "scan_gated_until_science_initial_scan"
 shared tarsis_docking_resupply_status = "blocked_until_docking_clearance"
 shared tarsis_docking_gate_status = "not_initialized"
+shared tarsis_docking_rejection_text = "Tarsis Control: docking clearance not granted. Complete required traffic before approach."
+shared tarsis_comms_options_status = "not_rendered"
 shared generator_governor_cleared = False
 
 shared kestrel_yard_lock_visual_text = "Artemis, Kestrel Yard Control. Yard-lock is engaged. Hold position on the launch ramp until Comms requests departure clearance."
@@ -58,6 +60,8 @@ shared tarsis_generator_support_text = "Generator acceptance packet received. We
     script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS 007A] Tarsis Comms route available after Science known state")
 
 //comms if has_roles(COMMS_SELECTED_ID, "tarsis_station")
+    tarsis_comms_options_status = "rendered_after_known_state"
+    script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS TARSIS OPTIONS] Tarsis options rendered")
     + "Khovan: Hail Tarsis Station" khovan_tarsis_hail
     + "Khovan: Request Homing-Torpedo Priority" khovan_tarsis_request_homing_priority
     + "Khovan: Request Generator Support" khovan_tarsis_request_generator_support
@@ -105,6 +109,7 @@ shared tarsis_generator_support_text = "Generator acceptance packet received. We
     tarsis_resupply_confirmed = False
     tarsis_docking_resupply_status = "blocked_until_docking_clearance"
     tarsis_docking_gate_status = "waiting_for_science_scan_and_comms_clearance"
+    tarsis_comms_options_status = "waiting_for_known_state"
     act1_last_progression_summary = "Generator governor active; homing reserve represented as state/log stub pending ordnance API proof."
     script.write_khovan_startup_trace("[KHOVAN ACT1 001] generator governor initialized active")
     script.write_khovan_startup_trace("[KHOVAN ACT1 002] homing reserve initialized as state/log stub count=2")
@@ -154,13 +159,17 @@ shared tarsis_generator_support_text = "Generator acceptance packet received. We
     kestrel_yard_lock_visual_status = "attempted_mechanical_fallback"
     script.write_khovan_startup_trace("[KHOVAN ACT1 VISUAL 001] Kestrel yard-lock visual setup attempted")
     await task_schedule(docking_standard_player_station)
+    if tarsis_station_id != 0:
+        add_role(tarsis_station_id, "station")
+        tarsis_comms_options_status = "station_role_restored_after_docking_helper_pass"
+        script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS 004D] Tarsis station role restored after docking helper pass for Comms options")
     for player_id in role("__player__"):
         if kestrel_yards_id != 0:
             science_set_scan_data(player_id, kestrel_yards_id, "Kestrel Yards is Artemis' launch yard and active departure-control contact.")
             link(player_id, "extra_scan_source", kestrel_yards_id)
         if tarsis_station_id != 0:
             link(player_id, "extra_scan_source", tarsis_station_id)
-            docking_set_docking_logic(player_id, tarsis_station_id, docking_dock_not_allowed)
+            docking_set_docking_logic(player_id, tarsis_station_id, khovan_tarsis_docking_rejected_before_clearance)
     tarsis_docking_gate_status = "blocked_until_docking_clearance"
     script.write_khovan_startup_trace("[KHOVAN ACT1 DOCK 002] docking setup applied or failed/stubbed")
     if artemis_id != 0 and kestrel_yards_id != 0:
@@ -186,7 +195,7 @@ shared tarsis_generator_support_text = "Generator acceptance packet received. We
     tarsis_docking_resupply_status = "preclearance_docking_blocked_resupply_unproven"
     script.write_khovan_startup_trace(f"[KHOVAN ACT1 DOCK 002A] Tarsis pre-clearance docking blocker installed id={tarsis_station_id}; mechanical docking/resupply remains live-smoke only")
     script.write_khovan_startup_trace("[KHOVAN ACT1 DOCK 003] Tarsis docking setup held behind docking clearance")
-    script.write_khovan_startup_trace("[KHOVAN ACT1 DOCK 003A] Premature Tarsis docking uses docking_dock_not_allowed until clearance; dock-button visibility requires live proof")
+    script.write_khovan_startup_trace("[KHOVAN ACT1 DOCK 003A] Premature Tarsis docking uses Khovan clearance-denied handler until clearance; dock-button visibility requires live proof")
     script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS 003A] Kestrel marked known to player ships for departure Comms")
     script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS 004C] Tarsis scan-gated visibility retained; do not claim before/after scan unless live observed")
     script.write_khovan_startup_trace("[KHOVAN ACT1 003] Kestrel/Tarsis contacts initialized")
@@ -194,6 +203,23 @@ shared tarsis_generator_support_text = "Generator acceptance packet received. We
     script.write_khovan_startup_trace("[KHOVAN ACT1 003D] Khovan station presentation polish deferred until standard Comms/docking path is proven")
     log(f"Khovan Act I contacts initialized: Kestrel id {kestrel_yards_id}, Tarsis id {tarsis_station_id}.")
     ->END
+
+=== khovan_tarsis_docking_rejected_before_clearance ===
+metadata: ``` yaml
+distance: 600
+```
++++ enable
+    yield fail if DOCKING_NPC_ID == 0
+    yield fail if tarsis_docking_clearance_requested
+    yield fail if DOCKING_NPC_ID != tarsis_station_id
+
++++ docking
+    tarsis_docking_gate_status = "preclearance_docking_rejected_missing_clearance"
+    script.write_khovan_startup_trace("[KHOVAN ACT1 DOCK BLOCKED] Tarsis docking rejected: clearance not granted")
+    with comms_override(DOCKING_NPC_ID, DOCKING_PLAYER_ID, from_name="Tarsis Docking Control"):
+        <<[yellow,black] "Docking Clearance Required"
+            % {tarsis_docking_rejection_text}
+    yield fail
 
 === khovan_act1_show_kestrel_yard_lock_visual_fallback ===
     kestrel_yard_lock_visual_status = "fallback_active_mechanical_yard_lock_overlay"
@@ -345,6 +371,7 @@ shared tarsis_generator_support_text = "Generator acceptance packet received. We
     script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS 008A] Tarsis homing-priority option selected")
     tarsis_homing_priority_requested = True
     script.write_khovan_startup_trace("[KHOVAN ACT1 008] Tarsis homing-priority request marked")
+    script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS TARSIS HOMING] homing priority requested")
     await task_schedule(khovan_tarsis_update_gate_status)
     await task_schedule(khovan_act1_record_progression, {"action": "tarsis_homing_priority", "detail": "homing torpedo production priority requested"})
     comms_receive(tarsis_homing_priority_text, title="Tarsis Production Control", title_color="green")
@@ -355,6 +382,7 @@ shared tarsis_generator_support_text = "Generator acceptance packet received. We
     script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS 008B] Tarsis generator-acceptance option selected")
     tarsis_generator_support_requested = True
     script.write_khovan_startup_trace("[KHOVAN ACT1 009] Tarsis generator-support request marked")
+    script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS TARSIS GENERATOR] generator support requested")
     await task_schedule(khovan_tarsis_update_gate_status)
     await task_schedule(khovan_act1_record_progression, {"action": "tarsis_generator_support", "detail": "generator acceptance/support requested"})
     comms_receive(tarsis_generator_support_text, title="Tarsis Generator Acceptance", title_color="green")
@@ -375,6 +403,7 @@ shared tarsis_generator_support_text = "Generator acceptance packet received. We
 
     tarsis_docking_clearance_requested = True
     script.write_khovan_startup_trace("[KHOVAN ACT1 011] Tarsis docking-clearance request marked")
+    script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS TARSIS CLEARANCE] docking clearance requested/granted")
     await task_schedule(khovan_tarsis_update_gate_status)
     await task_schedule(khovan_tarsis_enable_docking_after_clearance)
     await task_schedule(khovan_act1_record_progression, {"action": "tarsis_docking_clearance", "detail": "docking clearance requested/granted after required prior requests"})
