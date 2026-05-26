@@ -1,0 +1,76 @@
+# Slice 04 Current Objective panel ownership.
+# Uses the stock Cosmos/SBS Utils text_waterfall widget through comms_broadcast.
+
+shared current_objective_panel_initialized = False
+shared current_objective_panel_status = "not_initialized"
+shared current_objective_delivery_mode = "text_waterfall_comms_broadcast"
+shared current_objective_api_status = "reference_backed_comms_broadcast_live_smoke_required"
+shared current_objective_id = "none"
+shared current_objective_title = "Current Objective"
+shared current_objective_body = ""
+shared current_objective_step = ""
+shared current_objective_owner = "Training Control"
+shared current_objective_mode = "text_waterfall"
+shared current_objective_visible = False
+shared current_objective_run_id = 0
+shared current_objective_updated_at = 0
+shared current_objective_archive_id = "none"
+shared current_objective_last_message = ""
+shared current_objective_broadcast_status = "not_sent"
+
+=== khovan_current_objective_init ===
+    current_objective_panel_initialized = True
+    current_objective_panel_status = "initialized"
+    script.write_khovan_startup_trace("[KHOVAN OBJECTIVE 001] current objective initialized")
+    await task_schedule(khovan_set_current_objective, {"objective_id": "kestrel_departure_clearance", "objective_body": "Comms request Kestrel departure clearance.", "objective_step": "Kestrel departure clearance", "objective_breadcrumb": "[KHOVAN OBJECTIVE 002] objective updated: Kestrel departure clearance"})
+    ->END
+
+=== khovan_set_current_objective ===
+    default objective_id = "unknown"
+    default objective_title = "Current Objective"
+    default objective_body = ""
+    default objective_step = ""
+    default objective_owner = "Training Control"
+    default objective_color = "cyan"
+    default objective_breadcrumb = ""
+
+    current_objective_id = objective_id
+    current_objective_title = objective_title
+    current_objective_body = objective_body
+    current_objective_step = objective_step
+    current_objective_owner = objective_owner
+    current_objective_mode = "text_waterfall"
+    current_objective_visible = True
+    current_objective_run_id = current_objective_run_id + 1
+    current_objective_updated_at = current_objective_run_id
+    current_objective_archive_id = f"objective:{current_objective_run_id}"
+    current_objective_last_message = f"Current Objective: {objective_body}"
+
+    if artemis_id == 0:
+        current_objective_broadcast_status = "skipped_missing_artemis_id"
+        script.write_khovan_startup_trace("[KHOVAN OBJECTIVE SAFE] text_waterfall update skipped: missing Artemis id")
+        if objective_breadcrumb != "":
+            script.write_khovan_startup_trace(objective_breadcrumb)
+        ->END
+
+    current_objective_broadcast_status = "sent_to_text_waterfall"
+    comms_broadcast(artemis_id, current_objective_last_message, objective_color)
+    if objective_breadcrumb != "":
+        script.write_khovan_startup_trace(objective_breadcrumb)
+    ->END
+
+=== khovan_clear_current_objective ===
+    current_objective_id = "none"
+    current_objective_title = "Current Objective"
+    current_objective_body = ""
+    current_objective_step = ""
+    current_objective_owner = "Training Control"
+    current_objective_visible = False
+    current_objective_run_id = current_objective_run_id + 1
+    current_objective_updated_at = current_objective_run_id
+    current_objective_last_message = "Current Objective: cleared."
+    if artemis_id != 0:
+        current_objective_broadcast_status = "cleared_in_text_waterfall"
+        comms_broadcast(artemis_id, current_objective_last_message, "gray")
+    script.write_khovan_startup_trace("[KHOVAN OBJECTIVE CLEAR] current objective cleared")
+    ->END

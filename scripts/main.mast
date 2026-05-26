@@ -5,6 +5,7 @@
 import scripts/systems/bootstrap_state.mast
 import scripts/systems/playable_bootstrap.mast
 import scripts/systems/audio_runtime.mast
+import scripts/systems/current_objective_panel.mast
 import scripts/systems/debug_runtime.mast
 import scripts/systems/scenario_control_panel.mast
 import scripts/systems/story_jump_presets.mast

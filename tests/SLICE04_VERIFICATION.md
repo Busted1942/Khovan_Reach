@@ -17,6 +17,7 @@
   - Kestrel generator advisory is scheduled after launch-envelope confirmation plus 10 seconds.
   - Act I briefing/instruction packets are guarded as one-time sends at their intended trigger points.
   - Startup and scheduled Act I packets use a guarded text-message path with valid sender/player IDs instead of raw startup `comms_receive` or blank lifeform/story-dialog overlays.
+  - The stock `text_waterfall` left-center rectangle is owned as a controlled Current Objective panel using the reference-backed `comms_broadcast` text-waterfall helper.
   - Tarsis homing priority, generator support, and docking clearance are required before governor clear.
   - Tarsis docking/resupply confirmation clears the governor only after required requests are complete.
 - Kestrel Yards and Tarsis Station use reference-backed standard station primitives:
@@ -55,6 +56,15 @@ Custom Khovan station/profile/Comms binding is deferred. Custom station presenta
 The restored `Comms Test Station` is diagnostic only. It exists to compare a known-visible proof route against Kestrel/Tarsis while Slice 04 Comms is being stabilized. It is not part of the Khovan scenario design and should be removed once the real Kestrel/Tarsis route is stable.
 
 The station_comms_docking_kernel spike remains evidence only. Slice 04 ports the proven station pattern into Tarsis through stock station spawn, explicit roles, `set_face`, `sim.add_navproxy`, role-owned Comms routes, handler breadcrumbs, docking setup attempts, and fallback confirmation. It does not add `Kernel Known Station`, `Kernel Scan-Gated Station`, or `Kernel Dock Station` to production Slice 04.
+
+Current Objective / text_waterfall panel:
+
+- Investigation finding: the persistent left-center black rectangle is the stock Cosmos/SBS Utils `text_waterfall` widget, not the Dillon lifeform/story-dialog box. Default layouts include `3dview^ship_data^text_waterfall`, which explains why the same rectangle appears in Legendary missions.
+- Old-build evidence: the archived Khovan implementation used `khovan_reach_objective_text` and `gui_info_panel_send_message(...)` for current-objective style prompts. That evidence supports the pattern, but not direct copy-forward design authority.
+- Change: Slice 04 now owns the rectangle through `scripts/systems/current_objective_panel.mast`. The central helper stores current-objective state and sends concise player-facing objective text with `comms_broadcast(artemis_id, current_objective_last_message, objective_color)`.
+- Objective sequence: startup asks Comms to request Kestrel departure clearance; departure clearance asks Helm to clear the launch envelope; launch-envelope confirmation asks the crew to stand by for the generator advisory; the advisory points the crew to Tarsis requests; Tarsis clearance asks the crew to dock and confirm resupply/governor handoff; governor clear asks the crew to await the next shakedown instruction.
+- Breadcrumbs: `[KHOVAN OBJECTIVE 001]` through `[KHOVAN OBJECTIVE 006]` track initialization and the required Slice 04 updates. `[KHOVAN OBJECTIVE 007]` tracks the post-resupply handoff objective.
+- Fallback/uncertainty: quick/static checks prove the helper and trigger calls exist. Only live Cosmos smoke can prove the left-center `text_waterfall` rectangle actually displays the objective text and no longer appears as an unexplained empty box.
 
 Starting-condition audit: energy and ordnance:
 
@@ -223,6 +233,10 @@ Quick/static checks prove source structure only:
 - Dillon's opening briefing sends through the safe guarded text helper after Kestrel/Artemis sender context exists and before Kestrel yard-lock messaging.
 - The safe startup helper records `[KHOVAN ACT1 UI]` breadcrumbs and `[KHOVAN ACT1 MSG SAFE]` when Comms-log echo is skipped.
 - The startup text helper does not call `sbs.send_story_dialog`, so the risky black-box overlay path is not in the Slice 04 startup packet route.
+- Current Objective panel helper exists, stores objective state, uses the `text_waterfall` delivery mode, and sends objective text through `comms_broadcast`.
+- Startup objective initialization is scheduled after the Kestrel hold becomes active and before Dillon/Kestrel startup text packets.
+- Current Objective updates are wired to Kestrel departure clearance, launch-envelope confirmation, generator advisory delivery, Tarsis docking clearance, and Tarsis resupply/governor clear.
+- Current Objective breadcrumbs `[KHOVAN OBJECTIVE 001]` through `[KHOVAN OBJECTIVE 006]` are present.
 - Act I message-order flags exist for mission start, Kestrel yard-lock, Kestrel departure, launch-envelope, generator advisory, Training Control speed-power reminder, Tarsis request acknowledgments, and Tarsis governor clear.
 - Kestrel departure, launch-envelope, generator advisory, Training Control reminder, Tarsis acknowledgments, and governor-clear messages have duplicate-suppression breadcrumbs.
 - Launch-envelope confirmation cannot restart the advisory timer after the advisory has already been sent.
@@ -262,6 +276,8 @@ Only live Cosmos smoke can prove:
 - Act I messages appear only at their intended trigger points and in the intended sequence.
 - Duplicate Kestrel/Tarsis option selections do not replay one-time briefing or acknowledgment packets.
 - The Training Control speed-power reminder appears immediately after the Kestrel generator advisory.
+- The left-center stock `text_waterfall` rectangle shows Current Objective text instead of remaining blank.
+- Current Objective text updates at the major Slice 04 gates without excessive duplication.
 - Artemis starting energy/ordnance UI matches the intended fresh-load start: generator governor active, Homing 0/10, Nukes 0/3, EMP 0/6, Mines 0/6.
 - Kestrel's emergency homing reserve request option appears and releases the reserve through Comms.
 - The reserve request changes Homing from 0/10 to 2/10 once, does not increase above 2 on repeat, does not change energy, and does not clear the governor.
@@ -280,55 +296,61 @@ Only live Cosmos smoke can prove:
 1. Run `python .\run_tests.py quick`.
 2. Run `git diff --check`.
 3. Run `Remove-Item .\tests\live_startup_trace.txt -ErrorAction SilentlyContinue`.
-4. Launch Cosmos from branch `slice04-homing-reserve-load-route`.
+4. Launch Cosmos from branch `slice04-current-objective-panel`.
 5. Load Khovan Reach.
 6. Confirm normal player console selection still works.
 7. Confirm Helm can control Artemis.
 8. Confirm Artemis starts near/at Kestrel.
 9. Confirm no runtime crash occurs for at least 30 seconds.
-10. Confirm `tests/live_startup_trace.txt` logs `[KHOVAN ACT1 START STATE] Artemis starting energy set to Cosmos default with generator governor active; zero-energy start not source-authorized`.
-11. Confirm `tests/live_startup_trace.txt` logs `[KHOVAN ACT1 START STATE] Artemis starting ordnance set to Homing=0 Nuke=0 EMP=0 Mine=0`.
-12. Confirm `tests/live_startup_trace.txt` logs `[KHOVAN ACT1 START STATE FINAL] homing=0`.
-13. Confirm Weapons/Engineering UI state matches the intended fresh-load start: generator governor active, Homing 0/10, Nukes 0/3, EMP 0/6, Mines 0/6.
-14. Confirm the Kestrel Yard Control yard-lock overlay appears.
-15. Confirm whether docking lines, docking animation, or docked UI state appear. If they do not, classify the result as fallback-only rather than failure.
-16. Before using Kestrel Comms, attempt a gentle Helm move/depart input.
-17. Confirm Artemis remains mechanically held at Kestrel and does not depart.
-18. Use Comms to select Kestrel Yards without an initial Science scan.
-19. Confirm Khovan Kestrel options appear.
-20. Select `Khovan: Request Emergency Homing Reserve`.
-21. Confirm the message explains the two homing torpedoes as generator-governor margin, says no nukes/EMPs/mines are released before Tarsis, and says Tarsis will prioritize homing replacement and generator acceptance.
-22. Confirm trace includes `[KHOVAN ACT1 RESERVE 001]`, `[KHOVAN ACT1 RESERVE 002]`, and `[KHOVAN ACT1 RESERVE 003]`.
-23. Confirm Homing changes from 0/10 to 2/10.
-24. Select `Khovan: Request Emergency Homing Reserve` again.
-25. Confirm Homing remains 2/10 and trace includes `[KHOVAN ACT1 RESERVE 004]`.
-26. Select `Khovan: Request Departure Clearance`.
-27. After clearance, attempt Helm movement/departure again.
-28. Confirm Artemis can move/depart after clearance.
-29. Select `Khovan: Confirm Launch-Envelope Exit`.
-30. Wait 10 seconds and confirm Kestrel generator advisory appears/logs.
-31. If Kestrel remains unknown/blank, stop and inspect the Kestrel scan-known setup.
-32. If Kestrel options are blank, select `Comms Test Station`.
-33. Confirm `Proof Option` appears for the proof station.
-34. If the proof station works but Kestrel does not, compare Kestrel known/scan state and route condition against the proof station.
-35. Approach Tarsis.
-36. Use Comms to select Tarsis Station without treating Science scan as a required unlock.
-37. Confirm Khovan Tarsis options appear and are story-guided.
-38. Select `Khovan: Hail Tarsis Station`.
-39. Confirm `[KHOVAN ACT1 COMMS TARSIS HAIL]` and `[KHOVAN ACT1 MSG TARSIS 001]`.
-40. Before docking clearance, try to dock with Tarsis.
-41. Confirm docking is blocked, unavailable, rejected, or does not advance Slice 04 state.
-42. Select `Khovan: Request Homing-Torpedo Priority`.
-43. Confirm `[KHOVAN ACT1 COMMS TARSIS HOMING]` and `[KHOVAN ACT1 MSG TARSIS 002]`.
-44. Select `Khovan: Request Generator Support`.
-45. Confirm `[KHOVAN ACT1 COMMS TARSIS GENERATOR]` and `[KHOVAN ACT1 MSG TARSIS 003]`.
-46. Select `Khovan: Request Docking Clearance`.
-47. Confirm `[KHOVAN ACT1 COMMS TARSIS CLEARANCE]`, `[KHOVAN ACT1 MSG TARSIS 004]`, and `[KHOVAN ACT1 DOCK 004]`.
-48. Attempt normal docking if available.
-49. If docking remains unavailable, use `Khovan: Confirm Docking/Resupply` as the temporary Slice 04 fallback.
-50. Confirm `[KHOVAN ACT1 COMMS TARSIS RESUPPLY]` and `[KHOVAN ACT1 MSG TARSIS 005]` only after required requests plus docking/fallback confirmation.
-51. Confirm status option logs `[KHOVAN ACT1 COMMS TARSIS STATUS]` and `[KHOVAN ACT1 MSG TARSIS 006]`.
-52. Inspect `tests/live_startup_trace.txt`.
+10. Confirm the left-center `text_waterfall`/black rectangle is no longer empty and shows `Current Objective: Comms request Kestrel departure clearance.`
+11. Confirm trace includes `[KHOVAN OBJECTIVE 001]` and `[KHOVAN OBJECTIVE 002]`.
+12. Confirm `tests/live_startup_trace.txt` logs `[KHOVAN ACT1 START STATE] Artemis starting energy set to Cosmos default with generator governor active; zero-energy start not source-authorized`.
+13. Confirm `tests/live_startup_trace.txt` logs `[KHOVAN ACT1 START STATE] Artemis starting ordnance set to Homing=0 Nuke=0 EMP=0 Mine=0`.
+14. Confirm `tests/live_startup_trace.txt` logs `[KHOVAN ACT1 START STATE FINAL] homing=0`.
+15. Confirm Weapons/Engineering UI state matches the intended fresh-load start: generator governor active, Homing 0/10, Nukes 0/3, EMP 0/6, Mines 0/6.
+16. Confirm the Kestrel Yard Control yard-lock overlay appears.
+17. Confirm whether docking lines, docking animation, or docked UI state appear. If they do not, classify the result as fallback-only rather than failure.
+18. Before using Kestrel Comms, attempt a gentle Helm move/depart input.
+19. Confirm Artemis remains mechanically held at Kestrel and does not depart.
+20. Use Comms to select Kestrel Yards without an initial Science scan.
+21. Confirm Khovan Kestrel options appear.
+22. Select `Khovan: Request Emergency Homing Reserve`.
+23. Confirm the message explains the two homing torpedoes as generator-governor margin, says no nukes/EMPs/mines are released before Tarsis, and says Tarsis will prioritize homing replacement and generator acceptance.
+24. Confirm trace includes `[KHOVAN ACT1 RESERVE 001]`, `[KHOVAN ACT1 RESERVE 002]`, and `[KHOVAN ACT1 RESERVE 003]`.
+25. Confirm Homing changes from 0/10 to 2/10.
+26. Select `Khovan: Request Emergency Homing Reserve` again.
+27. Confirm Homing remains 2/10 and trace includes `[KHOVAN ACT1 RESERVE 004]`.
+28. Select `Khovan: Request Departure Clearance`.
+29. Confirm Current Objective updates to `Helm clear the Kestrel launch envelope.` and trace includes `[KHOVAN OBJECTIVE 003]`.
+30. After clearance, attempt Helm movement/departure again.
+31. Confirm Artemis can move/depart after clearance.
+32. Select `Khovan: Confirm Launch-Envelope Exit`.
+33. Confirm Current Objective updates to `Stand by for Kestrel generator advisory.` and trace includes `[KHOVAN OBJECTIVE 004]`.
+34. Wait 10 seconds and confirm Kestrel generator advisory appears/logs.
+35. Confirm Current Objective updates to the Tarsis request objective and trace includes `[KHOVAN OBJECTIVE 005]`.
+36. If Kestrel remains unknown/blank, stop and inspect the Kestrel scan-known setup.
+37. If Kestrel options are blank, select `Comms Test Station`.
+38. Confirm `Proof Option` appears for the proof station.
+39. If the proof station works but Kestrel does not, compare Kestrel known/scan state and route condition against the proof station.
+40. Approach Tarsis.
+41. Use Comms to select Tarsis Station without treating Science scan as a required unlock.
+42. Confirm Khovan Tarsis options appear and are story-guided.
+43. Select `Khovan: Hail Tarsis Station`.
+44. Confirm `[KHOVAN ACT1 COMMS TARSIS HAIL]` and `[KHOVAN ACT1 MSG TARSIS 001]`.
+45. Before docking clearance, try to dock with Tarsis.
+46. Confirm docking is blocked, unavailable, rejected, or does not advance Slice 04 state.
+47. Select `Khovan: Request Homing-Torpedo Priority`.
+48. Confirm `[KHOVAN ACT1 COMMS TARSIS HOMING]` and `[KHOVAN ACT1 MSG TARSIS 002]`.
+49. Select `Khovan: Request Generator Support`.
+50. Confirm `[KHOVAN ACT1 COMMS TARSIS GENERATOR]` and `[KHOVAN ACT1 MSG TARSIS 003]`.
+51. Select `Khovan: Request Docking Clearance`.
+52. Confirm `[KHOVAN ACT1 COMMS TARSIS CLEARANCE]`, `[KHOVAN ACT1 MSG TARSIS 004]`, and `[KHOVAN ACT1 DOCK 004]`.
+53. Confirm Current Objective updates to `Dock with Tarsis and confirm resupply/governor handoff.` and trace includes `[KHOVAN OBJECTIVE 006]`.
+54. Attempt normal docking if available.
+55. If docking remains unavailable, use `Khovan: Confirm Docking/Resupply` as the temporary Slice 04 fallback.
+56. Confirm `[KHOVAN ACT1 COMMS TARSIS RESUPPLY]` and `[KHOVAN ACT1 MSG TARSIS 005]` only after required requests plus docking/fallback confirmation.
+57. Confirm status option logs `[KHOVAN ACT1 COMMS TARSIS STATUS]` and `[KHOVAN ACT1 MSG TARSIS 006]`.
+58. Inspect `tests/live_startup_trace.txt`.
 
 Tarsis docking-clearance regression checklist:
 
@@ -388,7 +410,7 @@ Act I message ordering checklist:
 1. Clear `tests/live_startup_trace.txt`.
 2. Launch Khovan Reach.
 3. Confirm no runtime crash for at least 30 seconds.
-4. Confirm no persistent black box, blank portrait, empty info panel, or player-facing debug/admin UI appears on main viewer or player clients.
+4. Confirm the left-center `text_waterfall` region is populated with Current Objective text instead of an unexplained blank black rectangle; no blank portrait, empty info panel, or player-facing debug/admin UI appears.
 5. Confirm Dillon opening briefing appears through the guarded text path, or logs `[KHOVAN DILLON SAFE]` if startup Comms echo is unavailable.
 6. Confirm trace includes `[KHOVAN DILLON 001]`, `[KHOVAN DILLON 002]`, and either `[KHOVAN DILLON 003]` or `[KHOVAN DILLON SAFE]`.
 7. Confirm trace includes `[KHOVAN ACT1 UI] black-box overlay source disabled or replaced`, `[KHOVAN ACT1 UI] lifeform overlay deferred`, and `[KHOVAN ACT1 UI] safe text message path used` or the safe unavailable breadcrumb.
@@ -419,7 +441,10 @@ Act I message ordering checklist:
 - Generator governor initializes active.
 - Dillon opening briefing appears through the guarded text/Comms path before Kestrel yard-lock messaging, or trace logs `[KHOVAN DILLON SAFE]` plus `[KHOVAN ACT1 MSG DILLON 001] Dillon opening briefing sent` as the safe startup fallback.
 - Startup/scheduled packets do not crash in `comms_receive`; startup Comms-log echo is claimed only when the guarded sender/player context is valid.
-- No persistent black box, blank portrait, empty info panel, or player-facing debug/admin UI remains from Dillon/Kestrel startup messaging.
+- The left-center stock `text_waterfall` region is populated with Current Objective text instead of appearing as an unexplained empty black rectangle.
+- Current Objective trace includes `[KHOVAN OBJECTIVE 001]` through `[KHOVAN OBJECTIVE 006]` as the Slice 04 gates advance.
+- Objective text updates to Kestrel departure clearance, launch envelope, generator advisory standby, Tarsis requests, and Tarsis docking/resupply at the matching trigger points.
+- No blank portrait, empty info panel, or player-facing debug/admin UI remains from Dillon/Kestrel startup messaging.
 - `tests/live_startup_trace.txt` includes `[KHOVAN ACT1 DOCK 001K]`, `[KHOVAN ACT1 VISUAL 001]`, `[KHOVAN ACT1 VISUAL 002]`, `[KHOVAN ACT1 HOLD 001]`, and `[KHOVAN ACT1 HOLD 002]` on fresh load.
 - Kestrel Yard Control guarded text packet says Artemis is held in yard-lock pending departure clearance.
 - If docking lines / animation / docked UI state are absent, the result is fallback-only, not true docking visuals.
@@ -456,7 +481,11 @@ Act I message ordering checklist:
 
 - Kestrel remains unknown or blank before any Science scan.
 - Dillon opening briefing is absent, has neither guarded visible text output nor `[KHOVAN DILLON SAFE]` fallback breadcrumbs, or appears after Kestrel yard-lock messaging.
-- A persistent black box, blank portrait, empty info panel, or player-facing debug/admin UI appears after startup messaging.
+- The left-center `text_waterfall` rectangle remains blank or unexplained after startup.
+- Objective text appears somewhere other than the left-center `text_waterfall` rectangle while that rectangle remains empty.
+- Current Objective text duplicates excessively or does not update at the documented Slice 04 gates.
+- `[KHOVAN OBJECTIVE 001]`, `[KHOVAN OBJECTIVE 002]`, `[KHOVAN OBJECTIVE 003]`, `[KHOVAN OBJECTIVE 004]`, `[KHOVAN OBJECTIVE 005]`, or `[KHOVAN OBJECTIVE 006]` is missing when the corresponding gate is exercised.
+- A blank portrait, empty info panel, or player-facing debug/admin UI appears after startup messaging.
 - Fresh load crashes in `comms_receive` with `error: 'name'` from a startup or scheduled packet.
 - Artemis starts free, undocked, or able to move away before Kestrel departure clearance.
 - The runtime crashes in `docking_dock_with_friendly_station` with the `NoneType`/`int` comparison.
@@ -513,11 +542,11 @@ Act I message ordering checklist:
 - Actual generator-output performance reduction.
 - Actual torpedo inventory application; torpedo/ordnance crash remains out of scope.
 - Mechanical homing-reserve conversion to energy; current behavior only loads the Kestrel-held reserve as two homing torpedoes.
+- Whether the `text_waterfall` Current Objective panel is visually acceptable on every console layout; static checks only prove the `comms_broadcast` helper and trigger wiring.
 - Custom Kestrel/Tarsis station profile/portrait/menu polish.
 - Shakedown profile selection.
 - Drone 01/02.
 - Full Act I drills.
-- Current-objective display unless separately proven.
 - Act II/III.
 - DAMCON.
 - Pirates.

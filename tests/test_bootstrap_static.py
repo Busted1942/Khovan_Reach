@@ -181,6 +181,7 @@ class BootstrapStaticTests(unittest.TestCase):
         self.assertIn("import scripts/systems/bootstrap_state.mast", main)
         self.assertIn("import scripts/systems/playable_bootstrap.mast", main)
         self.assertIn("import scripts/systems/audio_runtime.mast", main)
+        self.assertIn("import scripts/systems/current_objective_panel.mast", main)
         self.assertIn("import scripts/systems/debug_runtime.mast", main)
         self.assertRegex(main, r"(?m)^\s*shared\s+artemis_id\s*=\s*0\s*$")
         self.assertIn("@map/khovan_reach", main)
@@ -261,6 +262,7 @@ class BootstrapStaticTests(unittest.TestCase):
             "scripts/systems/bootstrap_state.mast",
             "scripts/systems/playable_bootstrap.mast",
             "scripts/systems/audio_runtime.mast",
+            "scripts/systems/current_objective_panel.mast",
             "scripts/systems/debug_runtime.mast",
         ]:
             self.assertTrue((ROOT / path).is_file(), path)
