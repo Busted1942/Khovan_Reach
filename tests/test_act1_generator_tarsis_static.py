@@ -55,7 +55,10 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             "shared tarsis_docking_clearance_requested = False",
             "shared tarsis_required_requests_complete = False",
             'shared tarsis_station_visibility_status = "scan_gated_until_science_initial_scan"',
-            'shared tarsis_docking_resupply_status = "docking_setup_attempted_resupply_unproven"',
+            'shared tarsis_docking_resupply_status = "blocked_until_docking_clearance"',
+            'shared tarsis_docking_gate_status = "not_initialized"',
+            'shared tarsis_docking_rejection_text = "Tarsis Control: docking clearance not granted. Complete required traffic before approach."',
+            'shared tarsis_comms_options_status = "not_rendered"',
             "shared generator_governor_cleared = False",
         ]:
             self.assertIn(phrase, act1)
@@ -95,21 +98,28 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             'add_role(kestrel_yards_id, "Station")',
             'remove_role(kestrel_yards_id, "station")',
             'add_role(tarsis_station_id, "Station")',
-            'add_role(tarsis_station_id, "station")',
+            'remove_role(tarsis_station_id, "station")',
             'add_role(kestrel_yards_id, "kestrel_yards")',
             'add_role(tarsis_station_id, "tarsis_station")',
             "[KHOVAN ACT1 COMMS 004A] Tarsis Station spawn attempted",
             "[KHOVAN ACT1 COMMS 004B] Tarsis Station spawned id=",
             "[KHOVAN ACT1 COMMS 003] Kestrel standard station setup complete roles=",
             "[KHOVAN ACT1 COMMS 004] Tarsis standard station setup complete roles=",
+            "[KHOVAN ACT1 SCAN 001] Tarsis scan-gated contact setup retained until Science initial scan",
             "[KHOVAN ACT1 DOCK 001] docking setup scheduled",
             "[KHOVAN ACT1 DOCK 001K] Kestrel Legendary docking helper skipped for startup mechanical hold fallback",
             "await task_schedule(docking_standard_player_station)",
+            'add_role(tarsis_station_id, "station")',
+            'tarsis_comms_options_status = "station_role_restored_after_docking_helper_pass"',
+            "[KHOVAN ACT1 COMMS 004D] Tarsis station role restored after docking helper pass for Comms options",
             'science_set_scan_data(player_id, kestrel_yards_id, "Kestrel Yards is Artemis\' launch yard and active departure-control contact.")',
-            "docking_set_docking_logic(player_id, tarsis_station_id, docking_dock_with_friendly_station)",
+            "docking_set_docking_logic(player_id, tarsis_station_id, khovan_tarsis_docking_rejected_before_clearance)",
+            'tarsis_docking_gate_status = "blocked_until_docking_clearance"',
             "[KHOVAN ACT1 DOCK 002] docking setup applied or failed/stubbed",
-            'tarsis_docking_resupply_status = "docking_setup_attempted_resupply_unproven"',
-            "[KHOVAN ACT1 DOCK 002A] Tarsis docking setup attempted id=",
+            'tarsis_docking_resupply_status = "preclearance_docking_blocked_resupply_unproven"',
+            "[KHOVAN ACT1 DOCK 002A] Tarsis pre-clearance docking blocker installed id=",
+            "[KHOVAN ACT1 DOCK 003] Tarsis docking setup held behind docking clearance",
+            "[KHOVAN ACT1 DOCK 003A] Premature Tarsis docking uses Khovan clearance-denied handler until clearance; dock-button visibility requires live proof",
             "[KHOVAN ACT1 COMMS 003A] Kestrel marked known to player ships for departure Comms",
             "[KHOVAN ACT1 COMMS 004C] Tarsis scan-gated visibility retained; do not claim before/after scan unless live observed",
             "[KHOVAN ACT1 003C] Kestrel/Tarsis use reference-backed standard station primitives",
@@ -125,7 +135,6 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             "khovan_act1_comms_test_option",
             "Khovan Test Option",
             "khovan_reach_keep_tarsis_priority_docking_hidden",
-            "docking_dock_not_allowed",
             "Kernel Known Station",
             "Kernel Scan-Gated Station",
             "Kernel Dock Station",
@@ -150,13 +159,93 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             "docking_set_docking_logic(player_id, kestrel_yards_id, docking_dock_with_friendly_station)",
             setup_body,
         )
-        self.assertIn(
+        self.assertNotIn(
             "docking_set_docking_logic(player_id, tarsis_station_id, docking_dock_with_friendly_station)",
+            setup_body,
+        )
+        self.assertIn(
+            "docking_set_docking_logic(player_id, tarsis_station_id, khovan_tarsis_docking_rejected_before_clearance)",
             setup_body,
         )
         self.assertLess(
             setup_body.index('remove_role(kestrel_yards_id, "station")'),
             setup_body.index("await task_schedule(docking_standard_player_station)"),
+        )
+
+    def test_tarsis_docking_setup_waits_for_docking_clearance(self) -> None:
+        act1 = read(ACT1_PATH)
+        setup_body = label_body(act1, "khovan_act1_setup_kestrel_and_tarsis_contacts")
+        clearance_body = label_body(act1, "khovan_tarsis_request_docking_clearance")
+        enable_body = label_body(act1, "khovan_tarsis_enable_docking_after_clearance")
+
+        self.assertLess(
+            setup_body.index('remove_role(tarsis_station_id, "station")'),
+            setup_body.index("await task_schedule(docking_standard_player_station)"),
+        )
+        self.assertLess(
+            setup_body.index("await task_schedule(docking_standard_player_station)"),
+            setup_body.index('add_role(tarsis_station_id, "station")'),
+        )
+        self.assertLess(
+            setup_body.index('add_role(tarsis_station_id, "station")'),
+            setup_body.index("docking_set_docking_logic(player_id, tarsis_station_id, khovan_tarsis_docking_rejected_before_clearance)"),
+        )
+        self.assertIn(
+            "docking_set_docking_logic(player_id, tarsis_station_id, khovan_tarsis_docking_rejected_before_clearance)",
+            setup_body,
+        )
+        self.assertNotIn(
+            "docking_set_docking_logic(player_id, tarsis_station_id, docking_dock_not_allowed)",
+            setup_body,
+        )
+        self.assertNotIn(
+            "docking_set_docking_logic(player_id, tarsis_station_id, docking_dock_with_friendly_station)",
+            setup_body,
+        )
+        self.assertIn(
+            "if not tarsis_homing_priority_requested or not tarsis_generator_support_requested:",
+            clearance_body,
+        )
+        self.assertIn("await task_schedule(khovan_tarsis_enable_docking_after_clearance)", clearance_body)
+        self.assertIn("if not tarsis_docking_clearance_requested:", enable_body)
+        self.assertIn("[KHOVAN ACT1 DOCK 003B] Tarsis docking setup enable blocked before clearance", enable_body)
+        self.assertIn('add_role(tarsis_station_id, "station")', enable_body)
+        self.assertIn(
+            "docking_set_docking_logic(player_id, tarsis_station_id, docking_dock_with_friendly_station)",
+            enable_body,
+        )
+        self.assertIn('tarsis_docking_gate_status = "enabled_after_docking_clearance"', enable_body)
+        self.assertIn("[KHOVAN ACT1 DOCK 004] Tarsis docking setup enabled after clearance", enable_body)
+
+        blocked_body = label_body(act1, "khovan_tarsis_docking_rejected_before_clearance")
+        self.assertIn("yield fail if DOCKING_NPC_ID == 0", blocked_body)
+        self.assertIn("yield fail if tarsis_docking_clearance_requested", blocked_body)
+        self.assertIn("yield fail if DOCKING_NPC_ID != tarsis_station_id", blocked_body)
+        self.assertIn('tarsis_docking_gate_status = "preclearance_docking_rejected_missing_clearance"', blocked_body)
+        self.assertIn("[KHOVAN ACT1 DOCK BLOCKED] Tarsis docking rejected: clearance not granted", blocked_body)
+        self.assertIn('with comms_override(DOCKING_NPC_ID, DOCKING_PLAYER_ID, from_name="Tarsis Docking Control"):', blocked_body)
+        self.assertIn('"Docking Clearance Required"', blocked_body)
+        self.assertIn("% {tarsis_docking_rejection_text}", blocked_body)
+        self.assertIn("yield fail", blocked_body)
+        self.assertNotIn("Our docking systems aren't compatible with yours", blocked_body)
+        self.assertNotIn("docking_dock_not_allowed", blocked_body)
+
+        self.assertIn(
+            '//shared/signal/docked if has_roles(ORIGIN_ID, "__player__") and has_roles(SELECTED_ID, "tarsis_station")',
+            act1,
+        )
+        dock_signal = re.search(
+            r'^//shared/signal/docked if has_roles\(ORIGIN_ID, "__player__"\) and has_roles\(SELECTED_ID, "tarsis_station"\)\n(?P<body>.*?)(?=^//|^=== |\Z)',
+            act1,
+            flags=re.MULTILINE | re.DOTALL,
+        )
+        self.assertIsNotNone(dock_signal)
+        self.assertIn("if not tarsis_docking_clearance_requested:", dock_signal.group("body"))
+        self.assertIn('tarsis_docking_gate_status = "premature_dock_signal_ignored_before_clearance"', dock_signal.group("body"))
+        self.assertIn("[KHOVAN ACT1 DOCK 003D] Premature Tarsis dock signal ignored before clearance", dock_signal.group("body"))
+        self.assertIn(
+            "[KHOVAN ACT1 DOCK 004A] Tarsis dock signal observed after clearance; resupply still requires Comms confirmation",
+            dock_signal.group("body"),
         )
 
     def test_kestrel_departure_hold_clamps_artemis_until_comms_clearance(self) -> None:
@@ -355,7 +444,10 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
         for phrase in [
             '//enable/comms if has_roles(COMMS_SELECTED_ID, "tarsis_station")',
             '[KHOVAN ACT1 COMMS 007] Tarsis standard station selected',
+            '[KHOVAN ACT1 COMMS 007A] Tarsis Comms route available after Science known state',
             '//comms if has_roles(COMMS_SELECTED_ID, "tarsis_station")',
+            'tarsis_comms_options_status = "rendered_after_known_state"',
+            '[KHOVAN ACT1 COMMS TARSIS OPTIONS] Tarsis options rendered',
             '+ "Khovan: Hail Tarsis Station" khovan_tarsis_hail',
             '+ "Khovan: Request Homing-Torpedo Priority" khovan_tarsis_request_homing_priority',
             '+ "Khovan: Request Generator Support" khovan_tarsis_request_generator_support',
@@ -397,15 +489,19 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
         docking_body = label_body(act1, "khovan_tarsis_request_docking_clearance")
         self.assertIn("[KHOVAN ACT1 COMMS 008A] Tarsis homing-priority option selected", homing_body)
         self.assertIn("tarsis_homing_priority_requested = True", homing_body)
+        self.assertIn("[KHOVAN ACT1 COMMS TARSIS HOMING] homing priority requested", homing_body)
         self.assertIn("[KHOVAN ACT1 COMMS 008F] Tarsis homing-priority option response sent", homing_body)
         self.assertIn("[KHOVAN ACT1 COMMS 008B] Tarsis generator-acceptance option selected", generator_body)
         self.assertIn("tarsis_generator_support_requested = True", generator_body)
+        self.assertIn("[KHOVAN ACT1 COMMS TARSIS GENERATOR] generator support requested", generator_body)
         self.assertIn("[KHOVAN ACT1 COMMS 008G] Tarsis generator-acceptance option response sent", generator_body)
         self.assertIn("[KHOVAN ACT1 COMMS 008C] Tarsis docking-clearance option selected", docking_body)
         self.assertIn("if not tarsis_homing_priority_requested or not tarsis_generator_support_requested:", docking_body)
         self.assertIn("yield fail", docking_body)
         self.assertIn("[KHOVAN ACT1 COMMS 008I] Tarsis docking-clearance option rejected before prerequisites", docking_body)
         self.assertIn("tarsis_docking_clearance_requested = True", docking_body)
+        self.assertIn("[KHOVAN ACT1 COMMS TARSIS CLEARANCE] docking clearance requested/granted", docking_body)
+        self.assertIn("await task_schedule(khovan_tarsis_enable_docking_after_clearance)", docking_body)
         self.assertIn("[KHOVAN ACT1 COMMS 008I] Tarsis docking-clearance option response sent", docking_body)
 
         update_body = label_body(act1, "khovan_tarsis_update_gate_status")
@@ -447,14 +543,29 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             "[KHOVAN ACT1 COMMS 004A]",
             "[KHOVAN ACT1 COMMS 004B]",
             "[KHOVAN ACT1 COMMS 004C]",
+            "[KHOVAN ACT1 COMMS 004D]",
             "[KHOVAN ACT1 COMMS 005]",
             "[KHOVAN ACT1 COMMS 006]",
             "[KHOVAN ACT1 COMMS 007]",
+            "[KHOVAN ACT1 COMMS 007A]",
             "[KHOVAN ACT1 COMMS 008]",
+            "[KHOVAN ACT1 COMMS TARSIS OPTIONS]",
+            "[KHOVAN ACT1 COMMS TARSIS HOMING]",
+            "[KHOVAN ACT1 COMMS TARSIS GENERATOR]",
+            "[KHOVAN ACT1 COMMS TARSIS CLEARANCE]",
+            "[KHOVAN ACT1 SCAN 001]",
             "[KHOVAN ACT1 DOCK 001]",
             "[KHOVAN ACT1 DOCK 001K]",
             "[KHOVAN ACT1 DOCK 002]",
             "[KHOVAN ACT1 DOCK 002A]",
+            "[KHOVAN ACT1 DOCK 003]",
+            "[KHOVAN ACT1 DOCK 003A]",
+            "[KHOVAN ACT1 DOCK 003B]",
+            "[KHOVAN ACT1 DOCK 003C]",
+            "[KHOVAN ACT1 DOCK 003D]",
+            "[KHOVAN ACT1 DOCK BLOCKED]",
+            "[KHOVAN ACT1 DOCK 004]",
+            "[KHOVAN ACT1 DOCK 004A]",
             "[KHOVAN ACT1 HOLD 001]",
             "[KHOVAN ACT1 HOLD 002]",
             "[KHOVAN ACT1 HOLD 003]",
@@ -539,6 +650,19 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             "implementation evidence only",
             "no kernel proof stations",
             "mechanical resupply detection",
+            "tarsis docking-clearance gate bug",
+            "clearance-denied handler",
+            "docking clearance not granted",
+            "incompatible docking systems",
+            "same custom",
+            "does not claim hidden/blocked docking ui until live smoke proves it",
+            "try to dock before docking clearance",
+            "confirm docking is blocked, unavailable, or does not advance slice 04 state",
+            "tarsis comms options render bug",
+            "station-role restoration",
+            "option buttons",
+            "tarsis comms option rendering checklist",
+            "confirm tarsis options are visible",
         ]:
             self.assertIn(phrase, text)
 
