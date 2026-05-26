@@ -1,0 +1,47 @@
+# Khovan Reach Slice 01 mission shell.
+# This is active bootstrap code only; Act I gameplay starts in later slices.
+# Slice 01B lets LegendaryMissions own server/client console lifecycle.
+
+import scripts/systems/bootstrap_state.mast
+import scripts/systems/playable_bootstrap.mast
+import scripts/systems/audio_runtime.mast
+import scripts/systems/debug_runtime.mast
+
+shared artemis_id = 0
+
+@map/khovan_reach "Khovan Reach"
+" TSN training mission bootstrap shell.
+" Slice 01B uses the old/reference LegendaryMissions console lifecycle.
+metadata: ```
+Properties:
+  Main:
+    Player Ships: 'gui_int_slider("$text:int;low: 1.0;high:8.0;", var= "PLAYER_COUNT")'
+```
+    script.write_khovan_startup_trace("[KHOVAN ROUTE 001] map selected")
+    await task_schedule(khovan_reach_slice01_entry)
+    ->END
+
+=== khovan_reach_slice01_entry ===
+    script.write_khovan_startup_trace("[KHOVAN BOOT 001] scripts/main.mast entered")
+    script.write_khovan_startup_trace("[KHOVAN ROUTE 002] before spawn_players")
+    await task_schedule(spawn_players)
+    script.write_khovan_startup_trace("[KHOVAN ROUTE 003] after spawn_players")
+    await task_schedule(khovan_reach_slice01_bootstrap)
+    script.write_slice01_live_smoke_marker(0)
+    ->END
+
+=== khovan_reach_slice01_bootstrap ===
+    script.write_khovan_startup_trace("[KHOVAN BOOT 002] before state defaults")
+    await task_schedule(khovan_reach_initialize_bootstrap_state)
+    script.write_khovan_startup_trace("[KHOVAN BOOT 003] after state defaults")
+    script.write_khovan_startup_trace("[KHOVAN BOOT 004] before playable_bootstrap")
+    await task_schedule(khovan_reach_initialize_playable_bootstrap)
+    await task_schedule(khovan_reach_initialize_debug_runtime)
+    await task_schedule(khovan_reach_stub_dillon_clip_1)
+    script.write_khovan_startup_trace("[KHOVAN BOOT 009] mission_phase=act_1 current_scene=1")
+    current_beat = "scene_1_bootstrap"
+    logger("mast.runtime")
+    log("Khovan Reach Slice 01A playable bootstrap loaded. Scene 1 initialized. mission_phase = act_1; current_scene = 1; dillon_clip_1_status = stubbed; artemis_player_ship_status = initialized.", "mast.runtime")
+    log("Khovan Reach Slice 01A playable bootstrap complete: mission_phase act_1, current_scene 1.", "mast.runtime")
+    script.write_khovan_startup_trace("[KHOVAN BOOT 010] playable bootstrap complete")
+    ->END

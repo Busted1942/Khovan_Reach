@@ -1,0 +1,11 @@
+# Slice 01 audio wrapper stub. Real playback API needs Cosmos smoke validation.
+
+shared dillon_clip_1_stub_text = "Dillon Clip 1 text stub: opening qualification briefing represented as text; real audio playback API is not verified."
+
+=== khovan_reach_stub_dillon_clip_1 ===
+    dillon_clip_1_status = "stubbed"
+    dillon_clip_1_stub_text = "Dillon Clip 1 text stub: opening qualification briefing represented as text; real audio playback API is not verified."
+    sbs.send_story_dialog(0, "Dillon Clip 1 Stub", "Dillon Clip 1 text stub active: opening qualification briefing represented as text. Real audio playback is not implemented in Slice 01A.", "", "#446")
+    script.write_khovan_startup_trace("[KHOVAN BOOT 008] Dillon Clip 1 stub/queue reached")
+    log("Dillon Clip 1 is stubbed for Slice 01; real audio playback API not verified locally.")
+    ->END

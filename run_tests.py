@@ -1,10 +1,14 @@
 #!/usr/bin/env python3
-"""Minimal Slice 00 repository checks for Khovan Reach."""
+"""Minimal quick checks for Khovan Reach implementation slices."""
 
 from __future__ import annotations
 
 import re
+import subprocess
 import sys
+import unittest
+import importlib.util
+from io import StringIO
 from pathlib import Path
 
 
@@ -31,7 +35,6 @@ REQUIRED_FOLDERS = [
 ]
 
 OLD_ROOT_MAST_FILENAMES = {
-    "main.mast",
     "dev_jump.mast",
     "act_1_qualification.mast",
     "act_1_state_helpers.mast",
@@ -105,6 +108,102 @@ def check_old_mast_filenames() -> list[str]:
     return failures
 
 
+def check_slice01_bootstrap_files() -> list[str]:
+    required = [
+        "description.txt",
+        "script.py",
+        "story.json",
+        "story.mast",
+        "scripts/main.mast",
+        "scripts/systems/bootstrap_state.mast",
+        "scripts/systems/playable_bootstrap.mast",
+        "scripts/systems/audio_runtime.mast",
+        "scripts/systems/debug_runtime.mast",
+        "tests/test_bootstrap_static.py",
+        "tests/SLICE01_VERIFICATION.md",
+    ]
+    return [
+        f"missing Slice 01 bootstrap file: {path}"
+        for path in required
+        if not (ROOT / path).is_file()
+    ]
+
+
+def check_clone_contents_not_tracked() -> list[str]:
+    if not (ROOT / ".git").exists():
+        return []
+
+    result = subprocess.run(
+        [
+            "git",
+            "ls-files",
+            "docs_external/_local_clones",
+            "reference_missions/_local_clones",
+        ],
+        cwd=ROOT,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if result.returncode != 0:
+        return [f"git clone tracking check failed: {result.stderr.strip()}"]
+
+    tracked = [line for line in result.stdout.splitlines() if line.strip()]
+    return [f"external clone content is tracked: {line}" for line in tracked]
+
+
+def run_static_unittests() -> tuple[list[str], int, list[str]]:
+    test_files = [
+        ROOT / "tests" / "test_bootstrap_static.py",
+        ROOT / "tests" / "test_mast_compile_or_preflight.py",
+    ]
+    suite = unittest.TestSuite()
+    for test_file in test_files:
+        spec = importlib.util.spec_from_file_location(test_file.stem, test_file)
+        if spec is None or spec.loader is None:
+            return [f"could not load static test file: {rel(test_file)}"], 0, []
+
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        suite.addTests(unittest.defaultTestLoader.loadTestsFromModule(module))
+
+    result = unittest.TextTestRunner(stream=StringIO(), verbosity=1).run(suite)
+    failures = []
+    for test_case, traceback_text in result.failures + result.errors:
+        last_line = traceback_text.strip().splitlines()[-1]
+        failures.append(f"{test_case.id()}: {last_line}")
+    skips = [
+        f"{test_case.id()}: skipped - {reason}"
+        for test_case, reason in result.skipped
+    ]
+    return failures, result.testsRun, skips
+
+
+def run_pytest_doc_checks() -> tuple[list[str], int]:
+    if importlib.util.find_spec("pytest") is None:
+        return [], 0
+
+    test_paths = [
+        ROOT / "tests" / "test_branch_lifecycle_docs.py",
+        ROOT / "tests" / "test_operator_test_expectation_docs.py",
+    ]
+    missing = [f"missing pytest doc test: {rel(path)}" for path in test_paths if not path.is_file()]
+    if missing:
+        return missing, 0
+
+    result = subprocess.run(
+        [sys.executable, "-m", "pytest", str(test_paths[0]), str(test_paths[1])],
+        cwd=ROOT,
+        text=True,
+        capture_output=True,
+    )
+    if result.returncode == 0:
+        return [], 0
+
+    output = result.stdout.strip() or result.stderr.strip()
+    return [f"pytest doc checks failed: {output}"], 0
+
+
 def conflict_tokens(path: Path) -> set[str]:
     return {
         token
@@ -149,29 +248,54 @@ def print_group(label: str, items: list[str]) -> None:
 
 
 def run_quick() -> int:
-    print("Khovan Reach Slice 00 quick checks")
+    print("Khovan Reach quick checks")
 
+    harness_checks_run = 0
     required_docs, source_failures = read_source_index()
+    harness_checks_run += 1
     failures = []
     warnings = []
 
     failures.extend(source_failures)
     if required_docs:
+        harness_checks_run += 1
         failures.extend(check_required_docs(required_docs))
 
+    harness_checks_run += 1
     failures.extend(check_required_folders())
+    harness_checks_run += 1
     failures.extend(check_old_mast_filenames())
+    harness_checks_run += 1
     failures.extend(check_conflicting_doc_filenames(required_docs))
+    harness_checks_run += 1
+    failures.extend(check_slice01_bootstrap_files())
+    harness_checks_run += 1
+    failures.extend(check_clone_contents_not_tracked())
+    static_failures, static_tests_run, static_warnings = run_static_unittests()
+    failures.extend(static_failures)
+    warnings.extend(static_warnings)
+    harness_checks_run += 1
+
+    pytest_failures, _ = run_pytest_doc_checks()
+    failures.extend(pytest_failures)
+    harness_checks_run += 1
+
     warnings.extend(check_old_mast_archive_warning())
+    total_checks_run = harness_checks_run + static_tests_run
 
     if failures:
         print_group("FAIL", failures)
     else:
-        print("PASS: required active docs, folders, active scripts, and doc names are clean")
+        print("PASS: source hygiene and Slice 01 bootstrap static checks are clean")
 
     if warnings:
         print_group("WARN", warnings)
 
+    print(f"Ran {static_tests_run} Python tests")
+    print(
+        f"CHECKS: {total_checks_run} Khovan quick checks "
+        f"({harness_checks_run} harness checks, {static_tests_run} Python tests)"
+    )
     print(
         f"SUMMARY: {'FAIL' if failures else 'PASS'} "
         f"({len(failures)} failure(s), {len(warnings)} warning(s))"

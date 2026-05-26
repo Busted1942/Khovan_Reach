@@ -22,6 +22,7 @@ Generated runtime copies should be ignored by Git unless there is a strong reaso
 # 2. Recommended Repo Tree
 
 - README.md
+- AGENTS.md
 - .gitignore
 - docs/
   - 00_project/
@@ -30,6 +31,9 @@ Generated runtime copies should be ignored by Git unless there is a strong reaso
   - 03_game_resources/
   - 04_implementation_setup/
   - 05_governance/
+- docs_external/
+- reference_missions/
+- archive/
 - scripts/
   - acts/
   - systems/
@@ -116,6 +120,7 @@ Files:
 - 10_mast_file_lessons.md
 - 20_current_objective_display_spike.md
 - 30_implementation_project_start_prompt.md
+- 40_slice01_bootstrap_findings.md
 These files help the coding project start cleanly. They are not a substitute for the active design docs.
 
 The active build-start checklist lives at `docs/00_project/20_build_start_checklist.md`.
@@ -130,12 +135,29 @@ Purpose:
 Files:
 - 00_project_instructions_architecture.md
 - 10_proview_decision_support_operating_rules_v2_2.txt
+- 20_proview_v2_4_test_first_workflow_checkpoint_draft.md
 
 Governance docs are not mission canon. They guide how to evaluate changes.
 
 ---
 
-# 9. scripts
+# 9. docs_external, reference_missions, and archive
+
+Purpose:
+- hold non-canonical implementation references, reference inventories, and old-build evidence
+
+Rules:
+- `docs_external/` contains non-canonical implementation references and curated notes
+- `reference_missions/` contains reference mission inventories or reference material only
+- `_local_clones` folders are local-only and must be Git-ignored
+- external clones and old-build references must not be referenced by active runtime files
+- `archive/old_build_reference/` is implementation-history evidence only
+- none of these folders override active design docs
+- active runtime files must not depend on local clones or archived old-build files
+
+---
+
+# 10. scripts
 
 Purpose:
 - MAST runtime code only
@@ -150,7 +172,7 @@ Do not put design docs here.
 
 ---
 
-# 10. scripts/acts
+# 11. scripts/acts
 
 Purpose:
 - scene-flow files
@@ -163,7 +185,7 @@ Suggested future files:
 
 ---
 
-# 11. scripts/systems
+# 12. scripts/systems
 
 Purpose:
 - reusable mission systems
@@ -182,7 +204,7 @@ Suggested future files:
 
 ---
 
-# 12. scripts/lib
+# 13. scripts/lib
 
 Purpose:
 - helper functions and reusable primitives
@@ -200,7 +222,7 @@ Rule:
 
 ---
 
-# 13. tests
+# 14. tests
 
 Purpose:
 - automated tests
@@ -213,7 +235,7 @@ Suggested future files:
 
 ---
 
-# 14. tools
+# 15. tools
 
 Purpose:
 - developer tooling
@@ -226,7 +248,7 @@ If a runtime copy of a doc is needed, generate it with a tool rather than editin
 
 ---
 
-# 15. audio
+# 16. audio
 
 Purpose:
 - produced audio assets
@@ -240,7 +262,7 @@ Clip scripts remain in docs/02_content. Audio files go here.
 
 ---
 
-# 16. What Is Not Included
+# 17. What Is Not Included
 
 This package intentionally does not include:
 
@@ -255,7 +277,7 @@ Those belong in external history, not in the active repo source tree.
 
 ---
 
-# 17. Naming Convention
+# 18. Naming Convention
 
 Use this convention:
 

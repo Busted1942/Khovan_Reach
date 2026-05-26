@@ -1,6 +1,6 @@
 # KHOVAN REACH — SOURCE INDEX
 
-Revision: repo-consolidated baseline
+Revision: repo-consolidated baseline + branch-lifecycle + operator-test-expectation process updates
 Status: Canonical source map for the implementation repo
 Purpose: Identify the single active source files in this repo. Git history, not filename versioning, tracks future changes.
 
@@ -32,6 +32,10 @@ The current active source tree is this package.
 - `docs/00_project/00_source_index.md`
 - `docs/00_project/10_repo_structure.md`
 - `docs/00_project/20_build_start_checklist.md`
+
+Repo-root implementation-agent control:
+
+- `AGENTS.md`
 
 ---
 
@@ -77,6 +81,7 @@ Do not expose secret pirate truth in player-facing game resources.
 - `docs/04_implementation_setup/10_mast_file_lessons.md`
 - `docs/04_implementation_setup/20_current_objective_display_spike.md`
 - `docs/04_implementation_setup/30_implementation_project_start_prompt.md`
+- `docs/04_implementation_setup/40_slice01_bootstrap_findings.md`
 
 These are setup and handoff documents for starting or restarting the coding project. They preserve useful prior-build lessons without making old code authoritative.
 
@@ -90,8 +95,17 @@ The active checklist lives in:
 
 - `docs/05_governance/00_project_instructions_architecture.md`
 - `docs/05_governance/10_proview_decision_support_operating_rules_v2_2.txt`
+- `docs/05_governance/20_proview_v2_4_test_first_workflow_checkpoint_draft.md` (draft governance reference with branch-lifecycle and operator-test-expectation amendments; not a silent replacement for v2.2)
 
 Governance docs shape review discipline. They are not mission canon.
+
+---
+
+# 7A. Non-Canonical Implementation References
+
+- `docs_external/00_tier2_reference_inventory.md`
+
+Tier 2 references are syntax/API/reference evidence only. They do not define Khovan story, pacing, objectives, factions, or player-facing behavior.
 
 ---
 

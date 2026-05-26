@@ -1,0 +1,42 @@
+# Slice 01 bootstrap state only. Do not add Act I gameplay gates here.
+
+shared mission_phase = "initialization"
+shared current_scene = 0
+shared current_beat = "bootstrap_pending"
+shared last_checkpoint = "none"
+shared transition_held = False
+shared test_mode_enabled = False
+shared live_recovery_mode_enabled = False
+shared generator_governor_active = True
+shared starting_homing_torpedoes = 2
+shared kestrel_generator_packet_sent = False
+shared launch_envelope_cleared = False
+shared shakedown_mode = "unset"
+shared training_overlay_active = True
+shared comms_archive_enabled = True
+shared dillon_clip_1_status = "queued"
+shared artemis_player_ship_status = "pending_playable_bootstrap"
+shared scene_1_runtime_presence = "pending_playable_bootstrap"
+shared player_console_select_status = "legendary_reference_lifecycle"
+
+=== khovan_reach_initialize_bootstrap_state ===
+    mission_phase = "act_1"
+    current_scene = 1
+    current_beat = "scene_1_bootstrap"
+    last_checkpoint = "none"
+    transition_held = False
+    test_mode_enabled = False
+    live_recovery_mode_enabled = False
+    generator_governor_active = True
+    starting_homing_torpedoes = 2
+    kestrel_generator_packet_sent = False
+    launch_envelope_cleared = False
+    shakedown_mode = "unset"
+    training_overlay_active = True
+    comms_archive_enabled = True
+    dillon_clip_1_status = "queued"
+    artemis_player_ship_status = "pending_playable_bootstrap"
+    scene_1_runtime_presence = "pending_playable_bootstrap"
+    player_console_select_status = "legendary_reference_lifecycle"
+    log("Slice 01 bootstrap state initialized.")
+    ->END

@@ -1,6 +1,6 @@
 # KHOVAN REACH — BUILD START CHECKLIST
 
-Revision: repo-consolidated baseline
+Revision: repo-consolidated baseline + branch-lifecycle + operator-test-expectation process update
 Status: Setup checklist
 Purpose: Confirm the project is ready to begin implementation Slice 0 / Slice 1.
 
@@ -11,6 +11,7 @@ Purpose: Confirm the project is ready to begin implementation Slice 0 / Slice 1.
 - [ ] `docs/00_project/00_source_index.md` is present.
 - [ ] `docs/00_project/10_repo_structure.md` is present.
 - [ ] `docs/00_project/20_build_start_checklist.md` is present.
+- [ ] `AGENTS.md` is present when implementation agents are used.
 - [ ] `docs/01_design/00_scenario_play_guide.md` is active.
 - [ ] `docs/01_design/10_mast_requirements.md` is active.
 - [ ] `docs/01_design/20_gm_operational_notes.md` is active.
@@ -28,6 +29,7 @@ Purpose: Confirm the project is ready to begin implementation Slice 0 / Slice 1.
 - [ ] `docs/04_implementation_setup/10_mast_file_lessons.md` is active.
 - [ ] `docs/04_implementation_setup/20_current_objective_display_spike.md` is active.
 - [ ] `docs/04_implementation_setup/30_implementation_project_start_prompt.md` is active.
+- [ ] `docs/04_implementation_setup/40_slice01_bootstrap_findings.md` is active when Slice 01 findings have been accepted into the setup layer.
 
 ---
 
@@ -47,6 +49,7 @@ Purpose: Confirm the project is ready to begin implementation Slice 0 / Slice 1.
 
 - [ ] `docs/05_governance/00_project_instructions_architecture.md` is present.
 - [ ] `docs/05_governance/10_proview_decision_support_operating_rules_v2_2.txt` is present.
+- [ ] `docs/05_governance/20_proview_v2_4_test_first_workflow_checkpoint_draft.md` is present when using the v2.4 draft governance reference.
 - [ ] ProView is treated as governance, not scenario canon.
 - [ ] `docs/00_project/00_source_index.md` remains the source-of-truth map.
 
@@ -85,6 +88,174 @@ Purpose: Confirm the project is ready to begin implementation Slice 0 / Slice 1.
 - [ ] Python test dependencies are installed.
 - [ ] `python run_tests.py quick` works or failure is documented.
 - [ ] `git status` is clean or expected.
+
+
+---
+
+# 6A. Branch Lifecycle and Return-to-Work Checks
+
+Purpose:
+- prevent implementation, live-smoke, documentation, governance, and architecture-feedback work from being run on the wrong branch
+- keep temporary documentation branches from becoming hidden workflow forks
+- make branch transitions explicit, testable, and reportable
+
+This is process discipline only. It does not change scenario design, runtime behavior, player-facing content, or mission acceptance rules.
+
+## Branch types
+
+Before starting artifact-changing work, identify the branch purpose as one of:
+
+- implementation
+- docs/governance
+- architecture feedback
+- spike/experiment
+- emergency fix
+
+The branch type must match the task before edits begin.
+
+Implementation and live-smoke work should normally run from the active implementation branch. Documentation, governance, and architecture-feedback branches may run static or quick tests, but should not be used for runtime implementation prompts or live Cosmos smoke unless explicitly approved for that purpose.
+
+## Branch opening check
+
+Before starting work, run:
+
+```text
+git status --short --branch
+git log --oneline -5
+```
+
+Then record:
+
+```text
+Starting branch:
+Branch type:
+Task purpose:
+Expected files/areas:
+Expected return branch:
+Runtime/live-smoke allowed from this branch: yes/no
+```
+
+Stop before editing if the branch does not match the task.
+
+## Branch transition check
+
+Before switching branches, run:
+
+```text
+python run_tests.py quick
+git status --short --branch
+git diff --stat
+```
+
+If `python run_tests.py quick` is unavailable, document that directly.
+
+Before switching branches:
+
+- commit coherent completed work, or
+- stash intentionally, or
+- discard intentionally after review
+
+Do not leave unresolved documentation, test, or governance edits mixed with runtime implementation work.
+
+## Branch closing check
+
+Before merging a temporary docs/governance or architecture-feedback branch:
+
+- run quick tests, if available
+- inspect changed files
+- confirm no mission code was modified unintentionally
+- confirm no scenario design changed unintentionally
+- commit with a docs/governance-specific message
+
+Recommended inspection:
+
+```text
+git status --short --branch
+git diff --stat
+git diff --name-status
+```
+
+## Merge-back check
+
+Completed docs/governance and architecture-feedback branches must be merged back into the active implementation branch intentionally.
+
+After merge-back:
+
+```text
+python run_tests.py quick
+git status --short --branch
+```
+
+Only resume implementation work after confirming:
+
+- current branch is the intended implementation branch
+- docs/governance updates are present
+- quick tests pass or failure is documented
+- working tree is clean or only expected changes remain
+
+## Return-to-work check
+
+Before running implementation prompts, live-smoke prompts, or Cosmos tests, confirm:
+
+- current branch is the intended implementation branch
+- current branch contains the latest merged docs/test-governance updates
+- `python run_tests.py quick` passes or failure is documented
+- no docs-only or architecture-feedback branch is active
+
+If currently on a docs-only, governance, or architecture-feedback branch, stop and switch back before runtime testing.
+
+## Branch lifecycle completion report
+
+Every branch lifecycle operation must report:
+
+```text
+Starting branch:
+Ending branch:
+Branch type:
+Commits created:
+Merge performed: yes/no
+Tests run:
+Files changed:
+Remaining uncommitted changes:
+Next safe branch/action:
+```
+
+---
+
+# 6B. Operator Test Expectation Checks
+
+Purpose:
+- make manual/operator tests actionable before the operator spends time testing
+- distinguish success, failure, and ambiguous no-proof results
+- prevent static quick tests, smoke markers, or negative-control failures from being overclaimed
+
+Before asking a human operator to run a command, live smoke, UI check, documentation review, branch workflow check, generated-artifact review, or negative-control test, the agent must provide:
+
+```text
+What changed:
+What to run or do:
+Expected observation:
+Failure/ambiguous observation:
+What remains unproven:
+Next action by result:
+```
+
+Manual and live tests must include both:
+
+```text
+Expected observation:
+Failure/ambiguous observation:
+```
+
+Checklist:
+
+- [ ] Test instructions identify exact command, UI action, app launch, or manual check.
+- [ ] Test instructions state repo path and branch assumptions when relevant.
+- [ ] Expected observations include visible/logged/file/Git/test-count/runtime markers where relevant.
+- [ ] Failure or ambiguous observations include missing markers, wrong branch, empty logs, wrong screen, or no-error/no-proof outcomes.
+- [ ] The handoff states what remains unproven, especially static-vs-live and smoke-vs-full-feature gaps.
+- [ ] Next action is defined for success, failure, and ambiguous results.
+- [ ] Negative-control tests state when an expected failure means the control passed.
 
 ---
 

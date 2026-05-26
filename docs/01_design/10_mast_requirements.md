@@ -178,6 +178,33 @@ The GM should not need to manually start core subsystems.
 
 ---
 
+## 5.1 Minimum playable bootstrap
+
+Slice 01 load proof is not enough for playable mission start.
+
+A validation marker such as:
+
+```text
+Khovan Reach Slice 01 bootstrap loaded. Scene 1 initialized.
+Mission shell active. No Act I gameplay systems loaded.
+```
+
+proves that the mission package loads and the Khovan route executes. It does not prove that the crew can start play.
+
+Before Scenario Control Panel work proceeds, Slice 01A must either implement or explicitly block the minimum playable bootstrap:
+
+1. Artemis/player ship creation or confirmed existing player ship.
+2. Minimum server/client path needed for players to connect to the starting bridge state.
+3. Dillon Clip 1 queued, played, or represented by an operator-visible text/audio stub.
+4. `mission_phase = act_1`.
+5. `current_scene = 1`.
+6. No Act I gameplay gates loaded.
+7. No player-facing debug/admin controls.
+
+Do not invent Cosmos/MAST player-ship, clip, GUI, or console syntax. If player ship spawn, client console routing, audio playback, or GUI behavior is uncertain, document the exact API uncertainty and preserve the blocker rather than substituting more static marker text.
+
+---
+
 # 6. State variables
 
 ## 6.1 Mission state
@@ -989,21 +1016,22 @@ Minimum required categories:
 
 Recommended build slices:
 
-1. Mission shell and bootstrap
-2. Scenario Control Panel foundation
-3. Act I Drill One
-4. Drill Two guided sequence
-5. Drill Three transfer drill
-6. Act II pivot/investigation
-7. Halcyon arrival and away mission wrapper
-8. DAMCON timer
-9. Cache run and component selection
-10. Pirate state machine
-11. Combat transition/outcomes
-12. Repair resolution
-13. Debrief support
-14. Checkpoint/reload hardening
-15. Regression harness and pre-session checks
+1. Mission shell and load proof
+2. Minimum playable bootstrap
+3. Scenario Control Panel foundation
+4. Act I Drill One
+5. Drill Two guided sequence
+6. Drill Three transfer drill
+7. Act II pivot/investigation
+8. Halcyon arrival and away mission wrapper
+9. DAMCON timer
+10. Cache run and component selection
+11. Pirate state machine
+12. Combat transition/outcomes
+13. Repair resolution
+14. Debrief support
+15. Checkpoint/reload hardening
+16. Regression harness and pre-session checks
 
 Use `khovan_reach_implementation_slice_plan_v1.md` for per-slice acceptance criteria.
 

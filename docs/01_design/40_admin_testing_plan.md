@@ -1,7 +1,7 @@
 # KHOVAN REACH — ADMIN CONTROL AND TESTING PLAN
 *Merged Scenario Control Panel and testing/regression architecture.*
 
-Version: 2.3 repo-consolidated
+Version: 2.4 repo-consolidated branch-lifecycle update
 Status: Canonical admin/testing specification  
 Supersedes: `khovan_reach_scenario_control_panel_architecture.md` and `khovan_reach_testing_regression_architecture.md`
 
@@ -358,6 +358,104 @@ Full playtests remain necessary, but they should not carry the full testing burd
 
 ---
 
+# 7A. Testing evidence classes
+
+Khovan testing uses separate evidence classes. They are cumulative; a stronger class does not erase the need for narrower regression checks, and a narrower class must not be reported as live runtime proof.
+
+## 7A.1 Static/source checks
+
+Static/source checks inspect repository files without running Cosmos. They include:
+
+- required file presence
+- JSON/Python parse checks
+- forbidden old-module references
+- missing active `.mast` imports where statically detectable
+- generated artifact ignore checks
+- documentation/governance keyword checks
+
+These checks run through:
+
+```text
+python run_tests.py quick
+```
+
+Static/source checks can prevent obvious regressions, but they do not prove MAST runtime evaluation, GUI lifecycle behavior, player spawn behavior, or bridge/client usability.
+
+## 7A.2 MAST compile/preflight checks
+
+MAST compile/preflight checks are a middle evidence class between text-only static checks and live Cosmos smoke.
+
+When the local installed SBS Utils package exposes a usable preflight API, quick tests should run:
+
+```text
+tests/test_mast_compile_or_preflight.py
+```
+
+The current Slice 01A preflight loads the installed `artemis-sbs.sbs_utils.v1.3.0.sbslib`, registers SBS/GUI MAST nodes, points the MAST filesystem at the Khovan mission root, and compiles:
+
+```text
+story.mast
+scripts/main.mast
+scripts/systems/*.mast reached by imports
+```
+
+MAST compile/preflight can catch MAST syntax/import/compiler failures before live Cosmos. It cannot prove:
+
+- runtime expression values
+- bare-variable availability after task scheduling
+- renderer/client-page behavior
+- player ship assignment success
+- GUI/page lifecycle in live Cosmos
+- server/client playability
+
+Therefore compile/preflight success is useful but not acceptance proof for BOOT, PLAYBOOT, admin UI, or gameplay criteria that require live runtime behavior.
+
+## 7A.3 Runtime load-path checks
+
+Runtime load-path checks verify that active startup files point only to allowed, existing, active runtime files. They should fail on:
+
+- missing `.mast` files
+- old archived MAST modules in active load paths
+- external clone paths in active runtime files
+- stale old-build module names such as `salvager_arrival.mast`
+
+Runtime load-path checks are still static unless they are observed in live Cosmos.
+
+## 7A.4 Route-smoke breadcrumb traces
+
+Route-smoke traces are live troubleshooting evidence. They should be used when quick/static/preflight checks pass but live Cosmos still crashes, stalls, or gives no useful logs.
+
+Use:
+
+```text
+tests/live_startup_trace.txt
+```
+
+as append-only crash breadcrumbs, and:
+
+```text
+tests/live_smoke_last_bootstrap.txt
+```
+
+as the last successful bootstrap audit.
+
+If the trace stops at a marker, the next line or API call is the first suspect. If the trace does not update, the active startup path is earlier or different than assumed.
+
+## 7A.5 Live Cosmos smoke
+
+Live Cosmos smoke is the only evidence class that proves Cosmos/MAST runtime behavior. It is required for acceptance criteria involving:
+
+- mission package load
+- player ship visibility or assignment
+- GUI/page lifecycle stability
+- server/client console transition
+- operator-visible mission state
+- playable bridge/server state
+
+Live failures outrank green quick tests. A green quick run plus a live runtime failure means the failure must be fixed, converted into a targeted regression when feasible, or documented as an exact blocker.
+
+---
+
 # 8. Required test artifacts
 
 Create in the implementation project:
@@ -394,12 +492,37 @@ BOOT-012 first scene proceeds without manual admin action
 Acceptance:
 
 ```text
-Fresh mission load reaches Scene 1 with no manual recovery.
+Fresh mission load reaches playable Scene 1 with no manual recovery.
 ```
+
+A validation marker proves load path and lifecycle only. It is not, by itself, playable Scene 1.
 
 ---
 
 
+
+# 9B. Minimum playable bootstrap tests
+
+```text
+PLAYBOOT-001 fresh load reaches playable Scene 1 without Resume Mission or manual recovery
+PLAYBOOT-002 validation marker is not treated as playable Scene 1
+PLAYBOOT-003 Artemis/player ship exists or exact API blocker is documented
+PLAYBOOT-004 connected client can observe starting bridge/player state or exact blocker is documented
+PLAYBOOT-005 Dillon Clip 1 queues, plays, or displays an operator-visible text/audio stub
+PLAYBOOT-006 player-facing bootstrap text does not expose debug/admin controls
+PLAYBOOT-007 Scenario Control Panel is not required for Slice 01A
+PLAYBOOT-008 no Act I gates, Tarsis, drones, DAMCON, pirates, cache, debrief, or story jumps are active
+PLAYBOOT-009 live smoke records server/client observations and marker-file evidence where available
+PLAYBOOT-010 unresolved Cosmos/MAST API uncertainty is documented before Slice 02 proceeds
+```
+
+Acceptance:
+
+```text
+Fresh mission load reaches playable Scene 1 with no manual recovery, or the exact minimum-playable blocker is documented before Scenario Control Panel work proceeds.
+```
+
+---
 
 # 9A. Act I v2.2 tests
 
@@ -959,3 +1082,129 @@ Do not begin the full Act I stationary-drone drill until:
 - JUMP-SAFE tests pass
 - KT route stability tests pass
 - DRONE-SPIKE tests pass or a documented fallback gate is approved
+
+
+---
+
+# 23. Branch lifecycle evidence
+
+Branch lifecycle checks are workflow evidence, not mission runtime tests.
+
+For implementation and live-smoke work, the verification record should include:
+
+```text
+starting branch:
+ending branch:
+branch type:
+tests run:
+merge-back performed:
+runtime/live-smoke branch confirmed:
+remaining uncommitted changes:
+next safe action:
+```
+
+A live-smoke result is not accepted as final runtime evidence when it was accidentally run from a docs-only, governance, or architecture-feedback branch unless the branch state and merge state are explicitly reviewed and accepted.
+
+# 24. Branch lifecycle acceptance checks
+
+```text
+BRANCH-001 Branch opening report includes current branch, branch type, task purpose, expected return branch, and runtime/live-smoke allowance.
+BRANCH-002 Branch transition report includes quick-test result, git status, and diff stat before switching.
+BRANCH-003 Docs/governance branch closing confirms no mission code changed unintentionally.
+BRANCH-004 Docs/governance branch merge-back is performed intentionally into the active implementation branch.
+BRANCH-005 Quick tests are rerun after merge-back before implementation resumes.
+BRANCH-006 Return-to-work check blocks live-smoke or Cosmos testing from docs/governance or architecture-feedback branches.
+BRANCH-007 Completion report includes starting branch, ending branch, commits, merge status, tests, changed files, uncommitted changes, and next safe action.
+```
+
+---
+
+# 25. Operator test expectation evidence
+
+Operator test expectation checks are workflow evidence, not mission runtime tests.
+
+When implementation, live-smoke, UI/manual, generated-artifact, branch, documentation-review, or negative-control work requires the human operator to verify something, the handoff must include:
+
+```text
+What changed:
+What to run or do:
+Expected observation:
+Failure/ambiguous observation:
+What remains unproven:
+Next action by result:
+```
+
+Manual or live tests must always include `Expected observation` and `Failure/ambiguous observation`.
+
+For Khovan live game smoke, expected observations should name the visible or logged Khovan-specific marker and any runtime state that proves the intended route ran. Example:
+
+```text
+Khovan Reach Slice 01 bootstrap loaded. Scene 1 initialized.
+mission_phase=act_1
+current_scene=1
+```
+
+Failure or ambiguous observations include:
+
+```text
+blank screen with no marker
+empty mast.runtime.log or mast.compile.log when a marker was expected
+default server screen appears but no Khovan marker appears
+no error appears but there is also no proof the Khovan route ran
+quick tests pass but live Cosmos acceptance is still required
+```
+
+Negative-control tests must identify which failure is expected. If a deliberate broken import is supposed to make quick tests fail, then the quick-test failure is the expected observation for that phase. The restored phase should return the quick suite to passing.
+
+# 25A. Route-smoke breadcrumb trace pattern
+
+Route-smoke breadcrumb traces are live-smoke troubleshooting evidence, not gameplay tests and not a substitute for acceptance.
+
+Use an append-only route trace when quick/static/preflight checks pass but live Cosmos crashes or provides no useful log output. This is especially important when `mast.runtime.log`, `mast.compile.log`, or the last-success marker file are empty, stale, or ambiguous.
+
+Recommended evidence split:
+
+```text
+tests/live_smoke_last_bootstrap.txt = last successful bootstrap audit
+tests/live_startup_trace.txt = append-only crash breadcrumb trace
+```
+
+Route-smoke traces should bracket the active entry chain and risky runtime boundaries, for example:
+
+```text
+[KHOVAN EARLY 001] script.py entered
+[KHOVAN EARLY 002] before sbs_utils import
+[KHOVAN EARLY 003] after sbs_utils import
+[KHOVAN EARLY 006] before story.mast load/handoff
+[KHOVAN BOOT 001] scripts/main.mast entered
+[KHOVAN BOOT 002] before state defaults
+[KHOVAN BOOT 003] after state defaults
+[KHOVAN BOOT 004] before a risky subsystem
+[KHOVAN BOOT 005] risky subsystem entered
+[KHOVAN BOOT 006] before a risky API call
+```
+
+Acceptance interpretation:
+
+```text
+trace absent = active startup path is earlier/different than assumed, or trace write path failed
+trace stops at marker = next startup line/API call is the first suspect
+last-success audit stale = previous success only; not proof for the current live run
+quick green + live crash = live crash outranks quick green
+```
+
+Quick tests may verify that route-smoke marker strings exist in active startup files and that trace artifacts are ignored. Quick tests must not claim the route-smoke trace proves live Cosmos behavior unless the live run actually produced the trace.
+
+# 26. Operator test expectation acceptance checks
+
+```text
+OTE-001 Manual/live test requests include an Expected observation block.
+OTE-002 Manual/live test requests include a Failure/ambiguous observation block.
+OTE-003 Artifact-changing responses identify what changed and whether the change is documentation-only/no-op/runtime-affecting.
+OTE-004 Test instructions include exact command, UI action, app launch, or manual check plus branch/location assumptions.
+OTE-005 The response states what remains unproven, especially static-vs-live and smoke-vs-full-feature gaps.
+OTE-006 The response gives next action by result: success, failure, ambiguous.
+OTE-007 Negative-control tests clearly state when an expected failure means the control passed.
+OTE-008 Completion reports do not claim live/runtime success from static tests.
+OTE-009 If a result has no error but also no marker/log/UI/file/runtime evidence, the assistant classifies it as ambiguous rather than success.
+```

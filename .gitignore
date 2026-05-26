@@ -1,7 +1,34 @@
-﻿.venv/
+﻿# Python
 __pycache__/
-*.pyc
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+
+# Local reference clones
+_local_clones/
+docs_external/_local_clones/
+reference_missions/_local_clones/
+
+# Generated archives
+*.zip
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Local Cosmos/MAST runtime artifacts
 *.log
+tests/live_smoke_last_bootstrap.txt
+tests/live_startup_trace.txt
+
+# Local branch-lifecycle / docs workflow files
 slice00_repo_intake.txt
 before_rollback_*.txt
 before_rollback_*.patch
+
+tests/live_smoke_last_bootstrap.txt
+
+tests/live_startup_trace.txt

@@ -1,0 +1,4 @@
+# Khovan Reach MAST entry wrapper.
+# sbs_utils expects this file; active runtime code lives under scripts/.
+
+import scripts/main.mast
