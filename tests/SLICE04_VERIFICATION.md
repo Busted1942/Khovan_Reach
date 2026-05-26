@@ -23,6 +23,8 @@
 - Temporary proof station `Comms Test Station` is restored as a live comparison target after cleanup regressed visible Comms routes.
 - Kestrel Yards is explicitly marked known to Artemis at startup so departure-control Comms should not require Science scanning.
 - Kestrel and Tarsis Khovan menu-owner routes use simple Khovan role conditions, matching the path that previously let station options render after the contact was known.
+- The station_comms_docking_kernel spike is used as implementation evidence only. No kernel proof stations are added to production Slice 04.
+- Tarsis records explicit station spawn, object ID, scan-gated visibility, and docking/resupply uncertainty breadcrumbs.
 
 ## Implementation Finding
 
@@ -33,6 +35,8 @@ For Slice 04 live smoke, Kestrel Yards should be available to Comms without a Sc
 Custom Khovan station/profile/Comms binding is deferred. Custom station presentation polish should wait until the core gate is stable. Standard/reference-backed stations are the accepted Slice 04 path until the core gate is proven; this standard station fallback remains intentional.
 
 The restored `Comms Test Station` is diagnostic only. It exists to compare a known-visible proof route against Kestrel/Tarsis while Slice 04 Comms is being stabilized. It is not part of the Khovan scenario design and should be removed once the real Kestrel/Tarsis route is stable.
+
+The station_comms_docking_kernel spike remains evidence only. Slice 04 ports the proven station pattern into Tarsis through stock station spawn, explicit roles, `set_face`, `sim.add_navproxy`, role-owned Comms routes, handler breadcrumbs, docking setup attempts, and fallback confirmation. It does not add `Kernel Known Station`, `Kernel Scan-Gated Station`, or `Kernel Dock Station` to production Slice 04.
 
 Latest live result:
 
@@ -54,6 +58,8 @@ Quick/static checks prove source structure only:
 - Kestrel/Tarsis use reference-backed standard station primitives.
 - Kestrel/Tarsis Comms routes and gate handlers are present.
 - The temporary proof station is imported, scheduled after Slice 04 setup, and isolated from Kestrel/Tarsis gate state.
+- Tarsis station spawn, object ID, scan-gated visibility, and docking setup breadcrumbs are present.
+- No kernel proof stations are present in production Slice 04.
 - Tarsis tracks the three required requests.
 - Governor clear is guarded behind all three Tarsis requests plus docking/resupply confirmation.
 - Slice 04 breadcrumbs are present.
@@ -77,6 +83,7 @@ Only live Cosmos smoke can prove:
 - The governor does not clear early.
 - The governor clears only after required Tarsis confirmations and docking/resupply confirmation.
 - Helm docking is available normally, or docking remains documented as API uncertainty with the temporary Comms confirmation path still visible.
+- Mechanical resupply detection is not claimed until live evidence proves it.
 
 ## Live Smoke Checklist
 

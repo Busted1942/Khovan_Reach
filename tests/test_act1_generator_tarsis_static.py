@@ -52,6 +52,8 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             "shared tarsis_generator_support_requested = False",
             "shared tarsis_docking_clearance_requested = False",
             "shared tarsis_required_requests_complete = False",
+            'shared tarsis_station_visibility_status = "scan_gated_until_science_initial_scan"',
+            'shared tarsis_docking_resupply_status = "docking_setup_attempted_resupply_unproven"',
             "shared generator_governor_cleared = False",
         ]:
             self.assertIn(phrase, act1)
@@ -94,6 +96,8 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             'add_role(tarsis_station_id, "station")',
             'add_role(kestrel_yards_id, "kestrel_yards")',
             'add_role(tarsis_station_id, "tarsis_station")',
+            "[KHOVAN ACT1 COMMS 004A] Tarsis Station spawn attempted",
+            "[KHOVAN ACT1 COMMS 004B] Tarsis Station spawned id=",
             "[KHOVAN ACT1 COMMS 003] Kestrel standard station setup complete roles=",
             "[KHOVAN ACT1 COMMS 004] Tarsis standard station setup complete roles=",
             "[KHOVAN ACT1 DOCK 001] docking setup scheduled",
@@ -102,7 +106,10 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             "docking_set_docking_logic(player_id, kestrel_yards_id, docking_dock_with_friendly_station)",
             "docking_set_docking_logic(player_id, tarsis_station_id, docking_dock_with_friendly_station)",
             "[KHOVAN ACT1 DOCK 002] docking setup applied or failed/stubbed",
+            'tarsis_docking_resupply_status = "docking_setup_attempted_resupply_unproven"',
+            "[KHOVAN ACT1 DOCK 002A] Tarsis docking setup attempted id=",
             "[KHOVAN ACT1 COMMS 003A] Kestrel marked known to player ships for departure Comms",
+            "[KHOVAN ACT1 COMMS 004C] Tarsis scan-gated visibility retained; do not claim before/after scan unless live observed",
             "[KHOVAN ACT1 003C] Kestrel/Tarsis use reference-backed standard station primitives",
             "[KHOVAN ACT1 003D] Khovan station presentation polish deferred until standard Comms/docking path is proven",
         ]:
@@ -118,6 +125,11 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             "Khovan Test Option",
             "khovan_reach_keep_tarsis_priority_docking_hidden",
             "docking_dock_not_allowed",
+            "Kernel Known Station",
+            "Kernel Scan-Gated Station",
+            "Kernel Dock Station",
+            "station_comms_docking_kernel",
+            "khovan_station_comms_docking_kernel_init",
         ]:
             self.assertNotIn(forbidden, body)
 
@@ -283,12 +295,16 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             "[KHOVAN ACT1 COMMS 003]",
             "[KHOVAN ACT1 COMMS 003A]",
             "[KHOVAN ACT1 COMMS 004]",
+            "[KHOVAN ACT1 COMMS 004A]",
+            "[KHOVAN ACT1 COMMS 004B]",
+            "[KHOVAN ACT1 COMMS 004C]",
             "[KHOVAN ACT1 COMMS 005]",
             "[KHOVAN ACT1 COMMS 006]",
             "[KHOVAN ACT1 COMMS 007]",
             "[KHOVAN ACT1 COMMS 008]",
             "[KHOVAN ACT1 DOCK 001]",
             "[KHOVAN ACT1 DOCK 002]",
+            "[KHOVAN ACT1 DOCK 002A]",
             "[KHOVAN ACT1 004]",
             "[KHOVAN ACT1 005]",
             "[KHOVAN ACT1 006]",
@@ -364,6 +380,10 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             "custom station presentation",
             "init.mast",
             "tests/live_startup_trace.txt",
+            "station_comms_docking_kernel spike",
+            "implementation evidence only",
+            "no kernel proof stations",
+            "mechanical resupply detection",
         ]:
             self.assertIn(phrase, text)
 

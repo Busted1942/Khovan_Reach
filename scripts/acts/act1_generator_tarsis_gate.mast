@@ -27,6 +27,8 @@ shared tarsis_generator_support_requested = False
 shared tarsis_docking_clearance_requested = False
 shared tarsis_required_requests_complete = False
 shared tarsis_resupply_confirmed = False
+shared tarsis_station_visibility_status = "scan_gated_until_science_initial_scan"
+shared tarsis_docking_resupply_status = "docking_setup_attempted_resupply_unproven"
 shared generator_governor_cleared = False
 
 shared kestrel_generator_advisory_text = "Artemis, Kestrel Yard Control. Advisory packet follows. Your generator assembly is still under observation. We are working a regulator-output problem on our end and have placed a temporary governor on your generator output. You may see sluggish acceleration and reduced sustained-speed response until Tarsis accepts the generator handoff and clears the governor."
@@ -105,6 +107,7 @@ shared tarsis_generator_support_text = "Generator acceptance packet received. We
     script.write_khovan_startup_trace(f"[KHOVAN ACT1 COMMS 003] Kestrel standard station setup complete roles={kestrel_roles}")
 
     existing_tarsis_station = to_object_list(role("tarsis_station"))
+    script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS 004A] Tarsis Station spawn attempted")
     if len(existing_tarsis_station) > 0:
         tarsis_station_id = existing_tarsis_station[0].id
     else:
@@ -116,6 +119,7 @@ shared tarsis_generator_support_text = "Generator acceptance packet received. We
     add_role(tarsis_station_id, "station")
     add_role(tarsis_station_id, "tarsis_station")
     tarsis_roles = to_object(tarsis_station_id).get_roles()
+    script.write_khovan_startup_trace(f"[KHOVAN ACT1 COMMS 004B] Tarsis Station spawned id={tarsis_station_id}")
     script.write_khovan_startup_trace(f"[KHOVAN ACT1 COMMS 004] Tarsis standard station setup complete roles={tarsis_roles}")
 
     script.write_khovan_startup_trace("[KHOVAN ACT1 DOCK 001] docking setup scheduled")
@@ -129,7 +133,10 @@ shared tarsis_generator_support_text = "Generator acceptance packet received. We
             link(player_id, "extra_scan_source", tarsis_station_id)
             docking_set_docking_logic(player_id, tarsis_station_id, docking_dock_with_friendly_station)
     script.write_khovan_startup_trace("[KHOVAN ACT1 DOCK 002] docking setup applied or failed/stubbed")
+    tarsis_docking_resupply_status = "docking_setup_attempted_resupply_unproven"
+    script.write_khovan_startup_trace(f"[KHOVAN ACT1 DOCK 002A] Tarsis docking setup attempted id={tarsis_station_id}; mechanical docking/resupply remains live-smoke only")
     script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS 003A] Kestrel marked known to player ships for departure Comms")
+    script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS 004C] Tarsis scan-gated visibility retained; do not claim before/after scan unless live observed")
     script.write_khovan_startup_trace("[KHOVAN ACT1 003] Kestrel/Tarsis contacts initialized")
     script.write_khovan_startup_trace("[KHOVAN ACT1 003C] Kestrel/Tarsis use reference-backed standard station primitives")
     script.write_khovan_startup_trace("[KHOVAN ACT1 003D] Khovan station presentation polish deferred until standard Comms/docking path is proven")
