@@ -121,6 +121,7 @@ Files:
 - 20_current_objective_display_spike.md
 - 30_implementation_project_start_prompt.md
 - 40_slice01_bootstrap_findings.md
+- 50_future_reusable_mission_kernel.md
 These files help the coding project start cleanly. They are not a substitute for the active design docs.
 
 The active build-start checklist lives at `docs/00_project/20_build_start_checklist.md`.
