@@ -43,7 +43,8 @@ Live Cosmos smoke:
 6. Open Comms and look for the Khovan Scenario Control route.
 7. Open the route and refresh the overview.
 8. Use Hold Scene Transition, then Release Scene Transition.
-9. Connect or inspect a normal player console.
+9. Inspect `tests/live_startup_trace.txt`.
+10. Connect or inspect a normal player console.
 
 ## Expected Observation
 
@@ -58,6 +59,7 @@ Live Cosmos smoke:
 - Live GM Recovery Mode is shown as disabled unless explicitly changed by future code.
 - Hold sets `transition_held` true and updates the action log.
 - Release sets `transition_held` false and updates the action log.
+- `tests/live_startup_trace.txt` records `[KHOVAN SCP 002]` after Hold, `[KHOVAN SCP 003]` after Release, and `[KHOVAN SCP 004]` after Refresh.
 - Player consoles do not show Khovan Scenario Control or debug/admin controls.
 
 ## Failure Or Ambiguous Observation
@@ -68,6 +70,7 @@ Live Cosmos smoke:
 - Player clients see Khovan Scenario Control or admin/debug controls.
 - Game Master cannot see the Khovan Scenario Control route.
 - Hold/release does not update the visible overview after refresh.
+- Hold/release/refresh does not append the expected `[KHOVAN SCP ...]` trace lines.
 - Normal console selection, Game Master availability, or Helm movement regresses.
 
 ## What Remains Unproven

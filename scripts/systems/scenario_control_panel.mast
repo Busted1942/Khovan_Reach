@@ -18,18 +18,9 @@ shared scenario_control_panel_ui_api_status = "gm_comms_route_reference_backed"
 
 //comms/gamemaster/khovan_scenario_control_panel if has_roles(COMMS_ORIGIN_ID, "gamemaster")
     + "Back" //comms
-    + "Hold Scene Transition":
-        await task_schedule(khovan_scenario_control_panel_hold_transition)
-        comms_receive(scenario_control_panel_overview_text, title="Khovan Scenario Control", title_color="cyan")
-        comms_navigate("//comms/gamemaster/khovan_scenario_control_panel")
-    + "Release Scene Transition":
-        await task_schedule(khovan_scenario_control_panel_release_transition)
-        comms_receive(scenario_control_panel_overview_text, title="Khovan Scenario Control", title_color="cyan")
-        comms_navigate("//comms/gamemaster/khovan_scenario_control_panel")
-    + "Refresh Overview":
-        await task_schedule(khovan_scenario_control_panel_update_overview)
-        comms_receive(scenario_control_panel_overview_text, title="Khovan Scenario Control", title_color="cyan")
-        comms_navigate("//comms/gamemaster/khovan_scenario_control_panel")
+    + "Hold Scene Transition" khovan_scenario_control_panel_hold_transition
+    + "Release Scene Transition" khovan_scenario_control_panel_release_transition
+    + "Refresh Overview" khovan_scenario_control_panel_refresh_overview
 
 === khovan_scenario_control_panel_initialize ===
     scenario_control_panel_initialized = True
@@ -51,7 +42,11 @@ shared scenario_control_panel_ui_api_status = "gm_comms_route_reference_backed"
     scenario_control_panel_hold_count = scenario_control_panel_hold_count + 1
     scenario_control_panel_last_action = "hold_transition"
     scenario_control_panel_action_log = f"{scenario_control_panel_action_log} | SCP HOLD: transition_held=True scene={current_scene} beat={current_beat}"
+    script.write_khovan_startup_trace("[KHOVAN SCP 002] hold transition requested; transition_held=True")
+    log("Khovan Scenario Control: hold transition requested; transition_held=True.")
     await task_schedule(khovan_scenario_control_panel_update_overview)
+    comms_receive(scenario_control_panel_overview_text, title="Khovan Scenario Control", title_color="cyan")
+    comms_navigate("//comms/gamemaster/khovan_scenario_control_panel")
     ->END
 
 === khovan_scenario_control_panel_release_transition ===
@@ -59,5 +54,19 @@ shared scenario_control_panel_ui_api_status = "gm_comms_route_reference_backed"
     scenario_control_panel_release_count = scenario_control_panel_release_count + 1
     scenario_control_panel_last_action = "release_transition"
     scenario_control_panel_action_log = f"{scenario_control_panel_action_log} | SCP RELEASE: transition_held=False scene={current_scene} beat={current_beat}"
+    script.write_khovan_startup_trace("[KHOVAN SCP 003] release transition requested; transition_held=False")
+    log("Khovan Scenario Control: release transition requested; transition_held=False.")
     await task_schedule(khovan_scenario_control_panel_update_overview)
+    comms_receive(scenario_control_panel_overview_text, title="Khovan Scenario Control", title_color="cyan")
+    comms_navigate("//comms/gamemaster/khovan_scenario_control_panel")
+    ->END
+
+=== khovan_scenario_control_panel_refresh_overview ===
+    scenario_control_panel_last_action = "refresh_overview"
+    scenario_control_panel_action_log = f"{scenario_control_panel_action_log} | SCP REFRESH: transition_held={transition_held} scene={current_scene} beat={current_beat}"
+    script.write_khovan_startup_trace("[KHOVAN SCP 004] refresh overview requested")
+    log("Khovan Scenario Control: overview refresh requested.")
+    await task_schedule(khovan_scenario_control_panel_update_overview)
+    comms_receive(scenario_control_panel_overview_text, title="Khovan Scenario Control", title_color="cyan")
+    comms_navigate("//comms/gamemaster/khovan_scenario_control_panel")
     ->END
