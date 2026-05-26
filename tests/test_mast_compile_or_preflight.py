@@ -83,13 +83,17 @@ class MastCompileOrPreflightTests(unittest.TestCase):
         ]
         self.assertEqual([], hits)
 
-    def test_slice01a_bootstrap_uses_reference_backed_spawn_pattern(self) -> None:
+    def test_slice01b_bootstrap_uses_reference_owned_spawn_lifecycle(self) -> None:
+        main = (ROOT / "scripts" / "main.mast").read_text(encoding="utf-8")
         playable = (ROOT / "scripts" / "systems" / "playable_bootstrap.mast").read_text(
             encoding="utf-8"
         )
-        self.assertIn("sim_create()", playable)
-        self.assertIn('player_spawn(0, 0, 0, "Artemis", "tsn", "tsn_battle_cruiser")', playable)
-        self.assertIn("assign_client_to_ship(0, artemis_id)", playable)
+        self.assertIn("await task_schedule(spawn_players)", main)
+        self.assertIn('role("__player__") & role("tsn")', playable)
+        self.assertIn("shared artemis_id = artemis_object.id", playable)
+        self.assertNotIn("sim_create()", playable)
+        self.assertNotIn("player_spawn(", playable)
+        self.assertNotIn("assign_client_to_ship", playable)
         self.assertNotIn("artemis_ship_name", playable)
 
 

@@ -486,6 +486,64 @@ This finding does not change scenario design. It records a runtime implementatio
 
 ---
 
+## Slice 01B finding: client lifecycle requires complete reference rebuild
+
+The Slice 01A custom Khovan selector proved enough for minimum playability, but it is not the correct baseline for Slice 02 because it bypasses normal Cosmos/Legendary station selection, Game Master access, and Change Console behavior.
+
+Failed partial Legendary integration:
+
+```text
+common_console_select.mast
+name 'PLAYER_COUNT' is not defined
+
+common_console_select.mast
+name 'TAB_CONSOLES' is not defined
+```
+
+Finding:
+
+- `common_console_select.client_main` is not a standalone label to route into directly.
+- `PLAYER_COUNT`, `PLAYER_LIST`, `TAB_CONSOLES`, Change Console routing, Game Master registration, and player ship setup are part of a larger LegendaryMissions lifecycle.
+- Old Khovan and reference missions use `settings.yaml`, the full mastlib stack, Legendary `server_console` routing, selected `@map` startup, and `spawn_players`.
+
+Slice 01B port:
+
+- use old/reference `script.py` StoryPage registration with no Khovan `main_server` or `main_client` override
+- load the complete old/reference mastlib stack in `story.json`
+- add `settings.yaml` with the reference settings contract
+- let Legendary `server_console` own server/client lifecycle
+- schedule `spawn_players` from the selected Khovan `@map`
+- bind Khovan Scene 1 state to the reference-created Artemis player ship
+- preserve Dillon Clip 1 stub and Slice 01A bootstrap markers
+
+Deliberately not copied:
+
+- old Khovan Act I gates
+- Kestrel/Tarsis logic
+- drones
+- dev/story jumps
+- pirate/salvager flow
+- DAMCON
+- debrief
+- torpedo/ordnance behavior
+- Scenario Control Panel
+
+Slice 01B live smoke result:
+
+- mission launches cleanly
+- no `PLAYER_COUNT` runtime error
+- no `TAB_CONSOLES` runtime error
+- server reaches playable space view
+- normal Cosmos/Legendary console selector appears
+- Game Master option appears
+- Helm can enter console and move Artemis
+- Dillon Clip 1 stub appears
+- custom Khovan selector is gone
+
+Static checks reject partial lifecycle wiring, but they did not prove this live behavior on their own. Change Console should remain an explicit follow-up smoke observation before rebuilding Slice 02 if it was not exercised in the same pass.
+
+---
+
 ## Operator test expectation lesson from Slice 01
 
 During Slice 01, several implementation changes were technically reasonable, but manual verification was hard to interpret because the operator did not always know what success, failure, or ambiguity should look like.
