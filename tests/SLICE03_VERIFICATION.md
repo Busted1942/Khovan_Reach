@@ -1,6 +1,6 @@
 # Slice 03 Verification
 
-Status: static framework complete / live Cosmos smoke required
+Status: framework plumbing live-smoked / implemented story jumps not complete
 Purpose: Verify the Story-jump preset framework without expanding into Act I gameplay, destructive controls, checkpoint reload, or player-facing jump UI.
 
 ## What Changed
@@ -64,6 +64,24 @@ Purpose: Verify the Story-jump preset framework without expanding into Act I gam
 - Player consoles do not see story-jump controls.
 - Change Console works, if explicitly tested.
 
+## Accepted Live-Smoke Result
+
+Matt observed the Slice 03 framework plumbing in live Cosmos:
+
+- Scenario Control Panel framework route works.
+- Hold, Release, Refresh, and Test Mode controls log and respond.
+- Story-jump buttons log requests.
+- `mission_start` returns `validation=valid_framework_seed`.
+- `drill_2_guided_contact` returns `validation=framework_warning`.
+- `anderson_orders` returns `validation=framework_warning`.
+- `cascade_decision` returns `validation=framework_warning`.
+- `pirate_arrival_cover_intact` returns `validation=framework_warning`.
+- `debrief` returns `validation=framework_warning`.
+
+This is a pass for Slice 03 framework plumbing.
+
+This is not a pass for implemented story jumps. The framework-warning presets are intentionally warning-only because their target gameplay systems are not implemented yet. No unimplemented jump target should report full success.
+
 ## Live Smoke Checklist
 
 1. Launch Khovan Reach fresh.
@@ -93,7 +111,7 @@ Purpose: Verify the Story-jump preset framework without expanding into Act I gam
 - Test Mode can be enabled and disabled from the GM-only panel.
 - Test Mode Story Jumps appears only while Test Mode is enabled.
 - `mission_start` reports a valid framework seed for Scene 1.
-- Future presets report framework-only warnings instead of pretending to run unsupported gameplay.
+- Future presets report `framework_warning` instead of pretending to run unsupported gameplay.
 - `tests/live_startup_trace.txt` records `[KHOVAN JUMP ...]` entries when presets are triggered.
 - Player clients do not see jump controls.
 
@@ -105,13 +123,15 @@ Purpose: Verify the Story-jump preset framework without expanding into Act I gam
 - Test Mode Story Jumps visible while Test Mode is disabled.
 - Preset selection shows no GM confirmation and writes no trace line.
 - Future presets silently imply completed gameplay systems that are not implemented.
+- Any unimplemented jump target reports full success instead of `framework_warning`.
 - Normal console selection, Game Master availability, or Helm movement regresses.
 
 ## What Remains Unproven
 
 - Static tests do not prove live Comms rendering or button execution.
-- Static tests do not prove every future seeded state is complete.
+- Static tests and the current live smoke do not prove every future seeded state is complete.
 - Framework-only presets do not prove Act I gates, drones, DAMCON, pirates, cache run, or debrief behavior.
+- `framework_warning` is the correct result for unimplemented target systems until their slices add real seed/validation behavior.
 - Change Console remains unproven unless Matt explicitly exercises it during live smoke.
 - Weapons torpedo-load behavior remains a known out-of-scope issue.
 
