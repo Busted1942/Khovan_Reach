@@ -1,0 +1,72 @@
+# Khovan Reach Slice 02 Scenario Control Panel foundation.
+# GM-only Comms controls only; broader admin tools are deferred.
+
+shared scenario_control_panel_initialized = False
+shared scenario_control_panel_visible_to_gm = False
+shared scenario_control_panel_hidden_from_players = True
+shared scenario_control_panel_status = "not_initialized"
+shared scenario_control_panel_overview_text = ""
+shared scenario_control_panel_action_log = "Scenario Control Panel action log initialized."
+shared scenario_control_panel_last_action = "none"
+shared scenario_control_panel_hold_count = 0
+shared scenario_control_panel_release_count = 0
+shared scenario_control_panel_gm_only_guard = 'has_roles(COMMS_ORIGIN_ID, "gamemaster")'
+shared scenario_control_panel_ui_api_status = "gm_comms_route_reference_backed"
+
+//comms if has_roles(COMMS_ORIGIN_ID, "gamemaster")
+    + "Khovan Scenario Control" //comms/gamemaster/khovan_scenario_control_panel
+
+//comms/gamemaster/khovan_scenario_control_panel if has_roles(COMMS_ORIGIN_ID, "gamemaster")
+    + "Back" //comms
+    + "Hold Scene Transition" khovan_scenario_control_panel_hold_transition
+    + "Release Scene Transition" khovan_scenario_control_panel_release_transition
+    + "Refresh Overview" khovan_scenario_control_panel_refresh_overview
+
+=== khovan_scenario_control_panel_initialize ===
+    scenario_control_panel_initialized = True
+    scenario_control_panel_visible_to_gm = True
+    scenario_control_panel_hidden_from_players = True
+    scenario_control_panel_status = "initialized"
+    scenario_control_panel_last_action = "initialized"
+    scenario_control_panel_action_log = "SCP INIT: Scenario Control Panel initialized."
+    await task_schedule(khovan_scenario_control_panel_update_overview)
+    log("Khovan Slice 02 Scenario Control Panel initialized.")
+    ->END
+
+=== khovan_scenario_control_panel_update_overview ===
+    scenario_control_panel_overview_text = f"MISSION OVERVIEW.\nmission_phase. {mission_phase}\ncurrent_scene. {current_scene}\ncurrent_beat. {current_beat}\nlast_checkpoint. {last_checkpoint}\ntransition_held. {transition_held}\ntest_mode_enabled. {test_mode_enabled}\nlive_recovery_mode_enabled. {live_recovery_mode_enabled}\nscenario_control_panel_status. {scenario_control_panel_status}\nlast GM action. {scenario_control_panel_last_action}\naction log. {scenario_control_panel_action_log}"
+    ->END
+
+=== khovan_scenario_control_panel_hold_transition ===
+    transition_held = True
+    scenario_control_panel_hold_count = scenario_control_panel_hold_count + 1
+    scenario_control_panel_last_action = "hold_transition"
+    scenario_control_panel_action_log = f"{scenario_control_panel_action_log} | SCP HOLD: transition_held=True scene={current_scene} beat={current_beat}"
+    script.write_khovan_startup_trace("[KHOVAN SCP 002] hold transition requested; transition_held=True")
+    log("Khovan Scenario Control: hold transition requested; transition_held=True.")
+    await task_schedule(khovan_scenario_control_panel_update_overview)
+    comms_receive(scenario_control_panel_overview_text, title="Khovan Scenario Control", title_color="cyan")
+    comms_navigate("//comms/gamemaster/khovan_scenario_control_panel")
+    ->END
+
+=== khovan_scenario_control_panel_release_transition ===
+    transition_held = False
+    scenario_control_panel_release_count = scenario_control_panel_release_count + 1
+    scenario_control_panel_last_action = "release_transition"
+    scenario_control_panel_action_log = f"{scenario_control_panel_action_log} | SCP RELEASE: transition_held=False scene={current_scene} beat={current_beat}"
+    script.write_khovan_startup_trace("[KHOVAN SCP 003] release transition requested; transition_held=False")
+    log("Khovan Scenario Control: release transition requested; transition_held=False.")
+    await task_schedule(khovan_scenario_control_panel_update_overview)
+    comms_receive(scenario_control_panel_overview_text, title="Khovan Scenario Control", title_color="cyan")
+    comms_navigate("//comms/gamemaster/khovan_scenario_control_panel")
+    ->END
+
+=== khovan_scenario_control_panel_refresh_overview ===
+    scenario_control_panel_last_action = "refresh_overview"
+    scenario_control_panel_action_log = f"{scenario_control_panel_action_log} | SCP REFRESH: transition_held={transition_held} scene={current_scene} beat={current_beat}"
+    script.write_khovan_startup_trace("[KHOVAN SCP 004] refresh overview requested")
+    log("Khovan Scenario Control: overview refresh requested.")
+    await task_schedule(khovan_scenario_control_panel_update_overview)
+    comms_receive(scenario_control_panel_overview_text, title="Khovan Scenario Control", title_color="cyan")
+    comms_navigate("//comms/gamemaster/khovan_scenario_control_panel")
+    ->END

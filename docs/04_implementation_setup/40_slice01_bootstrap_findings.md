@@ -566,3 +566,48 @@ Durable lesson:
 - for negative controls, state clearly when an expected failure means the control passed
 
 This is a workflow/process finding. It does not change scenario design or mission runtime requirements.
+
+---
+
+## Slice 02 finding: Scenario Control Panel foundation must preserve the reference client lifecycle
+
+Slice 02 starts from the Slice 01B reference client lifecycle baseline.
+
+The Scenario Control Panel foundation is implemented as a GM-only Comms surface instead of a custom client page or console selector. This preserves:
+
+- Legendary server/client lifecycle ownership
+- normal Cosmos/Legendary console selection
+- Game Master option availability
+- Change Console lifecycle ownership
+- Khovan Scene 1 playable bootstrap
+
+The Slice 02 foundation adds only:
+
+- a GM-only Khovan Scenario Control route guarded by `has_roles(COMMS_ORIGIN_ID, "gamemaster")`
+- safe initialization after bootstrap state defaults
+- mission overview state display
+- separate Test Mode and Live GM Recovery Mode flags, both default false
+- hold/release controls for `transition_held`
+- a simple action log
+
+Deliberately not added:
+
+- story jumps
+- destructive controls
+- arbitrary variable editor
+- checkpoint/reload
+- Act I gameplay
+- Kestrel/Tarsis gates
+- drones
+- DAMCON
+- pirates
+- debrief
+- current-objective display
+- custom Khovan client selector
+
+Static checks cover the source contract and visibility guard shape only. Live Cosmos smoke remains required to prove:
+
+- the GM can see the Khovan Scenario Control route
+- player clients cannot see admin/debug controls
+- hold/release updates the visible overview
+- Slice 01B console selection, Game Master availability, and Helm movement do not regress
