@@ -82,6 +82,7 @@ Do not expose secret pirate truth in player-facing game resources.
 - `docs/04_implementation_setup/20_current_objective_display_spike.md`
 - `docs/04_implementation_setup/30_implementation_project_start_prompt.md`
 - `docs/04_implementation_setup/40_slice01_bootstrap_findings.md`
+- `docs/04_implementation_setup/50_future_reusable_mission_kernel.md`
 
 These are setup and handoff documents for starting or restarting the coding project. They preserve useful prior-build lessons without making old code authoritative.
 
