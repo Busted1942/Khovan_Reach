@@ -19,10 +19,11 @@
   - `npc_spawn(..., "tsn, station, ...", "starbase_command", "behav_station")`.
   - `set_face(..., random_terran(civilian=True))`.
   - `sim.add_navproxy(..., "starbase_command", "#4A7")`.
-  - Tarsis keeps the lowercase `station` compatibility role for Legendary docking.
+  - Tarsis keeps the uppercase `Station` compatibility role for station Comms.
+  - Tarsis removes the lowercase `station` compatibility role before `docking_standard_player_station`, then restores it only after Tarsis docking clearance is granted.
   - Kestrel removes the lowercase `station` role before `docking_standard_player_station` so the startup hold does not enter the Legendary docking transition/refit helper.
-  - uppercase `Station` compatibility role for Legendary station Comms routes.
-  - `docking_standard_player_station` and `docking_dock_with_friendly_station` remain active for Tarsis.
+  - `docking_dock_not_allowed` is installed for Tarsis before clearance.
+  - `docking_dock_with_friendly_station` is installed for Tarsis only after the Tarsis docking-clearance Comms request succeeds.
 - Khovan-specific Comms gate options are attached to the station Comms routes.
 - Temporary proof station `Comms Test Station` is restored as a live comparison target after cleanup regressed visible Comms routes.
 - Kestrel Yards is explicitly marked known to Artemis at startup so departure-control Comms should not require Science scanning.
@@ -37,7 +38,7 @@
   - `[KHOVAN ACT1 VISUAL 001]` yard-lock visual setup attempted.
   - `[KHOVAN ACT1 VISUAL 002]` mechanical yard-lock visual fallback active.
 - The station_comms_docking_kernel spike is used as implementation evidence only. No kernel proof stations are added to production Slice 04.
-- Tarsis records explicit station spawn, object ID, scan-gated visibility, and docking/resupply uncertainty breadcrumbs.
+- Tarsis records explicit station spawn, object ID, scan-gated visibility, Comms-route availability, pre-clearance docking block, premature dock-signal ignore, docking-clearance enable, and docking/resupply uncertainty breadcrumbs.
 
 ## Implementation Finding
 
@@ -73,6 +74,22 @@ Kestrel startup visual docking / yard-lock presentation:
 - Change: Slice 04 keeps the mechanical hold and adds an in-fiction `Kestrel Yard Control` startup story dialog: yard-lock is engaged, hold position on the launch ramp until Comms requests departure clearance.
 - Fallback status: this is mechanical yard-lock without proven Cosmos docking animation. True docking visuals remain unclaimed until live smoke proves a safe startup path.
 
+Future polish: Kestrel startup docking animation / yard-lock visual
+
+- Current behavior: the safe mechanical yard-lock works. Artemis starts near Kestrel, Helm movement is held before departure clearance, and the hold releases after clearance, but true docking lines / docking animation are not shown at startup.
+- Desired future behavior: Kestrel startup should present a launch-ramp or docking-line visual similar to normal station docking while preserving the yard-lock fiction.
+- Non-blocking status: this is future polish and is not required for Slice 04 acceptance.
+- Risk: true docking animation may require a normal approach-to-dock transition. Earlier startup use of the Legendary docking transition helper crashed in `docking.mast` when the helper reached `interior_delay` state without complete docking counter setup.
+- Acceptance for future work: no runtime crash, visible docking or yard-lock effect appears at startup, departure clearance still gates movement, and Tarsis docking remains unchanged.
+
+Tarsis docking-clearance gate bug:
+
+- Bug: Artemis could dock with Tarsis before Comms requested and received Tarsis docking clearance.
+- Best-known cause: Tarsis had the lowercase `station` role during startup `docking_standard_player_station`, and Slice 04 also installed `docking_dock_with_friendly_station` directly for Tarsis during contact setup.
+- Change: Tarsis now removes lowercase `station` before the standard docking helper runs, installs the reference `docking_dock_not_allowed` helper as the pre-clearance docking logic, and enables `docking_dock_with_friendly_station` only from the successful Tarsis docking-clearance handler after homing priority and generator support are requested.
+- Fallback status: this should mechanically deny pre-clearance docking attempts, but live smoke must prove whether Cosmos hides the dock button, shows it and rejects docking, or exposes a different ambiguous state. Slice 04 does not claim hidden/blocked docking UI until live smoke proves it.
+- Guardrail: if a docked signal still fires before Tarsis docking clearance, Slice 04 logs it as ignored. Governor clear still requires homing priority, generator support, docking clearance, and the temporary Comms docking/resupply confirmation.
+
 Latest live result:
 
 - Kestrel Yards shows usable Comms options without a Science scan.
@@ -101,7 +118,12 @@ Quick/static checks prove source structure only:
 - The Kestrel departure-clearance handler calls the release helper.
 - The release helper leaves throttle at zero and records the release breadcrumb.
 - The temporary proof station is imported, scheduled after Slice 04 setup, and isolated from Kestrel/Tarsis gate state.
-- Tarsis station spawn, object ID, scan-gated visibility, and docking setup breadcrumbs are present.
+- Tarsis station spawn, object ID, scan-gated visibility, Comms-route availability, docking block, and docking enable breadcrumbs are present.
+- Tarsis removes lowercase `station` before `docking_standard_player_station`, so the normal friendly docking helper is not installed through the automatic standard-station pass before clearance.
+- Tarsis pre-clearance docking uses `docking_dock_not_allowed`.
+- Tarsis docked-signal guard logs and ignores a pre-clearance Tarsis dock signal.
+- Tarsis installs `docking_dock_with_friendly_station` only from `khovan_tarsis_enable_docking_after_clearance`.
+- The docking-clearance handler calls the Tarsis docking-enable helper only after homing priority and generator support are marked.
 - No kernel proof stations are present in production Slice 04.
 - Tarsis tracks the three required requests.
 - Governor clear is guarded behind all three Tarsis requests plus docking/resupply confirmation.
@@ -128,11 +150,14 @@ Only live Cosmos smoke can prove:
 - `Comms Test Station` appears and proves the no-scan comparison route.
 - Science initial scan makes Tarsis known.
 - Tarsis Comms options appear after initial scan.
+- Tarsis Comms-route availability logs after Science known state.
 - Khovan-specific Kestrel/Tarsis options appear alongside any standard station options.
+- Before Tarsis docking clearance, the dock button is unavailable, or docking is rejected by the pre-clearance deny helper, or the behavior is otherwise documented as a live mechanical blocker.
+- Tarsis normal docking setup is enabled only after homing priority, generator support, and docking clearance are requested through Comms.
 - The 10-second advisory timer fires in live runtime.
 - The governor does not clear early.
 - The governor clears only after required Tarsis confirmations and docking/resupply confirmation.
-- Helm docking is available normally, or docking remains documented as API uncertainty with the temporary Comms confirmation path still visible.
+- If the dock button cannot be hidden or denied, the runtime still must not clear governor/resupply state before the required Comms path and the result remains fallback-only.
 - Mechanical resupply detection is not claimed until live evidence proves it.
 
 ## Live Smoke Checklist
@@ -140,7 +165,7 @@ Only live Cosmos smoke can prove:
 1. Run `python .\run_tests.py quick`.
 2. Run `git diff --check`.
 3. Run `Remove-Item .\tests\live_startup_trace.txt -ErrorAction SilentlyContinue`.
-4. Launch Cosmos from branch `slice04-kestrel-start-docked-debug`.
+4. Launch Cosmos from branch `slice04-tarsis-docking-clearance-gate`.
 5. Load Khovan Reach.
 6. Confirm normal player console selection still works.
 7. Confirm Helm can control Artemis.
@@ -161,15 +186,42 @@ Only live Cosmos smoke can prove:
 22. If Kestrel options are blank, select `Comms Test Station`.
 23. Confirm `Proof Option` appears for the proof station.
 24. If the proof station works but Kestrel does not, compare Kestrel known/scan state and route condition against the proof station.
-25. Use Science to perform an initial scan on Tarsis Station.
-26. Use Comms to select Tarsis Station.
-27. Confirm Khovan Tarsis options appear.
-28. Select homing priority, generator support, and docking clearance.
-29. Attempt normal docking if available.
-30. If docking remains unavailable, use `Khovan: Confirm Docking/Resupply` as the temporary Slice 04 fallback.
-31. Confirm governor remains active until required requests and resupply confirmation are complete.
-32. Confirm governor clears only after the required path.
-33. Inspect `tests/live_startup_trace.txt`.
+25. Approach Tarsis.
+26. Before Science scan, check whether Tarsis Comms options are unavailable or appropriately limited.
+27. Use Science to perform an initial scan on Tarsis Station.
+28. Use Comms to select Tarsis Station.
+29. Confirm Khovan Tarsis options appear.
+30. Before docking clearance, try to dock with Tarsis.
+31. Confirm docking is blocked, unavailable, rejected, or does not advance Slice 04 state.
+32. Select `Khovan: Request Homing-Torpedo Priority`.
+33. Select `Khovan: Request Generator Support`.
+34. Select `Khovan: Request Docking Clearance`.
+35. Confirm Tarsis docking setup is enabled after clearance.
+36. Attempt normal docking if available.
+37. If docking remains unavailable, use `Khovan: Confirm Docking/Resupply` as the temporary Slice 04 fallback.
+38. Confirm generator governor/resupply clear only after required requests plus docking/fallback confirmation.
+39. Confirm trace contains Tarsis scan/known, Comms route, homing priority, generator support, docking clearance, docking setup enabled, and pre-clearance block breadcrumbs.
+40. Inspect `tests/live_startup_trace.txt`.
+
+Tarsis docking-clearance regression checklist:
+
+1. Clear `tests/live_startup_trace.txt`.
+2. Launch Khovan Reach.
+3. Request Kestrel departure clearance.
+4. Depart Kestrel.
+5. Approach Tarsis.
+6. Before Science scan, check whether Tarsis Comms options are unavailable or appropriately limited.
+7. Science scan Tarsis.
+8. Confirm Tarsis Comms route/options become available.
+9. Try to dock before docking clearance.
+10. Confirm docking is blocked, unavailable, or does not advance Slice 04 state.
+11. Request homing priority.
+12. Request generator support.
+13. Request docking clearance.
+14. Confirm docking setup is enabled after clearance.
+15. Dock with Tarsis.
+16. Confirm generator governor/resupply clear only after required requests plus docking/fallback confirmation.
+17. Confirm trace contains each breadcrumb.
 
 ## Expected Observation
 
@@ -190,10 +242,13 @@ Only live Cosmos smoke can prove:
 - `Comms Test Station` appears and shows `Proof Option` as a diagnostic comparison route.
 - Before initial scan, Tarsis may be selectable while showing blank/unknown Comms options.
 - After Science initial scan, Tarsis shows visible Comms options.
+- Trace includes `[KHOVAN ACT1 SCAN 001]` for scan-gated Tarsis setup and `[KHOVAN ACT1 COMMS 007A]` when the Tarsis Comms route is available after the known-state gate.
 - Kestrel departure clearance can be marked through a visible option.
 - Kestrel launch-envelope confirmation starts the advisory timer.
 - Kestrel advisory appears/logs after the intended delay.
 - Tarsis homing priority, generator support, and docking clearance can be marked through visible options.
+- Before Tarsis docking clearance, a docking attempt is blocked, unavailable, rejected, or leaves Slice 04 state unchanged; trace includes `[KHOVAN ACT1 DOCK 003]` and `[KHOVAN ACT1 DOCK 003A]`. If a docked signal fires anyway, trace includes `[KHOVAN ACT1 DOCK 003D]`.
+- After Tarsis docking clearance, trace includes `[KHOVAN ACT1 DOCK 004]` and normal Tarsis docking can be attempted. If the docked signal fires after clearance, trace includes `[KHOVAN ACT1 DOCK 004A]`.
 - Governor remains active until homing priority, generator support, and docking clearance are all marked.
 - Governor clears only after all three requests and docking/resupply confirmation.
 
@@ -209,6 +264,12 @@ Only live Cosmos smoke can prove:
 - Tarsis remains unknown after Science initial scan.
 - Options panel remains blank after Science initial scan.
 - No visible way exists to trigger required Comms gates.
+- `[KHOVAN ACT1 COMMS 007A]` is absent after Tarsis is selected through Comms post-scan.
+- Tarsis can complete docking before `Khovan: Request Docking Clearance`.
+- Tarsis docking before clearance advances Slice 04 state, clears resupply, or clears the governor.
+- `[KHOVAN ACT1 DOCK 004]` appears before Tarsis docking clearance is requested/granted.
+- `[KHOVAN ACT1 DOCK 003D]` appears and the governor still clears or resupply advances before the required Comms path.
+- The dock button remains visible before clearance and docking succeeds instead of being denied or state-neutral.
 - Kestrel advisory fires immediately without documented reason.
 - Tarsis gate cannot be exercised.
 - Governor clears early.
@@ -222,6 +283,7 @@ Only live Cosmos smoke can prove:
 
 - Automatic launch-envelope detection.
 - Automatic Tarsis docking/resupply detection.
+- Whether Cosmos hides the Tarsis dock button before clearance or leaves it visible while the deny helper rejects docking.
 - True Kestrel docking lines, docking animation, or docked UI state at startup.
 - Actual generator-output performance reduction.
 - Actual torpedo inventory application; torpedo/ordnance crash remains out of scope.
@@ -240,5 +302,7 @@ Only live Cosmos smoke can prove:
 - If Kestrel options appear without scan, and Tarsis options appear after Science initial scan, continue Slice 04 live smoke through governor clear.
 - If the proof station works but Kestrel does not, preserve the proof station and fix Kestrel known-state or route gating before continuing.
 - If options remain blank after Science initial scan, stop and investigate scan-known state or Comms promise ownership.
-- If docking remains unavailable but the temporary Comms confirmation works, document docking API uncertainty and keep the fallback for Slice 04.
+- If pre-clearance Tarsis docking is denied or state-neutral, continue through the Comms clearance path and document exactly what the dock UI did.
+- If pre-clearance Tarsis docking succeeds or advances Slice 04 state, stop and fix the clearance gate before further live smoke.
+- If post-clearance docking remains unavailable but the temporary Comms confirmation works, document docking API uncertainty and keep the fallback for Slice 04.
 - If governor clears early, stop and fix the Tarsis gate guard before further live smoke.
