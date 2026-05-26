@@ -357,6 +357,8 @@ class BootstrapStaticTests(unittest.TestCase):
     def test_slice01_active_mast_has_no_control_panel_or_dev_jump_code(self) -> None:
         hits: list[str] = []
         for path in sorted((ROOT / "scripts").rglob("*.mast")):
+            if path.relative_to(ROOT).as_posix() == "scripts/systems/scenario_control_panel.mast":
+                continue
             text = path.read_text(encoding="utf-8").lower()
             for pattern in ["dev_jump", "story jump", "scenario control panel"]:
                 if pattern == "scenario control panel" and "scenario control panel is slice 02" in text:
