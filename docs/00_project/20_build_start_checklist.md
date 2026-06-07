@@ -1,6 +1,6 @@
 # KHOVAN REACH — BUILD START CHECKLIST
 
-Revision: repo-consolidated baseline + branch-lifecycle + operator-test-expectation process update
+Revision: repo-consolidated baseline + branch-lifecycle + operator-test-expectation process update + ProView v2.6 governance update
 Status: Setup checklist
 Purpose: Confirm the project is ready to begin implementation Slice 0 / Slice 1.
 
@@ -48,8 +48,8 @@ Purpose: Confirm the project is ready to begin implementation Slice 0 / Slice 1.
 # 3. Governance
 
 - [ ] `docs/05_governance/00_project_instructions_architecture.md` is present.
-- [ ] `docs/05_governance/10_proview_decision_support_operating_rules_v2_2.txt` is present.
-- [ ] `docs/05_governance/20_proview_v2_4_test_first_workflow_checkpoint_draft.md` is present when using the v2.4 draft governance reference.
+- [ ] `docs/05_governance/10_proview_decision_support_operating_rules_v2_6.md` is present.
+- [ ] `docs/05_governance/20_proview_v2_4_test_first_workflow_checkpoint_draft.md` is present when comparing against the v2.4 draft governance reference.
 - [ ] ProView is treated as governance, not scenario canon.
 - [ ] `docs/00_project/00_source_index.md` remains the source-of-truth map.
 

@@ -34,13 +34,24 @@ shared homing_reserve_live_inventory_status = "not_verified"
 shared homing_reserve_request_status = "not_requested"
 shared homing_reserve_conversion_mode = "kestrel_request_loads_two_homing_once_no_energy_conversion"
 shared artemis_start_condition_status = "not_applied"
-shared artemis_start_energy_policy = "cosmos_default_energy_with_generator_governor_not_zero_energy"
+shared artemis_start_energy_policy = "visible_zero_energy_with_generator_governor_source_authorized"
 shared artemis_start_energy_runtime_apply_status = "not_overridden"
+shared artemis_start_energy = 0
 shared artemis_start_homing_torpedoes = 0
 shared artemis_start_nukes = 0
 shared artemis_start_emps = 0
 shared artemis_start_mines = 0
 shared artemis_start_ordnance_runtime_apply_status = "not_applied"
+shared tarsis_resupply_energy = 1000
+shared tarsis_resupply_homing_torpedoes = 10
+shared tarsis_resupply_nukes = 3
+shared tarsis_resupply_emps = 6
+shared tarsis_resupply_mines = 6
+shared energy_restored = False
+shared tarsis_docking_setup_role_status = "not_enabled"
+shared tarsis_mechanical_dock_observed = False
+shared tarsis_docking_observer_status = "not_started"
+shared tarsis_docking_observer_last_snapshot = "not_checked"
 
 shared tarsis_station_id = 0
 shared tarsis_gate_status = "not_started"
@@ -69,7 +80,7 @@ shared tarsis_homing_priority_text = "Tarsis Control: homing production priority
 shared tarsis_generator_support_text = "Tarsis Generator Acceptance: Kestrel package received. We can clear the governor after docking and yard-lock synchronization."
 shared tarsis_hail_text = "Tarsis Station: Artemis, we read you. Production Control and Generator Acceptance are standing by. Request homing priority, generator support, and docking clearance before approach."
 shared tarsis_docking_clearance_text = "Tarsis Docking Control: docking clearance granted. Helm, approach within tolerance and initiate docking."
-shared tarsis_resupply_text = "Tarsis Control: resupply and generator handoff confirmed. Governor clear is recorded. Await the next shakedown instruction."
+shared tarsis_resupply_text = "Tarsis Control: normal docking resupply and generator handoff confirmed. Full energy and armament restored; governor clear is recorded. Await the next shakedown instruction."
 
 //enable/comms if has_roles(COMMS_SELECTED_ID, "kestrel_yards")
     script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS 005] Kestrel standard station selected")
@@ -92,7 +103,6 @@ shared tarsis_resupply_text = "Tarsis Control: resupply and generator handoff co
     + "Khovan: Request Homing-Torpedo Priority" khovan_tarsis_request_homing_priority if not tarsis_required_requests_complete
     + "Khovan: Request Generator Support" khovan_tarsis_request_generator_support if not tarsis_required_requests_complete
     + "Khovan: Request Docking Clearance" khovan_tarsis_request_docking_clearance if not tarsis_docking_clearance_requested
-    + "Khovan: Confirm Docking/Resupply" khovan_tarsis_confirm_docking_and_resupply if tarsis_docking_clearance_requested
     + "Khovan: Report Tarsis Gate Status" khovan_tarsis_report_gate_status
 
 //shared/signal/docked if has_roles(ORIGIN_ID, "__player__") and has_roles(SELECTED_ID, "tarsis_station")
@@ -101,7 +111,15 @@ shared tarsis_resupply_text = "Tarsis Control: resupply and generator handoff co
         script.write_khovan_startup_trace("[KHOVAN ACT1 DOCK 003D] Premature Tarsis dock signal ignored before clearance")
         ->END
 
-    script.write_khovan_startup_trace("[KHOVAN ACT1 DOCK 004A] Tarsis dock signal observed after clearance; resupply still requires Comms confirmation")
+    if tarsis_mechanical_dock_observed:
+        script.write_khovan_startup_trace("[KHOVAN ACT1 DOCK 004C] Duplicate Tarsis mechanical dock observation suppressed")
+        ->END
+
+    tarsis_mechanical_dock_observed = True
+    tarsis_docking_observer_status = "signal_observed_after_clearance"
+    tarsis_docking_resupply_status = "mechanical_dock_signal_observed_resupply_scheduled"
+    script.write_khovan_startup_trace("[KHOVAN ACT1 DOCK 004A] Tarsis dock signal observed after clearance; normal station resupply scheduled")
+    await task_schedule(khovan_tarsis_complete_mechanical_docking_and_resupply, {"ship_id": ORIGIN_ID, "completion_source": "docked_signal"})
     ->END
 
 === khovan_act1_initialize_generator_tarsis_gate ===
@@ -120,13 +138,24 @@ shared tarsis_resupply_text = "Tarsis Control: resupply and generator handoff co
     homing_reserve_request_status = "not_requested"
     homing_reserve_conversion_mode = "kestrel_request_loads_two_homing_once_no_energy_conversion"
     artemis_start_condition_status = "pending_apply"
-    artemis_start_energy_policy = "cosmos_default_energy_with_generator_governor_not_zero_energy"
-    artemis_start_energy_runtime_apply_status = "not_overridden_zero_energy_not_source_authorized"
+    artemis_start_energy_policy = "visible_zero_energy_with_generator_governor_source_authorized"
+    artemis_start_energy = 0
+    artemis_start_energy_runtime_apply_status = "pending_visible_zero_energy_apply"
     artemis_start_homing_torpedoes = 0
     artemis_start_nukes = 0
     artemis_start_emps = 0
     artemis_start_mines = 0
     artemis_start_ordnance_runtime_apply_status = "pending_apply"
+    tarsis_resupply_energy = 1000
+    tarsis_resupply_homing_torpedoes = 10
+    tarsis_resupply_nukes = 3
+    tarsis_resupply_emps = 6
+    tarsis_resupply_mines = 6
+    energy_restored = False
+    tarsis_docking_setup_role_status = "not_enabled"
+    tarsis_mechanical_dock_observed = False
+    tarsis_docking_observer_status = "not_started"
+    tarsis_docking_observer_last_snapshot = "not_checked"
     kestrel_departure_clearance_granted = False
     kestrel_departure_gate_status = "waiting_for_clearance"
     kestrel_departure_hold_status = "waiting_for_contact_setup"
@@ -172,15 +201,18 @@ shared tarsis_resupply_text = "Tarsis Control: resupply and generator handoff co
     generator_governor_active = True
     starting_homing_torpedoes = 0
     homing_reserve_count = 2
-    artemis_start_energy_runtime_apply_status = "not_overridden_zero_energy_not_source_authorized"
+    artemis_start_energy = 0
+    artemis_start_energy_runtime_apply_status = "pending_visible_zero_energy_apply"
     if artemis_id == 0:
         artemis_start_condition_status = "skipped_missing_artemis_id"
+        artemis_start_energy_runtime_apply_status = "skipped_missing_artemis_id"
         artemis_start_ordnance_runtime_apply_status = "skipped_missing_artemis_id"
-        script.write_khovan_startup_trace("[KHOVAN ACT1 START STATE] Artemis starting energy set to Cosmos default with generator governor active; zero-energy start not source-authorized")
+        script.write_khovan_startup_trace("[KHOVAN ACT1 START STATE] Artemis starting energy not set: missing Artemis id")
         script.write_khovan_startup_trace("[KHOVAN ACT1 START STATE] Artemis starting ordnance not set: missing Artemis id")
-        script.write_khovan_startup_trace("[KHOVAN ACT1 START STATE FINAL] homing=unknown nuke=unknown emp=unknown mine=unknown missing_artemis_id")
+        script.write_khovan_startup_trace("[KHOVAN ACT1 START STATE FINAL] energy=unknown homing=unknown nuke=unknown emp=unknown mine=unknown missing_artemis_id")
         ->END
 
+    set_data_set_value(artemis_id, "energy", artemis_start_energy, 0)
     set_data_set_value(artemis_id, "Homing_NUM", artemis_start_homing_torpedoes, 0)
     set_data_set_value(artemis_id, "Nuke_NUM", artemis_start_nukes, 0)
     set_data_set_value(artemis_id, "EMP_NUM", artemis_start_emps, 0)
@@ -188,11 +220,12 @@ shared tarsis_resupply_text = "Tarsis Control: resupply and generator handoff co
     homing_reserve_status = "held_by_kestrel_pending_request"
     homing_reserve_runtime_apply_status = "fresh_load_zero_requested_live_smoke_required"
     homing_reserve_live_inventory_status = "fresh_load_zero_requested_live_smoke_required"
-    artemis_start_condition_status = "generator_governor_zero_homing_until_kestrel_reserve_no_other_ordnance"
+    artemis_start_condition_status = "visible_zero_energy_generator_governor_zero_homing_until_kestrel_reserve"
+    artemis_start_energy_runtime_apply_status = "requested_visible_energy_0"
     artemis_start_ordnance_runtime_apply_status = "requested_homing_0_nuke_0_emp_0_mine_0"
-    script.write_khovan_startup_trace("[KHOVAN ACT1 START STATE] Artemis starting energy set to Cosmos default with generator governor active; zero-energy start not source-authorized")
+    script.write_khovan_startup_trace("[KHOVAN ACT1 START STATE] Artemis starting energy intentionally set to 0 with generator governor active")
     script.write_khovan_startup_trace("[KHOVAN ACT1 START STATE] Artemis starting ordnance set to Homing=0 Nuke=0 EMP=0 Mine=0")
-    script.write_khovan_startup_trace(f"[KHOVAN ACT1 START STATE FINAL] homing={artemis_start_homing_torpedoes} nuke={artemis_start_nukes} emp={artemis_start_emps} mine={artemis_start_mines} reserve=held_by_kestrel")
+    script.write_khovan_startup_trace(f"[KHOVAN ACT1 START STATE FINAL] energy={artemis_start_energy} homing={artemis_start_homing_torpedoes} nuke={artemis_start_nukes} emp={artemis_start_emps} mine={artemis_start_mines} reserve=held_by_kestrel")
     ->END
 
 === khovan_act1_setup_kestrel_and_tarsis_contacts ===
@@ -299,6 +332,44 @@ distance: 600
         <<[yellow,black] "Docking Clearance Required"
             % {tarsis_docking_rejection_text}
     yield fail
+
+=== khovan_tarsis_normal_docking_resupply_after_clearance ===
+metadata: ``` yaml
+distance: 600
+```
++++ enable
+    yield fail if DOCKING_NPC_ID == 0
+    yield fail if DOCKING_NPC_ID != tarsis_station_id
+    yield fail if not tarsis_required_requests_complete
+
++++ docking
+    set_weapons_selection(DOCKING_PLAYER_ID, 0)
+    script.write_khovan_startup_trace("[KHOVAN ACT1 DOCK 004X] Tarsis normal docking wrapper accepted docking attempt after clearance")
+    yield success
+
++++ docked
+    set_weapons_selection(DOCKING_PLAYER_ID, 0)
+    grid_restore_damcons(DOCKING_PLAYER_ID)
+    start_counter(DOCKING_PLAYER_ID, "refuel")
+    start_counter(DOCKING_PLAYER_ID, "torps")
+    start_counter(DOCKING_PLAYER_ID, "shields")
+    start_counter(DOCKING_PLAYER_ID, "interior")
+    tarsis_mechanical_dock_observed = True
+    tarsis_docking_observer_status = "normal_docking_wrapper_docked_after_clearance"
+    tarsis_docking_resupply_status = "normal_docking_wrapper_resupply_scheduled"
+    script.write_khovan_startup_trace("[KHOVAN ACT1 DOCK 004A] Tarsis dock signal observed after clearance; normal station resupply scheduled")
+    task_schedule(khovan_tarsis_complete_mechanical_docking_and_resupply, {"ship_id": DOCKING_PLAYER_ID, "completion_source": "normal_docking_wrapper"})
+
++++ refit
+    set_weapons_selection(DOCKING_PLAYER_ID, 0)
+    DOCKING_PLAYER.data_set.set("energy", tarsis_resupply_energy, 0)
+    DOCKING_PLAYER.data_set.set("Homing_NUM", tarsis_resupply_homing_torpedoes, 0)
+    DOCKING_PLAYER.data_set.set("Nuke_NUM", tarsis_resupply_nukes, 0)
+    DOCKING_PLAYER.data_set.set("EMP_NUM", tarsis_resupply_emps, 0)
+    DOCKING_PLAYER.data_set.set("Mine_NUM", tarsis_resupply_mines, 0)
+
++++ throttle
+    DOCKING_PLAYER.data_set.set("playerThrottle", 0, 0)
 
 === khovan_act1_show_kestrel_yard_lock_visual_fallback ===
     if kestrel_yard_lock_message_sent:
@@ -414,7 +485,7 @@ distance: 600
     script.write_khovan_startup_trace("[KHOVAN ACT1 004] Kestrel departure clearance granted")
     await task_schedule(khovan_act1_release_kestrel_departure_hold)
     await task_schedule(khovan_set_current_objective, {"objective_id": "launch_envelope", "objective_body": "Helm clear the Kestrel launch envelope, then Comms confirm exit.", "objective_step": "Launch envelope", "objective_breadcrumb": "[KHOVAN OBJECTIVE 003] objective updated: launch envelope"})
-    await task_schedule(khovan_act1_record_progression, {"action": "kestrel_departure_clearance", "detail": "departure clearance granted; waiting for launch envelope confirmation"})
+    await task_schedule(khovan_act1_record_progression, {"action": "kestrel_departure_clearance", "detail": "departure clearance granted; waiting for launch envelope confirmation; energy remains at source-authorized start value until Tarsis handoff"})
     kestrel_departure_clearance_response_sent = True
     comms_receive("Kestrel Yard Control: departure clearance granted. Helm, clear the launch envelope. Comms, confirm once Artemis is outside the yard boundary.", title="Kestrel Yard Control", title_color="green")
     script.write_khovan_startup_trace("[KHOVAN ACT1 MSG KESTREL 002] departure clearance packet sent")
@@ -566,8 +637,10 @@ distance: 600
     script.write_khovan_startup_trace("[KHOVAN ACT1 011] Tarsis docking-clearance request marked")
     script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS TARSIS CLEARANCE] docking clearance requested/granted")
     await task_schedule(khovan_tarsis_update_gate_status)
+    script.write_khovan_startup_trace(f"[KHOVAN ACT1 DOCK 004R] Tarsis requests complete={tarsis_required_requests_complete} status={tarsis_gate_status}")
+    script.write_khovan_startup_trace("[KHOVAN ACT1 DOCK 004D] Tarsis docking clearance granted; enabling docking setup")
     await task_schedule(khovan_tarsis_enable_docking_after_clearance)
-    await task_schedule(khovan_set_current_objective, {"objective_id": "tarsis_docking_resupply", "objective_body": "Dock with Tarsis and confirm resupply/governor handoff.", "objective_step": "Tarsis docking/resupply", "objective_breadcrumb": "[KHOVAN OBJECTIVE 006] objective updated: Tarsis docking/resupply"})
+    await task_schedule(khovan_set_current_objective, {"objective_id": "tarsis_docking_resupply", "objective_body": "Dock normally with Tarsis. Resupply and governor handoff complete on hard dock.", "objective_step": "Tarsis docking/resupply", "objective_breadcrumb": "[KHOVAN OBJECTIVE 006] objective updated: Tarsis docking/resupply"})
     await task_schedule(khovan_act1_record_progression, {"action": "tarsis_docking_clearance", "detail": "docking clearance requested/granted after required prior requests"})
     tarsis_docking_clearance_response_sent = True
     comms_receive(tarsis_docking_clearance_text, title="Tarsis Docking Control", title_color="green")
@@ -587,12 +660,62 @@ distance: 600
         ->END
 
     add_role(tarsis_station_id, "station")
+    add_role(tarsis_station_id, "Station")
+    tarsis_docking_setup_role_status = "station_and_Station_roles_restored_after_clearance"
+    tarsis_mechanical_dock_observed = False
+    tarsis_docking_observer_status = "watching_after_clearance"
+    tarsis_docking_observer_last_snapshot = "not_checked"
+    tarsis_roles_after_clearance = to_object(tarsis_station_id).get_roles()
+    script.write_khovan_startup_trace(f"[KHOVAN ACT1 DOCK 004S] Tarsis stock Station role restored after clearance for mechanical docking affordance roles={tarsis_roles_after_clearance}")
+    await task_schedule(docking_standard_player_station)
+    script.write_khovan_startup_trace("[KHOVAN ACT1 DOCK 004U] standard friendly station docking helper rerun for Tarsis after clearance")
     for player_id in role("__player__"):
+        tarsis_docking_player = to_object(player_id)
+        if tarsis_docking_player is not None:
+            tarsis_docking_player.data_set.set("dock_base_id", 0, 0)
+            tarsis_docking_player.data_set.set("dock_state", "undocked", 0)
+            script.write_khovan_startup_trace(f"[KHOVAN ACT1 DOCK 004N] normalized Artemis dock_state=undocked dock_base_id=0 before Tarsis docking setup player_id={player_id}")
         link(player_id, "extra_scan_source", tarsis_station_id)
-        docking_set_docking_logic(player_id, tarsis_station_id, docking_dock_with_friendly_station)
+        docking_set_docking_logic(player_id, tarsis_station_id, khovan_tarsis_normal_docking_resupply_after_clearance)
+        script.write_khovan_startup_trace(f"[KHOVAN ACT1 DOCK 004P] Tarsis normal docking/resupply wrapper set player_id={player_id} tarsis_station_id={tarsis_station_id} artemis_id={artemis_id}")
     tarsis_docking_gate_status = "enabled_after_docking_clearance"
     tarsis_docking_resupply_status = "docking_enabled_after_clearance_resupply_unproven"
     script.write_khovan_startup_trace("[KHOVAN ACT1 DOCK 004] Tarsis docking setup enabled after clearance")
+    script.write_khovan_startup_trace("[KHOVAN ACT1 DOCK 004B] Tarsis docking setup awaiting dock signal after clearance")
+    task_schedule(khovan_tarsis_watch_mechanical_docking_after_clearance)
+    ->END
+
+=== khovan_tarsis_watch_mechanical_docking_after_clearance ===
+    if tarsis_mechanical_dock_observed:
+        ->END
+    if not tarsis_docking_clearance_requested:
+        tarsis_docking_observer_status = "stopped_clearance_not_granted"
+        ->END
+    if tarsis_station_id == 0:
+        tarsis_docking_observer_status = "stopped_missing_tarsis_station"
+        script.write_khovan_startup_trace("[KHOVAN ACT1 DOCK 004W] Tarsis dock-state observer stopped missing station id")
+        ->END
+
+    for player_id in role("__player__"):
+        observed_player = to_object(player_id)
+        if observed_player is not None:
+            observed_dock_state = observed_player.data_set.get("dock_state", "unknown")
+            observed_dock_base_id = observed_player.data_set.get("dock_base_id", 0)
+            observer_snapshot = f"player={player_id} state={observed_dock_state} base={observed_dock_base_id} tarsis={tarsis_station_id}"
+            if observer_snapshot != tarsis_docking_observer_last_snapshot:
+                tarsis_docking_observer_last_snapshot = observer_snapshot
+                script.write_khovan_startup_trace(f"[KHOVAN ACT1 DOCK 004T] Tarsis dock-state observer {observer_snapshot}")
+            if observed_dock_base_id == tarsis_station_id and observed_dock_state == "docked":
+                tarsis_mechanical_dock_observed = True
+                tarsis_docking_observer_status = "dock_state_observed_after_clearance"
+                tarsis_docking_resupply_status = "mechanical_dock_state_observed_resupply_scheduled"
+                script.write_khovan_startup_trace("[KHOVAN ACT1 DOCK 004A] Tarsis dock signal observed after clearance; normal station resupply scheduled")
+                script.write_khovan_startup_trace("[KHOVAN ACT1 DOCK 004C] Tarsis dock-state observer confirmed docked state after clearance")
+                await task_schedule(khovan_tarsis_complete_mechanical_docking_and_resupply, {"ship_id": player_id, "completion_source": "dock_state_observer"})
+                ->END
+
+    await delay_sim(seconds=1)
+    jump khovan_tarsis_watch_mechanical_docking_after_clearance
     ->END
 
 === khovan_tarsis_update_gate_status ===
@@ -641,22 +764,37 @@ distance: 600
     yield success
 
 === khovan_tarsis_confirm_docking_and_resupply ===
-    script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS 008D] Tarsis docking/resupply confirmation option selected")
-    script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS TARSIS RESUPPLY] docking/resupply confirmed")
+    script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS 008D] hidden fallback docking/resupply confirmation attempted")
+    comms_receive("Tarsis Docking Control: use normal Helm docking after clearance. Resupply will complete when Artemis is mechanically docked.", title="Tarsis Station", title_color="yellow")
+    yield fail
+
+=== khovan_tarsis_complete_mechanical_docking_and_resupply ===
+    default ship_id = artemis_id
+    default completion_source = "mechanical_docking"
+    script.write_khovan_startup_trace(f"[KHOVAN ACT1 COMMS TARSIS RESUPPLY] mechanical docking/resupply completion source={completion_source}")
     if tarsis_governor_clear_response_sent:
         script.write_khovan_startup_trace("[KHOVAN ACT1 MSG ORDER] duplicate suppressed Tarsis governor-clear response")
-        yield success
+        ->END
 
     if not tarsis_required_requests_complete:
         await task_schedule(khovan_tarsis_update_gate_status)
-        script.write_khovan_startup_trace(f"[KHOVAN ACT1 011B] governor remains held; docking/resupply confirmation blocked status={tarsis_gate_status}")
-        comms_receive(f"Tarsis cannot clear the governor yet. Complete homing priority, generator support, docking clearance, and docking/resupply handoff. Gate status: {tarsis_gate_status}.", title="Tarsis Station", title_color="yellow")
-        script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS 008J] Tarsis docking/resupply confirmation option rejected before prerequisites")
-        yield fail
+        script.write_khovan_startup_trace(f"[KHOVAN ACT1 011B] governor remains held; mechanical docking/resupply blocked status={tarsis_gate_status}")
+        ->END
 
     tarsis_resupply_confirmed = True
     generator_governor_active = False
     generator_governor_cleared = True
+    energy_restored = True
+    if ship_id != 0:
+        set_data_set_value(ship_id, "energy", tarsis_resupply_energy, 0)
+        set_data_set_value(ship_id, "Homing_NUM", tarsis_resupply_homing_torpedoes, 0)
+        set_data_set_value(ship_id, "Nuke_NUM", tarsis_resupply_nukes, 0)
+        set_data_set_value(ship_id, "EMP_NUM", tarsis_resupply_emps, 0)
+        set_data_set_value(ship_id, "Mine_NUM", tarsis_resupply_mines, 0)
+        script.write_khovan_startup_trace(f"[KHOVAN ACT1 012A] Tarsis resupply restored energy={tarsis_resupply_energy}")
+        script.write_khovan_startup_trace(f"[KHOVAN ACT1 012B] Tarsis resupply restored ordnance homing={tarsis_resupply_homing_torpedoes} nuke={tarsis_resupply_nukes} emp={tarsis_resupply_emps} mine={tarsis_resupply_mines}")
+    else:
+        script.write_khovan_startup_trace("[KHOVAN ACT1 012A] Tarsis resupply restore skipped missing ship id")
     tarsis_gate_status = "resupply_confirmed_governor_cleared"
     current_scene = 2
     current_beat = "tarsis_resupply_governor_cleared"
@@ -664,8 +802,8 @@ distance: 600
     tarsis_governor_clear_response_sent = True
     script.write_khovan_startup_trace("[KHOVAN ACT1 012] Tarsis resupply confirmed; generator governor cleared")
     await task_schedule(khovan_set_current_objective, {"objective_id": "await_shakedown_instruction", "objective_body": "Await next shakedown instruction.", "objective_step": "Await shakedown", "objective_breadcrumb": "[KHOVAN OBJECTIVE 007] objective updated: await next shakedown instruction"})
-    await task_schedule(khovan_act1_record_progression, {"action": "tarsis_resupply_governor_cleared", "detail": "all three requests complete; temporary Comms confirmation cleared governor"})
-    comms_receive(tarsis_resupply_text, title="Tarsis Station", title_color="green")
+    await task_schedule(khovan_act1_record_progression, {"action": "tarsis_resupply_governor_cleared", "detail": "all three requests complete; normal Tarsis docking resupply cleared governor and restored full energy/armament"})
+    await task_schedule(khovan_reach_send_safe_startup_message, {"startup_sender": "Tarsis Station", "startup_text": tarsis_resupply_text, "startup_title_color": "green", "startup_sender_id": tarsis_station_id, "startup_player_id": ship_id, "startup_breadcrumb": "[KHOVAN ACT1 MSG TARSIS 005] docking/resupply response sent"})
     script.write_khovan_startup_trace("[KHOVAN ACT1 MSG TARSIS 005] docking/resupply response sent")
-    script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS 008J] Tarsis docking/resupply confirmation option response sent")
-    yield success
+    script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS 008J] Tarsis mechanical docking/resupply completion response sent")
+    ->END

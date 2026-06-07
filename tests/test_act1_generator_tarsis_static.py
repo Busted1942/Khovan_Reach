@@ -78,12 +78,19 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             'shared homing_reserve_live_inventory_status = "not_verified"',
             'shared homing_reserve_request_status = "not_requested"',
             'shared homing_reserve_conversion_mode = "kestrel_request_loads_two_homing_once_no_energy_conversion"',
-            'shared artemis_start_energy_policy = "cosmos_default_energy_with_generator_governor_not_zero_energy"',
+            'shared artemis_start_energy_policy = "visible_zero_energy_with_generator_governor_source_authorized"',
+            "shared artemis_start_energy = 0",
             "shared artemis_start_homing_torpedoes = 0",
             "shared artemis_start_nukes = 0",
             "shared artemis_start_emps = 0",
             "shared artemis_start_mines = 0",
             'shared artemis_start_ordnance_runtime_apply_status = "not_applied"',
+            "shared tarsis_resupply_energy = 1000",
+            "shared energy_restored = False",
+            'shared tarsis_docking_setup_role_status = "not_enabled"',
+            "shared tarsis_mechanical_dock_observed = False",
+            'shared tarsis_docking_observer_status = "not_started"',
+            'shared tarsis_docking_observer_last_snapshot = "not_checked"',
             'shared kestrel_yard_lock_visual_text = "Kestrel Yard Control: Artemis is held in yard-lock pending departure clearance. Comms, request departure clearance when the captain is ready."',
             'shared kestrel_generator_advisory_text = "Kestrel Yard Control: advisory packet follows. Artemis is operating under a temporary generator governor. Expect reduced acceleration and slower sustained-speed response. Tarsis has the generator acceptance package and will clear the handoff after docking/resupply."',
             'shared kestrel_homing_reserve_text = "Kestrel Yard Control: Artemis has no homing torpedoes loaded until Comms requests the emergency reserve. The reserve is two homing torpedoes only; Tarsis handles replacement and generator acceptance."',
@@ -93,7 +100,11 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             'shared tarsis_generator_support_text = "Tarsis Generator Acceptance: Kestrel package received. We can clear the governor after docking and yard-lock synchronization."',
             'shared tarsis_hail_text = "Tarsis Station: Artemis, we read you. Production Control and Generator Acceptance are standing by. Request homing priority, generator support, and docking clearance before approach."',
             'shared tarsis_docking_clearance_text = "Tarsis Docking Control: docking clearance granted. Helm, approach within tolerance and initiate docking."',
-            'shared tarsis_resupply_text = "Tarsis Control: resupply and generator handoff confirmed. Governor clear is recorded. Await the next shakedown instruction."',
+            "shared tarsis_resupply_homing_torpedoes = 10",
+            "shared tarsis_resupply_nukes = 3",
+            "shared tarsis_resupply_emps = 6",
+            "shared tarsis_resupply_mines = 6",
+            'shared tarsis_resupply_text = "Tarsis Control: normal docking resupply and generator handoff confirmed. Full energy and armament restored; governor clear is recorded. Await the next shakedown instruction."',
             "shared tarsis_homing_priority_requested = False",
             "shared tarsis_generator_support_requested = False",
             "shared tarsis_docking_clearance_requested = False",
@@ -127,12 +138,24 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             'homing_reserve_live_inventory_status = "fresh_load_zero_requested_live_smoke_required"',
             'homing_reserve_request_status = "not_requested"',
             'homing_reserve_conversion_mode = "kestrel_request_loads_two_homing_once_no_energy_conversion"',
-            'artemis_start_energy_runtime_apply_status = "not_overridden_zero_energy_not_source_authorized"',
+            'artemis_start_energy_policy = "visible_zero_energy_with_generator_governor_source_authorized"',
+            "artemis_start_energy = 0",
+            'artemis_start_energy_runtime_apply_status = "pending_visible_zero_energy_apply"',
             "artemis_start_homing_torpedoes = 0",
             "artemis_start_nukes = 0",
             "artemis_start_emps = 0",
             "artemis_start_mines = 0",
             'artemis_start_ordnance_runtime_apply_status = "pending_apply"',
+            "tarsis_resupply_energy = 1000",
+            "tarsis_resupply_homing_torpedoes = 10",
+            "tarsis_resupply_nukes = 3",
+            "tarsis_resupply_emps = 6",
+            "tarsis_resupply_mines = 6",
+            "energy_restored = False",
+            'tarsis_docking_setup_role_status = "not_enabled"',
+            "tarsis_mechanical_dock_observed = False",
+            'tarsis_docking_observer_status = "not_started"',
+            'tarsis_docking_observer_last_snapshot = "not_checked"',
             "kestrel_yard_lock_message_sent = False",
             "kestrel_departure_clearance_response_sent = False",
             "kestrel_launch_envelope_response_sent = False",
@@ -152,26 +175,63 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
         ]:
             self.assertIn(phrase, body)
 
-    def test_act1_applies_source_authorized_starting_condition_without_zero_energy(self) -> None:
+    def test_act1_applies_source_authorized_visible_zero_energy_start(self) -> None:
         act1 = read(ACT1_PATH)
         body = label_body(act1, "khovan_act1_apply_source_authorized_start_state")
         for phrase in [
             "generator_governor_active = True",
             "starting_homing_torpedoes = 0",
             "homing_reserve_count = 2",
-            'artemis_start_energy_runtime_apply_status = "not_overridden_zero_energy_not_source_authorized"',
+            "artemis_start_energy = 0",
+            'artemis_start_energy_runtime_apply_status = "pending_visible_zero_energy_apply"',
+            'set_data_set_value(artemis_id, "energy", artemis_start_energy, 0)',
             'set_data_set_value(artemis_id, "Homing_NUM", artemis_start_homing_torpedoes, 0)',
             'set_data_set_value(artemis_id, "Nuke_NUM", artemis_start_nukes, 0)',
             'set_data_set_value(artemis_id, "EMP_NUM", artemis_start_emps, 0)',
             'set_data_set_value(artemis_id, "Mine_NUM", artemis_start_mines, 0)',
-            'artemis_start_condition_status = "generator_governor_zero_homing_until_kestrel_reserve_no_other_ordnance"',
+            'artemis_start_condition_status = "visible_zero_energy_generator_governor_zero_homing_until_kestrel_reserve"',
+            'artemis_start_energy_runtime_apply_status = "requested_visible_energy_0"',
             'artemis_start_ordnance_runtime_apply_status = "requested_homing_0_nuke_0_emp_0_mine_0"',
-            "[KHOVAN ACT1 START STATE] Artemis starting energy set to Cosmos default with generator governor active; zero-energy start not source-authorized",
+            "[KHOVAN ACT1 START STATE] Artemis starting energy intentionally set to 0 with generator governor active",
             "[KHOVAN ACT1 START STATE] Artemis starting ordnance set to Homing=0 Nuke=0 EMP=0 Mine=0",
-            "[KHOVAN ACT1 START STATE FINAL] homing=",
+            "[KHOVAN ACT1 START STATE FINAL] energy=",
         ]:
             self.assertIn(phrase, body)
-        self.assertNotIn('set_data_set_value(artemis_id, "energy"', body)
+        self.assertNotIn("zero-energy start not source-authorized", body)
+
+    def test_active_source_docs_authorize_visible_zero_energy_start(self) -> None:
+        active_source = "\n".join(
+            [
+                read("docs/00_project/00_source_index.md"),
+                read("docs/01_design/00_scenario_play_guide.md"),
+                read("docs/01_design/10_mast_requirements.md"),
+                read("docs/01_design/20_gm_operational_notes.md"),
+                read("docs/01_design/40_admin_testing_plan.md"),
+                read("docs/02_content/40_dillon_clips.md"),
+            ]
+        )
+        for phrase in [
+            "visible ship energy = 0",
+            "starting_energy = 0",
+            "starting_homing_torpedoes = 0",
+            "homing_reserve_count = 2",
+            "energy_restored = true",
+            "Approved Slice 04 implementation finding",
+            "Full energy and armament restored",
+        ]:
+            self.assertIn(phrase, active_source)
+
+        for forbidden in [
+            "zero-energy start not source-authorized",
+            "Artemis starts with literal zero energy, because that would indicate an unauthorized",
+            "Artemis starting energy is not set to 0",
+            "This is a better fiction than starting with visibly low energy",
+            "The ship is not presented as simply \"low energy\"",
+            "Artemis departs with 2 homing torpedoes as emergency conversion reserve",
+            "yard-transfer",
+            "energy = 250",
+        ]:
+            self.assertNotIn(forbidden, active_source)
 
     def test_current_objective_panel_owns_text_waterfall_updates(self) -> None:
         objective = read(OBJECTIVE_PATH)
@@ -212,14 +272,14 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
         launch_body = label_body(act1, "khovan_kestrel_report_launch_envelope_clear")
         advisory_body = label_body(act1, "khovan_act1_deliver_kestrel_generator_advisory_after_delay")
         clearance_body = label_body(act1, "khovan_tarsis_request_docking_clearance")
-        resupply_body = label_body(act1, "khovan_tarsis_confirm_docking_and_resupply")
+        resupply_body = label_body(act1, "khovan_tarsis_complete_mechanical_docking_and_resupply")
 
         expectations = [
             (setup_body, "khovan_current_objective_init", "await task_schedule(khovan_current_objective_init)"),
             (departure_body, "Helm clear the Kestrel launch envelope, then Comms confirm exit.", "[KHOVAN OBJECTIVE 003] objective updated: launch envelope"),
             (launch_body, "Stand by for Kestrel generator advisory.", "[KHOVAN OBJECTIVE 004] objective updated: generator advisory"),
             (advisory_body, "Proceed to Tarsis. Comms request homing priority, generator support, and docking clearance.", "[KHOVAN OBJECTIVE 005] objective updated: Tarsis requests"),
-            (clearance_body, "Dock with Tarsis and confirm resupply/governor handoff.", "[KHOVAN OBJECTIVE 006] objective updated: Tarsis docking/resupply"),
+            (clearance_body, "Dock normally with Tarsis. Resupply and governor handoff complete on hard dock.", "[KHOVAN OBJECTIVE 006] objective updated: Tarsis docking/resupply"),
             (resupply_body, "Await next shakedown instruction.", "[KHOVAN OBJECTIVE 007] objective updated: await next shakedown instruction"),
         ]
         for body, text, breadcrumb in expectations:
@@ -249,9 +309,9 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             "Tarsis Control: homing production priority set for Artemis. Replacement torpedoes will be prioritized during resupply.",
             "Tarsis Generator Acceptance: Kestrel package received. We can clear the governor after docking and yard-lock synchronization.",
             "Tarsis Docking Control: docking clearance granted. Helm, approach within tolerance and initiate docking.",
-            "Dock with Tarsis and confirm resupply/governor handoff.",
+            "Dock normally with Tarsis. Resupply and governor handoff complete on hard dock.",
             "Tarsis Docking Control: docking clearance not granted. Complete Tarsis Comms traffic before approach.",
-            "Tarsis Control: resupply and generator handoff confirmed. Governor clear is recorded. Await the next shakedown instruction.",
+            "Tarsis Control: normal docking resupply and generator handoff confirmed. Full energy and armament restored; governor clear is recorded. Await the next shakedown instruction.",
             "Await next shakedown instruction.",
         ]:
             self.assertIn(phrase, active_copy)
@@ -268,6 +328,7 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             "Complete required traffic before approach.",
             "Captain. Crew of Artemis. This is a qualification cruise. Standard pattern",
             "Captain, the ship is yours.",
+            "yard-transfer",
         ]:
             self.assertNotIn(forbidden, active_copy)
 
@@ -394,15 +455,32 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             clearance_body,
         )
         self.assertIn("await task_schedule(khovan_tarsis_enable_docking_after_clearance)", clearance_body)
+        self.assertIn("[KHOVAN ACT1 DOCK 004R] Tarsis requests complete=", clearance_body)
+        self.assertIn("[KHOVAN ACT1 DOCK 004D] Tarsis docking clearance granted; enabling docking setup", clearance_body)
         self.assertIn("if not tarsis_docking_clearance_requested:", enable_body)
         self.assertIn("[KHOVAN ACT1 DOCK 003B] Tarsis docking setup enable blocked before clearance", enable_body)
         self.assertIn('add_role(tarsis_station_id, "station")', enable_body)
+        self.assertIn('add_role(tarsis_station_id, "Station")', enable_body)
+        self.assertIn('tarsis_docking_setup_role_status = "station_and_Station_roles_restored_after_clearance"', enable_body)
+        self.assertIn('tarsis_docking_observer_status = "watching_after_clearance"', enable_body)
+        self.assertIn('tarsis_docking_observer_last_snapshot = "not_checked"', enable_body)
+        self.assertIn("tarsis_roles_after_clearance = to_object(tarsis_station_id).get_roles()", enable_body)
+        self.assertIn("tarsis_docking_player = to_object(player_id)", enable_body)
+        self.assertIn('tarsis_docking_player.data_set.set("dock_base_id", 0, 0)', enable_body)
+        self.assertIn('tarsis_docking_player.data_set.set("dock_state", "undocked", 0)', enable_body)
+        self.assertIn("[KHOVAN ACT1 DOCK 004N] normalized Artemis dock_state=undocked dock_base_id=0 before Tarsis docking setup", enable_body)
         self.assertIn(
-            "docking_set_docking_logic(player_id, tarsis_station_id, docking_dock_with_friendly_station)",
+            "docking_set_docking_logic(player_id, tarsis_station_id, khovan_tarsis_normal_docking_resupply_after_clearance)",
             enable_body,
         )
+        self.assertIn("[KHOVAN ACT1 DOCK 004P] Tarsis normal docking/resupply wrapper set player_id=", enable_body)
         self.assertIn('tarsis_docking_gate_status = "enabled_after_docking_clearance"', enable_body)
+        self.assertIn("[KHOVAN ACT1 DOCK 004S] Tarsis stock Station role restored after clearance for mechanical docking affordance", enable_body)
+        self.assertIn("await task_schedule(docking_standard_player_station)", enable_body)
+        self.assertIn("[KHOVAN ACT1 DOCK 004U] standard friendly station docking helper rerun for Tarsis after clearance", enable_body)
         self.assertIn("[KHOVAN ACT1 DOCK 004] Tarsis docking setup enabled after clearance", enable_body)
+        self.assertIn("[KHOVAN ACT1 DOCK 004B] Tarsis docking setup awaiting dock signal after clearance", enable_body)
+        self.assertIn("task_schedule(khovan_tarsis_watch_mechanical_docking_after_clearance)", enable_body)
 
         blocked_body = label_body(act1, "khovan_tarsis_docking_rejected_before_clearance")
         self.assertIn("yield fail if DOCKING_NPC_ID == 0", blocked_body)
@@ -421,6 +499,34 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             act1.count("[KHOVAN ACT1 DOCK BLOCKED] Tarsis docking rejected: clearance not granted"),
         )
 
+        normal_body = label_body(act1, "khovan_tarsis_normal_docking_resupply_after_clearance")
+        self.assertIn("distance: 600", normal_body)
+        self.assertIn("yield fail if DOCKING_NPC_ID == 0", normal_body)
+        self.assertIn("yield fail if DOCKING_NPC_ID != tarsis_station_id", normal_body)
+        self.assertIn("yield fail if not tarsis_required_requests_complete", normal_body)
+        self.assertIn("+++ docking", normal_body)
+        self.assertIn('set_weapons_selection(DOCKING_PLAYER_ID, 0)', normal_body)
+        self.assertIn("[KHOVAN ACT1 DOCK 004X] Tarsis normal docking wrapper accepted docking attempt after clearance", normal_body)
+        self.assertIn("yield success", normal_body)
+        self.assertIn("+++ docked", normal_body)
+        self.assertIn("grid_restore_damcons(DOCKING_PLAYER_ID)", normal_body)
+        self.assertIn('start_counter(DOCKING_PLAYER_ID, "refuel")', normal_body)
+        self.assertIn('start_counter(DOCKING_PLAYER_ID, "torps")', normal_body)
+        self.assertIn('start_counter(DOCKING_PLAYER_ID, "shields")', normal_body)
+        self.assertIn('start_counter(DOCKING_PLAYER_ID, "interior")', normal_body)
+        self.assertIn('tarsis_docking_observer_status = "normal_docking_wrapper_docked_after_clearance"', normal_body)
+        self.assertIn('tarsis_docking_resupply_status = "normal_docking_wrapper_resupply_scheduled"', normal_body)
+        self.assertIn("[KHOVAN ACT1 DOCK 004A] Tarsis dock signal observed after clearance; normal station resupply scheduled", normal_body)
+        self.assertIn('task_schedule(khovan_tarsis_complete_mechanical_docking_and_resupply, {"ship_id": DOCKING_PLAYER_ID, "completion_source": "normal_docking_wrapper"})', normal_body)
+        self.assertIn("+++ refit", normal_body)
+        self.assertIn('DOCKING_PLAYER.data_set.set("energy", tarsis_resupply_energy, 0)', normal_body)
+        self.assertIn('DOCKING_PLAYER.data_set.set("Homing_NUM", tarsis_resupply_homing_torpedoes, 0)', normal_body)
+        self.assertIn('DOCKING_PLAYER.data_set.set("Nuke_NUM", tarsis_resupply_nukes, 0)', normal_body)
+        self.assertIn('DOCKING_PLAYER.data_set.set("EMP_NUM", tarsis_resupply_emps, 0)', normal_body)
+        self.assertIn('DOCKING_PLAYER.data_set.set("Mine_NUM", tarsis_resupply_mines, 0)', normal_body)
+        self.assertIn("+++ throttle", normal_body)
+        self.assertIn('DOCKING_PLAYER.data_set.set("playerThrottle", 0, 0)', normal_body)
+
         self.assertIn(
             '//shared/signal/docked if has_roles(ORIGIN_ID, "__player__") and has_roles(SELECTED_ID, "tarsis_station")',
             act1,
@@ -434,10 +540,31 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
         self.assertIn("if not tarsis_docking_clearance_requested:", dock_signal.group("body"))
         self.assertIn('tarsis_docking_gate_status = "premature_dock_signal_ignored_before_clearance"', dock_signal.group("body"))
         self.assertIn("[KHOVAN ACT1 DOCK 003D] Premature Tarsis dock signal ignored before clearance", dock_signal.group("body"))
+        self.assertIn("if tarsis_mechanical_dock_observed:", dock_signal.group("body"))
+        self.assertIn("[KHOVAN ACT1 DOCK 004C] Duplicate Tarsis mechanical dock observation suppressed", dock_signal.group("body"))
         self.assertIn(
-            "[KHOVAN ACT1 DOCK 004A] Tarsis dock signal observed after clearance; resupply still requires Comms confirmation",
+            "[KHOVAN ACT1 DOCK 004A] Tarsis dock signal observed after clearance; normal station resupply scheduled",
             dock_signal.group("body"),
         )
+        self.assertIn('await task_schedule(khovan_tarsis_complete_mechanical_docking_and_resupply, {"ship_id": ORIGIN_ID, "completion_source": "docked_signal"})', dock_signal.group("body"))
+        self.assertIn("tarsis_mechanical_dock_observed = True", dock_signal.group("body"))
+        self.assertIn('tarsis_docking_observer_status = "signal_observed_after_clearance"', dock_signal.group("body"))
+
+        observer_body = label_body(act1, "khovan_tarsis_watch_mechanical_docking_after_clearance")
+        self.assertIn("if tarsis_mechanical_dock_observed:", observer_body)
+        self.assertIn('for player_id in role("__player__"):', observer_body)
+        self.assertIn('observed_dock_state = observed_player.data_set.get("dock_state", "unknown")', observer_body)
+        self.assertIn('observed_dock_base_id = observed_player.data_set.get("dock_base_id", 0)', observer_body)
+        self.assertIn('observer_snapshot = f"player={player_id} state={observed_dock_state} base={observed_dock_base_id} tarsis={tarsis_station_id}"', observer_body)
+        self.assertIn("if observer_snapshot != tarsis_docking_observer_last_snapshot:", observer_body)
+        self.assertIn("[KHOVAN ACT1 DOCK 004T] Tarsis dock-state observer", observer_body)
+        self.assertIn('if observed_dock_base_id == tarsis_station_id and observed_dock_state == "docked":', observer_body)
+        self.assertIn('tarsis_docking_observer_status = "dock_state_observed_after_clearance"', observer_body)
+        self.assertIn("[KHOVAN ACT1 DOCK 004A] Tarsis dock signal observed after clearance; normal station resupply scheduled", observer_body)
+        self.assertIn("[KHOVAN ACT1 DOCK 004C] Tarsis dock-state observer confirmed docked state after clearance", observer_body)
+        self.assertIn('await task_schedule(khovan_tarsis_complete_mechanical_docking_and_resupply, {"ship_id": player_id, "completion_source": "dock_state_observer"})', observer_body)
+        self.assertIn("await delay_sim(seconds=1)", observer_body)
+        self.assertIn("jump khovan_tarsis_watch_mechanical_docking_after_clearance", observer_body)
 
     def test_kestrel_departure_hold_clamps_artemis_until_comms_clearance(self) -> None:
         act1 = read(ACT1_PATH)
@@ -605,8 +732,12 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
         self.assertIn("[KHOVAN ACT1 MSG ORDER] duplicate suppressed Kestrel departure clearance response", clearance_body)
         self.assertIn("kestrel_departure_clearance_granted = True", clearance_body)
         self.assertIn("[KHOVAN ACT1 004] Kestrel departure clearance granted", clearance_body)
+        self.assertNotIn("khovan_kestrel_release_yard_transfer_energy", clearance_body)
+        self.assertIn('"detail": "departure clearance granted; waiting for launch envelope confirmation; energy remains at source-authorized start value until Tarsis handoff"', clearance_body)
         self.assertIn("kestrel_departure_clearance_response_sent = True", clearance_body)
+        self.assertIn("Kestrel Yard Control: departure clearance granted. Helm, clear the launch envelope. Comms, confirm once Artemis is outside the yard boundary.", clearance_body)
         self.assertIn("[KHOVAN ACT1 COMMS 006D] Kestrel departure-clearance option response sent", clearance_body)
+        self.assertNotIn('set_data_set_value(artemis_id, "energy"', clearance_body)
 
         reserve_body = label_body(act1, "khovan_kestrel_request_emergency_homing_reserve")
         for phrase in [
@@ -706,14 +837,12 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             '+ "Khovan: Request Homing-Torpedo Priority" khovan_tarsis_request_homing_priority if not tarsis_required_requests_complete',
             '+ "Khovan: Request Generator Support" khovan_tarsis_request_generator_support if not tarsis_required_requests_complete',
             '+ "Khovan: Request Docking Clearance" khovan_tarsis_request_docking_clearance if not tarsis_docking_clearance_requested',
-            '+ "Khovan: Confirm Docking/Resupply" khovan_tarsis_confirm_docking_and_resupply if tarsis_docking_clearance_requested',
             '+ "Khovan: Report Tarsis Gate Status" khovan_tarsis_report_gate_status',
             "[KHOVAN ACT1 COMMS 008] Tarsis Hail option selected",
             "[KHOVAN ACT1 COMMS TARSIS HAIL] Tarsis hail selected",
             "[KHOVAN ACT1 COMMS 008A] Tarsis homing-priority option selected",
             "[KHOVAN ACT1 COMMS 008B] Tarsis generator-acceptance option selected",
             "[KHOVAN ACT1 COMMS 008C] Tarsis docking-clearance option selected",
-            "[KHOVAN ACT1 COMMS 008D] Tarsis docking/resupply confirmation option selected",
             "[KHOVAN ACT1 COMMS 008E] Tarsis status-report option selected",
             "[KHOVAN ACT1 COMMS TARSIS STATUS] Tarsis gate status requested",
         ]:
@@ -733,8 +862,8 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
         self.assertIn('+ "Khovan: Request Homing-Torpedo Priority" khovan_tarsis_request_homing_priority if not tarsis_required_requests_complete', tarsis_menu.group("body"))
         self.assertIn('+ "Khovan: Request Generator Support" khovan_tarsis_request_generator_support if not tarsis_required_requests_complete', tarsis_menu.group("body"))
         self.assertIn('+ "Khovan: Request Docking Clearance" khovan_tarsis_request_docking_clearance if not tarsis_docking_clearance_requested', tarsis_menu.group("body"))
-        self.assertIn('+ "Khovan: Confirm Docking/Resupply" khovan_tarsis_confirm_docking_and_resupply if tarsis_docking_clearance_requested', tarsis_menu.group("body"))
         self.assertIn('+ "Khovan: Report Tarsis Gate Status" khovan_tarsis_report_gate_status', tarsis_menu.group("body"))
+        self.assertNotIn("Confirm Docking/Resupply", tarsis_menu.group("body"))
         self.assertNotIn(
             '//comms if side_are_allies(COMMS_ORIGIN_ID, COMMS_SELECTED_ID) and has_roles(COMMS_SELECTED_ID, "Station,tarsis_station") and not has_role(COMMS_ORIGIN_ID, "gamemaster")',
             act1,
@@ -745,7 +874,8 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
         generator_body = label_body(act1, "khovan_tarsis_request_generator_support")
         docking_body = label_body(act1, "khovan_tarsis_request_docking_clearance")
         status_body = label_body(act1, "khovan_tarsis_report_gate_status")
-        clear_body = label_body(act1, "khovan_tarsis_confirm_docking_and_resupply")
+        fallback_body = label_body(act1, "khovan_tarsis_confirm_docking_and_resupply")
+        clear_body = label_body(act1, "khovan_tarsis_complete_mechanical_docking_and_resupply")
         self.assertNotIn("sbs.send_story_dialog", act1)
         self.assertIn("[KHOVAN ACT1 COMMS TARSIS HAIL] Tarsis hail selected", hail_body)
         self.assertNotIn("sbs.send_story_dialog", hail_body)
@@ -793,8 +923,26 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
         self.assertIn("Complete all three before docking/resupply handoff.", status_body)
         self.assertIn("comms_receive(tarsis_gate_status_text", status_body)
         self.assertIn("[KHOVAN ACT1 MSG TARSIS 006] gate status response sent", status_body)
-        self.assertIn("[KHOVAN ACT1 COMMS TARSIS RESUPPLY] docking/resupply confirmed", clear_body)
-        self.assertIn("comms_receive(tarsis_resupply_text, title=\"Tarsis Station\", title_color=\"green\")", clear_body)
+        self.assertIn("[KHOVAN ACT1 COMMS 008D] hidden fallback docking/resupply confirmation attempted", fallback_body)
+        self.assertIn("use normal Helm docking after clearance", fallback_body)
+        self.assertIn("yield fail", fallback_body)
+        self.assertIn("[KHOVAN ACT1 COMMS TARSIS RESUPPLY] mechanical docking/resupply completion source=", clear_body)
+        self.assertIn("energy_restored = True", clear_body)
+        self.assertIn('set_data_set_value(ship_id, "energy", tarsis_resupply_energy, 0)', clear_body)
+        self.assertIn('set_data_set_value(ship_id, "Homing_NUM", tarsis_resupply_homing_torpedoes, 0)', clear_body)
+        self.assertIn('set_data_set_value(ship_id, "Nuke_NUM", tarsis_resupply_nukes, 0)', clear_body)
+        self.assertIn('set_data_set_value(ship_id, "EMP_NUM", tarsis_resupply_emps, 0)', clear_body)
+        self.assertIn('set_data_set_value(ship_id, "Mine_NUM", tarsis_resupply_mines, 0)', clear_body)
+        self.assertIn("[KHOVAN ACT1 012A] Tarsis resupply restored energy=", clear_body)
+        self.assertIn("[KHOVAN ACT1 012B] Tarsis resupply restored ordnance homing=", clear_body)
+        for phrase in [
+            "tarsis_resupply_homing_torpedoes = 10",
+            "tarsis_resupply_nukes = 3",
+            "tarsis_resupply_emps = 6",
+            "tarsis_resupply_mines = 6",
+        ]:
+            self.assertIn(phrase, act1)
+        self.assertIn("await task_schedule(khovan_reach_send_safe_startup_message", clear_body)
         self.assertIn("[KHOVAN ACT1 MSG TARSIS 005] docking/resupply response sent", clear_body)
 
         update_body = label_body(act1, "khovan_tarsis_update_gate_status")
@@ -804,24 +952,32 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
         )
         self.assertIn("tarsis_required_requests_complete = True", update_body)
 
-    def test_governor_clear_only_happens_in_tarsis_resupply_confirmation(self) -> None:
+    def test_governor_clear_only_happens_in_mechanical_tarsis_resupply(self) -> None:
         act1 = read(ACT1_PATH)
         clear_hits = [
             match.start()
             for match in re.finditer(r"generator_governor_active\s*=\s*False", act1)
         ]
         self.assertEqual(1, len(clear_hits))
-        clear_body = label_body(act1, "khovan_tarsis_confirm_docking_and_resupply")
+        clear_body = label_body(act1, "khovan_tarsis_complete_mechanical_docking_and_resupply")
         self.assertIn("if tarsis_governor_clear_response_sent:", clear_body)
         self.assertIn("[KHOVAN ACT1 MSG ORDER] duplicate suppressed Tarsis governor-clear response", clear_body)
         self.assertIn("if not tarsis_required_requests_complete:", clear_body)
-        self.assertIn("yield fail", clear_body)
         self.assertIn("tarsis_resupply_confirmed = True", clear_body)
         self.assertIn("generator_governor_active = False", clear_body)
         self.assertIn("generator_governor_cleared = True", clear_body)
+        self.assertIn("energy_restored = True", clear_body)
+        self.assertIn('set_data_set_value(ship_id, "energy", tarsis_resupply_energy, 0)', clear_body)
+        self.assertIn('set_data_set_value(ship_id, "Homing_NUM", tarsis_resupply_homing_torpedoes, 0)', clear_body)
+        self.assertIn('set_data_set_value(ship_id, "Nuke_NUM", tarsis_resupply_nukes, 0)', clear_body)
+        self.assertIn('set_data_set_value(ship_id, "EMP_NUM", tarsis_resupply_emps, 0)', clear_body)
+        self.assertIn('set_data_set_value(ship_id, "Mine_NUM", tarsis_resupply_mines, 0)', clear_body)
         self.assertIn("last_checkpoint = \"tarsis_resupply_governor_cleared\"", clear_body)
         self.assertIn("tarsis_governor_clear_response_sent = True", clear_body)
         self.assertIn("[KHOVAN ACT1 012] Tarsis resupply confirmed; generator governor cleared", clear_body)
+        self.assertIn("[KHOVAN ACT1 012A] Tarsis resupply restored energy=", clear_body)
+        self.assertIn("[KHOVAN ACT1 012B] Tarsis resupply restored ordnance homing=", clear_body)
+        self.assertIn("restored full energy/armament", clear_body)
 
     def test_slice04_breadcrumbs_and_action_log_hooks_are_present(self) -> None:
         act1 = read(ACT1_PATH)
@@ -858,6 +1014,8 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             "[KHOVAN ACT1 RESERVE 002]",
             "[KHOVAN ACT1 RESERVE 003]",
             "[KHOVAN ACT1 RESERVE 004]",
+            "[KHOVAN ACT1 DOCK 004R]",
+            "[KHOVAN ACT1 DOCK 004D]",
             "[KHOVAN ACT1 MSG KESTREL 001]",
             "[KHOVAN ACT1 MSG KESTREL 002]",
             "[KHOVAN ACT1 MSG KESTREL 003]",
@@ -882,7 +1040,13 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             "[KHOVAN ACT1 DOCK 003D]",
             "[KHOVAN ACT1 DOCK BLOCKED]",
             "[KHOVAN ACT1 DOCK 004]",
+            "[KHOVAN ACT1 DOCK 004S]",
+            "[KHOVAN ACT1 DOCK 004N]",
+            "[KHOVAN ACT1 DOCK 004P]",
+            "[KHOVAN ACT1 DOCK 004X]",
             "[KHOVAN ACT1 DOCK 004A]",
+            "[KHOVAN ACT1 DOCK 004C]",
+            "[KHOVAN ACT1 DOCK 004T]",
             "[KHOVAN ACT1 HOLD 001]",
             "[KHOVAN ACT1 HOLD 002]",
             "[KHOVAN ACT1 HOLD 003]",
@@ -920,6 +1084,7 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
                 read(ACT1_PATH),
             ]
         ).lower()
+        active_runtime_for_story_guard = active_runtime.replace("grid_restore_damcons", "")
         for forbidden in [
             "Select a bridge console for Artemis",
             "khovan_reach_slice01_client_main",
@@ -933,8 +1098,13 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             "drone",
             "damcon",
             "pirate",
+            "comms test station",
+            "khovan_comms_proof",
+            "[khovan comms proof]",
+            "proof option",
+            "comms proof station initialized",
         ]:
-            self.assertNotIn(forbidden.lower(), active_runtime)
+            self.assertNotIn(forbidden.lower(), active_runtime_for_story_guard)
 
     def test_slice04_verification_doc_records_static_vs_live_limits(self) -> None:
         path = ROOT / "tests" / "SLICE04_VERIFICATION.md"
@@ -957,13 +1127,15 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             "temporary comms confirmation",
             "live mechanics/api issue",
             "starting-condition audit",
-            "literal zero-energy",
-            "generator governor remains active, artemis starts with 0 homing torpedoes",
+            "user-approved implementation finding/source update",
+            "visible-zero-energy start",
+            "ship energy = 0",
+            "energy = 1000",
+            "[khovan act1 012a]",
             "homing_num = 0",
             "nuke_num = 0",
             "emp_num = 0",
             "mine_num = 0",
-            "does not call `set_data_set_value(artemis_id, \"energy\", ...)`",
             "emergency reserve behavior",
             "request emergency homing reserve",
             "sets `homing_num` to `2` once",
@@ -1012,6 +1184,10 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             "lifeform overlay deferred",
             "live guarded text/comms ui ordering",
             "current live regression evidence",
+            "comms proof station cleanup",
+            "temporary comms proof/test station",
+            "no temporary comms proof/test station appears",
+            "proof-station removal",
             "msg tarsis 001",
             "msg tarsis 006",
         ]:

@@ -19,9 +19,11 @@ REQUIRED_STATE = {
     "test_mode_enabled": "False",
     "live_recovery_mode_enabled": "False",
     "generator_governor_active": "True",
+    "starting_energy": "0",
     "starting_homing_torpedoes": "0",
     "kestrel_generator_packet_sent": "False",
     "launch_envelope_cleared": "False",
+    "energy_restored": "False",
     "dillon_clip_1_stub_sent": "False",
     "shakedown_mode": "\"unset\"",
     "training_overlay_active": "True",
@@ -183,6 +185,7 @@ class BootstrapStaticTests(unittest.TestCase):
         self.assertIn("import scripts/systems/audio_runtime.mast", main)
         self.assertIn("import scripts/systems/current_objective_panel.mast", main)
         self.assertIn("import scripts/systems/debug_runtime.mast", main)
+        self.assertNotIn("import scripts/systems/comms_proof_station.mast", main)
         self.assertRegex(main, r"(?m)^\s*shared\s+artemis_id\s*=\s*0\s*$")
         self.assertIn("@map/khovan_reach", main)
         self.assertIn("=== khovan_reach_slice01_entry ===", main)
@@ -194,6 +197,8 @@ class BootstrapStaticTests(unittest.TestCase):
         self.assertNotIn("=== khovan_reach_slice01_server_playable ===", main)
         self.assertNotIn("Select a bridge console for Artemis", main)
         self.assertIn("khovan_reach_initialize_playable_bootstrap", main)
+        self.assertNotIn("khovan_comms_proof_station_initialize", main)
+        self.assertNotIn("[KHOVAN BOOT 004B] Comms proof station initialized", main)
         self.assertIn("[KHOVAN BOOT 001] scripts/main.mast entered", main)
         self.assertIn("[KHOVAN BOOT 002] before state defaults", main)
         self.assertIn("[KHOVAN BOOT 003] after state defaults", main)

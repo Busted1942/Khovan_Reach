@@ -185,10 +185,11 @@ Ten seconds after launch-envelope exit, Kestrel Yard Control sends the generator
 
 - Kestrel is working a generator-output problem.
 - A temporary governor is limiting output.
-- Artemis has two homing torpedoes as emergency conversion reserve.
+- Artemis visibly starts with energy at 0 and no loaded ordnance.
+- Kestrel holds two homing torpedoes as emergency reserve and loads them only after Comms requests the reserve.
 - Tarsis has been notified to prioritize homing torpedoes and generator acceptance.
 
-This is a better fiction than starting with visibly low energy: the crew experiences a ship problem and learns to route the solution through Comms and Tarsis.
+Approved Slice 04 implementation finding: visible ship energy = 0 is now intentional. The crew sees the resource constraint immediately, then learns to route the solution through Comms, Kestrel reserve release, and Tarsis energy/generator handoff. Do not grant unapproved departure-clearance energy; if live Cosmos proves zero energy blocks required movement or docking, record that as a blocker/design decision instead of silently adding power.
 
 ## 6.3 Tarsis gate
 

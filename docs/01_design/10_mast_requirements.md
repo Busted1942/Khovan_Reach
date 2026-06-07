@@ -355,9 +355,12 @@ station_rating_comms: unset | pass | partial | needs_retest | n/a
 Add these state variables to support the generator-governor start, shakedown fork, and automated gates:
 
 ```text
+starting_energy = 0
 generator_governor_active = true / false
 kestrel_generator_packet_sent = true / false
-starting_homing_torpedoes = 2
+starting_homing_torpedoes = 0
+homing_reserve_count = 2
+energy_restored = true / false
 launch_envelope_cleared = true / false
 launch_envelope_clear_time = timestamp
 shakedown_mode = unset / full / compressed / direct
@@ -473,8 +476,11 @@ DAMCON_CONTROL
 Initial runtime setup:
 
 ```text
+starting_energy = 0
 generator_governor_active = true
-starting_homing_torpedoes = 2
+starting_homing_torpedoes = 0
+homing_reserve_count = 2
+energy_restored = false
 kestrel_departure_clearance_requested = false
 kestrel_departure_clearance_granted = false
 launch_envelope_cleared = false

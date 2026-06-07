@@ -253,7 +253,10 @@ JUMP-027 debrief
 
 ```text
 generator_governor_active = true
-starting_homing_torpedoes = 2
+starting_energy = 0
+starting_homing_torpedoes = 0
+homing_reserve_count = 2
+energy_restored = false
 current_scene = 1
 Dillon Clip 1 ready
 Artemis at Kestrel
@@ -275,7 +278,9 @@ Expected next event: Kestrel generator advisory displays and archives.
 
 ```text
 generator_governor_active = true
-starting_homing_torpedoes = 2
+starting_energy = 0
+starting_homing_torpedoes = 0
+homing_reserve_count = 2
 Artemis approaching Tarsis
 required requests unset
 ```

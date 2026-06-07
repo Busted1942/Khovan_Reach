@@ -67,7 +67,7 @@ Trigger: after speed-power reminder.
 
 > "Tarsis Docking Control: docking clearance not granted. Complete Tarsis Comms traffic before approach."
 
-> "Tarsis Control: resupply and generator handoff confirmed. Governor clear is recorded. Await the next shakedown instruction."
+> "Tarsis Control: normal docking resupply and generator handoff confirmed. Full energy and armament restored; governor clear is recorded. Await the next shakedown instruction."
 
 ### Direct Scenario bypass confirmation
 
