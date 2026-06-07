@@ -19,9 +19,12 @@ REQUIRED_STATE = {
     "test_mode_enabled": "False",
     "live_recovery_mode_enabled": "False",
     "generator_governor_active": "True",
-    "starting_homing_torpedoes": "2",
+    "starting_energy": "0",
+    "starting_homing_torpedoes": "0",
     "kestrel_generator_packet_sent": "False",
     "launch_envelope_cleared": "False",
+    "energy_restored": "False",
+    "dillon_clip_1_stub_sent": "False",
     "shakedown_mode": "\"unset\"",
     "training_overlay_active": "True",
     "comms_archive_enabled": "True",
@@ -180,7 +183,9 @@ class BootstrapStaticTests(unittest.TestCase):
         self.assertIn("import scripts/systems/bootstrap_state.mast", main)
         self.assertIn("import scripts/systems/playable_bootstrap.mast", main)
         self.assertIn("import scripts/systems/audio_runtime.mast", main)
+        self.assertIn("import scripts/systems/current_objective_panel.mast", main)
         self.assertIn("import scripts/systems/debug_runtime.mast", main)
+        self.assertNotIn("import scripts/systems/comms_proof_station.mast", main)
         self.assertRegex(main, r"(?m)^\s*shared\s+artemis_id\s*=\s*0\s*$")
         self.assertIn("@map/khovan_reach", main)
         self.assertIn("=== khovan_reach_slice01_entry ===", main)
@@ -192,6 +197,8 @@ class BootstrapStaticTests(unittest.TestCase):
         self.assertNotIn("=== khovan_reach_slice01_server_playable ===", main)
         self.assertNotIn("Select a bridge console for Artemis", main)
         self.assertIn("khovan_reach_initialize_playable_bootstrap", main)
+        self.assertNotIn("khovan_comms_proof_station_initialize", main)
+        self.assertNotIn("[KHOVAN BOOT 004B] Comms proof station initialized", main)
         self.assertIn("[KHOVAN BOOT 001] scripts/main.mast entered", main)
         self.assertIn("[KHOVAN BOOT 002] before state defaults", main)
         self.assertIn("[KHOVAN BOOT 003] after state defaults", main)
@@ -260,6 +267,7 @@ class BootstrapStaticTests(unittest.TestCase):
             "scripts/systems/bootstrap_state.mast",
             "scripts/systems/playable_bootstrap.mast",
             "scripts/systems/audio_runtime.mast",
+            "scripts/systems/current_objective_panel.mast",
             "scripts/systems/debug_runtime.mast",
         ]:
             self.assertTrue((ROOT / path).is_file(), path)
@@ -334,11 +342,39 @@ class BootstrapStaticTests(unittest.TestCase):
     def test_dillon_clip_1_is_stubbed(self) -> None:
         audio = read("scripts/systems/audio_runtime.mast")
         self.assertIn("shared dillon_clip_1_stub_text", audio)
+        self.assertIn("Dillon: Crew of Artemis, this is a qualification cruise.", audio)
+        self.assertIn("First task: get the ship out of Kestrel cleanly.", audio)
+        self.assertIn("Comms, request departure clearance.", audio)
+        self.assertIn("Helm, hold position until Kestrel releases the yard-lock.", audio)
+        self.assertIn("Captain, coordinate the sequence.", audio)
+        self.assertNotIn("Captain. Crew of Artemis. This is a qualification cruise.", audio)
+        self.assertNotIn("Standard pattern: depart Kestrel", audio)
+        self.assertNotIn("Captain, the ship is yours.", audio)
+        self.assertIn("shared dillon_clip_1_stub_sent = False", audio)
         self.assertIn("=== khovan_reach_stub_dillon_clip_1 ===", audio)
+        self.assertIn("if dillon_clip_1_stub_sent:", audio)
+        self.assertIn("[KHOVAN ACT1 MSG ORDER] duplicate suppressed Dillon Clip 1 stub", audio)
+        self.assertIn("dillon_clip_1_stub_sent = True", audio)
         self.assertIn('dillon_clip_1_status = "stubbed"', audio)
-        self.assertIn("Dillon Clip 1 text stub active", audio)
+        self.assertIn('shared dillon_clip_1_delivery_mode = "text_standin_safe_comms_no_lifeform_overlay"', audio)
+        self.assertIn("=== khovan_reach_send_safe_startup_message ===", audio)
+        self.assertIn("with comms_override(startup_sender_id, startup_player_id, from_name=startup_sender):", audio)
+        self.assertIn("comms_receive(startup_text, title=startup_sender, title_color=startup_title_color)", audio)
+        self.assertIn("[KHOVAN ACT1 UI] black-box overlay source disabled or replaced", audio)
+        self.assertIn("[KHOVAN ACT1 UI] lifeform overlay deferred", audio)
+        self.assertIn("[KHOVAN ACT1 UI] safe text message path used", audio)
+        self.assertIn("[KHOVAN DILLON SAFE] Comms echo skipped because sender/context unavailable", audio)
+        self.assertIn("await task_schedule(khovan_reach_send_safe_startup_message", audio)
+        self.assertIn('"startup_sender": "Dillon / Training Control"', audio)
+        self.assertIn('"startup_text": dillon_clip_1_stub_text', audio)
+        self.assertIn('"startup_sender_id": kestrel_yards_id', audio)
+        self.assertIn("[KHOVAN DILLON 001] Clip 1 text stand-in requested", audio)
+        self.assertIn("[KHOVAN DILLON 002] Clip 1 visible text sent", audio)
+        self.assertIn("[KHOVAN DILLON 003] Clip 1 Comms archive echo sent", audio)
+        self.assertIn("[KHOVAN ACT1 MSG DILLON 001] Dillon opening briefing sent", audio)
+        self.assertNotIn('comms_receive(dillon_clip_1_stub_text', audio)
         self.assertIn("[KHOVAN BOOT 008] Dillon Clip 1 stub/queue reached", audio)
-        self.assertIn("sbs.send_story_dialog(0", audio)
+        self.assertNotIn("sbs.send_story_dialog", audio)
 
     def test_debug_runtime_is_stubbed(self) -> None:
         debug = read("scripts/systems/debug_runtime.mast")

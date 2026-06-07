@@ -19,6 +19,8 @@ The original Pass 1, Act I v0.5, and automation gate map should be archived as d
 
 ## REVISION HISTORY
 
+**Rev 2.3 Slice 04 implementation finding (current)** - Artemis visibly starts with ship energy at 0, generator governor active, and no loaded ordnance. Kestrel holds the two-homing emergency reserve until Comms requests it. Tarsis normal docking/resupply restores full energy and armament and clears the governor.
+
 **Rev 2.2 (current)** — Cleanup pass. Changes:
 - Corrected DAMCON outcome thresholds in Scene 14 and timing notes to match the current source index and GM notes: extended T+30 total-loss threshold, compressed T+15 total-loss threshold.
 - Updated design-facing salvage-cover language to clarify pirates under salvage cover while preserving player-facing "salvager" fiction before exposure.
@@ -26,8 +28,8 @@ The original Pass 1, Act I v0.5, and automation gate map should be archived as d
 
 **Rev 2.1** — Act I shakedown fork merged. Changes:
 - Added Full Shakedown / Compressed Shakedown / Direct Scenario fork.
-- Replaced visible low-energy start with generator-output governor and delayed Kestrel advisory.
-- Artemis departs with 2 homing torpedoes as emergency conversion reserve.
+- Earlier model replaced visible low-energy start with generator-output governor and delayed Kestrel advisory; Slice 04 now intentionally combines visible ship energy = 0 with the generator governor.
+- Earlier model loaded 2 homing torpedoes at departure; Slice 04 now starts at 0 homing and lets Kestrel load exactly 2 only after the emergency reserve request.
 - Added upper-left lifeform overlay plus Comms archive echo for training/instruction text.
 - Added Tarsis production-priority and generator-acceptance gates before docking.
 - Added expanded Engineering systems shakedown and automation-gate preferences.
@@ -96,9 +98,10 @@ The tone is lighter than Sigma Protocol — no moral triangle, no hidden conspir
 **TSN Cruiser Artemis** — just out of Kestrel Yards refit cycle.
 
 - Hull: full integrity
+- Energy: visible ship energy = 0 at fresh load
 - Generator status: temporary generator-output governor active; yard crews are still working the generator problem
-- Practical effect: ship accelerates and sustains speed poorly until Tarsis accepts the generator handoff and clears the governor
-- Torpedoes: 2 homing torpedoes issued by Kestrel as emergency conversion reserve, sufficient to reach Tarsis if needed
+- Practical effect: Artemis is not mission-ready until the Kestrel/Tarsis flow is completed; Tarsis restores full energy and armament and clears the governor during normal docking/resupply
+- Torpedoes: 0 loaded at fresh load; Kestrel holds 2 homing torpedoes as emergency reserve and loads them only after Comms requests the reserve
 - No nukes, no EMPs, no mines until Tarsis resupply
 - Coolant: full
 - DAMCON teams: standard complement (six teams, three personnel each)
@@ -167,8 +170,11 @@ The lifeform overlay is temporary build scaffolding. In-fiction, these messages 
 **Initial runtime state:**
 
 ```text
+starting_energy = 0
 generator_governor_active = true
-starting_homing_torpedoes = 2
+starting_homing_torpedoes = 0
+homing_reserve_count = 2
+energy_restored = false
 launch_envelope_cleared = false
 kestrel_generator_packet_sent = false
 shakedown_mode = unset
@@ -190,7 +196,7 @@ shakedown_mode = unset
 
 > "Artemis, Kestrel Yard Control. Advisory packet follows. Your generator assembly is still under observation. We are working a regulator-output problem on our end and have placed a temporary governor on your generator output. You may see sluggish acceleration and reduced sustained-speed response until Tarsis accepts the generator handoff and clears the governor."
 >
-> "We have issued two homing torpedoes as emergency conversion reserve. That should be sufficient to get you to Tarsis if you need to trade ordnance for power margin. Tarsis has been notified to prioritize homing torpedo production and generator acceptance."
+> "Kestrel holds two homing torpedoes as emergency reserve and will load them only after Comms requests the reserve. Tarsis has been notified to prioritize homing torpedo production, generator acceptance, and energy restoration."
 
 **Dillon / Training Control speed-power reminder — overlay and Comms archive:**
 
@@ -796,7 +802,7 @@ These paths exist for completeness. Most crews will not hit them. Document them 
 
 Decisions made during Pass 1 that weren't fully locked in the outline. Review and push back if any don't match design intent.
 
-**1. Initial ship state at scenario start (v2.2).** Artemis starts with a temporary generator-output governor and two homing torpedoes issued by Kestrel as emergency conversion reserve. The ship is not presented as simply "low energy" at the yard. The crew discovers the sluggish response after departure, receives the Kestrel advisory ten seconds after launch-envelope exit, and resolves the issue through Tarsis generator acceptance and resupply.
+**1. Initial ship state at scenario start (v2.3 Slice 04 implementation finding).** Artemis starts with visible ship energy = 0, a temporary generator-output governor, and no loaded ordnance. Kestrel holds two homing torpedoes as emergency reserve and loads them only after Comms requests the reserve. The crew completes Kestrel departure, receives the Kestrel advisory ten seconds after launch-envelope exit, and resolves the issue through Tarsis generator acceptance, energy restoration, governor clear, and resupply.
 
 **2. Anderson's order phrasing.** I framed it as "investigate the fragmentary distress signal" with the Khovan Reach scientific cache mentioned only as regional context, not as a fetch target. The cache becomes operationally relevant when Engineering surfaces the convergence in Scene 9.
 

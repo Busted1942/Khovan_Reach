@@ -1,6 +1,6 @@
 # KHOVAN REACH — SOURCE INDEX
 
-Revision: repo-consolidated baseline + branch-lifecycle + operator-test-expectation process updates
+Revision: repo-consolidated baseline + branch-lifecycle + operator-test-expectation process updates + ProView v2.6 governance update
 Status: Canonical source map for the implementation repo
 Purpose: Identify the single active source files in this repo. Git history, not filename versioning, tracks future changes.
 
@@ -95,8 +95,8 @@ The active checklist lives in:
 # 7. Governance Docs
 
 - `docs/05_governance/00_project_instructions_architecture.md`
-- `docs/05_governance/10_proview_decision_support_operating_rules_v2_2.txt`
-- `docs/05_governance/20_proview_v2_4_test_first_workflow_checkpoint_draft.md` (draft governance reference with branch-lifecycle and operator-test-expectation amendments; not a silent replacement for v2.2)
+- `docs/05_governance/10_proview_decision_support_operating_rules_v2_6.md`
+- `docs/05_governance/20_proview_v2_4_test_first_workflow_checkpoint_draft.md` (draft governance reference preserved for comparison; not the active ProView operating-rules version)
 
 Governance docs shape review discipline. They are not mission canon.
 
@@ -127,10 +127,11 @@ Tier 2 references are syntax/API/reference evidence only. They do not define Kho
 
 # 9. Current Act I Canon
 
-- Artemis departs Kestrel with a temporary generator-output governor.
-- Kestrel issues 2 homing torpedoes as emergency conversion reserve.
+- Approved Slice 04 implementation finding: Artemis starts with visible ship energy = 0 while the temporary generator-output governor is active.
+- Artemis starts with Homing=0, Nuke=0, EMP=0, Mine=0.
+- Kestrel holds 2 homing torpedoes as emergency reserve and loads them only after the player requests the reserve through Comms.
 - After launch-envelope exit plus 10 seconds, Kestrel explains the generator issue.
-- Tarsis clears the generator governor after the crew requests homing-torpedo priority, generator acceptance/support, and docking clearance.
+- Tarsis clears the generator governor and restores full energy and armament after the crew requests homing-torpedo priority, generator acceptance/support, docking clearance, and completes normal docking/resupply.
 - Act I supports Full Shakedown Cruise, Compressed Shakedown Cruise, and Direct Scenario.
 - Training text displays through the upper-left lifeform overlay for now and echoes into the Comms archive.
 - Persistent current-objective text is an implementation spike, not yet proven.

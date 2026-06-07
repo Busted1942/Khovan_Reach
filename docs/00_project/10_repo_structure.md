@@ -135,7 +135,7 @@ Purpose:
 
 Files:
 - 00_project_instructions_architecture.md
-- 10_proview_decision_support_operating_rules_v2_2.txt
+- 10_proview_decision_support_operating_rules_v2_6.md
 - 20_proview_v2_4_test_first_workflow_checkpoint_draft.md
 
 Governance docs are not mission canon. They guide how to evaluate changes.
