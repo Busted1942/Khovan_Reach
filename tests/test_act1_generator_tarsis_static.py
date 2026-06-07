@@ -67,6 +67,7 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             "shared kestrel_departure_clearance_granted = False",
             'shared kestrel_yard_lock_visual_mode = "mechanical_yard_lock_overlay_fallback"',
             'shared kestrel_yard_lock_visual_status = "not_initialized"',
+            'shared kestrel_comms_options_status = "not_rendered"',
             "shared kestrel_yard_lock_message_sent = False",
             "shared kestrel_departure_clearance_response_sent = False",
             "shared kestrel_launch_envelope_response_sent = False",
@@ -200,6 +201,91 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
         ]:
             self.assertIn(phrase, body)
         self.assertNotIn("zero-energy start not source-authorized", body)
+
+    def test_story_jump_mission_start_seed_resets_slice04_start_state(self) -> None:
+        act1 = read(ACT1_PATH)
+        body = label_body(act1, "khovan_act1_story_jump_seed_mission_start")
+        for phrase in [
+            'mission_phase = "act_1"',
+            "current_scene = 1",
+            'current_beat = "scene_1_kestrel_departure_gate"',
+            'last_checkpoint = "mission_start"',
+            "transition_held = False",
+            "generator_governor_active = True",
+            "generator_governor_cleared = False",
+            "starting_homing_torpedoes = 0",
+            "homing_reserve_count = 2",
+            'homing_reserve_status = "held_by_kestrel_pending_request"',
+            "artemis_start_energy = 0",
+            "artemis_start_homing_torpedoes = 0",
+            "artemis_start_nukes = 0",
+            "artemis_start_emps = 0",
+            "artemis_start_mines = 0",
+            "energy_restored = False",
+            "kestrel_departure_clearance_granted = False",
+            "launch_envelope_cleared = False",
+            "kestrel_generator_packet_sent = False",
+            "kestrel_generator_advisory_run_id = kestrel_generator_advisory_run_id + 1",
+            "kestrel_generator_advisory_sent = False",
+            "tarsis_homing_priority_requested = False",
+            "tarsis_generator_support_requested = False",
+            "tarsis_docking_clearance_requested = False",
+            "tarsis_required_requests_complete = False",
+            "tarsis_resupply_confirmed = False",
+            "tarsis_governor_clear_response_sent = False",
+            "[KHOVAN JUMP ACT1 START] mission start seed reset Slice 04 generator/Tarsis gate",
+            "await task_schedule(khovan_act1_apply_source_authorized_start_state)",
+            "await task_schedule(khovan_act1_setup_kestrel_and_tarsis_contacts)",
+            "await task_schedule(khovan_set_current_objective",
+            '"objective_id": "kestrel_departure_clearance"',
+            "Comms request Kestrel departure clearance.",
+            "await task_schedule(khovan_scenario_control_panel_update_overview)",
+        ]:
+            self.assertIn(phrase, body)
+
+    def test_story_jump_post_tarsis_seed_sets_resupplied_handoff_state(self) -> None:
+        act1 = read(ACT1_PATH)
+        body = label_body(act1, "khovan_act1_story_jump_seed_post_tarsis_handoff")
+        for phrase in [
+            'mission_phase = "act_1"',
+            "current_scene = 2",
+            'current_beat = "await_next_shakedown_instruction"',
+            'last_checkpoint = "tarsis_resupply_governor_cleared"',
+            "transition_held = False",
+            "kestrel_departure_clearance_granted = True",
+            "launch_envelope_cleared = True",
+            "kestrel_generator_packet_sent = True",
+            "kestrel_generator_advisory_run_id = kestrel_generator_advisory_run_id + 1",
+            "kestrel_generator_advisory_sent = True",
+            "tarsis_homing_priority_requested = True",
+            "tarsis_generator_support_requested = True",
+            "tarsis_docking_clearance_requested = True",
+            "tarsis_required_requests_complete = True",
+            "tarsis_resupply_confirmed = True",
+            "tarsis_governor_clear_response_sent = True",
+            'tarsis_gate_status = "resupply_confirmed_governor_cleared"',
+            'tarsis_docking_resupply_status = "story_jump_seeded_post_tarsis_handoff"',
+            'tarsis_docking_gate_status = "enabled_after_docking_clearance"',
+            "generator_governor_active = False",
+            "generator_governor_cleared = True",
+            "energy_restored = True",
+            "[KHOVAN JUMP ACT1 POST TARSIS] post-resupply handoff seed requested",
+            "await task_schedule(khovan_act1_setup_kestrel_and_tarsis_contacts)",
+            "await task_schedule(khovan_tarsis_enable_docking_after_clearance)",
+            "tarsis_mechanical_dock_observed = True",
+            'set_data_set_value(artemis_id, "energy", tarsis_resupply_energy, 0)',
+            'set_data_set_value(artemis_id, "Homing_NUM", tarsis_resupply_homing_torpedoes, 0)',
+            'set_data_set_value(artemis_id, "Nuke_NUM", tarsis_resupply_nukes, 0)',
+            'set_data_set_value(artemis_id, "EMP_NUM", tarsis_resupply_emps, 0)',
+            'set_data_set_value(artemis_id, "Mine_NUM", tarsis_resupply_mines, 0)',
+            "artemis_object.pos = Vec3(18000, 0, 500)",
+            'artemis_object.data_set.set("dock_base_id", tarsis_station_id, 0)',
+            'artemis_object.data_set.set("dock_state", "docked", 0)',
+            '"objective_id": "await_shakedown_instruction"',
+            "Await next shakedown instruction.",
+            "await task_schedule(khovan_scenario_control_panel_update_overview)",
+        ]:
+            self.assertIn(phrase, body)
 
     def test_active_source_docs_authorize_visible_zero_energy_start(self) -> None:
         active_source = "\n".join(
@@ -359,6 +445,10 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             "[KHOVAN ACT1 DOCK 001] docking setup scheduled",
             "[KHOVAN ACT1 DOCK 001K] Kestrel Legendary docking helper skipped for startup mechanical hold fallback",
             "await task_schedule(docking_standard_player_station)",
+            'add_role(kestrel_yards_id, "station")',
+            'add_role(kestrel_yards_id, "kestrel_yards")',
+            'kestrel_comms_options_status = "station_and_kestrel_yards_roles_restored_after_docking_helper_pass"',
+            "[KHOVAN ACT1 COMMS 003B] Kestrel station/kestrel_yards roles restored after docking helper pass for Khovan Comms options",
             'add_role(tarsis_station_id, "station")',
             'remove_role(tarsis_station_id, "Station")',
             'tarsis_comms_options_status = "station_role_restored_after_docking_helper_pass"',
@@ -421,6 +511,10 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
         self.assertLess(
             setup_body.index('remove_role(kestrel_yards_id, "station")'),
             setup_body.index("await task_schedule(docking_standard_player_station)"),
+        )
+        self.assertLess(
+            setup_body.index("await task_schedule(docking_standard_player_station)"),
+            setup_body.index('kestrel_comms_options_status = "station_and_kestrel_yards_roles_restored_after_docking_helper_pass"'),
         )
 
     def test_tarsis_docking_setup_waits_for_docking_clearance(self) -> None:
@@ -692,13 +786,20 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             self.assertIn(phrase, visual_body)
         self.assertNotIn("comms_receive(", visual_body)
 
+        yard_lock_text = "\n".join(
+            [
+                setup_body,
+                label_body(act1, "khovan_act1_hold_artemis_at_kestrel_until_clearance"),
+                label_body(act1, "khovan_act1_release_kestrel_departure_hold"),
+                visual_body,
+            ]
+        )
         for unsafe in [
             "docking_set_docking_logic(player_id, kestrel_yards_id, docking_dock_with_friendly_station)",
             'artemis_object.data_set.set("dock_base_id", kestrel_yards_id, 0)',
             'artemis_object.data_set.set("dock_state", "docked", 0)',
-            'add_role(kestrel_yards_id, "station")',
         ]:
-            self.assertNotIn(unsafe, act1)
+            self.assertNotIn(unsafe, yard_lock_text)
 
     def test_kestrel_routes_gate_departure_and_launch_envelope_confirmation(self) -> None:
         act1 = read(ACT1_PATH)
@@ -974,11 +1075,17 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
 
     def test_governor_clear_only_happens_in_mechanical_tarsis_resupply(self) -> None:
         act1 = read(ACT1_PATH)
-        clear_hits = [
-            match.start()
-            for match in re.finditer(r"generator_governor_active\s*=\s*False", act1)
-        ]
-        self.assertEqual(1, len(clear_hits))
+        clear_labels = []
+        for match in re.finditer(r"^=== (?P<label>.*?) ===(?P<body>.*?)(?=^=== |\Z)", act1, flags=re.MULTILINE | re.DOTALL):
+            if re.search(r"generator_governor_active\s*=\s*False", match.group("body")):
+                clear_labels.append(match.group("label"))
+        self.assertEqual(
+            [
+                "khovan_act1_story_jump_seed_post_tarsis_handoff",
+                "khovan_tarsis_complete_mechanical_docking_and_resupply",
+            ],
+            clear_labels,
+        )
         clear_body = label_body(act1, "khovan_tarsis_complete_mechanical_docking_and_resupply")
         self.assertIn("if tarsis_governor_clear_response_sent:", clear_body)
         self.assertIn("[KHOVAN ACT1 MSG ORDER] duplicate suppressed Tarsis governor-clear response", clear_body)
@@ -1084,6 +1191,8 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             "[KHOVAN ACT1 011A]",
             "[KHOVAN ACT1 011B]",
             "[KHOVAN ACT1 012]",
+            "[KHOVAN JUMP ACT1 START]",
+            "[KHOVAN JUMP ACT1 POST TARSIS]",
         ]:
             self.assertIn(breadcrumb, act1)
 
