@@ -1,22 +1,24 @@
 # Admin Jump Verification
 
-Branch: slice04-admin-jump-missionstart-posttarsis
-Scope: GM-only Test Mode story jump presets for Slice 04 setup/smoke work.
+Branch: slice05-engineering-shakedown
+Scope: GM-only Test Mode story jump presets for Slice 04/Slice 05 setup/smoke work.
 
 ## What Changed
 
-- The GM Test Mode story jump menu now exposes exactly two active presets:
+- The GM Test Mode story jump menu now exposes exactly three active presets:
   - Mission Start
   - Post-Tarsis / Await Shakedown
+  - Engineering Shakedown Complete
 - Retired future placeholder jumps are not active in the menu.
-- Both presets seed accepted Slice 04 state through `scripts/acts/act1_generator_tarsis_gate.mast`.
+- Mission Start and Post-Tarsis seed accepted Slice 04 state through `scripts/acts/act1_generator_tarsis_gate.mast`.
+- Engineering Shakedown Complete reuses the Post-Tarsis seed, then marks Slice 05 engineering shakedown complete.
 - Neither preset creates proof stations or player-console admin controls.
 
 ## What Quick/Static Checks Prove
 
 - `tests/test_story_jump_presets_static.py` checks that the story jump route is GM-only and Test Mode gated.
-- Static checks require the registry to contain only `mission_start` and `post_tarsis_resupply`.
-- Static checks require both presets to call the Slice 04 seed helpers.
+- Static checks require the registry to contain only `mission_start`, `post_tarsis_resupply`, and `engineering_shakedown_complete`.
+- Static checks require the Slice 04 presets to call the Slice 04 seed helpers and the Slice 05 preset to call the engineering shakedown complete seed helper.
 - Static checks reject the retired future placeholder preset names.
 - `tests/test_act1_generator_tarsis_static.py` checks that:
   - Mission Start resets zero energy, zero ordnance, active governor, held Kestrel reserve, and the Kestrel departure objective.
@@ -29,12 +31,13 @@ Scope: GM-only Test Mode story jump presets for Slice 04 setup/smoke work.
 - Test Mode reveals Story Jumps only to the GM.
 - Mission Start visibly returns Artemis to the Kestrel start condition.
 - Post-Tarsis visibly gives Artemis full energy and armament and places the scenario at the await-shakedown handoff.
+- Engineering Shakedown Complete visibly places the scenario after the engineering shakedown, with the current objective awaiting the next instruction.
 - The current objective text appears in the live text/comms surface after each jump.
 - Repeated jumps do not leave stale Kestrel advisory messages firing in the wrong state.
 
 ## Live Smoke Procedure
 
-Repo/branch assumption: run from `slice04-admin-jump-missionstart-posttarsis` after `python run_tests.py quick` passes.
+Repo/branch assumption: run from `slice05-engineering-shakedown` after `python run_tests.py quick` passes.
 
 1. Start Cosmos and load Khovan Reach.
 2. On the GM Comms console, open `Khovan Scenario Control`.
@@ -70,11 +73,25 @@ Failure/ambiguous observation:
 - Objective text remains on Kestrel or Tarsis docking.
 - A delayed Kestrel generator advisory fires after the Post-Tarsis jump.
 
+7. From the same GM jump menu, select `Engineering Shakedown Complete`.
+
+Expected observation:
+- Artemis is at/near Tarsis and treated as post-resupply.
+- Energy is full, expected value 1000.
+- Armament is full: Homing 10, Nuke 3, EMP 6, Mine 6.
+- Current objective says `Engineering shakedown complete. Await next shakedown instruction.`
+- Scenario Control overview reports `engineering_shakedown_complete. True`.
+
+Failure/ambiguous observation:
+- Engineering shakedown still offers incomplete fallback gates.
+- Current objective remains on no-motion, DAMCON, overload, repair, or navigation priority.
+- Scenario Control overview does not report engineering shakedown complete.
+
 ## What Remains Unproven
 
 - Static tests do not prove live UI visibility, dock-state behavior, or Cosmos data-set rendering.
 - The Post-Tarsis jump is an admin test seed and does not prove the real player sequence from Kestrel through normal Tarsis docking.
-- Slice 05 remains intentionally unstarted.
+- The Engineering Shakedown Complete jump is an admin test seed and does not prove the real engineering gates, DAMCON positioning, overload damage, repair, or navigation preset.
 
 ## Commit Gate
 
@@ -82,5 +99,5 @@ Do not commit this branch until:
 
 - `python run_tests.py quick` passes.
 - `git diff --check` passes.
-- The live smoke procedure above confirms both jumps once.
+- The live smoke procedure above confirms all three jumps once.
 - Any failed or ambiguous live result is fixed or documented before closing the branch.

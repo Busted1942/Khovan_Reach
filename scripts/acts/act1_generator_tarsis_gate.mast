@@ -323,6 +323,7 @@ shared tarsis_resupply_text = "Tarsis Control: normal docking resupply and gener
             script.write_khovan_startup_trace("[KHOVAN JUMP ACT1 POST TARSIS] Artemis positioned at Tarsis with docked state for admin smoke setup")
         script.write_khovan_startup_trace(f"[KHOVAN JUMP ACT1 POST TARSIS] resources seeded energy={tarsis_resupply_energy} homing={tarsis_resupply_homing_torpedoes} nuke={tarsis_resupply_nukes} emp={tarsis_resupply_emps} mine={tarsis_resupply_mines}")
     await task_schedule(khovan_set_current_objective, {"objective_id": "await_shakedown_instruction", "objective_body": "Await next shakedown instruction.", "objective_step": "Await shakedown", "objective_breadcrumb": "[KHOVAN OBJECTIVE 007] objective updated: await next shakedown instruction"})
+    await task_schedule(khovan_act1_engineering_shakedown_prepare_after_tarsis)
     await task_schedule(khovan_scenario_control_panel_update_overview)
     log("Khovan admin jump seeded Slice 04 post-Tarsis handoff.")
     ->END
@@ -961,6 +962,7 @@ distance: 600
     tarsis_governor_clear_response_sent = True
     script.write_khovan_startup_trace("[KHOVAN ACT1 012] Tarsis resupply confirmed; generator governor cleared")
     await task_schedule(khovan_set_current_objective, {"objective_id": "await_shakedown_instruction", "objective_body": "Await next shakedown instruction.", "objective_step": "Await shakedown", "objective_breadcrumb": "[KHOVAN OBJECTIVE 007] objective updated: await next shakedown instruction"})
+    await task_schedule(khovan_act1_engineering_shakedown_prepare_after_tarsis)
     await task_schedule(khovan_act1_record_progression, {"action": "tarsis_resupply_governor_cleared", "detail": "all three requests complete; normal Tarsis docking resupply cleared governor and restored full energy/armament"})
     await task_schedule(khovan_reach_send_safe_startup_message, {"startup_sender": "Tarsis Station", "startup_text": tarsis_resupply_text, "startup_title_color": "green", "startup_sender_id": tarsis_station_id, "startup_player_id": ship_id, "startup_breadcrumb": "[KHOVAN ACT1 MSG TARSIS 005] docking/resupply response sent"})
     script.write_khovan_startup_trace("[KHOVAN ACT1 MSG TARSIS 005] docking/resupply response sent")
