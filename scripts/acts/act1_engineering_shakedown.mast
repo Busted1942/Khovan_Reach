@@ -1,0 +1,475 @@
+# Khovan Reach Slice 05 Full Shakedown Engineering systems sequence.
+# Uses automatic observers where current API evidence is reliable and Comms fallbacks where it is not.
+
+shared engineering_shakedown_initialized = False
+shared engineering_shakedown_available = False
+shared engineering_shakedown_started = False
+shared engineering_shakedown_status = "not_initialized"
+shared engineering_shakedown_detection_mode = "automatic_helm_no_motion_and_engine_damage_observers; comms_fallback_for_unverified_engineering_slider_damcon_location_repair_navigation_preset"
+shared engineering_shakedown_last_step = "none"
+shared engineering_shakedown_start_response_sent = False
+shared engineering_impulse_zero_warp_200_requested = False
+shared engineering_no_motion_validation_requested = False
+shared engineering_no_motion_detection_mode = "automatic_playerThrottle_cur_speed_position_delta_observer_engineering_slider_keys_unverified"
+shared engineering_no_motion_fallback_available = False
+shared engineering_no_motion_observer_status = "not_started"
+shared engineering_no_motion_observer_ticks = 0
+shared engineering_no_motion_start_x = 0
+shared engineering_no_motion_start_z = 0
+shared engineering_no_motion_confirmed = False
+shared damcon_rest_cycle_detection_mode = "damcon_location_api_unverified_comms_fallback_after_observer_attempt"
+shared damcon_rest_cycle_fallback_available = False
+shared damcon_rest_cycle_confirmed = False
+shared damcon_meal_cycle_detection_mode = "damcon_location_api_unverified_comms_fallback_after_observer_attempt"
+shared damcon_meal_cycle_fallback_available = False
+shared damcon_meal_cycle_confirmed = False
+shared controlled_overload_started = False
+shared controlled_overload_damage_detection_mode = "automatic_engine_system_damage_observer_with_comms_fallback"
+shared controlled_overload_damage_fallback_available = False
+shared controlled_overload_damage_observer_status = "not_started"
+shared controlled_overload_damage_observer_ticks = 0
+shared controlled_overload_initial_engine_damage = 0
+shared controlled_overload_damage_detected = False
+shared controlled_overload_repair_supervision_started = False
+shared controlled_overload_repair_detection_mode = "engineering_captain_comms_confirmation_fallback_until_repair_completion_api_verified"
+shared controlled_overload_repair_fallback_available = False
+shared controlled_overload_repair_confirmed = False
+shared controlled_overload_repaired = False
+shared navigation_priority_preset_set = False
+shared navigation_priority_preset_detection_mode = "maneuver_190_warp_10_impulse_100_preset_api_unverified_comms_fallback_after_operator_action"
+shared navigation_priority_preset_fallback_available = False
+shared engineering_shakedown_complete = False
+shared engineering_shakedown_api_uncertainty = "Engineering slider output, DAMCON location, repair completion, and navigation preset storage require live Cosmos proof before automatic gates can be claimed."
+
+shared engineering_shakedown_start_text = "Training Control: Engineering systems shakedown begins. Engineering, set impulse output to zero percent and warp output to two hundred percent. Captain, order full impulse when Engineering reports set. Helm, hold speed at zero; Training Control will validate Artemis does not move."
+shared engineering_no_motion_confirmed_text = "Training Control: no-motion validation logged. Engineering, assign DAMCON teams to crew quarters and place them on rest-cycle standby. Comms, request DAMCON Control confirmation."
+shared damcon_rest_cycle_text = "DAMCON Control: rest-cycle standby confirmed in crew quarters."
+shared damcon_mess_instruction_text = "Training Control: now assign DAMCON teams to the mess and place them on meal-cycle standby. Comms, request DAMCON Control confirmation."
+shared damcon_meal_cycle_text = "DAMCON Control: meal-cycle standby confirmed in the mess."
+shared controlled_overload_instruction_text = "Training Control: controlled overload exercise. Helm, set engines to all stop. Engineering, set impulse and warp output to three hundred percent. Do not prevent the overload. Captain, hold movement orders until damage is logged."
+shared controlled_damage_logged_text = "Training Control: controlled damage logged. Engineering, assign repair crews and supervise repair. Captain, hold movement until Engineering reports recovery."
+shared repair_complete_text = "Training Control: repair complete. Engineering, set maneuvering to one hundred ninety percent, warp to ten percent, and impulse to one hundred percent. Save or select the navigation-priority preset and report ready."
+shared navigation_priority_confirmed_text = "Training Control: Engineering systems shakedown complete. Await next shakedown instruction."
+
+//comms if has_roles(COMMS_SELECTED_ID, "tarsis_station") and generator_governor_cleared and not engineering_shakedown_complete
+    + "Khovan: Begin Engineering Shakedown" khovan_act1_engineering_shakedown_start if engineering_shakedown_available and not engineering_shakedown_started
+    + "Khovan: Fallback Confirm No-Motion" khovan_engineering_confirm_no_motion if engineering_no_motion_fallback_available and not engineering_no_motion_confirmed
+    + "Khovan: Fallback DAMCON Crew-Quarters Standby" khovan_engineering_confirm_damcon_rest_cycle if damcon_rest_cycle_fallback_available and not damcon_rest_cycle_confirmed
+    + "Khovan: Fallback DAMCON Mess Standby" khovan_engineering_confirm_damcon_meal_cycle if damcon_meal_cycle_fallback_available and not damcon_meal_cycle_confirmed
+    + "Khovan: Confirm Controlled Overload Started" khovan_engineering_start_controlled_overload if damcon_meal_cycle_confirmed and not controlled_overload_started
+    + "Khovan: Fallback Confirm Controlled Damage" khovan_engineering_confirm_controlled_damage if controlled_overload_damage_fallback_available and not controlled_overload_damage_detected
+    + "Khovan: Fallback Confirm Repair Complete" khovan_engineering_confirm_repair_complete if controlled_overload_repair_fallback_available and not controlled_overload_repair_confirmed
+    + "Khovan: Fallback Confirm Navigation Priority" khovan_engineering_confirm_navigation_priority if navigation_priority_preset_fallback_available and not navigation_priority_preset_set
+
+=== khovan_act1_initialize_engineering_shakedown ===
+    engineering_shakedown_initialized = True
+    engineering_shakedown_available = False
+    engineering_shakedown_started = False
+    engineering_shakedown_status = "initialized_waiting_for_tarsis_handoff"
+    engineering_shakedown_last_step = "waiting_for_tarsis_handoff"
+    engineering_shakedown_start_response_sent = False
+    engineering_impulse_zero_warp_200_requested = False
+    engineering_no_motion_validation_requested = False
+    engineering_no_motion_fallback_available = False
+    engineering_no_motion_confirmed = False
+    damcon_rest_cycle_fallback_available = False
+    damcon_rest_cycle_confirmed = False
+    damcon_meal_cycle_fallback_available = False
+    damcon_meal_cycle_confirmed = False
+    controlled_overload_started = False
+    controlled_overload_damage_fallback_available = False
+    controlled_overload_damage_detected = False
+    controlled_overload_repair_supervision_started = False
+    controlled_overload_repair_fallback_available = False
+    controlled_overload_repair_confirmed = False
+    controlled_overload_repaired = False
+    navigation_priority_preset_fallback_available = False
+    navigation_priority_preset_set = False
+    engineering_shakedown_complete = False
+    script.write_khovan_startup_trace("[KHOVAN ACT1 ENG 001] Engineering shakedown state initialized")
+    ->END
+
+=== khovan_act1_engineering_shakedown_prepare_after_tarsis ===
+    shakedown_mode = "full"
+    engineering_shakedown_available = True
+    engineering_shakedown_started = False
+    engineering_shakedown_status = "available_after_tarsis_handoff"
+    engineering_shakedown_last_step = "available_after_tarsis_handoff"
+    engineering_shakedown_start_response_sent = False
+    engineering_impulse_zero_warp_200_requested = False
+    engineering_no_motion_validation_requested = False
+    engineering_no_motion_fallback_available = False
+    engineering_no_motion_confirmed = False
+    damcon_rest_cycle_fallback_available = False
+    damcon_rest_cycle_confirmed = False
+    damcon_meal_cycle_fallback_available = False
+    damcon_meal_cycle_confirmed = False
+    controlled_overload_started = False
+    controlled_overload_damage_fallback_available = False
+    controlled_overload_damage_detected = False
+    controlled_overload_repair_supervision_started = False
+    controlled_overload_repair_fallback_available = False
+    controlled_overload_repair_confirmed = False
+    controlled_overload_repaired = False
+    navigation_priority_preset_fallback_available = False
+    navigation_priority_preset_set = False
+    engineering_shakedown_complete = False
+    script.write_khovan_startup_trace("[KHOVAN ACT1 ENG 002] Engineering shakedown available after Tarsis handoff")
+    await task_schedule(khovan_scenario_control_panel_update_overview)
+    ->END
+
+=== khovan_act1_story_jump_seed_engineering_shakedown_complete ===
+    await task_schedule(khovan_act1_story_jump_seed_post_tarsis_handoff)
+    shakedown_mode = "full"
+    engineering_shakedown_available = True
+    engineering_shakedown_started = True
+    engineering_shakedown_status = "story_jump_seeded_complete"
+    engineering_shakedown_last_step = "engineering_shakedown_complete"
+    engineering_impulse_zero_warp_200_requested = True
+    engineering_no_motion_validation_requested = True
+    engineering_no_motion_confirmed = True
+    engineering_no_motion_fallback_available = False
+    engineering_no_motion_observer_status = "story_jump_seeded_complete"
+    damcon_rest_cycle_confirmed = True
+    damcon_rest_cycle_fallback_available = False
+    damcon_meal_cycle_confirmed = True
+    damcon_meal_cycle_fallback_available = False
+    controlled_overload_started = True
+    controlled_overload_damage_detected = True
+    controlled_overload_damage_fallback_available = False
+    controlled_overload_damage_observer_status = "story_jump_seeded_complete"
+    controlled_overload_repair_supervision_started = True
+    controlled_overload_repair_confirmed = True
+    controlled_overload_repair_fallback_available = False
+    controlled_overload_repaired = True
+    navigation_priority_preset_set = True
+    navigation_priority_preset_fallback_available = False
+    engineering_shakedown_complete = True
+    mission_phase = "act_1"
+    current_scene = 2
+    current_beat = "engineering_shakedown_complete"
+    last_checkpoint = "engineering_shakedown_complete"
+    await task_schedule(khovan_set_current_objective, {"objective_id": "engineering_shakedown_complete", "objective_body": "Engineering shakedown complete. Await next shakedown instruction.", "objective_step": "Engineering shakedown complete", "objective_breadcrumb": "[KHOVAN OBJECTIVE 015J] objective updated: Engineering shakedown complete admin preset"})
+    script.write_khovan_startup_trace("[KHOVAN JUMP ACT1 ENG COMPLETE] engineering shakedown complete seed requested")
+    log("Khovan admin jump seeded Slice 05 engineering shakedown complete.")
+    ->END
+
+=== khovan_act1_engineering_shakedown_start ===
+    if not generator_governor_cleared or not energy_restored:
+        engineering_shakedown_status = "blocked_before_tarsis_handoff"
+        engineering_shakedown_last_step = "blocked_before_tarsis_handoff"
+        script.write_khovan_startup_trace("[KHOVAN ACT1 ENG BLOCKED] Engineering shakedown start blocked before Tarsis handoff")
+        comms_receive("Training Control: hold Engineering shakedown until Tarsis resupply and generator handoff are complete.", title="Training Control", title_color="yellow")
+        yield fail
+
+    if engineering_shakedown_started:
+        script.write_khovan_startup_trace("[KHOVAN ACT1 ENG MSG ORDER] duplicate suppressed Engineering shakedown start")
+        yield success
+
+    shakedown_mode = "full"
+    engineering_shakedown_available = True
+    engineering_shakedown_started = True
+    engineering_shakedown_status = "impulse_zero_warp_200_instruction"
+    engineering_shakedown_last_step = "impulse_zero_warp_200_instruction"
+    engineering_shakedown_start_response_sent = True
+    engineering_impulse_zero_warp_200_requested = True
+    engineering_no_motion_validation_requested = True
+    engineering_no_motion_fallback_available = False
+    current_scene = 3
+    current_beat = "engineering_shakedown_impulse_zero_warp_200"
+    last_checkpoint = "engineering_shakedown_start"
+    script.write_khovan_startup_trace("[KHOVAN ACT1 ENG 003] Engineering shakedown started; impulse zero warp 200 instruction sent")
+    await task_schedule(khovan_set_current_objective, {"objective_id": "engineering_impulse_zero_warp_200", "objective_body": "Engineering set impulse 0 and warp 200. Captain order full impulse; Helm hold zero speed while Training Control validates no motion.", "objective_step": "Engineering impulse zero / warp 200", "objective_breadcrumb": "[KHOVAN OBJECTIVE 008] objective updated: Engineering impulse zero warp 200"})
+    await task_schedule(khovan_scenario_control_panel_update_overview)
+    task_schedule(khovan_engineering_watch_no_motion_validation)
+    comms_receive(engineering_shakedown_start_text, title="Training Control", title_color="cyan")
+    yield success
+
+=== khovan_engineering_watch_no_motion_validation ===
+    if engineering_no_motion_confirmed:
+        ->END
+    if not engineering_no_motion_validation_requested:
+        ->END
+    if artemis_id == 0:
+        engineering_no_motion_observer_status = "fallback_missing_artemis_id"
+        engineering_no_motion_fallback_available = True
+        script.write_khovan_startup_trace("[KHOVAN ACT1 ENG NO MOTION FALLBACK] missing Artemis id")
+        ->END
+
+    artemis_object = to_object(artemis_id)
+    if artemis_object is None:
+        engineering_no_motion_observer_status = "fallback_missing_artemis_object"
+        engineering_no_motion_fallback_available = True
+        script.write_khovan_startup_trace("[KHOVAN ACT1 ENG NO MOTION FALLBACK] missing Artemis object")
+        ->END
+
+    engineering_no_motion_start_x = artemis_object.pos.x
+    engineering_no_motion_start_z = artemis_object.pos.z
+    engineering_no_motion_observer_status = "watching_for_full_throttle_no_motion"
+    engineering_no_motion_observer_ticks = 0
+    await delay_sim(seconds=1)
+    jump khovan_engineering_watch_no_motion_validation_tick
+    ->END
+
+=== khovan_engineering_watch_no_motion_validation_tick ===
+    if engineering_no_motion_confirmed:
+        ->END
+    if not engineering_no_motion_validation_requested:
+        ->END
+
+    engineering_no_motion_observer_ticks = engineering_no_motion_observer_ticks + 1
+    artemis_object = to_object(artemis_id)
+    if artemis_object is None:
+        engineering_no_motion_observer_status = "fallback_missing_artemis_object_during_watch"
+        engineering_no_motion_fallback_available = True
+        ->END
+
+    dx = artemis_object.pos.x - engineering_no_motion_start_x
+    dz = artemis_object.pos.z - engineering_no_motion_start_z
+    flat_distance_sq = dx * dx + dz * dz
+    throttle = artemis_object.data_set.get("playerThrottle", 0)
+    speed = 0
+    artemis_engine_object = to_engine_object(artemis_id)
+    if artemis_engine_object is not None:
+        speed = abs(artemis_engine_object.cur_speed)
+
+    script.write_khovan_startup_trace(f"[KHOVAN ACT1 ENG NO MOTION WATCH] tick={engineering_no_motion_observer_ticks} throttle={throttle} speed={speed} distance_sq={flat_distance_sq}")
+    if throttle >= 0.95 and speed <= 1 and flat_distance_sq <= 25:
+        await task_schedule(khovan_engineering_complete_no_motion_validation, {"completion_source": "automatic_throttle_speed_position_observer"})
+        ->END
+
+    if engineering_no_motion_observer_ticks >= 20:
+        engineering_no_motion_observer_status = "fallback_timeout_engineering_slider_keys_unverified"
+        engineering_no_motion_fallback_available = True
+        script.write_khovan_startup_trace("[KHOVAN ACT1 ENG NO MOTION FALLBACK] automatic observer timed out; Comms fallback enabled")
+        comms_receive("Training Control: no-motion observer cannot verify the Engineering slider state. If Engineering set impulse zero and warp two hundred and Helm sees no movement, use fallback confirmation.", title="Training Control", title_color="yellow")
+        ->END
+
+    await delay_sim(seconds=1)
+    jump khovan_engineering_watch_no_motion_validation_tick
+    ->END
+
+=== khovan_engineering_complete_no_motion_validation ===
+    default completion_source = "fallback_confirmation"
+    if engineering_no_motion_confirmed:
+        ->END
+
+    if not engineering_no_motion_validation_requested:
+        engineering_shakedown_status = "no_motion_confirmation_blocked_missing_instruction"
+        script.write_khovan_startup_trace("[KHOVAN ACT1 ENG BLOCKED] no-motion confirmation blocked before impulse zero/warp 200 instruction")
+        ->END
+
+    engineering_no_motion_confirmed = True
+    engineering_no_motion_fallback_available = False
+    engineering_no_motion_observer_status = completion_source
+    engineering_shakedown_status = "damcon_crew_quarters_standby"
+    engineering_shakedown_last_step = "no_motion_confirmed"
+    current_beat = "engineering_no_motion_confirmed"
+    script.write_khovan_startup_trace(f"[KHOVAN ACT1 ENG 004] no-motion validation confirmed source={completion_source}")
+    await task_schedule(khovan_set_current_objective, {"objective_id": "damcon_crew_quarters_standby", "objective_body": "Engineering assign DAMCON to crew quarters rest-cycle standby. Comms request DAMCON confirmation.", "objective_step": "DAMCON crew quarters standby", "objective_breadcrumb": "[KHOVAN OBJECTIVE 009] objective updated: DAMCON crew quarters standby"})
+    await task_schedule(khovan_scenario_control_panel_update_overview)
+    task_schedule(khovan_engineering_watch_damcon_rest_cycle)
+    comms_receive(engineering_no_motion_confirmed_text, title="Training Control", title_color="cyan")
+    ->END
+
+=== khovan_engineering_confirm_no_motion ===
+    await task_schedule(khovan_engineering_complete_no_motion_validation, {"completion_source": "comms_fallback_confirmation"})
+    yield success
+
+=== khovan_engineering_watch_damcon_rest_cycle ===
+    if damcon_rest_cycle_confirmed:
+        ->END
+    if not engineering_no_motion_confirmed:
+        ->END
+
+    await delay_sim(seconds=8)
+    if not damcon_rest_cycle_confirmed:
+        damcon_rest_cycle_fallback_available = True
+        engineering_shakedown_status = "damcon_crew_quarters_standby_fallback_available"
+        script.write_khovan_startup_trace("[KHOVAN ACT1 ENG DAMCON REST FALLBACK] DAMCON location API unverified; Comms fallback enabled")
+    ->END
+
+=== khovan_engineering_confirm_damcon_rest_cycle ===
+    if not engineering_no_motion_confirmed:
+        engineering_shakedown_status = "damcon_rest_blocked_before_no_motion"
+        script.write_khovan_startup_trace("[KHOVAN ACT1 ENG BLOCKED] DAMCON rest-cycle confirmation blocked before no-motion validation")
+        yield fail
+
+    damcon_rest_cycle_confirmed = True
+    damcon_rest_cycle_fallback_available = False
+    engineering_shakedown_status = "damcon_mess_standby"
+    engineering_shakedown_last_step = "damcon_rest_cycle_confirmed"
+    current_beat = "damcon_rest_cycle_confirmed"
+    script.write_khovan_startup_trace("[KHOVAN ACT1 ENG 005] DAMCON crew quarters rest-cycle standby confirmed through Comms")
+    await task_schedule(khovan_set_current_objective, {"objective_id": "damcon_mess_standby", "objective_body": "Engineering move DAMCON to mess meal-cycle standby. Comms request DAMCON confirmation.", "objective_step": "DAMCON mess standby", "objective_breadcrumb": "[KHOVAN OBJECTIVE 010] objective updated: DAMCON mess standby"})
+    await task_schedule(khovan_scenario_control_panel_update_overview)
+    task_schedule(khovan_engineering_watch_damcon_meal_cycle)
+    comms_receive(f"{damcon_rest_cycle_text}\n{damcon_mess_instruction_text}", title="DAMCON Control", title_color="green")
+    yield success
+
+=== khovan_engineering_watch_damcon_meal_cycle ===
+    if damcon_meal_cycle_confirmed:
+        ->END
+    if not damcon_rest_cycle_confirmed:
+        ->END
+
+    await delay_sim(seconds=8)
+    if not damcon_meal_cycle_confirmed:
+        damcon_meal_cycle_fallback_available = True
+        engineering_shakedown_status = "damcon_mess_standby_fallback_available"
+        script.write_khovan_startup_trace("[KHOVAN ACT1 ENG DAMCON MEAL FALLBACK] DAMCON location API unverified; Comms fallback enabled")
+    ->END
+
+=== khovan_engineering_confirm_damcon_meal_cycle ===
+    if not damcon_rest_cycle_confirmed:
+        engineering_shakedown_status = "damcon_meal_blocked_before_rest_cycle"
+        script.write_khovan_startup_trace("[KHOVAN ACT1 ENG BLOCKED] DAMCON meal-cycle confirmation blocked before rest-cycle")
+        yield fail
+
+    damcon_meal_cycle_confirmed = True
+    damcon_meal_cycle_fallback_available = False
+    engineering_shakedown_status = "controlled_overload_instruction"
+    engineering_shakedown_last_step = "damcon_meal_cycle_confirmed"
+    current_beat = "damcon_meal_cycle_confirmed"
+    script.write_khovan_startup_trace("[KHOVAN ACT1 ENG 006] DAMCON mess meal-cycle standby confirmed through Comms")
+    await task_schedule(khovan_set_current_objective, {"objective_id": "controlled_overload_start", "objective_body": "Helm set engines to all stop. Engineering set impulse and warp 300 for controlled overload. Captain hold movement until damage is logged.", "objective_step": "Controlled overload", "objective_breadcrumb": "[KHOVAN OBJECTIVE 011] objective updated: controlled overload"})
+    await task_schedule(khovan_scenario_control_panel_update_overview)
+    comms_receive(f"{damcon_meal_cycle_text}\n{controlled_overload_instruction_text}", title="Training Control", title_color="cyan")
+    yield success
+
+=== khovan_engineering_start_controlled_overload ===
+    if not damcon_meal_cycle_confirmed:
+        engineering_shakedown_status = "overload_blocked_before_damcon_standby"
+        script.write_khovan_startup_trace("[KHOVAN ACT1 ENG BLOCKED] controlled overload blocked before DAMCON standby confirmations")
+        yield fail
+
+    controlled_overload_started = True
+    controlled_overload_damage_fallback_available = False
+    engineering_shakedown_status = "controlled_overload_waiting_for_damage"
+    engineering_shakedown_last_step = "controlled_overload_started"
+    current_beat = "controlled_overload_started"
+    script.write_khovan_startup_trace("[KHOVAN ACT1 ENG 007] controlled 300 percent impulse/warp overload confirmed started by Comms fallback")
+    await task_schedule(khovan_set_current_objective, {"objective_id": "controlled_overload_damage", "objective_body": "Hold movement until controlled damage is logged, then Engineering supervise repairs.", "objective_step": "Controlled damage", "objective_breadcrumb": "[KHOVAN OBJECTIVE 012] objective updated: controlled damage"})
+    await task_schedule(khovan_scenario_control_panel_update_overview)
+    task_schedule(khovan_engineering_watch_controlled_overload_damage)
+    comms_receive("Training Control: controlled overload logged. Stand by for damage confirmation.", title="Training Control", title_color="cyan")
+    yield success
+
+=== khovan_engineering_watch_controlled_overload_damage ===
+    if controlled_overload_damage_detected:
+        ->END
+    if not controlled_overload_started:
+        ->END
+    if artemis_id == 0:
+        controlled_overload_damage_observer_status = "fallback_missing_artemis_id"
+        controlled_overload_damage_fallback_available = True
+        ->END
+
+    artemis_object = to_object(artemis_id)
+    if artemis_object is None:
+        controlled_overload_damage_observer_status = "fallback_missing_artemis_object"
+        controlled_overload_damage_fallback_available = True
+        ->END
+
+    controlled_overload_initial_engine_damage = artemis_object.data_set.get("system_damage", sbs.SHPSYS.ENGINES)
+    controlled_overload_damage_observer_status = "watching_engine_system_damage"
+    controlled_overload_damage_observer_ticks = 0
+    await delay_sim(seconds=1)
+    jump khovan_engineering_watch_controlled_overload_damage_tick
+    ->END
+
+=== khovan_engineering_watch_controlled_overload_damage_tick ===
+    if controlled_overload_damage_detected:
+        ->END
+    if not controlled_overload_started:
+        ->END
+
+    controlled_overload_damage_observer_ticks = controlled_overload_damage_observer_ticks + 1
+    artemis_object = to_object(artemis_id)
+    if artemis_object is None:
+        controlled_overload_damage_observer_status = "fallback_missing_artemis_object_during_watch"
+        controlled_overload_damage_fallback_available = True
+        ->END
+
+    current_engine_damage = artemis_object.data_set.get("system_damage", sbs.SHPSYS.ENGINES)
+    script.write_khovan_startup_trace(f"[KHOVAN ACT1 ENG DAMAGE WATCH] tick={controlled_overload_damage_observer_ticks} initial={controlled_overload_initial_engine_damage} current={current_engine_damage}")
+    if current_engine_damage > controlled_overload_initial_engine_damage:
+        await task_schedule(khovan_engineering_complete_controlled_damage, {"completion_source": "automatic_engine_system_damage_observer"})
+        ->END
+
+    if controlled_overload_damage_observer_ticks >= 30:
+        controlled_overload_damage_observer_status = "fallback_timeout_no_engine_damage_seen"
+        controlled_overload_damage_fallback_available = True
+        script.write_khovan_startup_trace("[KHOVAN ACT1 ENG DAMAGE FALLBACK] no engine system damage detected; Comms fallback enabled")
+        comms_receive("Training Control: engine damage observer did not see a damage change. If Engineering saw the controlled overload/damage condition, use fallback confirmation.", title="Training Control", title_color="yellow")
+        ->END
+
+    await delay_sim(seconds=1)
+    jump khovan_engineering_watch_controlled_overload_damage_tick
+    ->END
+
+=== khovan_engineering_complete_controlled_damage ===
+    default completion_source = "fallback_confirmation"
+    if controlled_overload_damage_detected:
+        ->END
+
+    if not controlled_overload_started:
+        engineering_shakedown_status = "damage_confirmation_blocked_before_overload"
+        script.write_khovan_startup_trace("[KHOVAN ACT1 ENG BLOCKED] controlled damage confirmation blocked before overload")
+        ->END
+
+    controlled_overload_damage_detected = True
+    controlled_overload_damage_fallback_available = False
+    controlled_overload_damage_observer_status = completion_source
+    controlled_overload_repair_supervision_started = True
+    engineering_shakedown_status = "repair_supervision"
+    engineering_shakedown_last_step = "controlled_damage_logged"
+    current_beat = "controlled_damage_logged"
+    script.write_khovan_startup_trace(f"[KHOVAN ACT1 ENG 008] controlled overload damage confirmed source={completion_source}")
+    await task_schedule(khovan_set_current_objective, {"objective_id": "engineering_repair_supervision", "objective_body": "Engineering assign repair crews and supervise repair. Comms confirm recovery when complete.", "objective_step": "Repair supervision", "objective_breadcrumb": "[KHOVAN OBJECTIVE 013] objective updated: repair supervision"})
+    await task_schedule(khovan_scenario_control_panel_update_overview)
+    controlled_overload_repair_fallback_available = True
+    comms_receive(controlled_damage_logged_text, title="Training Control", title_color="cyan")
+    ->END
+
+=== khovan_engineering_confirm_controlled_damage ===
+    await task_schedule(khovan_engineering_complete_controlled_damage, {"completion_source": "comms_fallback_confirmation"})
+    yield success
+
+=== khovan_engineering_confirm_repair_complete ===
+    if not controlled_overload_damage_detected:
+        engineering_shakedown_status = "repair_confirmation_blocked_before_damage"
+        script.write_khovan_startup_trace("[KHOVAN ACT1 ENG BLOCKED] repair confirmation blocked before controlled damage")
+        yield fail
+
+    controlled_overload_repair_confirmed = True
+    controlled_overload_repair_fallback_available = False
+    controlled_overload_repaired = True
+    engineering_shakedown_status = "navigation_priority_preset"
+    engineering_shakedown_last_step = "repair_confirmed"
+    current_beat = "controlled_overload_repair_confirmed"
+    script.write_khovan_startup_trace("[KHOVAN ACT1 ENG 009] repair completion confirmed by Comms fallback")
+    await task_schedule(khovan_set_current_objective, {"objective_id": "navigation_priority_preset", "objective_body": "Engineering set maneuvering 190, warp 10, and impulse 100. Save or select navigation-priority preset, then report ready.", "objective_step": "Navigation priority preset", "objective_breadcrumb": "[KHOVAN OBJECTIVE 014] objective updated: navigation priority preset"})
+    await task_schedule(khovan_scenario_control_panel_update_overview)
+    navigation_priority_preset_fallback_available = True
+    comms_receive(repair_complete_text, title="Training Control", title_color="cyan")
+    yield success
+
+=== khovan_engineering_confirm_navigation_priority ===
+    if not controlled_overload_repair_confirmed:
+        engineering_shakedown_status = "navigation_priority_blocked_before_repair"
+        script.write_khovan_startup_trace("[KHOVAN ACT1 ENG BLOCKED] navigation priority confirmation blocked before repair complete")
+        yield fail
+
+    navigation_priority_preset_set = True
+    navigation_priority_preset_fallback_available = False
+    engineering_shakedown_complete = True
+    engineering_shakedown_status = "complete"
+    engineering_shakedown_last_step = "engineering_shakedown_complete"
+    current_beat = "engineering_shakedown_complete"
+    last_checkpoint = "engineering_shakedown_complete"
+    script.write_khovan_startup_trace("[KHOVAN ACT1 ENG 010] Engineering shakedown complete after navigation priority confirmation")
+    await task_schedule(khovan_set_current_objective, {"objective_id": "engineering_shakedown_complete", "objective_body": "Engineering shakedown complete. Await next shakedown instruction.", "objective_step": "Engineering shakedown complete", "objective_breadcrumb": "[KHOVAN OBJECTIVE 015] objective updated: Engineering shakedown complete"})
+    await task_schedule(khovan_scenario_control_panel_update_overview)
+    comms_receive(navigation_priority_confirmed_text, title="Training Control", title_color="green")
+    yield success

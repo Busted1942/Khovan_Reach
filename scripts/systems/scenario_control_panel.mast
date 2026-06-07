@@ -37,7 +37,7 @@ shared scenario_control_panel_ui_api_status = "gm_comms_route_reference_backed"
     ->END
 
 === khovan_scenario_control_panel_update_overview ===
-    scenario_control_panel_overview_text = f"MISSION OVERVIEW.\nmission_phase. {mission_phase}\ncurrent_scene. {current_scene}\ncurrent_beat. {current_beat}\nlast_checkpoint. {last_checkpoint}\ntransition_held. {transition_held}\ntest_mode_enabled. {test_mode_enabled}\nlive_recovery_mode_enabled. {live_recovery_mode_enabled}\nscenario_control_panel_status. {scenario_control_panel_status}\nlast GM action. {scenario_control_panel_last_action}\naction log. {scenario_control_panel_action_log}"
+    scenario_control_panel_overview_text = f"MISSION OVERVIEW.\nmission_phase. {mission_phase}\ncurrent_scene. {current_scene}\ncurrent_beat. {current_beat}\nlast_checkpoint. {last_checkpoint}\ntransition_held. {transition_held}\ntest_mode_enabled. {test_mode_enabled}\nlive_recovery_mode_enabled. {live_recovery_mode_enabled}\nengineering_shakedown_status. {engineering_shakedown_status}\nengineering_shakedown_complete. {engineering_shakedown_complete}\nscenario_control_panel_status. {scenario_control_panel_status}\nlast GM action. {scenario_control_panel_last_action}\naction log. {scenario_control_panel_action_log}"
     ->END
 
 === khovan_scenario_control_panel_hold_transition ===

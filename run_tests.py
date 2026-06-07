@@ -159,6 +159,7 @@ def run_static_unittests() -> tuple[list[str], int, list[str]]:
         ROOT / "tests" / "test_scenario_control_panel_static.py",
         ROOT / "tests" / "test_story_jump_presets_static.py",
         ROOT / "tests" / "test_act1_generator_tarsis_static.py",
+        ROOT / "tests" / "test_act1_engineering_shakedown_static.py",
         ROOT / "tests" / "test_comms_proof_station_static.py",
     ]
     suite = unittest.TestSuite()

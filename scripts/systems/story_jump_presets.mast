@@ -1,9 +1,9 @@
 # Khovan Reach GM-only story jump presets.
-# Active presets seed the accepted Slice 04 runtime state; future story beats stay out of this menu.
+# Active presets seed accepted Slice 04/Slice 05 runtime states; future story beats stay out of this menu.
 
 shared story_jump_registry_initialized = False
-shared story_jump_registry_ids = "mission_start|post_tarsis_resupply"
-shared story_jump_preset_count = 2
+shared story_jump_registry_ids = "mission_start|post_tarsis_resupply|engineering_shakedown_complete"
+shared story_jump_preset_count = 3
 shared story_jump_metadata_required_fields = "jump_id|display_name|target_scene|mode_access|mission_phase|required_prior_flags|seeded_state_summary|entities|timers|clips|gm_display|expected_next_event|validation_checks|recovery_notes|skipped_observations"
 shared story_jump_last_id = "none"
 shared story_jump_last_display_name = "none"
@@ -26,11 +26,13 @@ shared story_jump_recovery_notes = "none"
 
 shared story_jump_preset_mission_start_metadata = "jump_id=mission_start; display_name=Mission Start; target_scene=1; mode_access=test_mode; mission_phase=act_1; required_prior_flags=none; seeded_state_summary=Slice 04 source-authorized mission start reset; entities=reuse Artemis, Kestrel Yards, and Tarsis Station without proof stations; timers=stale Kestrel advisory timer invalidated; clips=Dillon Clip 1 stub may replay; gm_display=Mission Start preset ready; expected_next_event=Comms request Kestrel departure clearance; validation_checks=mission_phase,current_scene,current_beat,last_checkpoint,zero_energy,zero_ordnance; recovery_notes=use for fresh start validation; skipped_observations=none"
 shared story_jump_preset_post_tarsis_resupply_metadata = "jump_id=post_tarsis_resupply; display_name=Post-Tarsis / Await Shakedown; target_scene=2; mode_access=test_mode; mission_phase=act_1; required_prior_flags=none; seeded_state_summary=Slice 04 post-resupply governor-cleared state; entities=reuse Artemis, Kestrel Yards, and Tarsis Station without proof stations; timers=stale Kestrel advisory timer invalidated; clips=none; gm_display=Post-Tarsis handoff preset ready; expected_next_event=Await next shakedown instruction; validation_checks=mission_phase,current_scene,current_beat,last_checkpoint,full_energy,full_armament; recovery_notes=use to test the Slice 05 entry point after Slice 04 handoff; skipped_observations=manual jump skips live proof of Kestrel/Tarsis Comms sequence and mechanical docking"
+shared story_jump_preset_engineering_shakedown_complete_metadata = "jump_id=engineering_shakedown_complete; display_name=Engineering Shakedown Complete; target_scene=2; mode_access=test_mode; mission_phase=act_1; required_prior_flags=none; seeded_state_summary=Slice 05 engineering shakedown complete state after Tarsis resupply; entities=reuse Artemis, Kestrel Yards, and Tarsis Station without proof stations; timers=stale Kestrel advisory and Slice 05 observer fallbacks invalidated; clips=none; gm_display=Engineering shakedown complete preset ready; expected_next_event=Await next shakedown instruction after engineering shakedown; validation_checks=mission_phase,current_scene,current_beat,last_checkpoint,full_energy,full_armament,engineering_shakedown_complete; recovery_notes=use to test content immediately after Slice 05; skipped_observations=manual jump skips live proof of engineering shakedown gates, DAMCON positioning, overload damage, repair, and nav preset"
 
 //comms/gamemaster/khovan_story_jump_presets if has_roles(COMMS_ORIGIN_ID, "gamemaster") and test_mode_enabled
     + "Back" //comms/gamemaster/khovan_scenario_control_panel
     + "Mission Start" khovan_story_jump_preset_mission_start
     + "Post-Tarsis / Await Shakedown" khovan_story_jump_preset_post_tarsis_resupply
+    + "Engineering Shakedown Complete" khovan_story_jump_preset_engineering_shakedown_complete
 
 === khovan_story_jump_initialize_registry ===
     story_jump_registry_initialized = True
@@ -44,7 +46,7 @@ shared story_jump_preset_post_tarsis_resupply_metadata = "jump_id=post_tarsis_re
     story_jump_expected_next_event = "none"
     story_jump_framework_warning = "none"
     story_jump_skipped_observations = "none"
-    log("Khovan story jump preset registry initialized with active Slice 04 seeds only.")
+    log("Khovan story jump preset registry initialized with active Slice 04 and Slice 05 seeds only.")
     ->END
 
 === khovan_story_jump_preset_mission_start ===
@@ -55,6 +57,12 @@ shared story_jump_preset_post_tarsis_resupply_metadata = "jump_id=post_tarsis_re
 
 === khovan_story_jump_preset_post_tarsis_resupply ===
     await task_schedule(khovan_story_jump_execute_preset, {"jump_id": "post_tarsis_resupply"})
+    comms_receive(story_jump_last_summary, title="Khovan Story Jump", title_color="cyan")
+    comms_navigate("//comms/gamemaster/khovan_story_jump_presets")
+    ->END
+
+=== khovan_story_jump_preset_engineering_shakedown_complete ===
+    await task_schedule(khovan_story_jump_execute_preset, {"jump_id": "engineering_shakedown_complete"})
     comms_receive(story_jump_last_summary, title="Khovan Story Jump", title_color="cyan")
     comms_navigate("//comms/gamemaster/khovan_story_jump_presets")
     ->END
@@ -92,6 +100,15 @@ shared story_jump_preset_post_tarsis_resupply_metadata = "jump_id=post_tarsis_re
         story_jump_seeded_state_summary = "Slice 04 post-Tarsis handoff seeded: generator governor clear, full energy and armament requested, current objective awaiting shakedown."
         story_jump_skipped_observations = "Manual jump skips proof of Kestrel departure, Tarsis request sequence, and mechanical docking/resupply."
         story_jump_gm_display = "Post-Tarsis / Await Shakedown preset seeded."
+    elif jump_id == "engineering_shakedown_complete":
+        await task_schedule(khovan_act1_story_jump_seed_engineering_shakedown_complete)
+        story_jump_last_display_name = "Engineering Shakedown Complete"
+        story_jump_last_target_scene = 2
+        story_jump_last_validation_result = "valid_runtime_seed"
+        story_jump_expected_next_event = "Await next shakedown instruction after engineering shakedown."
+        story_jump_seeded_state_summary = "Slice 05 engineering shakedown complete seeded: Tarsis resupply complete, all engineering shakedown gates marked complete, and current objective awaiting the next instruction."
+        story_jump_skipped_observations = "Manual jump skips proof of engineering no-motion, DAMCON positioning, controlled overload damage, repair, and navigation-priority preset."
+        story_jump_gm_display = "Engineering Shakedown Complete preset seeded."
     else:
         story_jump_last_display_name = "Unknown Story Jump"
         story_jump_last_target_scene = 0

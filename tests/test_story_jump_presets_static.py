@@ -10,6 +10,7 @@ ROOT = Path(__file__).resolve().parents[1]
 PRESET_IDS = [
     "mission_start",
     "post_tarsis_resupply",
+    "engineering_shakedown_complete",
 ]
 
 REQUIRED_METADATA_FIELDS = [
@@ -63,8 +64,8 @@ class StoryJumpPresetStaticTests(unittest.TestCase):
         story_jump = read("scripts/systems/story_jump_presets.mast")
         for phrase in [
             "shared story_jump_registry_initialized = False",
-            'shared story_jump_registry_ids = "mission_start|post_tarsis_resupply"',
-            "shared story_jump_preset_count = 2",
+            'shared story_jump_registry_ids = "mission_start|post_tarsis_resupply|engineering_shakedown_complete"',
+            "shared story_jump_preset_count = 3",
             "shared story_jump_metadata_required_fields =",
             "shared story_jump_generation_id = 0",
             'shared story_jump_mode_access = "test_mode_only"',
@@ -121,6 +122,7 @@ class StoryJumpPresetStaticTests(unittest.TestCase):
         expected_labels = {
             "mission_start": "Mission Start",
             "post_tarsis_resupply": "Post-Tarsis / Await Shakedown",
+            "engineering_shakedown_complete": "Engineering Shakedown Complete",
         }
 
         for preset_id, display in expected_labels.items():
@@ -145,6 +147,8 @@ class StoryJumpPresetStaticTests(unittest.TestCase):
             "await task_schedule(khovan_act1_story_jump_seed_mission_start)",
             'elif jump_id == "post_tarsis_resupply":',
             "await task_schedule(khovan_act1_story_jump_seed_post_tarsis_handoff)",
+            'elif jump_id == "engineering_shakedown_complete":',
+            "await task_schedule(khovan_act1_story_jump_seed_engineering_shakedown_complete)",
             'story_jump_last_validation_result = "valid_runtime_seed"',
             "story_jump_last_summary = f\"STORY JUMP SUMMARY",
             "expected_next_event. {story_jump_expected_next_event}",

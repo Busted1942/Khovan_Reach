@@ -9,6 +9,7 @@ import scripts/systems/current_objective_panel.mast
 import scripts/systems/debug_runtime.mast
 import scripts/systems/scenario_control_panel.mast
 import scripts/systems/story_jump_presets.mast
+import scripts/acts/act1_engineering_shakedown.mast
 import scripts/acts/act1_generator_tarsis_gate.mast
 
 shared artemis_id = 0
@@ -41,6 +42,8 @@ Properties:
     script.write_khovan_startup_trace("[KHOVAN BOOT 003A] SCP initialized")
     await task_schedule(khovan_story_jump_initialize_registry)
     script.write_khovan_startup_trace("[KHOVAN BOOT 003B] jump registry initialized")
+    await task_schedule(khovan_act1_initialize_engineering_shakedown)
+    script.write_khovan_startup_trace("[KHOVAN BOOT 003C] Engineering shakedown initialized")
     script.write_khovan_startup_trace("[KHOVAN BOOT 004] before playable_bootstrap")
     await task_schedule(khovan_reach_initialize_playable_bootstrap)
     await task_schedule(khovan_act1_initialize_generator_tarsis_gate)
