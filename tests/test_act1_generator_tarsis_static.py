@@ -78,6 +78,8 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             'shared homing_reserve_live_inventory_status = "not_verified"',
             'shared homing_reserve_request_status = "not_requested"',
             'shared homing_reserve_conversion_mode = "kestrel_request_loads_two_homing_once_no_energy_conversion"',
+            "shared kestrel_homing_reserve_max_range_m = 600",
+            "shared kestrel_launch_envelope_min_range_m = 1000",
             'shared artemis_start_energy_policy = "visible_zero_energy_with_generator_governor_source_authorized"',
             "shared artemis_start_energy = 0",
             "shared artemis_start_homing_torpedoes = 0",
@@ -92,7 +94,7 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             'shared tarsis_docking_observer_status = "not_started"',
             'shared tarsis_docking_observer_last_snapshot = "not_checked"',
             'shared kestrel_yard_lock_visual_text = "Kestrel Yard Control: Artemis is held in yard-lock pending departure clearance. Comms, request departure clearance when the captain is ready."',
-            'shared kestrel_generator_advisory_text = "Kestrel Yard Control: advisory packet follows. Artemis is operating under a temporary generator governor. Expect reduced acceleration and slower sustained-speed response. Tarsis has the generator acceptance package and will clear the handoff after docking/resupply."',
+            'shared kestrel_generator_advisory_text = "Kestrel Yard Control: advisory packet follows. Artemis is operating under a temporary generator governor. Expect constrained startup resources and deliberate speed/power handling until Tarsis completes generator acceptance. Tarsis has the acceptance package and will clear the handoff after docking/resupply."',
             'shared kestrel_homing_reserve_text = "Kestrel Yard Control: Artemis has no homing torpedoes loaded until Comms requests the emergency reserve. The reserve is two homing torpedoes only; Tarsis handles replacement and generator acceptance."',
             'shared kestrel_homing_reserve_request_text = "Kestrel Yard Control: emergency homing reserve approved. Loading two homing torpedoes now. These are reserve margin under the generator governor, not a full combat load. No nukes, EMPs, or mines are released before Tarsis resupply."',
             'shared training_speed_power_reminder_text = "Training Control: keep speed and power changes deliberate. Treat the governor as active until Tarsis completes the handoff. Comms should coordinate homing priority, generator support, and docking clearance with Tarsis."',
@@ -244,12 +246,13 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             'shared current_objective_mode = "text_waterfall"',
             "shared current_objective_visible = False",
             "shared current_objective_run_id = 0",
+            'shared current_objective_test_marker = "S04-parent-2026-06-07.1"',
             "=== khovan_current_objective_init ===",
             "=== khovan_set_current_objective ===",
             "=== khovan_clear_current_objective ===",
             "[KHOVAN OBJECTIVE 001] current objective initialized",
             "[KHOVAN OBJECTIVE 002] objective updated: Kestrel departure clearance",
-            "Current Objective: {objective_body}",
+            "Current Objective [{current_objective_test_marker}]: {objective_body}",
             "comms_broadcast(artemis_id, current_objective_last_message, objective_color)",
             "[KHOVAN OBJECTIVE SAFE] text_waterfall update skipped: missing Artemis id",
         ]:
@@ -302,7 +305,7 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             "Kestrel Yard Control: departure clearance granted. Helm, clear the launch envelope. Comms, confirm once Artemis is outside the yard boundary.",
             "Helm clear the Kestrel launch envelope, then Comms confirm exit.",
             "Kestrel Yard Control logs Artemis clear of the launch envelope. Stand by for generator advisory while yard telemetry catches up.",
-            "Kestrel Yard Control: advisory packet follows. Artemis is operating under a temporary generator governor. Expect reduced acceleration and slower sustained-speed response. Tarsis has the generator acceptance package and will clear the handoff after docking/resupply.",
+            "Kestrel Yard Control: advisory packet follows. Artemis is operating under a temporary generator governor. Expect constrained startup resources and deliberate speed/power handling until Tarsis completes generator acceptance. Tarsis has the acceptance package and will clear the handoff after docking/resupply.",
             "Training Control: keep speed and power changes deliberate. Treat the governor as active until Tarsis completes the handoff. Comms should coordinate homing priority, generator support, and docking clearance with Tarsis.",
             "Proceed to Tarsis. Comms request homing priority, generator support, and docking clearance.",
             "Tarsis Station: Artemis, we read you. Production Control and Generator Acceptance are standing by. Request homing priority, generator support, and docking clearance before approach.",
@@ -745,6 +748,14 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             'if homing_reserve_status == "loaded_by_kestrel_comms":',
             "[KHOVAN ACT1 MSG ORDER] duplicate suppressed Kestrel emergency homing reserve request",
             "[KHOVAN ACT1 RESERVE 004] emergency homing reserve already loaded; homing remains 2",
+            'if kestrel_yards_id == 0:',
+            'homing_reserve_request_status = "failed_missing_kestrel_id"',
+            "homing_reserve_kestrel_range = sbs.distance_id(artemis_id, kestrel_yards_id)",
+            "[KHOVAN ACT1 RESERVE RANGE] Artemis range to Kestrel for reserve request=",
+            "if homing_reserve_kestrel_range > kestrel_homing_reserve_max_range_m:",
+            'homing_reserve_request_status = "blocked_outside_kestrel_reserve_range"',
+            "[KHOVAN ACT1 RESERVE BLOCKED] emergency homing reserve not loaded: Artemis",
+            "emergency homing reserve requires Artemis within",
             'homing_reserve_request_status = "loaded_by_kestrel_comms"',
             'homing_reserve_status = "loaded_by_kestrel_comms"',
             'set_data_set_value(artemis_id, "Homing_NUM", homing_reserve_count, 0)',
@@ -764,6 +775,15 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
         self.assertIn("if kestrel_launch_envelope_response_sent:", launch_body)
         self.assertIn("[KHOVAN ACT1 MSG ORDER] advisory timer ignored because already sent after duplicate launch-envelope confirmation", launch_body)
         self.assertIn("[KHOVAN ACT1 MSG ORDER] duplicate suppressed Kestrel launch-envelope response", launch_body)
+        self.assertIn("if artemis_id == 0 or kestrel_yards_id == 0:", launch_body)
+        self.assertIn('kestrel_departure_gate_status = "launch_envelope_blocked_missing_range_ids"', launch_body)
+        self.assertIn("[KHOVAN ACT1 LAUNCH BLOCKED] launch envelope not cleared: missing Artemis or Kestrel id", launch_body)
+        self.assertIn("launch_envelope_kestrel_range = sbs.distance_id(artemis_id, kestrel_yards_id)", launch_body)
+        self.assertIn("[KHOVAN ACT1 LAUNCH RANGE] Artemis range to Kestrel for launch-envelope report=", launch_body)
+        self.assertIn("if launch_envelope_kestrel_range < kestrel_launch_envelope_min_range_m:", launch_body)
+        self.assertIn('kestrel_departure_gate_status = "launch_envelope_blocked_inside_1km"', launch_body)
+        self.assertIn("[KHOVAN ACT1 LAUNCH BLOCKED] launch envelope not cleared: Artemis", launch_body)
+        self.assertIn("Artemis must be at least", launch_body)
         self.assertIn("launch_envelope_cleared = True", launch_body)
         self.assertIn("kestrel_generator_advisory_run_id = kestrel_generator_advisory_run_id + 1", launch_body)
         self.assertIn("[KHOVAN ACT1 005] launch envelope clear confirmed; Kestrel advisory timer started", launch_body)

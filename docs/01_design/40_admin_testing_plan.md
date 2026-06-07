@@ -533,9 +533,9 @@ Fresh mission load reaches playable Scene 1 with no manual recovery, or the exac
 
 ```text
 ACT1-001: mission starts with generator_governor_active = true
-ACT1-002: Artemis starts with exactly 2 homing torpedoes
+ACT1-002: Artemis starts with 0 homing torpedoes, and Kestrel reserve release loads exactly 2 homing torpedoes only while Artemis is within 600 m of Kestrel
 ACT1-003: departure is blocked until Comms requests clearance
-ACT1-004: launch-envelope clear starts 10-second advisory timer
+ACT1-004: launch-envelope clear requires Artemis at least 1 km from Kestrel and then starts 10-second advisory timer
 ACT1-005: Kestrel generator advisory appears in upper-left overlay
 ACT1-006: Kestrel generator advisory echoes to Comms archive
 ACT1-007: shakedown profile choice appears after advisory

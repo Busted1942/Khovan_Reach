@@ -29,7 +29,7 @@ Trigger: ten seconds after launch-envelope exit.
 
 Slice 04 live-clarity wording:
 
-> "Kestrel Yard Control: advisory packet follows. Artemis is operating under a temporary generator governor. Expect reduced acceleration and slower sustained-speed response. Tarsis has the generator acceptance package and will clear the handoff after docking/resupply."
+> "Kestrel Yard Control: advisory packet follows. Artemis is operating under a temporary generator governor. Expect constrained startup resources and deliberate speed/power handling until Tarsis completes generator acceptance. Tarsis has the acceptance package and will clear the handoff after docking/resupply."
 
 Emergency reserve response:
 

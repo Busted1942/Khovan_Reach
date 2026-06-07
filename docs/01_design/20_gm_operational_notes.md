@@ -179,17 +179,17 @@ The GM should watch player behavior and pacing, not operate as a hidden mission 
 
 ## 6.2 Generator-governor start
 
-Do not tell the crew before departure that the generator is governed. Let them request departure clearance, depart, and notice the sluggish response.
+Do not tell the crew before departure that the generator is governed. Let them request departure clearance, depart, and notice the constrained startup state.
 
 Ten seconds after launch-envelope exit, Kestrel Yard Control sends the generator advisory through the overlay and Comms archive. The message explains:
 
 - Kestrel is working a generator-output problem.
-- A temporary governor is limiting output.
+- A temporary governor is limiting operational readiness.
 - Artemis visibly starts with energy at 0 and no loaded ordnance.
 - Kestrel holds two homing torpedoes as emergency reserve and loads them only after Comms requests the reserve.
 - Tarsis has been notified to prioritize homing torpedoes and generator acceptance.
 
-Approved Slice 04 implementation finding: visible ship energy = 0 is now intentional. The crew sees the resource constraint immediately, then learns to route the solution through Comms, Kestrel reserve release, and Tarsis energy/generator handoff. Do not grant unapproved departure-clearance energy; if live Cosmos proves zero energy blocks required movement or docking, record that as a blocker/design decision instead of silently adding power.
+Approved Slice 04 implementation finding: visible ship energy = 0 is now intentional. The crew sees the resource constraint immediately, then learns to route the solution through Comms, Kestrel reserve release, and Tarsis energy/generator handoff. The current implementation does not directly modify the flight model or guarantee a hidden acceleration penalty; it teaches the governor through visible resources, gated reserve release, distance discipline, and Tarsis resupply. Do not grant unapproved departure-clearance energy; if live Cosmos proves zero energy blocks required movement or docking, record that as a blocker/design decision instead of silently adding power.
 
 ## 6.3 Tarsis gate
 

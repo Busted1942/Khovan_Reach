@@ -33,6 +33,8 @@ shared homing_reserve_runtime_apply_status = "stubbed_due_to_ordnance_api_uncert
 shared homing_reserve_live_inventory_status = "not_verified"
 shared homing_reserve_request_status = "not_requested"
 shared homing_reserve_conversion_mode = "kestrel_request_loads_two_homing_once_no_energy_conversion"
+shared kestrel_homing_reserve_max_range_m = 600
+shared kestrel_launch_envelope_min_range_m = 1000
 shared artemis_start_condition_status = "not_applied"
 shared artemis_start_energy_policy = "visible_zero_energy_with_generator_governor_source_authorized"
 shared artemis_start_energy_runtime_apply_status = "not_overridden"
@@ -72,7 +74,7 @@ shared tarsis_governor_clear_response_sent = False
 shared generator_governor_cleared = False
 
 shared kestrel_yard_lock_visual_text = "Kestrel Yard Control: Artemis is held in yard-lock pending departure clearance. Comms, request departure clearance when the captain is ready."
-shared kestrel_generator_advisory_text = "Kestrel Yard Control: advisory packet follows. Artemis is operating under a temporary generator governor. Expect reduced acceleration and slower sustained-speed response. Tarsis has the generator acceptance package and will clear the handoff after docking/resupply."
+shared kestrel_generator_advisory_text = "Kestrel Yard Control: advisory packet follows. Artemis is operating under a temporary generator governor. Expect constrained startup resources and deliberate speed/power handling until Tarsis completes generator acceptance. Tarsis has the acceptance package and will clear the handoff after docking/resupply."
 shared kestrel_homing_reserve_text = "Kestrel Yard Control: Artemis has no homing torpedoes loaded until Comms requests the emergency reserve. The reserve is two homing torpedoes only; Tarsis handles replacement and generator acceptance."
 shared kestrel_homing_reserve_request_text = "Kestrel Yard Control: emergency homing reserve approved. Loading two homing torpedoes now. These are reserve margin under the generator governor, not a full combat load. No nukes, EMPs, or mines are released before Tarsis resupply."
 shared training_speed_power_reminder_text = "Training Control: keep speed and power changes deliberate. Treat the governor as active until Tarsis completes the handoff. Comms should coordinate homing priority, generator support, and docking clearance with Tarsis."
@@ -461,6 +463,18 @@ distance: 600
         script.write_khovan_startup_trace("[KHOVAN ACT1 RESERVE BLOCKED] emergency homing reserve not loaded: missing Artemis id")
         comms_receive("Kestrel Yard Control: unable to release emergency homing reserve; Artemis receiver is not confirmed.", title="Kestrel Yard Control", title_color="yellow")
         yield fail
+    if kestrel_yards_id == 0:
+        homing_reserve_request_status = "failed_missing_kestrel_id"
+        script.write_khovan_startup_trace("[KHOVAN ACT1 RESERVE BLOCKED] emergency homing reserve not loaded: missing Kestrel id")
+        comms_receive("Kestrel Yard Control: unable to release emergency homing reserve; Kestrel range telemetry is not confirmed.", title="Kestrel Yard Control", title_color="yellow")
+        yield fail
+    homing_reserve_kestrel_range = sbs.distance_id(artemis_id, kestrel_yards_id)
+    script.write_khovan_startup_trace(f"[KHOVAN ACT1 RESERVE RANGE] Artemis range to Kestrel for reserve request={homing_reserve_kestrel_range:.0f}m limit={kestrel_homing_reserve_max_range_m}m")
+    if homing_reserve_kestrel_range > kestrel_homing_reserve_max_range_m:
+        homing_reserve_request_status = "blocked_outside_kestrel_reserve_range"
+        script.write_khovan_startup_trace(f"[KHOVAN ACT1 RESERVE BLOCKED] emergency homing reserve not loaded: Artemis {homing_reserve_kestrel_range:.0f}m from Kestrel")
+        comms_receive(f"Kestrel Yard Control: emergency homing reserve requires Artemis within {kestrel_homing_reserve_max_range_m} meters of Kestrel. Current range is {homing_reserve_kestrel_range:.0f} meters.", title="Kestrel Yard Control", title_color="yellow")
+        yield fail
 
     homing_reserve_request_status = "loaded_by_kestrel_comms"
     homing_reserve_status = "loaded_by_kestrel_comms"
@@ -505,6 +519,18 @@ distance: 600
         else:
             script.write_khovan_startup_trace("[KHOVAN ACT1 MSG ORDER] duplicate suppressed Kestrel launch-envelope response")
         yield success
+    if artemis_id == 0 or kestrel_yards_id == 0:
+        kestrel_departure_gate_status = "launch_envelope_blocked_missing_range_ids"
+        script.write_khovan_startup_trace("[KHOVAN ACT1 LAUNCH BLOCKED] launch envelope not cleared: missing Artemis or Kestrel id")
+        comms_receive("Kestrel Yard Control: launch-envelope telemetry is not confirmed. Hold the report until Artemis and Kestrel range data are available.", title="Kestrel Yard Control", title_color="yellow")
+        yield fail
+    launch_envelope_kestrel_range = sbs.distance_id(artemis_id, kestrel_yards_id)
+    script.write_khovan_startup_trace(f"[KHOVAN ACT1 LAUNCH RANGE] Artemis range to Kestrel for launch-envelope report={launch_envelope_kestrel_range:.0f}m minimum={kestrel_launch_envelope_min_range_m}m")
+    if launch_envelope_kestrel_range < kestrel_launch_envelope_min_range_m:
+        kestrel_departure_gate_status = "launch_envelope_blocked_inside_1km"
+        script.write_khovan_startup_trace(f"[KHOVAN ACT1 LAUNCH BLOCKED] launch envelope not cleared: Artemis {launch_envelope_kestrel_range:.0f}m from Kestrel")
+        comms_receive(f"Kestrel Yard Control: Artemis must be at least {kestrel_launch_envelope_min_range_m} meters from Kestrel before we can clear the launch envelope. Current range is {launch_envelope_kestrel_range:.0f} meters.", title="Kestrel Yard Control", title_color="yellow")
+        yield fail
 
     launch_envelope_cleared = True
     kestrel_departure_gate_status = "launch_envelope_cleared"
@@ -513,7 +539,7 @@ distance: 600
     kestrel_generator_advisory_run_id = kestrel_generator_advisory_run_id + 1
     script.write_khovan_startup_trace("[KHOVAN ACT1 005] launch envelope clear confirmed; Kestrel advisory timer started")
     await task_schedule(khovan_set_current_objective, {"objective_id": "generator_advisory_standby", "objective_body": "Stand by for Kestrel generator advisory.", "objective_step": "Generator advisory standby", "objective_breadcrumb": "[KHOVAN OBJECTIVE 004] objective updated: generator advisory"})
-    await task_schedule(khovan_act1_record_progression, {"action": "launch_envelope_cleared", "detail": "temporary Comms confirmation started 10-second advisory timer"})
+    await task_schedule(khovan_act1_record_progression, {"action": "launch_envelope_cleared", "detail": "distance-verified Kestrel launch envelope clear started 10-second advisory timer"})
     task_schedule(khovan_act1_deliver_kestrel_generator_advisory_after_delay, {"advisory_run_id": kestrel_generator_advisory_run_id})
     kestrel_launch_envelope_response_sent = True
     comms_receive("Kestrel Yard Control logs Artemis clear of the launch envelope. Stand by for generator advisory while yard telemetry catches up.", title="Kestrel Yard Control", title_color="green")

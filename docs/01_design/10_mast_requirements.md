@@ -493,14 +493,15 @@ Gate requirements:
 1. Play Dillon Clip 1 at mission start.
 2. Hold Artemis at Kestrel until Comms requests departure clearance.
 3. Grant clearance through Kestrel Yard Control.
-4. Allow Helm to clear launch envelope.
+4. Allow Helm to clear launch envelope, then require Artemis to be at least 1 km from Kestrel before Comms can confirm launch-envelope exit.
 5. Ten seconds after launch-envelope clear, send the generator advisory.
 6. Send the speed/power reminder.
 7. Prompt captain for shakedown profile.
 
 Automatic detection:
 
-- `launch_envelope_cleared` should be based on position/distance if available.
+- `launch_envelope_cleared` should be based on position/distance if available. Slice 04 currently requires Artemis to be at least 1 km from Kestrel before the Comms launch-envelope report succeeds.
+- Emergency homing reserve release should be range-limited to Artemis within 600 m of Kestrel.
 - The ten-second advisory timer should be runtime scheduled, not GM-timed.
 
 ## 8.3 Scene 2 — Tarsis production priority, generator acceptance, docking, and resupply
