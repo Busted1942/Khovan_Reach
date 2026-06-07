@@ -9,11 +9,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 PRESET_IDS = [
     "mission_start",
-    "drill_2_guided_contact",
-    "anderson_orders",
-    "cascade_decision",
-    "pirate_arrival_cover_intact",
-    "debrief",
+    "post_tarsis_resupply",
 ]
 
 REQUIRED_METADATA_FIELDS = [
@@ -39,6 +35,17 @@ def read(path: str) -> str:
     return (ROOT / path).read_text(encoding="utf-8")
 
 
+def label_body(text: str, label: str) -> str:
+    match = re.search(
+        rf"^=== {re.escape(label)} ===(?P<body>.*?)(?=^=== |\Z)",
+        text,
+        flags=re.MULTILINE | re.DOTALL,
+    )
+    if match is None:
+        raise AssertionError(f"missing label: {label}")
+    return match.group("body")
+
+
 class StoryJumpPresetStaticTests(unittest.TestCase):
     def test_story_jump_module_exists_imports_and_initializes(self) -> None:
         self.assertTrue((ROOT / "scripts" / "systems" / "story_jump_presets.mast").is_file())
@@ -56,11 +63,11 @@ class StoryJumpPresetStaticTests(unittest.TestCase):
         story_jump = read("scripts/systems/story_jump_presets.mast")
         for phrase in [
             "shared story_jump_registry_initialized = False",
-            "shared story_jump_registry_ids =",
-            "shared story_jump_preset_count = 6",
+            'shared story_jump_registry_ids = "mission_start|post_tarsis_resupply"',
+            "shared story_jump_preset_count = 2",
             "shared story_jump_metadata_required_fields =",
             "shared story_jump_generation_id = 0",
-            "shared story_jump_mode_access = \"test_mode_only\"",
+            'shared story_jump_mode_access = "test_mode_only"',
             "=== khovan_story_jump_initialize_registry ===",
             "story_jump_registry_initialized = True",
         ]:
@@ -69,7 +76,7 @@ class StoryJumpPresetStaticTests(unittest.TestCase):
         for field in REQUIRED_METADATA_FIELDS:
             self.assertIn(field, story_jump)
 
-    def test_all_initial_preset_ids_and_metadata_fields_exist(self) -> None:
+    def test_active_preset_ids_and_metadata_fields_exist(self) -> None:
         story_jump = read("scripts/systems/story_jump_presets.mast")
         for preset_id in PRESET_IDS:
             self.assertIn(preset_id, story_jump)
@@ -113,11 +120,7 @@ class StoryJumpPresetStaticTests(unittest.TestCase):
         story_jump = read("scripts/systems/story_jump_presets.mast")
         expected_labels = {
             "mission_start": "Mission Start",
-            "drill_2_guided_contact": "Drill 2 Guided Contact",
-            "anderson_orders": "Anderson Orders",
-            "cascade_decision": "Cascade Decision",
-            "pirate_arrival_cover_intact": "Pirate Arrival Cover Intact",
-            "debrief": "Debrief",
+            "post_tarsis_resupply": "Post-Tarsis / Await Shakedown",
         }
 
         for preset_id, display in expected_labels.items():
@@ -132,20 +135,17 @@ class StoryJumpPresetStaticTests(unittest.TestCase):
         self.assertIn("=== khovan_story_jump_execute_preset ===", story_jump)
         self.assertIn('default jump_id = "mission_start"', story_jump)
 
-    def test_executor_has_generation_id_summary_validation_and_action_log(self) -> None:
+    def test_executor_calls_active_slice04_seed_helpers(self) -> None:
         story_jump = read("scripts/systems/story_jump_presets.mast")
-        executor_match = re.search(
-            r"=== khovan_story_jump_execute_preset ===(?P<body>.*)$",
-            story_jump,
-            flags=re.MULTILINE | re.DOTALL,
-        )
-        self.assertIsNotNone(executor_match)
-        body = executor_match.group("body")
-
+        body = label_body(story_jump, "khovan_story_jump_execute_preset")
         for phrase in [
             "story_jump_generation_id = story_jump_generation_id + 1",
             "transition_held = False",
-            "story_jump_last_validation_result",
+            'if jump_id == "mission_start":',
+            "await task_schedule(khovan_act1_story_jump_seed_mission_start)",
+            'elif jump_id == "post_tarsis_resupply":',
+            "await task_schedule(khovan_act1_story_jump_seed_post_tarsis_handoff)",
+            'story_jump_last_validation_result = "valid_runtime_seed"',
             "story_jump_last_summary = f\"STORY JUMP SUMMARY",
             "expected_next_event. {story_jump_expected_next_event}",
             "warning. {story_jump_framework_warning}",
@@ -157,7 +157,24 @@ class StoryJumpPresetStaticTests(unittest.TestCase):
         ]:
             self.assertIn(phrase, body)
 
-    def test_framework_presets_do_not_spawn_future_gameplay_systems(self) -> None:
+    def test_retired_framework_placeholders_are_not_active_jump_options(self) -> None:
+        story_jump = read("scripts/systems/story_jump_presets.mast")
+        for forbidden in [
+            "drill_2_guided_contact",
+            "Drill 2 Guided Contact",
+            "anderson_orders",
+            "Anderson Orders",
+            "cascade_decision",
+            "Cascade Decision",
+            "pirate_arrival_cover_intact",
+            "Pirate Arrival Cover Intact",
+            "debrief",
+            "Debrief",
+            "framework preset only; gameplay systems not implemented yet.",
+        ]:
+            self.assertNotIn(forbidden, story_jump)
+
+    def test_story_jumps_do_not_spawn_future_gameplay_systems_or_player_debug(self) -> None:
         story_jump = read("scripts/systems/story_jump_presets.mast")
         for forbidden in [
             "npc_spawn(",
@@ -172,31 +189,6 @@ class StoryJumpPresetStaticTests(unittest.TestCase):
             "checkpoint reload",
         ]:
             self.assertNotIn(forbidden, story_jump)
-
-        for preset_id in [
-            "drill_2_guided_contact",
-            "anderson_orders",
-            "cascade_decision",
-            "pirate_arrival_cover_intact",
-            "debrief",
-        ]:
-            self.assertIn(preset_id, story_jump)
-            self.assertIn("framework preset only; gameplay systems not implemented yet.", story_jump)
-
-    def test_story_jump_seed_targets_are_intentional_framework_markers(self) -> None:
-        story_jump = read("scripts/systems/story_jump_presets.mast")
-        expected_targets = {
-            "mission_start": ('mission_phase = "act_1"', "current_scene = 1"),
-            "drill_2_guided_contact": ('mission_phase = "act_1"', "current_scene = 3"),
-            "anderson_orders": ('mission_phase = "act_2"', "current_scene = 5"),
-            "cascade_decision": ('mission_phase = "act_3"', "current_scene = 9"),
-            "pirate_arrival_cover_intact": ('mission_phase = "act_3"', "current_scene = 12"),
-            "debrief": ('mission_phase = "debrief"', "current_scene = 14"),
-        }
-        for preset_id, phrases in expected_targets.items():
-            self.assertIn(f'jump_id == "{preset_id}"', story_jump)
-            for phrase in phrases:
-                self.assertIn(phrase, story_jump)
 
     def test_active_runtime_keeps_player_lifecycle_and_admin_hidden_guards(self) -> None:
         active_runtime = "\n".join(
@@ -223,9 +215,31 @@ class StoryJumpPresetStaticTests(unittest.TestCase):
         self.assertNotIn("common_console_select.client_main", active_runtime)
         self.assertIn("Gui.client_start_page_class(KhovanReachStoryPage)", active_runtime)
 
-    def test_quick_suite_includes_slice03_static_checks(self) -> None:
+    def test_quick_suite_includes_story_jump_static_checks(self) -> None:
         runner = read("run_tests.py")
         self.assertIn('ROOT / "tests" / "test_story_jump_presets_static.py"', runner)
+
+    def test_admin_jump_verification_doc_records_static_vs_live_limits(self) -> None:
+        path = ROOT / "tests" / "ADMIN_JUMP_VERIFICATION.md"
+        self.assertTrue(path.is_file())
+        text = path.read_text(encoding="utf-8").lower()
+        for phrase in [
+            "what changed",
+            "what quick/static checks prove",
+            "what only live cosmos smoke can prove",
+            "expected observation",
+            "failure/ambiguous observation",
+            "mission start",
+            "post-tarsis / await shakedown",
+            "energy is 0",
+            "homing/nuke/emp/mine are 0",
+            "energy is full",
+            "homing 10, nuke 3, emp 6, mine 6",
+            "do not commit this branch until",
+            "python run_tests.py quick",
+            "git diff --check",
+        ]:
+            self.assertIn(phrase, text)
 
 
 if __name__ == "__main__":

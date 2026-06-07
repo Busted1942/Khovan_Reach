@@ -18,6 +18,7 @@ shared kestrel_departure_hold_detection_mode = "mechanical_position_throttle_hol
 shared kestrel_start_docking_helper_status = "not_initialized"
 shared kestrel_yard_lock_visual_mode = "mechanical_yard_lock_overlay_fallback"
 shared kestrel_yard_lock_visual_status = "not_initialized"
+shared kestrel_comms_options_status = "not_rendered"
 shared kestrel_yard_lock_message_sent = False
 shared kestrel_departure_clearance_response_sent = False
 shared kestrel_launch_envelope_response_sent = False
@@ -199,6 +200,133 @@ shared tarsis_resupply_text = "Tarsis Control: normal docking resupply and gener
     log("Khovan Slice 04 Act I generator/Tarsis gate initialized. Source-authorized starting ordnance set requested; live smoke must verify the Weapons UI.")
     ->END
 
+=== khovan_act1_story_jump_seed_mission_start ===
+    mission_phase = "act_1"
+    current_scene = 1
+    current_beat = "scene_1_kestrel_departure_gate"
+    last_checkpoint = "mission_start"
+    transition_held = False
+    generator_governor_active = True
+    generator_governor_cleared = False
+    starting_homing_torpedoes = 0
+    homing_reserve_count = 2
+    homing_reserve_status = "held_by_kestrel_pending_request"
+    homing_reserve_runtime_apply_status = "pending_kestrel_request"
+    homing_reserve_live_inventory_status = "story_jump_zero_requested_live_smoke_required"
+    homing_reserve_request_status = "not_requested"
+    artemis_start_condition_status = "pending_story_jump_apply"
+    artemis_start_energy_policy = "visible_zero_energy_with_generator_governor_source_authorized"
+    artemis_start_energy = 0
+    artemis_start_energy_runtime_apply_status = "pending_visible_zero_energy_apply"
+    artemis_start_homing_torpedoes = 0
+    artemis_start_nukes = 0
+    artemis_start_emps = 0
+    artemis_start_mines = 0
+    artemis_start_ordnance_runtime_apply_status = "pending_apply"
+    energy_restored = False
+    kestrel_departure_clearance_granted = False
+    kestrel_departure_gate_status = "waiting_for_clearance"
+    kestrel_departure_hold_status = "waiting_for_contact_setup"
+    kestrel_departure_hold_release_status = "not_released"
+    kestrel_yard_lock_message_sent = False
+    kestrel_departure_clearance_response_sent = False
+    kestrel_launch_envelope_response_sent = False
+    launch_envelope_cleared = False
+    kestrel_generator_packet_sent = False
+    kestrel_generator_advisory_status = "pending_launch_envelope"
+    kestrel_generator_advisory_run_id = kestrel_generator_advisory_run_id + 1
+    kestrel_generator_advisory_sent = False
+    training_speed_power_reminder_sent = False
+    shakedown_prompt_sent = False
+    tarsis_gate_status = "waiting_for_kestrel_departure"
+    tarsis_homing_priority_requested = False
+    tarsis_generator_support_requested = False
+    tarsis_docking_clearance_requested = False
+    tarsis_required_requests_complete = False
+    tarsis_resupply_confirmed = False
+    tarsis_docking_setup_role_status = "not_enabled"
+    tarsis_mechanical_dock_observed = False
+    tarsis_docking_observer_status = "not_started"
+    tarsis_docking_observer_last_snapshot = "not_checked"
+    tarsis_docking_resupply_status = "blocked_until_docking_clearance"
+    tarsis_docking_gate_status = "waiting_for_comms_clearance"
+    tarsis_homing_priority_response_sent = False
+    tarsis_generator_support_response_sent = False
+    tarsis_docking_clearance_response_sent = False
+    tarsis_governor_clear_response_sent = False
+    act1_last_progression_summary = "Admin jump reset to Slice 04 mission start; generator governor active and Kestrel reserve held."
+    script.write_khovan_startup_trace("[KHOVAN JUMP ACT1 START] mission start seed reset Slice 04 generator/Tarsis gate")
+    await task_schedule(khovan_act1_apply_source_authorized_start_state)
+    await task_schedule(khovan_act1_setup_kestrel_and_tarsis_contacts)
+    await task_schedule(khovan_set_current_objective, {"objective_id": "kestrel_departure_clearance", "objective_body": "Comms request Kestrel departure clearance.", "objective_step": "Kestrel departure clearance", "objective_breadcrumb": "[KHOVAN OBJECTIVE 002] objective updated: Kestrel departure clearance"})
+    await task_schedule(khovan_scenario_control_panel_update_overview)
+    log("Khovan admin jump seeded Slice 04 mission start.")
+    ->END
+
+=== khovan_act1_story_jump_seed_post_tarsis_handoff ===
+    mission_phase = "act_1"
+    current_scene = 2
+    current_beat = "await_next_shakedown_instruction"
+    last_checkpoint = "tarsis_resupply_governor_cleared"
+    transition_held = False
+    kestrel_departure_clearance_granted = True
+    kestrel_departure_gate_status = "launch_envelope_cleared"
+    kestrel_departure_hold_status = "released_after_clearance"
+    kestrel_departure_hold_release_status = "released"
+    kestrel_departure_clearance_response_sent = True
+    kestrel_launch_envelope_response_sent = True
+    launch_envelope_cleared = True
+    kestrel_generator_packet_sent = True
+    kestrel_generator_advisory_status = "delivered"
+    kestrel_generator_advisory_run_id = kestrel_generator_advisory_run_id + 1
+    kestrel_generator_advisory_sent = True
+    training_speed_power_reminder_sent = True
+    shakedown_prompt_sent = False
+    homing_reserve_status = "superseded_by_tarsis_resupply"
+    homing_reserve_request_status = "story_jump_skipped_or_superseded"
+    homing_reserve_live_inventory_status = "superseded_by_tarsis_full_resupply"
+    tarsis_homing_priority_requested = True
+    tarsis_generator_support_requested = True
+    tarsis_docking_clearance_requested = True
+    tarsis_required_requests_complete = True
+    tarsis_resupply_confirmed = True
+    tarsis_homing_priority_response_sent = True
+    tarsis_generator_support_response_sent = True
+    tarsis_docking_clearance_response_sent = True
+    tarsis_governor_clear_response_sent = True
+    tarsis_gate_status = "resupply_confirmed_governor_cleared"
+    tarsis_docking_resupply_status = "story_jump_seeded_post_tarsis_handoff"
+    tarsis_docking_gate_status = "enabled_after_docking_clearance"
+    generator_governor_active = False
+    generator_governor_cleared = True
+    energy_restored = True
+    act1_last_progression_summary = "Admin jump seeded post-Tarsis handoff; generator governor clear and full resupply requested."
+    script.write_khovan_startup_trace("[KHOVAN JUMP ACT1 POST TARSIS] post-resupply handoff seed requested")
+    await task_schedule(khovan_act1_setup_kestrel_and_tarsis_contacts)
+    await task_schedule(khovan_tarsis_enable_docking_after_clearance)
+    tarsis_mechanical_dock_observed = True
+    tarsis_docking_observer_status = "story_jump_seeded_docked_after_clearance"
+    tarsis_docking_observer_last_snapshot = "story_jump_seeded"
+    tarsis_docking_resupply_status = "story_jump_seeded_post_tarsis_handoff"
+    if artemis_id != 0:
+        set_data_set_value(artemis_id, "energy", tarsis_resupply_energy, 0)
+        set_data_set_value(artemis_id, "Homing_NUM", tarsis_resupply_homing_torpedoes, 0)
+        set_data_set_value(artemis_id, "Nuke_NUM", tarsis_resupply_nukes, 0)
+        set_data_set_value(artemis_id, "EMP_NUM", tarsis_resupply_emps, 0)
+        set_data_set_value(artemis_id, "Mine_NUM", tarsis_resupply_mines, 0)
+        artemis_object = to_object(artemis_id)
+        if artemis_object is not None:
+            artemis_object.pos = Vec3(18000, 0, 500)
+            artemis_object.data_set.set("dock_base_id", tarsis_station_id, 0)
+            artemis_object.data_set.set("dock_state", "docked", 0)
+            artemis_object.data_set.set("playerThrottle", 0, 0)
+            script.write_khovan_startup_trace("[KHOVAN JUMP ACT1 POST TARSIS] Artemis positioned at Tarsis with docked state for admin smoke setup")
+        script.write_khovan_startup_trace(f"[KHOVAN JUMP ACT1 POST TARSIS] resources seeded energy={tarsis_resupply_energy} homing={tarsis_resupply_homing_torpedoes} nuke={tarsis_resupply_nukes} emp={tarsis_resupply_emps} mine={tarsis_resupply_mines}")
+    await task_schedule(khovan_set_current_objective, {"objective_id": "await_shakedown_instruction", "objective_body": "Await next shakedown instruction.", "objective_step": "Await shakedown", "objective_breadcrumb": "[KHOVAN OBJECTIVE 007] objective updated: await next shakedown instruction"})
+    await task_schedule(khovan_scenario_control_panel_update_overview)
+    log("Khovan admin jump seeded Slice 04 post-Tarsis handoff.")
+    ->END
+
 === khovan_act1_apply_source_authorized_start_state ===
     generator_governor_active = True
     starting_homing_torpedoes = 0
@@ -269,6 +397,11 @@ shared tarsis_resupply_text = "Tarsis Control: normal docking resupply and gener
     kestrel_yard_lock_visual_status = "attempted_mechanical_fallback"
     script.write_khovan_startup_trace("[KHOVAN ACT1 VISUAL 001] Kestrel yard-lock visual setup attempted")
     await task_schedule(docking_standard_player_station)
+    if kestrel_yards_id != 0:
+        add_role(kestrel_yards_id, "station")
+        add_role(kestrel_yards_id, "kestrel_yards")
+        kestrel_comms_options_status = "station_and_kestrel_yards_roles_restored_after_docking_helper_pass"
+        script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS 003B] Kestrel station/kestrel_yards roles restored after docking helper pass for Khovan Comms options")
     if tarsis_station_id != 0:
         add_role(tarsis_station_id, "station")
         remove_role(tarsis_station_id, "Station")
