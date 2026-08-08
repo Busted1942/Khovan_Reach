@@ -51,6 +51,10 @@ python run_tests.py quick
 
 `quick` is the only supported invocation. There is no full/slow mode.
 
+**Portability note:** this repo is documented with `python`, which is correct on the Windows box this mission is built on. Most Linux/macOS sandboxes (including cloud coding-agent environments) only expose `python3` by default. If `python run_tests.py quick` fails with a not-found error, retry as `python3 run_tests.py quick` before concluding the harness is broken.
+
+**Portability note:** `python run_tests.py quick` includes a MAST compile-preflight check (see section 5) that requires a locally installed `artemis-sbs.sbs_utils.*.sbslib` outside this repo (`../__lib__/` relative to the mission root). That file is part of the Cosmos/Artemis install, not something to add to version control — do not copy it into this repo to "fix" portability; that trades a missing-evidence problem for a binary-in-git and licensing problem. On a machine without Cosmos installed (e.g. a cloud sandbox with no local game install), this check is designed to skip rather than fail the build, and `quick` still reports an overall PASS if nothing else fails. Read the actual warning line, not just the summary — a PASS on a machine without Cosmos installed is missing the strongest evidence class in section 5's table, even though the top-line result looks identical to a PASS with the compile check included. Do not claim compile-preflight coverage from a machine where this dependency is absent.
+
 ## Repo shape
 
 ```text
