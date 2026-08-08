@@ -20,7 +20,7 @@
   - Player-facing instruction copy now tells the crew who acts next, which console/action to use, why the generator governor matters, why the emergency homing reserve exists, and why Tarsis is required.
   - Startup and scheduled Act I packets use a guarded text-message path with valid sender/player IDs instead of raw startup `comms_receive` or blank lifeform/story-dialog overlays.
   - The stock `text_waterfall` left-center rectangle is owned as a controlled Current Objective panel using the reference-backed `comms_broadcast` text-waterfall helper.
-  - Tarsis homing priority, generator support, and docking clearance are required before governor clear.
+- Tarsis generator support and docking clearance are required before governor clear; the former homing-priority Comms step has been removed.
   - Tarsis normal docking/resupply restores full energy and armament and clears the governor only after required requests are complete.
 - Kestrel Yards and Tarsis Station use reference-backed standard station primitives:
   - `npc_spawn(..., "tsn, station, ...", "starbase_command", "behav_station")`.
@@ -80,7 +80,7 @@ Starting-condition audit: energy and ordnance:
 - Source finding update: active Slice 04 now authorizes visible-zero-energy start plus generator governor active. The two homing torpedoes remain a Kestrel-held emergency reserve instead of a fresh-load inventory item.
 - Change: Slice 04 now requests Artemis starting energy and ordnance through data-set values: `energy = 0`, `Homing_NUM = 0`, `Nuke_NUM = 0`, `EMP_NUM = 0`, and `Mine_NUM = 0`.
 - Correction: the brief experiment that granted energy on Kestrel departure clearance was removed. Kestrel departure clearance must not change ship energy; if zero visible energy blocks movement or docking in live Cosmos, record that as a blocker/design decision instead of adding unapproved energy.
-- Tarsis handoff: normal docking/resupply now restores full energy and armament and clears the governor after the three required Tarsis requests are complete.
+- Tarsis handoff: normal docking/resupply now restores full energy and armament and clears the governor after generator support and docking clearance are complete.
 - Breadcrumbs: `[KHOVAN ACT1 START STATE] Artemis starting energy intentionally set to 0 with generator governor active`, `[KHOVAN ACT1 START STATE] Artemis starting ordnance set to Homing=0 Nuke=0 EMP=0 Mine=0`, `[KHOVAN ACT1 START STATE FINAL] energy=0 homing=0 nuke=0 emp=0 mine=0 reserve=held_by_kestrel`, `[KHOVAN ACT1 DOCK 004R]` when required Tarsis requests are complete, `[KHOVAN ACT1 DOCK 004D]` when docking clearance enables setup, `[KHOVAN ACT1 DOCK 004S]` when the post-clearance station roles are restored for mechanical docking, `[KHOVAN ACT1 DOCK 004U]` when the standard docking affordance is rerun after clearance, `[KHOVAN ACT1 DOCK 004N]` when Artemis dock state is normalized to `undocked`, `[KHOVAN ACT1 DOCK 004P]` when Slice 04 assigns the Tarsis normal docking/resupply wrapper to the current player/station IDs, `[KHOVAN ACT1 DOCK 004X]` when Helm's dock attempt reaches the wrapper after clearance, `[KHOVAN ACT1 DOCK 004T]` when the observer sees a player dock-state/base transition, `[KHOVAN ACT1 DOCK 004A]` when mechanical docking is observed after clearance, and `[KHOVAN ACT1 012B]` when Tarsis restores ordnance.
 - Live diagnostic correction: the temporary `[KHOVAN ACT1 DOCK ENERGY]` diagnostic returned `ship energy=None` in live smoke, so it is not used as proof of the visible energy state and has been replaced by role/setup and dock-state observer breadcrumbs.
 - Fallback/uncertainty: quick/static checks can prove the runtime requests these values and adds mechanical docking observer wiring, but only live Cosmos smoke can prove whether the Engineering UI reflects startup zero, whether zero energy still permits movement/docking, and whether Tarsis mechanical docking produces `[KHOVAN ACT1 DOCK 004A]` after clearance. If the UI or playability disagrees, treat it as a live mechanics/API issue.
@@ -264,7 +264,7 @@ Quick/static checks prove source structure only:
 - Tarsis pre-clearance docking uses `khovan_tarsis_docking_rejected_before_clearance`.
 - Tarsis pre-clearance rejection text says docking clearance is not granted, not that docking systems are incompatible.
 - Tarsis pre-clearance rejection includes `[KHOVAN ACT1 DOCK BLOCKED]`.
-- Tarsis Comms option block contains the required staged labels: Hail, Homing-Torpedo Priority, Generator Support, Docking Clearance, and Gate Status. It does not expose `Confirm Docking/Resupply`.
+- Tarsis Comms option block contains the required staged labels: Hail, Generator Support, Docking Clearance, and Gate Status. It does not expose `Homing-Torpedo Priority` or `Confirm Docking/Resupply`.
 - Tarsis option handlers set the required flags, send Comms responses, and write the new Tarsis option/message breadcrumbs.
 - Dillon's opening briefing sends through the safe guarded text helper after Kestrel/Artemis sender context exists and before Kestrel yard-lock messaging.
 - The safe startup helper records `[KHOVAN ACT1 UI]` breadcrumbs and `[KHOVAN ACT1 MSG SAFE]` when Comms-log echo is skipped.
@@ -283,10 +283,10 @@ Quick/static checks prove source structure only:
 - Tarsis docked-signal guard logs and ignores a pre-clearance Tarsis dock signal.
 - Tarsis reruns the standard friendly-station docking affordance and installs `khovan_tarsis_normal_docking_resupply_after_clearance` only from `khovan_tarsis_enable_docking_after_clearance`.
 - Tarsis starts a post-clearance dock-state observer that logs `[KHOVAN ACT1 DOCK 004T]` when the dock button path changes `dock_state` or `dock_base_id`; this is diagnostic evidence for the `INITIATE DOCK` path, not a substitute for 004A. The setup also logs `[KHOVAN ACT1 DOCK 004N]` when it normalizes `dock_state="undocked"` and `dock_base_id=0`, `[KHOVAN ACT1 DOCK 004P]` when the custom normal docking/resupply wrapper is assigned, and `[KHOVAN ACT1 DOCK 004X]` when a post-clearance Helm dock attempt reaches that wrapper.
-- The docking-clearance handler calls the Tarsis docking-enable helper only after homing priority and generator support are marked.
+- The docking-clearance handler calls the Tarsis docking-enable helper only after generator support is marked.
 - No kernel proof stations or temporary Comms proof/test stations are present in production Slice 04.
-- Tarsis tracks the three required requests.
-- Governor clear is guarded behind all three Tarsis requests plus mechanical docking/resupply.
+- Tarsis tracks the two required requests.
+- Governor clear is guarded behind generator support, docking clearance, and mechanical docking/resupply.
 - Slice 04 breadcrumbs are present.
 - No custom Khovan selector or direct client-side assignment has returned.
 - No player-facing debug/admin controls are exposed by the Slice 04 runtime file.
@@ -380,19 +380,17 @@ Only live Cosmos smoke can prove:
 45. Confirm `[KHOVAN ACT1 COMMS TARSIS HAIL]` and `[KHOVAN ACT1 MSG TARSIS 001]`.
 46. Before docking clearance, try to dock with Tarsis.
 47. Confirm docking is blocked, unavailable, rejected, or does not advance Slice 04 state.
-48. Select `Khovan: Request Homing-Torpedo Priority`.
-49. Confirm `[KHOVAN ACT1 COMMS TARSIS HOMING]` and `[KHOVAN ACT1 MSG TARSIS 002]`.
-50. Select `Khovan: Request Generator Support`.
-51. Confirm `[KHOVAN ACT1 COMMS TARSIS GENERATOR]` and `[KHOVAN ACT1 MSG TARSIS 003]`.
-52. Select `Khovan: Request Docking Clearance`.
-53. Confirm `[KHOVAN ACT1 COMMS TARSIS CLEARANCE]`, `[KHOVAN ACT1 MSG TARSIS 004]`, `[KHOVAN ACT1 DOCK 004R]`, `[KHOVAN ACT1 DOCK 004D]`, `[KHOVAN ACT1 DOCK 004S]`, `[KHOVAN ACT1 DOCK 004N]`, `[KHOVAN ACT1 DOCK 004P]`, and `[KHOVAN ACT1 DOCK 004]`.
-54. Confirm Current Objective updates to `Dock normally with Tarsis. Resupply and governor handoff complete on hard dock.` and trace includes `[KHOVAN OBJECTIVE 006]`.
-55. Attempt normal docking if available.
-56. If docking remains unavailable, capture whether `[KHOVAN ACT1 DOCK 004T]` changes after pressing `INITIATE DOCK` and whether `[KHOVAN ACT1 DOCK 004A]` is absent. Treat an inert button as a live blocker/design decision rather than adding Kestrel energy.
-57. Confirm the `Khovan: Confirm Docking/Resupply` fallback option is not visible.
-58. Confirm `[KHOVAN ACT1 COMMS TARSIS RESUPPLY]`, `[KHOVAN ACT1 MSG TARSIS 005]`, `[KHOVAN ACT1 012A]`, and `[KHOVAN ACT1 012B]` only after required requests plus mechanical docking.
-59. Confirm status option logs `[KHOVAN ACT1 COMMS TARSIS STATUS]` and `[KHOVAN ACT1 MSG TARSIS 006]`.
-60. Inspect `tests/live_startup_trace.txt`.
+48. Confirm `Khovan: Request Homing-Torpedo Priority` is absent.
+49. Select `Khovan: Request Generator Support` and confirm `[KHOVAN ACT1 COMMS TARSIS GENERATOR]` and `[KHOVAN ACT1 MSG TARSIS 003]`.
+50. Select `Khovan: Request Docking Clearance`.
+51. Confirm `[KHOVAN ACT1 COMMS TARSIS CLEARANCE]`, `[KHOVAN ACT1 MSG TARSIS 004]`, `[KHOVAN ACT1 DOCK 004R]`, `[KHOVAN ACT1 DOCK 004D]`, `[KHOVAN ACT1 DOCK 004S]`, `[KHOVAN ACT1 DOCK 004N]`, `[KHOVAN ACT1 DOCK 004P]`, and `[KHOVAN ACT1 DOCK 004]`.
+52. Confirm Current Objective updates to `Dock normally with Tarsis. Resupply and governor handoff complete on hard dock.` and trace includes `[KHOVAN OBJECTIVE 006]`.
+53. Attempt normal docking if available.
+54. If docking remains unavailable, capture whether `[KHOVAN ACT1 DOCK 004T]` changes after pressing `INITIATE DOCK` and whether `[KHOVAN ACT1 DOCK 004A]` is absent. Treat an inert button as a live blocker/design decision rather than adding Kestrel energy.
+55. Confirm the `Khovan: Confirm Docking/Resupply` fallback option is not visible.
+56. Confirm `[KHOVAN ACT1 COMMS TARSIS RESUPPLY]`, `[KHOVAN ACT1 MSG TARSIS 005]`, `[KHOVAN ACT1 012A]`, and `[KHOVAN ACT1 012B]` only after required requests plus mechanical docking.
+57. Confirm status option logs `[KHOVAN ACT1 COMMS TARSIS STATUS]` and `[KHOVAN ACT1 MSG TARSIS 006]`.
+58. Inspect `tests/live_startup_trace.txt`.
 
 Tarsis docking-clearance regression checklist:
 
@@ -404,10 +402,9 @@ Tarsis docking-clearance regression checklist:
 6. Confirm Tarsis Comms route/options become available without requiring Science scan as a hard gate.
 7. Try to dock before docking clearance.
 8. Confirm docking is blocked, unavailable, or does not advance Slice 04 state.
-9. Request homing priority.
-10. Request generator support.
-11. Request docking clearance.
-12. Confirm docking setup is enabled after clearance and trace includes `[KHOVAN ACT1 DOCK 004S]`, `[KHOVAN ACT1 DOCK 004N]`, and `[KHOVAN ACT1 DOCK 004P]`.
+9. Confirm the homing-priority option is absent, then request generator support.
+10. Request docking clearance.
+11. Confirm docking setup is enabled after clearance and trace includes `[KHOVAN ACT1 DOCK 004S]`, `[KHOVAN ACT1 DOCK 004N]`, and `[KHOVAN ACT1 DOCK 004P]`.
 13. Dock with Tarsis.
 14. Confirm trace includes `[KHOVAN ACT1 DOCK 004A] Tarsis dock signal observed after clearance`.
 15. If pressing `INITIATE DOCK` is inert, capture whether `[KHOVAN ACT1 DOCK 004T]` shows `dock_state` / `dock_base_id` changing or remaining unchanged.
@@ -534,7 +531,6 @@ Player instruction clarity checklist:
 - `Khovan: Resend Generator Advisory` can reference the delivered advisory without restarting the timer.
 - Tarsis homing priority, generator support, and docking clearance can be marked through visible options.
 - Tarsis Hail produces `[KHOVAN ACT1 COMMS TARSIS HAIL]` and `[KHOVAN ACT1 MSG TARSIS 001]`.
-- Tarsis homing priority produces `[KHOVAN ACT1 COMMS TARSIS HOMING]`, `[KHOVAN ACT1 MSG TARSIS 002]`, and a Tarsis Production Control response.
 - Tarsis generator support produces `[KHOVAN ACT1 COMMS TARSIS GENERATOR]`, `[KHOVAN ACT1 MSG TARSIS 003]`, and a Tarsis Generator Acceptance response.
 - Tarsis docking clearance produces `[KHOVAN ACT1 COMMS TARSIS CLEARANCE]`, `[KHOVAN ACT1 MSG TARSIS 004]`, a Tarsis Docking Control response, `[KHOVAN ACT1 DOCK 004R]`, `[KHOVAN ACT1 DOCK 004D]`, `[KHOVAN ACT1 DOCK 004S]`, `[KHOVAN ACT1 DOCK 004N]`, `[KHOVAN ACT1 DOCK 004P]`, and `[KHOVAN ACT1 DOCK 004]` after prerequisites are complete.
 - Tarsis mechanical docking/resupply produces `[KHOVAN ACT1 COMMS TARSIS RESUPPLY]`, `[KHOVAN ACT1 MSG TARSIS 005]`, `[KHOVAN ACT1 012A]`, and `[KHOVAN ACT1 012B]`. Hidden fallback confirmation is rejected and is not player-facing.
@@ -543,8 +539,8 @@ Player instruction clarity checklist:
 - The pre-clearance Tarsis rejection text says `Tarsis Docking Control: docking clearance not granted. Complete Tarsis Comms traffic before approach.`
 - The pre-clearance Tarsis rejection text does not say `Our docking systems aren't compatible with yours`.
 - After Tarsis docking clearance, trace includes `[KHOVAN ACT1 DOCK 004]` and normal Tarsis docking can be attempted. Pressing `INITIATE DOCK` after clearance should produce `[KHOVAN ACT1 DOCK 004X]`; if the docked signal fires or the dock-state observer confirms `dock_state == "docked"` at Tarsis after clearance, trace includes `[KHOVAN ACT1 DOCK 004A]`.
-- Governor remains active until homing priority, generator support, and docking clearance are all marked.
-- Energy, ordnance, and governor restore/clear only after all three requests plus mechanical docking/resupply.
+- Governor remains active until generator support and docking clearance are both marked.
+- Energy, ordnance, and governor restore/clear only after both requests plus mechanical docking/resupply.
 
 ## Failure/Ambiguous Observation
 
