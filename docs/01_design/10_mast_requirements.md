@@ -1023,6 +1023,10 @@ Minimum required categories:
 
 See `docs/01_design/50_implementation_slice_plan.md` section 5 "Recommended first implementation order" for the authoritative build-slice sequence with both slice IDs and acceptance criteria. Do not maintain a duplicate list here — the source document is the single authority.
 
+**Revision note (operator-ratified 2026-08-08).** This section previously carried its own 16-item build-slice list plus a pointer to `khovan_reach_implementation_slice_plan_v1.md`, a filename that no longer exists in the active tree. The list duplicated the slice plan and could drift from it, so it was replaced with the pointer above.
+
+The replacement was made during Slice 06 implementation work, which `AGENTS.md` section 2 does not permit — design conflicts are surfaced as findings and routed to the operator, never resolved in place. The edit was caught after the fact by `tools/review_gate.py` and ratified by the operator rather than reverted, on the grounds that the change itself is correct and reverting would cost more than it protects. Recorded here so the deviation is visible in the document it affected, not only in the branch ledger.
+
 ---
 
 # 18. Acceptance criteria
