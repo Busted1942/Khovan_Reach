@@ -631,10 +631,10 @@ distance: 600
     current_beat = "kestrel_departure_clearance_granted"
     script.write_khovan_startup_trace("[KHOVAN ACT1 004] Kestrel departure clearance granted")
     await task_schedule(khovan_act1_release_kestrel_departure_hold)
-    await task_schedule(khovan_set_current_objective, {"objective_id": "launch_envelope", "objective_body": "Helm clear the Kestrel launch envelope, then Comms confirm exit.", "objective_step": "Launch envelope", "objective_breadcrumb": "[KHOVAN OBJECTIVE 003] objective updated: launch envelope"})
+    await task_schedule(khovan_set_current_objective, {"objective_id": "launch_envelope", "objective_body": "Helm clear the Kestrel launch envelope: move at least 1 km from Kestrel, then Comms confirm exit.", "objective_step": "Launch envelope", "objective_breadcrumb": "[KHOVAN OBJECTIVE 003] objective updated: launch envelope (1 km minimum)"})
     await task_schedule(khovan_act1_record_progression, {"action": "kestrel_departure_clearance", "detail": "departure clearance granted; waiting for launch envelope confirmation; energy remains at source-authorized start value until Tarsis handoff"})
     kestrel_departure_clearance_response_sent = True
-    comms_receive("Kestrel Yard Control: departure clearance granted. Helm, clear the launch envelope. Comms, confirm once Artemis is outside the yard boundary.", title="Kestrel Yard Control", title_color="green")
+    comms_receive("Kestrel Yard Control: departure clearance granted. Helm, clear the launch envelope by moving at least 1 km from Kestrel. Comms, confirm once Artemis is outside the yard boundary.", title="Kestrel Yard Control", title_color="green")
     script.write_khovan_startup_trace("[KHOVAN ACT1 MSG KESTREL 002] departure clearance packet sent")
     script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS 006D] Kestrel departure-clearance option response sent")
     yield success

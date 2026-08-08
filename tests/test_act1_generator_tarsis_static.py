@@ -364,7 +364,7 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
 
         expectations = [
             (setup_body, "khovan_current_objective_init", "await task_schedule(khovan_current_objective_init)"),
-            (departure_body, "Helm clear the Kestrel launch envelope, then Comms confirm exit.", "[KHOVAN OBJECTIVE 003] objective updated: launch envelope"),
+            (departure_body, "Helm clear the Kestrel launch envelope: move at least 1 km from Kestrel, then Comms confirm exit.", "[KHOVAN OBJECTIVE 003] objective updated: launch envelope (1 km minimum)"),
             (launch_body, "Stand by for Kestrel generator advisory.", "[KHOVAN OBJECTIVE 004] objective updated: generator advisory"),
             (advisory_body, "Proceed to Tarsis. Comms request homing priority, generator support, and docking clearance.", "[KHOVAN OBJECTIVE 005] objective updated: Tarsis requests"),
             (clearance_body, "Dock normally with Tarsis. Resupply and governor handoff complete on hard dock.", "[KHOVAN OBJECTIVE 006] objective updated: Tarsis docking/resupply"),
@@ -387,8 +387,8 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             "Dillon: Crew of Artemis, this is a qualification cruise. First task: get the ship out of Kestrel cleanly. Comms, request departure clearance. Helm, hold position until Kestrel releases the yard-lock. Captain, coordinate the sequence.",
             "Comms request Kestrel departure clearance.",
             "Kestrel Yard Control: emergency homing reserve approved. Loading two homing torpedoes now. These are reserve margin under the generator governor, not a full combat load. No nukes, EMPs, or mines are released before Tarsis resupply.",
-            "Kestrel Yard Control: departure clearance granted. Helm, clear the launch envelope. Comms, confirm once Artemis is outside the yard boundary.",
-            "Helm clear the Kestrel launch envelope, then Comms confirm exit.",
+            "Kestrel Yard Control: departure clearance granted. Helm, clear the launch envelope by moving at least 1 km from Kestrel. Comms, confirm once Artemis is outside the yard boundary.",
+            "Helm clear the Kestrel launch envelope: move at least 1 km from Kestrel, then Comms confirm exit.",
             "Kestrel Yard Control logs Artemis clear of the launch envelope. Stand by for generator advisory while yard telemetry catches up.",
             "Kestrel Yard Control: advisory packet follows. Artemis is operating under a temporary generator governor. Expect constrained startup resources and deliberate speed/power handling until Tarsis completes generator acceptance. Tarsis has the acceptance package and will clear the handoff after docking/resupply.",
             "Training Control: keep speed and power changes deliberate. Treat the governor as active until Tarsis completes the handoff. Comms should coordinate homing priority, generator support, and docking clearance with Tarsis.",
@@ -838,7 +838,7 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
         self.assertNotIn("khovan_kestrel_release_yard_transfer_energy", clearance_body)
         self.assertIn('"detail": "departure clearance granted; waiting for launch envelope confirmation; energy remains at source-authorized start value until Tarsis handoff"', clearance_body)
         self.assertIn("kestrel_departure_clearance_response_sent = True", clearance_body)
-        self.assertIn("Kestrel Yard Control: departure clearance granted. Helm, clear the launch envelope. Comms, confirm once Artemis is outside the yard boundary.", clearance_body)
+        self.assertIn("Kestrel Yard Control: departure clearance granted. Helm, clear the launch envelope by moving at least 1 km from Kestrel. Comms, confirm once Artemis is outside the yard boundary.", clearance_body)
         self.assertIn("[KHOVAN ACT1 COMMS 006D] Kestrel departure-clearance option response sent", clearance_body)
         self.assertNotIn('set_data_set_value(artemis_id, "energy"', clearance_body)
 

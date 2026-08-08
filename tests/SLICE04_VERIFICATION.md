@@ -183,8 +183,8 @@ Act I message-ordering and player instruction clarity bug:
   1. Dillon: `Dillon: Crew of Artemis, this is a qualification cruise. First task: get the ship out of Kestrel cleanly. Comms, request departure clearance. Helm, hold position until Kestrel releases the yard-lock. Captain, coordinate the sequence.`
   2. Startup objective: `Current Objective [S04-parent-2026-06-07.1]: Comms request Kestrel departure clearance.`
   3. Kestrel emergency reserve: `Kestrel Yard Control: emergency homing reserve approved. Loading two homing torpedoes now. These are reserve margin under the generator governor, not a full combat load. No nukes, EMPs, or mines are released before Tarsis resupply.`
-  4. Kestrel departure: `Kestrel Yard Control: departure clearance granted. Helm, clear the launch envelope. Comms, confirm once Artemis is outside the yard boundary.`
-  5. Departure objective: `Current Objective [S04-parent-2026-06-07.1]: Helm clear the Kestrel launch envelope, then Comms confirm exit.`
+  4. Kestrel departure: `Kestrel Yard Control: departure clearance granted. Helm, clear the launch envelope by moving at least 1 km from Kestrel. Comms, confirm once Artemis is outside the yard boundary.`
+  5. Departure objective: `Current Objective [S04-parent-2026-06-07.1]: Helm clear the Kestrel launch envelope: move at least 1 km from Kestrel, then Comms confirm exit.`
   6. Kestrel launch-envelope: `Kestrel Yard Control logs Artemis clear of the launch envelope. Stand by for generator advisory while yard telemetry catches up.`
   7. Kestrel advisory: `Kestrel Yard Control: advisory packet follows. Artemis is operating under a temporary generator governor. Expect constrained startup resources and deliberate speed/power handling until Tarsis completes generator acceptance. Tarsis has the acceptance package and will clear the handoff after docking/resupply.`
   8. Training reminder: `Training Control: keep speed and power changes deliberate. Treat the governor as active until Tarsis completes the handoff. Comms should coordinate homing priority, generator support, and docking clearance with Tarsis.`
@@ -363,7 +363,7 @@ Only live Cosmos smoke can prove:
 28. Select `Khovan: Request Emergency Homing Reserve` again.
 29. Confirm Homing remains 2/10 and trace includes `[KHOVAN ACT1 RESERVE 004]`.
 30. Select `Khovan: Request Departure Clearance`.
-31. Confirm Current Objective updates to `Helm clear the Kestrel launch envelope, then Comms confirm exit.` and trace includes `[KHOVAN OBJECTIVE 003]`.
+31. Confirm Current Objective updates to `Helm clear the Kestrel launch envelope: move at least 1 km from Kestrel, then Comms confirm exit.` and trace includes `[KHOVAN OBJECTIVE 003]`.
 32. Confirm the Kestrel response does not mention energy, yard power, or any power grant.
 33. Confirm ship energy remains 0 after departure clearance.
 34. After clearance, attempt Helm movement/departure again.
