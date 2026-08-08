@@ -272,6 +272,37 @@ def check_duplicate_shared_declarations() -> list[str]:
     return failures
 
 
+def check_test_coverage_matrix() -> list[str]:
+    """Verify test coverage matrix exists and is consistent with admin testing plan."""
+    matrix_file = ROOT / "tests" / "test_coverage_matrix.md"
+    if not matrix_file.is_file():
+        return ["missing test coverage matrix: tests/test_coverage_matrix.md"]
+
+    admin_plan = ROOT / "docs" / "01_design" / "40_admin_testing_plan.md"
+    if not admin_plan.is_file():
+        return ["missing admin testing plan: docs/01_design/40_admin_testing_plan.md"]
+
+    admin_text = admin_plan.read_text(encoding="utf-8")
+    admin_ids = set(re.findall(r"\b([A-Z0-9]+-\d+)\b", admin_text))
+
+    matrix_text = matrix_file.read_text(encoding="utf-8")
+    matrix_ids = set(re.findall(r"^\|\s*([A-Z0-9]+-\d+)\s*\|", matrix_text, re.MULTILINE))
+
+    failures = []
+
+    missing_in_matrix = admin_ids - matrix_ids
+    if missing_in_matrix:
+        for test_id in sorted(missing_in_matrix):
+            failures.append(f"test ID in admin plan but not in coverage matrix: {test_id}")
+
+    extra_in_matrix = matrix_ids - admin_ids
+    if extra_in_matrix:
+        for test_id in sorted(extra_in_matrix):
+            failures.append(f"test ID in coverage matrix but not in admin plan: {test_id}")
+
+    return failures
+
+
 def print_group(label: str, items: list[str]) -> None:
     for item in items:
         print(f"{label}: {item}")
@@ -312,6 +343,9 @@ def run_quick() -> int:
 
     harness_checks_run += 1
     failures.extend(check_duplicate_shared_declarations())
+
+    harness_checks_run += 1
+    failures.extend(check_test_coverage_matrix())
 
     warnings.extend(check_old_mast_archive_warning())
     total_checks_run = harness_checks_run + static_tests_run
