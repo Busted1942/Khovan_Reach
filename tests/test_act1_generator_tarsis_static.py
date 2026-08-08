@@ -75,6 +75,7 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             "shared kestrel_homing_reserve_prompt_run_id = 0",
             'shared kestrel_homing_reserve_prompt_status = "pending_departure_clearance"',
             "shared kestrel_homing_reserve_prompt_sent = False",
+            'shared kestrel_stock_station_role_status = "active_until_launch_envelope_and_reserve"',
             "shared training_speed_power_reminder_sent = False",
             "shared shakedown_prompt_sent = False",
             "shared homing_reserve_count = 2",
@@ -861,6 +862,7 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             'set_data_set_value(artemis_id, "Homing_NUM", homing_reserve_count, 0)',
             "[KHOVAN ACT1 RESERVE 002] emergency homing reserve load requested",
             "[KHOVAN ACT1 RESERVE 003] emergency homing reserve applied homing=2",
+            "await task_schedule(khovan_act1_remove_kestrel_stock_station_role_after_reserve_and_launch)",
             "comms_receive(kestrel_homing_reserve_request_text, title=\"Kestrel Yard Control\", title_color=\"green\")",
             '"detail": "emergency homing reserve loaded; Homing_NUM set to 2 once"',
         ]:
@@ -889,8 +891,21 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
         self.assertIn("kestrel_launch_envelope_response_sent = True", launch_body)
         self.assertIn("[KHOVAN ACT1 COMMS 006E] Kestrel launch-envelope option response sent", launch_body)
         self.assertIn("await task_schedule(khovan_act1_send_training_speed_power_reminder)", launch_body)
+        self.assertIn("await task_schedule(khovan_act1_remove_kestrel_stock_station_role_after_reserve_and_launch)", launch_body)
         self.assertNotIn("khovan_act1_deliver_kestrel_generator_advisory_after_delay", act1)
         self.assertNotIn("kestrel_generator_advisory_text", act1)
+
+        stock_role_body = label_body(act1, "khovan_act1_remove_kestrel_stock_station_role_after_reserve_and_launch")
+        for phrase in [
+            "if not launch_envelope_cleared:",
+            'artemis_object = to_object(artemis_id)',
+            'kestrel_homing_inventory = artemis_object.data_set.get("Homing_NUM", 0)',
+            "if kestrel_homing_inventory < homing_reserve_count:",
+            'remove_role(kestrel_yards_id, "Station")',
+            'kestrel_stock_station_role_status = "removed_after_launch_envelope_and_reserve"',
+            "[KHOVAN ACT1 KESTREL STOCK] Station role removed after launch envelope clearance and two-homing reserve confirmation",
+        ]:
+            self.assertIn(phrase, stock_role_body)
 
     def test_homing_reserve_prompt_waits_ten_seconds_after_departure_and_skips_loaded_reserve(self) -> None:
         act1 = read(ACT1_PATH)

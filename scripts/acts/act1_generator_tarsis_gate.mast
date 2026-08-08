@@ -28,6 +28,7 @@ shared kestrel_generator_advisory_sent = False
 shared kestrel_homing_reserve_prompt_run_id = 0
 shared kestrel_homing_reserve_prompt_status = "pending_departure_clearance"
 shared kestrel_homing_reserve_prompt_sent = False
+shared kestrel_stock_station_role_status = "active_until_launch_envelope_and_reserve"
 shared training_speed_power_reminder_sent = False
 shared shakedown_prompt_sent = False
 
@@ -177,6 +178,7 @@ shared tarsis_resupply_text = "Tarsis Control: normal docking resupply and gener
     kestrel_homing_reserve_prompt_run_id = 0
     kestrel_homing_reserve_prompt_status = "pending_departure_clearance"
     kestrel_homing_reserve_prompt_sent = False
+    kestrel_stock_station_role_status = "active_until_launch_envelope_and_reserve"
     training_speed_power_reminder_sent = False
     shakedown_prompt_sent = False
     tarsis_gate_status = "waiting_for_kestrel_departure"
@@ -243,6 +245,7 @@ shared tarsis_resupply_text = "Tarsis Control: normal docking resupply and gener
     kestrel_homing_reserve_prompt_run_id = kestrel_homing_reserve_prompt_run_id + 1
     kestrel_homing_reserve_prompt_status = "pending_departure_clearance"
     kestrel_homing_reserve_prompt_sent = False
+    kestrel_stock_station_role_status = "active_until_launch_envelope_and_reserve"
     training_speed_power_reminder_sent = False
     shakedown_prompt_sent = False
     tarsis_gate_status = "waiting_for_kestrel_departure"
@@ -646,6 +649,7 @@ distance: 600
     set_data_set_value(artemis_id, "Homing_NUM", homing_reserve_count, 0)
     script.write_khovan_startup_trace("[KHOVAN ACT1 RESERVE 002] emergency homing reserve load requested")
     script.write_khovan_startup_trace("[KHOVAN ACT1 RESERVE 003] emergency homing reserve applied homing=2")
+    await task_schedule(khovan_act1_remove_kestrel_stock_station_role_after_reserve_and_launch)
     comms_receive(kestrel_homing_reserve_request_text, title="Kestrel Yard Control", title_color="green")
     await task_schedule(khovan_act1_record_progression, {"action": "kestrel_homing_reserve_request", "detail": "emergency homing reserve loaded; Homing_NUM set to 2 once"})
     yield success
@@ -703,12 +707,39 @@ distance: 600
     script.write_khovan_startup_trace("[KHOVAN ACT1 005] launch envelope clear confirmed; Kestrel advisory packet removed by operator")
     await task_schedule(khovan_set_current_objective, {"objective_id": "tarsis_requests", "objective_body": "Proceed to Tarsis. Comms request homing priority, generator support, and docking clearance.", "objective_step": "Tarsis requests", "objective_breadcrumb": "[KHOVAN OBJECTIVE 005] objective updated: Tarsis requests"})
     await task_schedule(khovan_act1_record_progression, {"action": "launch_envelope_cleared", "detail": "distance-verified Kestrel launch envelope clear; proceed directly to Tarsis requests"})
+    await task_schedule(khovan_act1_remove_kestrel_stock_station_role_after_reserve_and_launch)
     await task_schedule(khovan_act1_send_training_speed_power_reminder)
     kestrel_launch_envelope_response_sent = True
     comms_receive("Kestrel Yard Control logs Artemis clear of the launch envelope. Proceed to Tarsis Station for the required Comms requests.", title="Kestrel Yard Control", title_color="green")
     script.write_khovan_startup_trace("[KHOVAN ACT1 MSG KESTREL 003] launch-envelope packet sent")
     script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS 006E] Kestrel launch-envelope option response sent")
     yield success
+
+=== khovan_act1_remove_kestrel_stock_station_role_after_reserve_and_launch ===
+    if kestrel_stock_station_role_status == "removed_after_launch_envelope_and_reserve":
+        ->END
+    if not launch_envelope_cleared:
+        kestrel_stock_station_role_status = "waiting_for_launch_envelope"
+        ->END
+    if artemis_id == 0:
+        kestrel_stock_station_role_status = "waiting_for_artemis_inventory"
+        ->END
+    artemis_object = to_object(artemis_id)
+    if artemis_object is None:
+        kestrel_stock_station_role_status = "waiting_for_artemis_inventory"
+        ->END
+    kestrel_homing_inventory = artemis_object.data_set.get("Homing_NUM", 0)
+    if kestrel_homing_inventory < homing_reserve_count:
+        kestrel_stock_station_role_status = "waiting_for_two_homing_torpedoes"
+        script.write_khovan_startup_trace(f"[KHOVAN ACT1 KESTREL STOCK] retained Station role: Homing_NUM={kestrel_homing_inventory} reserve={homing_reserve_count}")
+        ->END
+    if kestrel_yards_id == 0:
+        kestrel_stock_station_role_status = "waiting_for_kestrel_id"
+        ->END
+    remove_role(kestrel_yards_id, "Station")
+    kestrel_stock_station_role_status = "removed_after_launch_envelope_and_reserve"
+    script.write_khovan_startup_trace("[KHOVAN ACT1 KESTREL STOCK] Station role removed after launch envelope clearance and two-homing reserve confirmation")
+    ->END
 
 === khovan_act1_send_training_speed_power_reminder ===
     if training_speed_power_reminder_sent:
