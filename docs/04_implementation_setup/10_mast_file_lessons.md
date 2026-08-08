@@ -256,6 +256,8 @@ Implementation rule:
 - text stand-ins should be replaceable by audio/video playback later
 - clip IDs should still be logged
 
+**Active build decision (2026-08-08, plan-hardening):** confirmed by the operator — text stand-ins ship for the first playable run across all 15 specified clips (12 Dillon, 3 Anderson; see `docs/02_content/40_dillon_clips.md` and `docs/02_content/30_anderson_clips.md`). Recorded audio integration is explicitly deferred; the operator will wire it in later. Only Dillon Clip 1 has a runtime stand-in today (`scripts/systems/audio_runtime.mast`); the remaining 14 have zero runtime representation and no owning slice yet. Do not build out a general clip-playback router speculatively — extend `audio_runtime.mast` only when a slice packet actually calls for a specific clip, one at a time, following this section's stand-in pattern. When recorded-audio wiring is eventually picked up, it needs its own slice packet (playback API spike, clip file naming/placement convention, stand-in-to-audio swap mechanism) rather than retrofitting it piecemeal.
+
 ---
 
 ## 3.9 Kestrel hold loop is a useful starting pattern
