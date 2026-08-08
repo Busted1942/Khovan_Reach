@@ -86,10 +86,13 @@ Do not expose secret pirate truth in player-facing game resources.
 - `docs/04_implementation_setup/50_future_reusable_mission_kernel.md`
 - `docs/04_implementation_setup/60_mast_api_cookbook.md`
 - `docs/04_implementation_setup/70_agent_handoff_protocol.md`
+- `docs/04_implementation_setup/80_slice_packets_07_16.md`
 
 `60_mast_api_cookbook.md` records MAST/sbs_utils syntax already proven in this repo's active runtime code. It is implementation evidence, not design authority, and each pattern is tagged live / compile-only / unproven.
 
 `70_agent_handoff_protocol.md` defines the slice-packet-in / verification-record-out contract used when work is split across planning and implementation agents. It governs process only.
+
+`80_slice_packets_07_16.md` holds the completed slice packets for Slices 07-16, written to the 21-field template in `docs/01_design/50_implementation_slice_plan.md` section 2. It is build-side elaboration, not design authority: where it and the slice plan differ on design, the slice plan wins and the difference is a finding.
 
 These are setup and handoff documents for starting or restarting the coding project. They preserve useful prior-build lessons without making old code authoritative.
 
