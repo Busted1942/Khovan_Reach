@@ -110,6 +110,8 @@ A follow-up live pass (2026-08-08) confirmed two of the three fixes directly fro
 - **Destroy-hook guard: RE-TESTED AND CONFIRMED FIXED.** Both branches now live-confirmed. Guard work is done.
 - **GM `comms_receive()` rendering: FINDING WIDENED FROM SPIKE-SPECIFIC TO CROSS-CUTTING.** The requested diagnostic — does the short one-line Cleanup confirmation render? — came back negative: "No, I see no text when cleanup happens. The drone just disappeared." Every GM-only `comms_receive()` call in this file has now been tested and confirmed to execute without ever rendering, while the identical shape called from a player-facing route is confirmed working. An operator screenshot showed a `(unknown)` sender-identity label where a proven working message shows a real title (e.g. "Tarsis Docking Control") — consistent with GM routes lacking the bound identity every other working call supplies via `comms_override()`. Applied an experimental fix (wrap every GM-only `comms_receive()` in this file with `comms_override(COMMS_ORIGIN_ID, COMMS_ORIGIN_ID, from_name=...)`) and downgraded the cookbook's `[LIVE]` tag on the bare shape. **Not yet live-tested.**
 
+**Closure (2026-08-08), by operator direction:** further screenshots from this same session showed the current-objective broadcast text (`comms_broadcast()`, a different proven-live channel) rendering correctly on a player console. The operator judged continued live-smoke cycling on the GM-only rendering question a poor use of session time against building the mission out, and closed Phase A as accepted with this one item deprioritized rather than blocking. See Next Action.
+
 See Live Smoke Log at the end of this file for the full record, both corrections, and both fixes.
 
 Quick/static checks prove the spike harness exists, imports, initializes, exposes GM-only controls, spawns a neutral training target, includes Science/Comms hooks, and includes selection/damage/destruction observers.
@@ -191,10 +193,9 @@ Repo/branch assumption: run from `slice06-drone-contact-fire` after `python run_
 
 ## Acceptance Not Covered
 
-- **GM `comms_receive()` rendering — cross-cutting, not spike-specific.** Every GM-only route in this file (Spawn, Select, Read Status, Cleanup) is confirmed to execute correctly and has never rendered visibly for the GM, across 3+ sessions. An experimental fix (`comms_override` wrap) is applied but not yet live-tested. If confirmed, `scenario_control_panel.mast` and `story_jump_presets.mast` need the same fix, since they use the identical disconfirmed pattern.
-- Weapons-console damage readout visibility to a crewed station — likely blocked on the same data_set.get() bug rather than a separate UI gap, but not yet re-confirmed after the fix.
-- Full Drone 01 and Drone 02 sequence remains unimplemented until Phase A is accepted or a fallback/blocker is documented.
-- Test-instrumentation text is confirmed present in player-facing Comms/Science output (deliberately deferred per operator direction, not a Phase A blocker).
+- **GM `comms_receive()` rendering — cross-cutting, not spike-specific. DEPRIORITIZED, not blocking (operator direction, 2026-08-08).** Every GM-only route in this file (Spawn, Select, Read Status, Cleanup) is confirmed to execute correctly and has never rendered visibly for the GM, across 3+ sessions. An experimental fix (`comms_override` wrap) is applied but not yet live-tested. Do not spend another live-smoke session on this unprompted; diagnose from the trace log if picked up again. If confirmed working, `scenario_control_panel.mast` and `story_jump_presets.mast` need the same fix.
+- Weapons-console damage readout visibility to a crewed station — likely blocked on the same data_set.get() bug rather than a separate UI gap, but not yet re-confirmed after the fix. Low priority — see design guidance in Next Action (prefer the objective-broadcast channel).
+- Test-instrumentation text is confirmed present in player-facing Comms/Science output (deliberately deferred per operator direction, not a Phase A blocker — must land before Drone 01/02 build reuses this spike's text patterns).
 
 ## Known Risks/API Uncertainties
 
@@ -215,11 +216,13 @@ Repo/branch assumption: run from `slice06-drone-contact-fire` after `python run_
 
 ## Next Action
 
-Phase A station mechanics are live-proven with a genuinely 4-station crew (2026-08-08): spawn, non-attack, Science scan (while alive), Comms hail (no stock-menu interference), Weapons selection/fire/kill. The subsystem-targeting bug fix is **live-confirmed**. The destroy-hook guard is **fully live-confirmed, both branches — done.** One item remains before Phase A closes:
+**Phase A: ACCEPTED (2026-08-08), by operator direction.** Every mechanic Phase A exists to prove is live-confirmed: spawn, cleanup, non-attack behavior, Science scan, Comms hail with no stock-menu interference, Weapons selection/fire/kill, manual subsystem detection, and the destroy-hook guard (both branches). Proceed to Phase B.
 
-1. **GM `comms_receive()` rendering — cross-cutting finding, experimental fix applied, not yet live-tested.** Every GM-only route in this file (Spawn, Select, Read Status, Cleanup) executes correctly but has never rendered visibly for the GM, across 3+ sessions. An experimental fix wraps all of them in `comms_override(COMMS_ORIGIN_ID, COMMS_ORIGIN_ID, from_name=...)` — the one proven-live `comms_receive()` shape not yet tried for a GM route. Needs a live re-test: restart, spawn a target, try Read Target Spike Status and Cleanup again. If either now renders, the same fix needs to land in `scenario_control_panel.mast` and `story_jump_presets.mast` as a follow-up, since they share the disconfirmed bare shape. If neither renders, there is no third proven shape to try — escalate as an API-uncertainty finding rather than continuing to guess.
+**Deprioritized, not blocking (operator direction, 2026-08-08):** GM-only `comms_receive()` rendering remains unresolved — every GM-only route in this file executes correctly but has never rendered visibly for the GM, and the `comms_override` experiment (see Known Risks) is unverified. The operator judged further live-smoke cycles on this one display issue a poor use of session time relative to building the mission out, and is willing to have future diagnosis done by trace-log reading rather than repeated live round-trips. Do not spend another live-smoke session chasing this unprompted.
 
-Test-instrumentation text visible to players (Comms hail response, two Science scan/intel blocks) is a confirmed, deliberately deferred cleanup item — not blocking Phase A, but must land before this spike's patterns are reused for Drone 01/02 player-facing content.
+**Design guidance for Phase B, arising from this investigation:** the current-objective broadcast channel (`comms_broadcast()` via `khovan_set_current_objective`, `current_objective_panel.mast`) is confirmed live-working and already reaching players — operator screenshots show objective text rendering correctly in blue on a player console (`[S06.8]: Slice 06 target spike ready...`). For anything Drone 01/02 needs to communicate to players — progress, gate status, instructions — **prefer this proven channel over GM-only `comms_receive()`.** The GM's own status visibility can lean on the Scenario Control Panel overview and, until the rendering question is resolved, the trace log.
+
+Test-instrumentation text visible to players (Comms hail response, two Science scan/intel blocks) is a confirmed, deliberately deferred cleanup item — must land before this spike's patterns are reused for Drone 01/02 player-facing content, not before Phase B starts.
 
 Stop after Phase A only if item 1's re-test shows the comms_override experiment also fails to render.
 
