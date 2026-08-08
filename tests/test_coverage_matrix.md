@@ -1,10 +1,10 @@
 # Test Coverage Matrix
 
 Status: tracking implementation progress against admin testing plan test IDs
-Last updated: created during plan-hardening phase (2026-08-08)
+Last updated: fixed regex to include digit-prefix IDs like ACT1-*, D2-*, D3-* (2026-08-08)
 Purpose: record which test IDs are covered (static/compile/live) and which remain not-covered, in a machine-checkable format
 
-This matrix tracks all 210 test IDs from `docs/01_design/40_admin_testing_plan.md`. Each row represents one test ID and its current coverage status.
+This matrix tracks all test IDs from `docs/01_design/40_admin_testing_plan.md`. Each row represents one test ID and its current coverage status.
 
 Coverage statuses:
 
@@ -22,30 +22,30 @@ Coverage statuses:
 
 | Test ID | Slice | Status | Evidence |
 |---------|-------|--------|----------|
-| ACT1-001 | 04 | not-covered | not yet tested |
-| ACT1-002 | 04 | not-covered | not yet tested |
-| ACT1-003 | 04 | not-covered | not yet tested |
-| ACT1-004 | 04 | not-covered | not yet tested |
-| ACT1-005 | 04 | not-covered | not yet tested |
-| ACT1-006 | 04 | not-covered | not yet tested |
-| ACT1-007 | 04 | not-covered | not yet tested |
-| ACT1-008 | 04 | not-covered | not yet tested |
-| ACT1-009 | 04 | not-covered | not yet tested |
-| ACT1-010 | 04 | not-covered | not yet tested |
-| ACT1-011 | 04 | not-covered | not yet tested |
-| ACT1-012 | 04 | not-covered | not yet tested |
-| ACT1-013 | 04 | not-covered | not yet tested |
-| ACT1-014 | 04 | not-covered | not yet tested |
-| ACT1-015 | 04 | not-covered | not yet tested |
-| ACT1-016 | 04 | not-covered | not yet tested |
-| ACT1-017 | 04 | not-covered | not yet tested |
-| ACT1-018 | 05 | not-covered | not yet tested |
-| ACT1-019 | 06 | not-covered | not yet tested |
-| ACT1-020 | 06 | not-covered | not yet tested |
-| ACT1-021 | 06 | not-covered | not yet tested |
-| ACT1-022 | 06 | not-covered | not yet tested |
-| ACT1-023 | 06 | not-covered | not yet tested |
-| ACT1-024 | 06 | not-covered | not yet tested |
+| ACT1-001 | 04-06 | not-covered | not yet tested |
+| ACT1-002 | 04-06 | not-covered | not yet tested |
+| ACT1-003 | 04-06 | not-covered | not yet tested |
+| ACT1-004 | 04-06 | not-covered | not yet tested |
+| ACT1-005 | 04-06 | not-covered | not yet tested |
+| ACT1-006 | 04-06 | not-covered | not yet tested |
+| ACT1-007 | 04-06 | not-covered | not yet tested |
+| ACT1-008 | 04-06 | not-covered | not yet tested |
+| ACT1-009 | 04-06 | not-covered | not yet tested |
+| ACT1-010 | 04-06 | not-covered | not yet tested |
+| ACT1-011 | 04-06 | not-covered | not yet tested |
+| ACT1-012 | 04-06 | not-covered | not yet tested |
+| ACT1-013 | 04-06 | not-covered | not yet tested |
+| ACT1-014 | 04-06 | not-covered | not yet tested |
+| ACT1-015 | 04-06 | not-covered | not yet tested |
+| ACT1-016 | 04-06 | not-covered | not yet tested |
+| ACT1-017 | 04-06 | not-covered | not yet tested |
+| ACT1-018 | 04-06 | not-covered | not yet tested |
+| ACT1-019 | 04-06 | not-covered | not yet tested |
+| ACT1-020 | 04-06 | not-covered | not yet tested |
+| ACT1-021 | 04-06 | not-covered | not yet tested |
+| ACT1-022 | 04-06 | not-covered | not yet tested |
+| ACT1-023 | 04-06 | not-covered | not yet tested |
+| ACT1-024 | 04-06 | not-covered | not yet tested |
 | ADMIN-001 | 16 | not-covered | not yet implemented |
 | ADMIN-002 | 16 | not-covered | not yet implemented |
 | ADMIN-003 | 16 | not-covered | not yet implemented |
@@ -64,8 +64,8 @@ Coverage statuses:
 | ADMIN-016 | 16 | not-covered | not yet implemented |
 | ADMIN-017 | 16 | not-covered | not yet implemented |
 | BOOT-001 | 01 | covered-compile | story.mast compiles |
-| BOOT-002 | 01 | covered-compile | main.mast imports in story.mast |
-| BOOT-003 | 01 | covered-compile | story.json loads in MAST compile preflight |
+| BOOT-002 | 01 | covered-compile | story.mast compiles |
+| BOOT-003 | 01 | covered-compile | story.mast compiles |
 | BOOT-004 | 01 | covered-static | test_bootstrap_static.py |
 | BOOT-005 | 01 | covered-static | test_bootstrap_static.py |
 | BOOT-006 | 01 | covered-static | test_bootstrap_static.py |
@@ -161,33 +161,33 @@ Coverage statuses:
 | GOLD-004 | all | not-covered | not yet implemented |
 | GOLD-005 | all | not-covered | not yet implemented |
 | GOLD-006 | all | not-covered | not yet implemented |
-| JUMP-001 | 03 | not-covered | not yet tested |
-| JUMP-002 | 03 | not-covered | not yet tested |
-| JUMP-003 | 03 | not-covered | not yet tested |
-| JUMP-004 | 03 | not-covered | not yet tested |
-| JUMP-005 | 03 | not-covered | not yet tested |
-| JUMP-006 | 03 | not-covered | not yet tested |
-| JUMP-007 | 03 | not-covered | not yet tested |
-| JUMP-008 | 03 | not-covered | not yet tested |
-| JUMP-009 | 03 | not-covered | not yet tested |
-| JUMP-010 | 03 | not-covered | not yet tested |
-| JUMP-011 | 07 | not-covered | not yet tested |
-| JUMP-012 | 07 | not-covered | not yet tested |
-| JUMP-013 | 08 | not-covered | not yet tested |
-| JUMP-014 | 08 | not-covered | not yet tested |
-| JUMP-015 | 08 | not-covered | not yet tested |
-| JUMP-016 | 10 | not-covered | not yet tested |
-| JUMP-017 | 10 | not-covered | not yet tested |
-| JUMP-018 | 11 | not-covered | not yet tested |
-| JUMP-019 | 11 | not-covered | not yet tested |
-| JUMP-020 | 11 | not-covered | not yet tested |
-| JUMP-021 | 12 | not-covered | not yet tested |
-| JUMP-022 | 10 | not-covered | not yet tested |
-| JUMP-023 | 13 | not-covered | not yet tested |
-| JUMP-024 | 13 | not-covered | not yet tested |
-| JUMP-025 | 13 | not-covered | not yet tested |
-| JUMP-026 | 07 | not-covered | not yet tested |
-| JUMP-027 | 14 | not-covered | not yet tested |
+| JUMP-001 | 03-16 | not-covered | not yet tested |
+| JUMP-002 | 03-16 | not-covered | not yet tested |
+| JUMP-003 | 03-16 | not-covered | not yet tested |
+| JUMP-004 | 03-16 | not-covered | not yet tested |
+| JUMP-005 | 03-16 | not-covered | not yet tested |
+| JUMP-006 | 03-16 | not-covered | not yet tested |
+| JUMP-007 | 03-16 | not-covered | not yet tested |
+| JUMP-008 | 03-16 | not-covered | not yet tested |
+| JUMP-009 | 03-16 | not-covered | not yet tested |
+| JUMP-010 | 03-16 | not-covered | not yet tested |
+| JUMP-011 | 03-16 | not-covered | not yet tested |
+| JUMP-012 | 03-16 | not-covered | not yet tested |
+| JUMP-013 | 03-16 | not-covered | not yet tested |
+| JUMP-014 | 03-16 | not-covered | not yet tested |
+| JUMP-015 | 03-16 | not-covered | not yet tested |
+| JUMP-016 | 03-16 | not-covered | not yet tested |
+| JUMP-017 | 03-16 | not-covered | not yet tested |
+| JUMP-018 | 03-16 | not-covered | not yet tested |
+| JUMP-019 | 03-16 | not-covered | not yet tested |
+| JUMP-020 | 03-16 | not-covered | not yet tested |
+| JUMP-021 | 03-16 | not-covered | not yet tested |
+| JUMP-022 | 03-16 | not-covered | not yet tested |
+| JUMP-023 | 03-16 | not-covered | not yet tested |
+| JUMP-024 | 03-16 | not-covered | not yet tested |
+| JUMP-025 | 03-16 | not-covered | not yet tested |
+| JUMP-026 | 03-16 | not-covered | not yet tested |
+| JUMP-027 | 03-16 | not-covered | not yet tested |
 | JUMPTEST-001 | 03 | not-covered | not yet tested |
 | JUMPTEST-021 | 03 | not-covered | not yet tested |
 | KT-001 | 04 | not-covered | not yet tested |

@@ -283,10 +283,10 @@ def check_test_coverage_matrix() -> list[str]:
         return ["missing admin testing plan: docs/01_design/40_admin_testing_plan.md"]
 
     admin_text = admin_plan.read_text(encoding="utf-8")
-    admin_ids = set(re.findall(r"\b([A-Z]+\-\d+)\b", admin_text))
+    admin_ids = set(re.findall(r"\b([A-Z]+\d*\-\d+)\b", admin_text))
 
     matrix_text = matrix_file.read_text(encoding="utf-8")
-    matrix_ids = set(re.findall(r"^\|\s*([A-Z]+\-\d+)\s*\|", matrix_text, re.MULTILINE))
+    matrix_ids = set(re.findall(r"^\|\s*([A-Z]+\d*\-\d+)\s*\|", matrix_text, re.MULTILINE))
 
     failures = []
 
