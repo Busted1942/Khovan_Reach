@@ -60,6 +60,14 @@ shared navigation_priority_confirmed_text = "Training Control: Engineering syste
     + "Khovan: Fallback Confirm Repair Complete" khovan_engineering_confirm_repair_complete if controlled_overload_repair_fallback_available and not controlled_overload_repair_confirmed
     + "Khovan: Fallback Confirm Navigation Priority" khovan_engineering_confirm_navigation_priority if navigation_priority_preset_fallback_available and not navigation_priority_preset_set
 
+=== khovan_engineering_send_message ===
+    default engineering_message_text = ""
+    default engineering_message_title = "Training Control"
+    default engineering_message_color = "cyan"
+    default engineering_message_breadcrumb = "[KHOVAN ACT1 ENG MSG] guarded message sent"
+    await task_schedule(khovan_reach_send_safe_startup_message, {"startup_sender": engineering_message_title, "startup_text": engineering_message_text, "startup_title_color": engineering_message_color, "startup_sender_id": tarsis_station_id, "startup_player_id": artemis_id, "startup_breadcrumb": engineering_message_breadcrumb, "startup_safe_breadcrumb": "[KHOVAN ACT1 ENG MSG SAFE] message skipped because Tarsis or Artemis context is unavailable"})
+    ->END
+
 === khovan_act1_initialize_engineering_shakedown ===
     engineering_shakedown_initialized = True
     engineering_shakedown_available = False
@@ -190,7 +198,7 @@ shared navigation_priority_confirmed_text = "Training Control: Engineering syste
         engineering_shakedown_status = "blocked_before_tarsis_handoff"
         engineering_shakedown_last_step = "blocked_before_tarsis_handoff"
         script.write_khovan_startup_trace("[KHOVAN ACT1 ENG BLOCKED] Engineering shakedown start blocked before Tarsis handoff")
-        comms_receive("Training Control: hold Engineering shakedown until Tarsis resupply and generator handoff are complete.", title="Training Control", title_color="yellow")
+        await task_schedule(khovan_engineering_send_message, {"engineering_message_text": "Training Control: hold Engineering shakedown until Tarsis resupply and generator handoff are complete.", "engineering_message_color": "yellow", "engineering_message_breadcrumb": "[KHOVAN ACT1 ENG BLOCKED] guarded hold message sent"})
         yield fail
 
     if engineering_shakedown_started:
@@ -213,7 +221,7 @@ shared navigation_priority_confirmed_text = "Training Control: Engineering syste
     await task_schedule(khovan_set_current_objective, {"objective_id": "engineering_impulse_zero_warp_200", "objective_body": "Engineering set impulse 0 and warp 200. Captain order full impulse; Helm hold zero speed while Training Control validates no motion.", "objective_step": "Engineering impulse zero / warp 200", "objective_breadcrumb": "[KHOVAN OBJECTIVE 008] objective updated: Engineering impulse zero warp 200"})
     await task_schedule(khovan_scenario_control_panel_update_overview)
     task_schedule(khovan_engineering_watch_no_motion_validation)
-    comms_receive(engineering_shakedown_start_text, title="Training Control", title_color="cyan")
+    await task_schedule(khovan_engineering_send_message, {"engineering_message_text": engineering_shakedown_start_text, "engineering_message_breadcrumb": "[KHOVAN ACT1 ENG 003A] guarded shakedown instruction sent"})
     yield success
 
 === khovan_engineering_watch_no_motion_validation ===
@@ -273,7 +281,7 @@ shared navigation_priority_confirmed_text = "Training Control: Engineering syste
         engineering_no_motion_observer_status = "fallback_timeout_engineering_slider_keys_unverified"
         engineering_no_motion_fallback_available = True
         script.write_khovan_startup_trace("[KHOVAN ACT1 ENG NO MOTION FALLBACK] automatic observer timed out; Comms fallback enabled")
-        comms_receive("Training Control: no-motion observer cannot verify the Engineering slider state. If Engineering set impulse zero and warp two hundred and Helm sees no movement, use fallback confirmation.", title="Training Control", title_color="yellow")
+        await task_schedule(khovan_engineering_send_message, {"engineering_message_text": "Training Control: no-motion observer cannot verify the Engineering slider state. If Engineering set impulse zero and warp two hundred and Helm sees no movement, use fallback confirmation.", "engineering_message_color": "yellow", "engineering_message_breadcrumb": "[KHOVAN ACT1 ENG NO MOTION FALLBACK] guarded fallback message sent"})
         ->END
 
     await delay_sim(seconds=1)
@@ -300,7 +308,7 @@ shared navigation_priority_confirmed_text = "Training Control: Engineering syste
     await task_schedule(khovan_set_current_objective, {"objective_id": "damcon_crew_quarters_standby", "objective_body": "Engineering assign DAMCON to crew quarters rest-cycle standby. Comms request DAMCON confirmation.", "objective_step": "DAMCON crew quarters standby", "objective_breadcrumb": "[KHOVAN OBJECTIVE 009] objective updated: DAMCON crew quarters standby"})
     await task_schedule(khovan_scenario_control_panel_update_overview)
     task_schedule(khovan_engineering_watch_damcon_rest_cycle)
-    comms_receive(engineering_no_motion_confirmed_text, title="Training Control", title_color="cyan")
+    await task_schedule(khovan_engineering_send_message, {"engineering_message_text": engineering_no_motion_confirmed_text, "engineering_message_breadcrumb": "[KHOVAN ACT1 ENG 004A] guarded DAMCON instruction sent"})
     ->END
 
 === khovan_engineering_confirm_no_motion ===
@@ -337,7 +345,7 @@ shared navigation_priority_confirmed_text = "Training Control: Engineering syste
     script.write_khovan_startup_trace("[KHOVAN ACT1 ENG 006] DAMCON meal-cycle confirmation retired; controlled-overload step unlocked")
     await task_schedule(khovan_set_current_objective, {"objective_id": "controlled_overload_start", "objective_body": "Helm set engines to all stop. Engineering set impulse and warp 300 for controlled overload. Captain hold movement until damage is logged.", "objective_step": "Controlled overload", "objective_breadcrumb": "[KHOVAN OBJECTIVE 011] objective updated: controlled overload"})
     await task_schedule(khovan_scenario_control_panel_update_overview)
-    comms_receive(f"{damcon_rest_cycle_text}\n{damcon_mess_instruction_text}", title="DAMCON Control", title_color="green")
+    await task_schedule(khovan_engineering_send_message, {"engineering_message_text": f"{damcon_rest_cycle_text}\n{damcon_mess_instruction_text}", "engineering_message_title": "DAMCON Control", "engineering_message_color": "green", "engineering_message_breadcrumb": "[KHOVAN ACT1 ENG 006A] guarded DAMCON message sent"})
     yield success
 
 === khovan_engineering_start_controlled_overload ===
@@ -355,7 +363,7 @@ shared navigation_priority_confirmed_text = "Training Control: Engineering syste
     await task_schedule(khovan_set_current_objective, {"objective_id": "controlled_overload_damage", "objective_body": "Hold movement until controlled damage is logged, then Engineering supervise repairs.", "objective_step": "Controlled damage", "objective_breadcrumb": "[KHOVAN OBJECTIVE 012] objective updated: controlled damage"})
     await task_schedule(khovan_scenario_control_panel_update_overview)
     task_schedule(khovan_engineering_watch_controlled_overload_damage)
-    comms_receive("Training Control: controlled overload logged. Stand by for damage confirmation.", title="Training Control", title_color="cyan")
+    await task_schedule(khovan_engineering_send_message, {"engineering_message_text": "Training Control: controlled overload logged. Stand by for damage confirmation.", "engineering_message_breadcrumb": "[KHOVAN ACT1 ENG 007A] guarded overload message sent"})
     yield success
 
 === khovan_engineering_watch_controlled_overload_damage ===
@@ -404,7 +412,7 @@ shared navigation_priority_confirmed_text = "Training Control: Engineering syste
         controlled_overload_damage_observer_status = "fallback_timeout_no_engine_damage_seen"
         controlled_overload_damage_fallback_available = True
         script.write_khovan_startup_trace("[KHOVAN ACT1 ENG DAMAGE FALLBACK] no engine system damage detected; Comms fallback enabled")
-        comms_receive("Training Control: engine damage observer did not see a damage change. If Engineering saw the controlled overload/damage condition, use fallback confirmation.", title="Training Control", title_color="yellow")
+        await task_schedule(khovan_engineering_send_message, {"engineering_message_text": "Training Control: engine damage observer did not see a damage change. If Engineering saw the controlled overload/damage condition, use fallback confirmation.", "engineering_message_color": "yellow", "engineering_message_breadcrumb": "[KHOVAN ACT1 ENG DAMAGE FALLBACK] guarded fallback message sent"})
         ->END
 
     await delay_sim(seconds=1)
@@ -432,7 +440,7 @@ shared navigation_priority_confirmed_text = "Training Control: Engineering syste
     await task_schedule(khovan_set_current_objective, {"objective_id": "engineering_repair_supervision", "objective_body": "Engineering assign repair crews and supervise repair. Comms confirm recovery when complete.", "objective_step": "Repair supervision", "objective_breadcrumb": "[KHOVAN OBJECTIVE 013] objective updated: repair supervision"})
     await task_schedule(khovan_scenario_control_panel_update_overview)
     controlled_overload_repair_fallback_available = True
-    comms_receive(controlled_damage_logged_text, title="Training Control", title_color="cyan")
+    await task_schedule(khovan_engineering_send_message, {"engineering_message_text": controlled_damage_logged_text, "engineering_message_breadcrumb": "[KHOVAN ACT1 ENG 008A] guarded repair instruction sent"})
     ->END
 
 === khovan_engineering_confirm_controlled_damage ===
@@ -455,7 +463,7 @@ shared navigation_priority_confirmed_text = "Training Control: Engineering syste
     await task_schedule(khovan_set_current_objective, {"objective_id": "navigation_priority_preset", "objective_body": "Engineering set maneuvering 190, warp 10, and impulse 100. Save or select navigation-priority preset, then report ready.", "objective_step": "Navigation priority preset", "objective_breadcrumb": "[KHOVAN OBJECTIVE 014] objective updated: navigation priority preset"})
     await task_schedule(khovan_scenario_control_panel_update_overview)
     navigation_priority_preset_fallback_available = True
-    comms_receive(repair_complete_text, title="Training Control", title_color="cyan")
+    await task_schedule(khovan_engineering_send_message, {"engineering_message_text": repair_complete_text, "engineering_message_breadcrumb": "[KHOVAN ACT1 ENG 009A] guarded navigation instruction sent"})
     yield success
 
 === khovan_engineering_confirm_navigation_priority ===
@@ -474,5 +482,5 @@ shared navigation_priority_confirmed_text = "Training Control: Engineering syste
     script.write_khovan_startup_trace("[KHOVAN ACT1 ENG 010] Engineering shakedown complete after navigation priority confirmation")
     await task_schedule(khovan_act1_drone_contact_fire_prepare_after_engineering)
     await task_schedule(khovan_scenario_control_panel_update_overview)
-    comms_receive(navigation_priority_confirmed_text, title="Training Control", title_color="green")
+    await task_schedule(khovan_engineering_send_message, {"engineering_message_text": navigation_priority_confirmed_text, "engineering_message_color": "green", "engineering_message_breadcrumb": "[KHOVAN ACT1 ENG 010A] guarded completion message sent"})
     yield success

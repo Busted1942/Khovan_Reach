@@ -134,6 +134,14 @@ class Act1EngineeringShakedownStaticTests(unittest.TestCase):
         self.assertNotIn("proof_station", engineering.lower())
         self.assertNotIn("proof station", engineering.lower())
 
+    def test_engineering_messages_use_the_guarded_sender_context_wrapper(self) -> None:
+        engineering = read(ENGINEERING_PATH)
+        message_body = label_body(engineering, "khovan_engineering_send_message")
+        self.assertIn("khovan_reach_send_safe_startup_message", message_body)
+        self.assertIn('"startup_sender_id": tarsis_station_id', message_body)
+        self.assertIn('"startup_player_id": artemis_id', message_body)
+        self.assertNotIn("comms_receive(", engineering)
+
     def test_engineering_sequence_text_and_objectives_exist_in_order(self) -> None:
         engineering = read(ENGINEERING_PATH)
         ordered_labels = [
