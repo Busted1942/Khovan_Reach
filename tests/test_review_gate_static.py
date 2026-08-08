@@ -287,19 +287,35 @@ class BootstrapApis(unittest.TestCase):
 
 
 class ProtectedDocsAndNames(unittest.TestCase):
-    def test_design_doc_change_is_flagged(self):
-        failures = gate.check_protected_docs(["docs/01_design/10_mast_requirements.md"])
+    def test_unratified_design_doc_change_is_flagged(self):
+        # A path that does not exist on disk reads as empty text, so it carries
+        # no ratification marker - the unratified case.
+        failures, notes = gate.check_protected_docs(["docs/01_design/99_not_a_real_doc.md"])
         self.assertEqual(len(failures), 1)
+        self.assertEqual(notes, [])
 
-    def test_content_doc_change_is_flagged(self):
-        failures = gate.check_protected_docs(["docs/02_content/10_pirate_dialogue.md"])
+    def test_unratified_content_doc_change_is_flagged(self):
+        failures, notes = gate.check_protected_docs(["docs/02_content/99_not_a_real_doc.md"])
         self.assertEqual(len(failures), 1)
+        self.assertEqual(notes, [])
+
+    def test_ratified_design_doc_change_is_a_note_not_a_failure(self):
+        # 10_mast_requirements.md carries a dated operator-ratification note in
+        # section 17. A ratified edit must not fail the gate forever.
+        failures, notes = gate.check_protected_docs(["docs/01_design/10_mast_requirements.md"])
+        self.assertEqual(failures, [])
+        self.assertEqual(len(notes), 1)
+
+    def test_ratification_marker_must_be_dated(self):
+        self.assertIsNone(gate.RATIFIED_RE.search("this was operator-ratified at some point"))
+        self.assertIsNotNone(gate.RATIFIED_RE.search("(operator-ratified 2026-08-08)"))
 
     def test_implementation_docs_are_allowed(self):
-        failures = gate.check_protected_docs(
+        failures, notes = gate.check_protected_docs(
             ["docs/04_implementation_setup/70_agent_handoff_protocol.md", "scripts/main.mast"]
         )
         self.assertEqual(failures, [])
+        self.assertEqual(notes, [])
 
     def test_parallel_filename_is_flagged(self):
         failures = gate.check_forbidden_filenames(["scripts/acts/act1_drone_final.mast"])

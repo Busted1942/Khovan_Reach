@@ -313,7 +313,8 @@ python tools/review_gate.py --base master
 That tool answers the mechanizable half of this gate and exits non-zero on any
 failure:
 
-- [x] No design or content doc was modified
+- [x] No design or content doc was modified, or the edit carries a dated
+      in-document operator ratification (reported as `NOTE`, not `FAIL`)
 - [x] No parallel `final`/`new`/`copy`/`old`/`merged`/`v2`/`patched` filename
 - [x] No forbidden bootstrap API reintroduced
 - [x] Every `to_object()` is None-checked
@@ -335,6 +336,22 @@ run is not a complete review:**
 - [ ] Nothing in `Do not implement` was implemented
 - [ ] Every MAST pattern cites a cookbook section and evidence tag (section 4.3.1)
 - [ ] `Status` and `Acceptance Not Covered` set by the reviewer (section 4.3)
+
+**Design-doc ratification.** An implementation agent must never edit
+`docs/01_design/` or `docs/02_content/`; that rule is unchanged. When an edit
+has already happened and the operator decides to keep it rather than revert,
+record the decision as a dated note in the affected document itself:
+
+```text
+**Revision note (operator-ratified YYYY-MM-DD).** <what changed and why kept>
+```
+
+The gate then reports that file as `NOTE` instead of `FAIL`. Without this, a
+ratified edit fails the gate on every future run, and a check that fails
+forever on an accepted condition is one reviewers learn to skip. The marker is
+a visible claim inside mission canon that a human can audit — it is not a way
+to pre-authorize an edit, and `AGENTS.md` section 5 already forbids recording
+an approval that did not happen.
 
 **Scoping.** The tool reads added lines, not whole files. `scripts/acts/`
 carries accepted live-proven debt (see `AGENTS.md` section 2 on

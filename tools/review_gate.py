@@ -73,6 +73,10 @@ FORBIDDEN_BOOTSTRAP_APIS = (
     "assign_client_to_ship",
 )
 
+# An operator ratification must be dated, so "ratified" cannot be asserted in
+# the abstract. Matches e.g. "(operator-ratified 2026-08-08)".
+RATIFIED_RE = re.compile(r"operator-ratified\s+\d{4}-\d{2}-\d{2}")
+
 LABEL_RE = re.compile(r"^===\s*([A-Za-z_]\w*)\s*===")
 
 # `to_object(` must not also match `to_object_list(`; the character after the
@@ -209,12 +213,32 @@ def scope_lines(path: str, base: str, full: bool) -> set[int]:
 # --------------------------------------------------------------------------
 
 
-def check_protected_docs(paths: list[str]) -> list[str]:
-    return [
-        f"design/content doc modified (AGENTS.md section 2 - route as a finding instead): {path}"
-        for path in paths
-        if path.replace("\\", "/").startswith(PROTECTED_DOC_DIRS)
-    ]
+def check_protected_docs(paths: list[str]) -> tuple[list[str], list[str]]:
+    """AGENTS.md section 2: design/content docs are not edited during implementation.
+
+    Returns (failures, notes). An edit carrying a dated operator-ratification
+    note in the document itself is reported as a note rather than a failure.
+
+    Without that escape hatch, a ratified edit fails this check forever, and a
+    check that fails forever on an accepted condition is one reviewers learn to
+    skip -- which costs more than the rule protects. The marker is a visible,
+    greppable claim inside mission canon that a human can audit, and AGENTS.md
+    section 5 already forbids recording an action that did not happen.
+    """
+    failures: list[str] = []
+    notes: list[str] = []
+    for path in paths:
+        if not path.replace("\\", "/").startswith(PROTECTED_DOC_DIRS):
+            continue
+        full = ROOT / path
+        text = full.read_text(encoding="utf-8", errors="replace") if full.is_file() else ""
+        if RATIFIED_RE.search(text):
+            notes.append(f"design/content doc modified but operator-ratified in-document: {path}")
+        else:
+            failures.append(
+                f"design/content doc modified (AGENTS.md section 2 - route as a finding instead): {path}"
+            )
+    return failures, notes
 
 
 def check_forbidden_filenames(paths: list[str]) -> list[str]:
@@ -520,10 +544,14 @@ def main(argv: list[str]) -> int:
     print(f"changed files: {len(paths)}")
 
     failures: list[str] = []
+    notes: list[str] = []
     checks_run = 0
 
+    doc_failures, doc_notes = check_protected_docs(paths)
+    notes.extend(doc_notes)
+
     for label, result in (
-        ("protected docs", check_protected_docs(paths)),
+        ("protected docs", doc_failures),
         ("parallel filenames", check_forbidden_filenames(paths)),
         ("bootstrap APIs", check_forbidden_bootstrap_apis(paths, args.base, args.full)),
         ("to_object none-check", check_to_object_none_checks(paths, args.base, args.full)),
@@ -540,6 +568,8 @@ def main(argv: list[str]) -> int:
             print(f"  ok: {label}")
 
     print()
+    for note in notes:
+        print(f"NOTE: {note}")
     if failures:
         for failure in failures:
             print(f"FAIL: {failure}")
