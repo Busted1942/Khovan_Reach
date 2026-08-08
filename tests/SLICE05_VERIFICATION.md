@@ -84,7 +84,7 @@ Player-facing text is concise and delivered through the existing Comms/current-o
 - Helm goes to full impulse, confirms speed remains at 0, then goes to warp 1 and reports speed to the Captain.
 - Engineering tests internal comms by ordering DamCon team1 to quarters and sleep, then observes increased productivity through the internal medical system.
 - DAMCON Control confirms crew-quarters rest-cycle standby.
-- DAMCON Control confirms mess meal-cycle standby.
+- After crew-quarters rest-cycle standby, DAMCON’s meal-cycle Comms confirmation is retired; Training Control reminds Engineering to keep DamCon teams in good condition, especially in battle.
 - Engineering starts controlled 300% overload after Helm sets engines to all stop.
 - Controlled damage is logged.
 - Engineering supervises repair.

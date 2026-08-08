@@ -108,14 +108,15 @@ class Act1EngineeringShakedownStaticTests(unittest.TestCase):
         for phrase in [
             '+ "Khovan: Fallback Confirm No-Motion" khovan_engineering_confirm_no_motion if engineering_no_motion_fallback_available and not engineering_no_motion_confirmed',
             '+ "Khovan: Fallback DAMCON Crew-Quarters Standby" khovan_engineering_confirm_damcon_rest_cycle if damcon_rest_cycle_fallback_available and not damcon_rest_cycle_confirmed',
-            '+ "Khovan: Fallback DAMCON Mess Standby" khovan_engineering_confirm_damcon_meal_cycle if damcon_meal_cycle_fallback_available and not damcon_meal_cycle_confirmed',
-            '+ "Khovan: Confirm Controlled Overload Started" khovan_engineering_start_controlled_overload if damcon_meal_cycle_confirmed and not controlled_overload_started',
+            '+ "Khovan: Confirm Controlled Overload Started" khovan_engineering_start_controlled_overload if damcon_rest_cycle_confirmed and not controlled_overload_started',
             '+ "Khovan: Fallback Confirm Controlled Damage" khovan_engineering_confirm_controlled_damage if controlled_overload_damage_fallback_available and not controlled_overload_damage_detected',
             '+ "Khovan: Fallback Confirm Repair Complete" khovan_engineering_confirm_repair_complete if controlled_overload_repair_fallback_available and not controlled_overload_repair_confirmed',
             '+ "Khovan: Fallback Confirm Navigation Priority" khovan_engineering_confirm_navigation_priority if navigation_priority_preset_fallback_available and not navigation_priority_preset_set',
         ]:
             self.assertIn(phrase, engineering)
         self.assertNotIn('"Khovan: Begin Engineering Shakedown"', engineering)
+        self.assertNotIn('"Khovan: Fallback DAMCON Mess Standby"', engineering)
+        self.assertNotIn("khovan_engineering_confirm_damcon_meal_cycle", engineering)
         prepare_body = label_body(engineering, "khovan_act1_engineering_shakedown_prepare_after_tarsis")
         watch_body = label_body(engineering, "khovan_engineering_watch_tarsis_undock_for_shakedown")
         self.assertIn("engineering_shakedown_undock_watch_run_id = engineering_shakedown_undock_watch_run_id + 1", prepare_body)
@@ -139,7 +140,6 @@ class Act1EngineeringShakedownStaticTests(unittest.TestCase):
             "khovan_act1_engineering_shakedown_start",
             "khovan_engineering_confirm_no_motion",
             "khovan_engineering_confirm_damcon_rest_cycle",
-            "khovan_engineering_confirm_damcon_meal_cycle",
             "khovan_engineering_start_controlled_overload",
             "khovan_engineering_confirm_controlled_damage",
             "khovan_engineering_confirm_repair_complete",
@@ -152,8 +152,8 @@ class Act1EngineeringShakedownStaticTests(unittest.TestCase):
             "Engineering: Set Impulse to 0% and Warp to 200% and validate you see the heat sinks begin to increase slowly.",
             "Helm: Go to full impulse and ensure your speed remains at 0. Then to warp 1 and report your speed to the Captain.",
             "Great, everything is checking out so far. Now Engineering, let's test the internal comms. Order your DamCon team1 to their quarters and then to sleep. Observe ensure that you can observe their increased productivity through the internal medical system.",
+            "Engineering: keep your DamCon teams in good condition, especially in battle. They may mean the difference between life and oblivion.",
             "rest-cycle standby confirmed in crew quarters",
-            "meal-cycle standby confirmed in the mess",
             "controlled overload exercise",
             "Helm, set engines to all stop",
             "set impulse and warp output to three hundred percent",
@@ -165,7 +165,6 @@ class Act1EngineeringShakedownStaticTests(unittest.TestCase):
             "khovan_act1_drone_contact_fire_prepare_after_engineering",
             '"objective_id": "engineering_impulse_zero_warp_200"',
             '"objective_id": "damcon_crew_quarters_standby"',
-            '"objective_id": "damcon_mess_standby"',
             '"objective_id": "controlled_overload_start"',
             '"objective_id": "controlled_overload_damage"',
             '"objective_id": "engineering_repair_supervision"',
@@ -221,7 +220,6 @@ class Act1EngineeringShakedownStaticTests(unittest.TestCase):
             ],
             "khovan_engineering_complete_no_motion_validation": ["engineering_no_motion_confirmed = True"],
             "khovan_engineering_confirm_damcon_rest_cycle": ["damcon_rest_cycle_confirmed = True"],
-            "khovan_engineering_confirm_damcon_meal_cycle": ["damcon_meal_cycle_confirmed = True"],
             "khovan_engineering_start_controlled_overload": ["controlled_overload_started = True"],
             "khovan_engineering_complete_controlled_damage": [
                 "controlled_overload_damage_detected = True",

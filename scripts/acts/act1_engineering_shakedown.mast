@@ -46,8 +46,7 @@ shared engineering_shakedown_api_uncertainty = "Engineering slider output, DAMCO
 shared engineering_shakedown_start_text = "Engineering: Set Impulse to 0% and Warp to 200% and validate you see the heat sinks begin to increase slowly.\nHelm: Go to full impulse and ensure your speed remains at 0. Then to warp 1 and report your speed to the Captain."
 shared engineering_no_motion_confirmed_text = "Great, everything is checking out so far. Now Engineering, let's test the internal comms. Order your DamCon team1 to their quarters and then to sleep. Observe ensure that you can observe their increased productivity through the internal medical system."
 shared damcon_rest_cycle_text = "DAMCON Control: rest-cycle standby confirmed in crew quarters."
-shared damcon_mess_instruction_text = "Training Control: now assign DAMCON teams to the mess and place them on meal-cycle standby. Comms, request DAMCON Control confirmation."
-shared damcon_meal_cycle_text = "DAMCON Control: meal-cycle standby confirmed in the mess."
+shared damcon_mess_instruction_text = "Engineering: keep your DamCon teams in good condition, especially in battle. They may mean the difference between life and oblivion."
 shared controlled_overload_instruction_text = "Training Control: controlled overload exercise. Helm, set engines to all stop. Engineering, set impulse and warp output to three hundred percent. Do not prevent the overload. Captain, hold movement orders until damage is logged."
 shared controlled_damage_logged_text = "Training Control: controlled damage logged. Engineering, assign repair crews and supervise repair. Captain, hold movement until Engineering reports recovery."
 shared repair_complete_text = "Training Control: repair complete. Engineering, set maneuvering to one hundred ninety percent, warp to ten percent, and impulse to one hundred percent. Save or select the navigation-priority preset and report ready."
@@ -56,8 +55,7 @@ shared navigation_priority_confirmed_text = "Training Control: Engineering syste
 //comms if has_roles(COMMS_SELECTED_ID, "tarsis_station") and generator_governor_cleared and not engineering_shakedown_complete
     + "Khovan: Fallback Confirm No-Motion" khovan_engineering_confirm_no_motion if engineering_no_motion_fallback_available and not engineering_no_motion_confirmed
     + "Khovan: Fallback DAMCON Crew-Quarters Standby" khovan_engineering_confirm_damcon_rest_cycle if damcon_rest_cycle_fallback_available and not damcon_rest_cycle_confirmed
-    + "Khovan: Fallback DAMCON Mess Standby" khovan_engineering_confirm_damcon_meal_cycle if damcon_meal_cycle_fallback_available and not damcon_meal_cycle_confirmed
-    + "Khovan: Confirm Controlled Overload Started" khovan_engineering_start_controlled_overload if damcon_meal_cycle_confirmed and not controlled_overload_started
+    + "Khovan: Confirm Controlled Overload Started" khovan_engineering_start_controlled_overload if damcon_rest_cycle_confirmed and not controlled_overload_started
     + "Khovan: Fallback Confirm Controlled Damage" khovan_engineering_confirm_controlled_damage if controlled_overload_damage_fallback_available and not controlled_overload_damage_detected
     + "Khovan: Fallback Confirm Repair Complete" khovan_engineering_confirm_repair_complete if controlled_overload_repair_fallback_available and not controlled_overload_repair_confirmed
     + "Khovan: Fallback Confirm Navigation Priority" khovan_engineering_confirm_navigation_priority if navigation_priority_preset_fallback_available and not navigation_priority_preset_set
@@ -330,48 +328,20 @@ shared navigation_priority_confirmed_text = "Training Control: Engineering syste
 
     damcon_rest_cycle_confirmed = True
     damcon_rest_cycle_fallback_available = False
-    engineering_shakedown_status = "damcon_mess_standby"
-    engineering_shakedown_last_step = "damcon_rest_cycle_confirmed"
-    current_beat = "damcon_rest_cycle_confirmed"
-    script.write_khovan_startup_trace("[KHOVAN ACT1 ENG 005] DAMCON crew quarters rest-cycle standby confirmed through Comms")
-    await task_schedule(khovan_set_current_objective, {"objective_id": "damcon_mess_standby", "objective_body": "Engineering move DAMCON to mess meal-cycle standby. Comms request DAMCON confirmation.", "objective_step": "DAMCON mess standby", "objective_breadcrumb": "[KHOVAN OBJECTIVE 010] objective updated: DAMCON mess standby"})
-    await task_schedule(khovan_scenario_control_panel_update_overview)
-    task_schedule(khovan_engineering_watch_damcon_meal_cycle)
-    comms_receive(f"{damcon_rest_cycle_text}\n{damcon_mess_instruction_text}", title="DAMCON Control", title_color="green")
-    yield success
-
-=== khovan_engineering_watch_damcon_meal_cycle ===
-    if damcon_meal_cycle_confirmed:
-        ->END
-    if not damcon_rest_cycle_confirmed:
-        ->END
-
-    await delay_sim(seconds=8)
-    if not damcon_meal_cycle_confirmed:
-        damcon_meal_cycle_fallback_available = True
-        engineering_shakedown_status = "damcon_mess_standby_fallback_available"
-        script.write_khovan_startup_trace("[KHOVAN ACT1 ENG DAMCON MEAL FALLBACK] DAMCON location API unverified; Comms fallback enabled")
-    ->END
-
-=== khovan_engineering_confirm_damcon_meal_cycle ===
-    if not damcon_rest_cycle_confirmed:
-        engineering_shakedown_status = "damcon_meal_blocked_before_rest_cycle"
-        script.write_khovan_startup_trace("[KHOVAN ACT1 ENG BLOCKED] DAMCON meal-cycle confirmation blocked before rest-cycle")
-        yield fail
-
     damcon_meal_cycle_confirmed = True
     damcon_meal_cycle_fallback_available = False
     engineering_shakedown_status = "controlled_overload_instruction"
-    engineering_shakedown_last_step = "damcon_meal_cycle_confirmed"
-    current_beat = "damcon_meal_cycle_confirmed"
-    script.write_khovan_startup_trace("[KHOVAN ACT1 ENG 006] DAMCON mess meal-cycle standby confirmed through Comms")
+    engineering_shakedown_last_step = "damcon_rest_cycle_confirmed"
+    current_beat = "damcon_rest_cycle_confirmed"
+    script.write_khovan_startup_trace("[KHOVAN ACT1 ENG 005] DAMCON crew quarters rest-cycle standby confirmed through Comms")
+    script.write_khovan_startup_trace("[KHOVAN ACT1 ENG 006] DAMCON meal-cycle confirmation retired; controlled-overload step unlocked")
     await task_schedule(khovan_set_current_objective, {"objective_id": "controlled_overload_start", "objective_body": "Helm set engines to all stop. Engineering set impulse and warp 300 for controlled overload. Captain hold movement until damage is logged.", "objective_step": "Controlled overload", "objective_breadcrumb": "[KHOVAN OBJECTIVE 011] objective updated: controlled overload"})
     await task_schedule(khovan_scenario_control_panel_update_overview)
-    comms_receive(f"{damcon_meal_cycle_text}\n{controlled_overload_instruction_text}", title="Training Control", title_color="cyan")
+    comms_receive(f"{damcon_rest_cycle_text}\n{damcon_mess_instruction_text}", title="DAMCON Control", title_color="green")
     yield success
 
 === khovan_engineering_start_controlled_overload ===
-    if not damcon_meal_cycle_confirmed:
+    if not damcon_rest_cycle_confirmed:
         engineering_shakedown_status = "overload_blocked_before_damcon_standby"
         script.write_khovan_startup_trace("[KHOVAN ACT1 ENG BLOCKED] controlled overload blocked before DAMCON standby confirmations")
         yield fail
