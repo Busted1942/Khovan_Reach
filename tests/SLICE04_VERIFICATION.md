@@ -381,7 +381,7 @@ Only live Cosmos smoke can prove:
 46. Before docking clearance, try to dock with Tarsis.
 47. Confirm docking is blocked, unavailable, rejected, or does not advance Slice 04 state.
 48. Confirm `Khovan: Request Homing-Torpedo Priority` is absent.
-49. Select `Khovan: Request Generator Support` and confirm `[KHOVAN ACT1 COMMS TARSIS GENERATOR]` and `[KHOVAN ACT1 MSG TARSIS 003]`.
+49. Select `Khovan: Submit Authorization Packet` and confirm `[KHOVAN ACT1 COMMS TARSIS GENERATOR]` and `[KHOVAN ACT1 MSG TARSIS 003]`.
 50. Select `Khovan: Request Docking Clearance`.
 51. Confirm `[KHOVAN ACT1 COMMS TARSIS CLEARANCE]`, `[KHOVAN ACT1 MSG TARSIS 004]`, `[KHOVAN ACT1 DOCK 004R]`, `[KHOVAN ACT1 DOCK 004D]`, `[KHOVAN ACT1 DOCK 004S]`, `[KHOVAN ACT1 DOCK 004N]`, `[KHOVAN ACT1 DOCK 004P]`, and `[KHOVAN ACT1 DOCK 004]`.
 52. Confirm Current Objective updates to `Dock normally with Tarsis. Resupply and governor handoff complete on hard dock.` and trace includes `[KHOVAN OBJECTIVE 006]`.

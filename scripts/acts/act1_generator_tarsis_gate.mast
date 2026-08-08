@@ -102,7 +102,7 @@ shared tarsis_resupply_text = "Tarsis Control: normal docking resupply and gener
     tarsis_comms_options_status = "rendered_after_known_state"
     script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS TARSIS OPTIONS] Tarsis options rendered")
     + "Khovan: Hail Tarsis Station" khovan_tarsis_hail
-    + "Khovan: Request Generator Support" khovan_tarsis_request_generator_support if not tarsis_required_requests_complete
+    + "Khovan: Submit Authorization Packet" khovan_tarsis_request_generator_support if not tarsis_required_requests_complete
     + "Khovan: Request Docking Clearance" khovan_tarsis_request_docking_clearance if not tarsis_docking_clearance_requested
     + "Khovan: Report Tarsis Gate Status" khovan_tarsis_report_gate_status
 

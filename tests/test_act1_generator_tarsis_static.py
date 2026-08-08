@@ -951,7 +951,7 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             'tarsis_comms_options_status = "rendered_after_known_state"',
             '[KHOVAN ACT1 COMMS TARSIS OPTIONS] Tarsis options rendered',
             '+ "Khovan: Hail Tarsis Station" khovan_tarsis_hail',
-            '+ "Khovan: Request Generator Support" khovan_tarsis_request_generator_support if not tarsis_required_requests_complete',
+            '+ "Khovan: Submit Authorization Packet" khovan_tarsis_request_generator_support if not tarsis_required_requests_complete',
             '+ "Khovan: Request Docking Clearance" khovan_tarsis_request_docking_clearance if not tarsis_docking_clearance_requested',
             '+ "Khovan: Report Tarsis Gate Status" khovan_tarsis_report_gate_status',
             "[KHOVAN ACT1 COMMS 008] Tarsis Hail option selected",
@@ -974,7 +974,7 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
         )
         self.assertIsNotNone(tarsis_menu)
         self.assertIn('+ "Khovan: Hail Tarsis Station" khovan_tarsis_hail', tarsis_menu.group("body"))
-        self.assertIn('+ "Khovan: Request Generator Support" khovan_tarsis_request_generator_support if not tarsis_required_requests_complete', tarsis_menu.group("body"))
+        self.assertIn('+ "Khovan: Submit Authorization Packet" khovan_tarsis_request_generator_support if not tarsis_required_requests_complete', tarsis_menu.group("body"))
         self.assertIn('+ "Khovan: Request Docking Clearance" khovan_tarsis_request_docking_clearance if not tarsis_docking_clearance_requested', tarsis_menu.group("body"))
         self.assertIn('+ "Khovan: Report Tarsis Gate Status" khovan_tarsis_report_gate_status', tarsis_menu.group("body"))
         self.assertNotIn("Confirm Docking/Resupply", tarsis_menu.group("body"))
