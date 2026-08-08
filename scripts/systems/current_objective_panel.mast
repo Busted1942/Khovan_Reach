@@ -45,7 +45,9 @@ shared current_objective_test_marker = "S06"
     current_objective_run_id = current_objective_run_id + 1
     current_objective_updated_at = current_objective_run_id
     current_objective_archive_id = f"objective:{current_objective_run_id}"
-    current_objective_last_message = f"[{current_objective_test_marker}.{current_objective_run_id}]: {objective_body}"
+    # Keep the run marker in state/trace for diagnostics, but do not expose it
+    # in the player-facing blue Current Objective text.
+    current_objective_last_message = objective_body
 
     if artemis_id == 0:
         current_objective_broadcast_status = "skipped_missing_artemis_id"

@@ -69,7 +69,7 @@ Current Objective / text_waterfall panel:
 - Investigation finding: the persistent left-center black rectangle is the stock Cosmos/SBS Utils `text_waterfall` widget, not the Dillon lifeform/story-dialog box. Default layouts include `3dview^ship_data^text_waterfall`, which explains why the same rectangle appears in Legendary missions.
 - Old-build evidence: the archived Khovan implementation used `khovan_reach_objective_text` and `gui_info_panel_send_message(...)` for current-objective style prompts. That evidence supports the pattern, but not direct copy-forward design authority.
 - Change: Slice 04 now owns the rectangle through `scripts/systems/current_objective_panel.mast`. The central helper stores current-objective state and sends concise player-facing objective text with `comms_broadcast(artemis_id, current_objective_last_message, objective_color)`.
-- Test marker: current-objective broadcasts include `S04-parent-2026-06-07.1` so live smoke can confirm the running mission build.
+- Diagnostic run markers remain in the trace, but player-facing current-objective broadcasts contain only the objective text.
 - Objective sequence: startup asks Comms to request Kestrel departure clearance; departure clearance asks Helm to clear the launch envelope and Comms to confirm exit; launch-envelope confirmation asks the crew to stand by for the generator advisory; the advisory points the crew to Tarsis requests; Tarsis clearance asks Helm to dock normally with Tarsis; mechanical docking/resupply asks the crew to await the next shakedown instruction.
 - Breadcrumbs: `[KHOVAN OBJECTIVE 001]` through `[KHOVAN OBJECTIVE 006]` track initialization and the required Slice 04 updates. `[KHOVAN OBJECTIVE 007]` tracks the post-resupply handoff objective.
 - Fallback/uncertainty: quick/static checks prove the helper and trigger calls exist. Only live Cosmos smoke can prove the left-center `text_waterfall` rectangle actually displays the objective text and no longer appears as an unexplained empty box.
@@ -181,22 +181,22 @@ Act I message-ordering and player instruction clarity bug:
 - Change: Slice 04 now sends Dillon's opening briefing after Kestrel/Artemis sender context exists and before the Kestrel yard-lock packet, stages Tarsis options before/after docking clearance, and has one-time send flags for the Dillon stub, Kestrel yard-lock, Kestrel departure response, launch-envelope response, generator advisory, Training Control speed-power reminder, Tarsis request acknowledgments, and Tarsis governor-clear response. Duplicate paths write `[KHOVAN ACT1 MSG ORDER]` breadcrumbs instead of replaying the packet.
 - Story sequence text:
   1. Dillon: `Dillon: Crew of Artemis, this is a qualification cruise. First task: get the ship out of Kestrel cleanly. Comms, request departure clearance. Helm, hold position until Kestrel releases the yard-lock. Captain, coordinate the sequence.`
-  2. Startup objective: `Current Objective [S04-parent-2026-06-07.1]: Comms request Kestrel departure clearance.`
+  2. Startup objective: `Comms request Kestrel departure clearance.`
   3. Kestrel emergency reserve: `Kestrel Yard Control: emergency homing reserve approved. Loading two homing torpedoes now. These are reserve margin under the generator governor, not a full combat load. No nukes, EMPs, or mines are released before Tarsis resupply.`
   4. Kestrel departure: `Kestrel Yard Control: departure clearance granted. Helm, clear the launch envelope by moving at least 1 km from Kestrel. Comms, confirm once Artemis is outside the yard boundary.`
-  5. Departure objective: `Current Objective [S04-parent-2026-06-07.1]: Helm clear the Kestrel launch envelope: move at least 1 km from Kestrel, then Comms confirm exit.`
+  5. Departure objective: `Helm clear the Kestrel launch envelope: move at least 1 km from Kestrel, then Comms confirm exit.`
   6. Kestrel launch-envelope: `Kestrel Yard Control logs Artemis clear of the launch envelope. Stand by for generator advisory while yard telemetry catches up.`
   7. Kestrel advisory: `Kestrel Yard Control: advisory packet follows. Artemis is operating under a temporary generator governor. Expect constrained startup resources and deliberate speed/power handling until Tarsis completes generator acceptance. Tarsis has the acceptance package and will clear the handoff after docking/resupply.`
   8. Training reminder: `Training Control: keep speed and power changes deliberate. Treat the governor as active until Tarsis completes the handoff. Comms should coordinate homing priority, generator support, and docking clearance with Tarsis.`
-  9. Tarsis objective: `Current Objective [S04-parent-2026-06-07.1]: Proceed to Tarsis. Comms request homing priority, generator support, and docking clearance.`
+  9. Tarsis objective: `Proceed to Tarsis. Comms request homing priority, generator support, and docking clearance.`
   10. Tarsis hail: `Tarsis Station: Artemis, we read you. Production Control and Generator Acceptance are standing by. Request homing priority, generator support, and docking clearance before approach.`
   11. Tarsis homing priority: `Tarsis Control: homing production priority set for Artemis. Replacement torpedoes will be prioritized during resupply.`
   12. Tarsis generator support: `Tarsis Generator Acceptance: Kestrel package received. We can clear the governor after docking and yard-lock synchronization.`
   13. Tarsis docking clearance: `Tarsis Docking Control: docking clearance granted. Helm, approach within tolerance and initiate docking.`
-  14. Tarsis docking objective: `Current Objective [S04-parent-2026-06-07.1]: Dock normally with Tarsis. Resupply and governor handoff complete on hard dock.`
+  14. Tarsis docking objective: `Dock normally with Tarsis. Resupply and governor handoff complete on hard dock.`
   15. Pre-clearance rejection: `Tarsis Docking Control: docking clearance not granted. Complete Tarsis Comms traffic before approach.`
   16. Resupply/governor handoff: `Tarsis Control: normal docking resupply and generator handoff confirmed. Full energy and armament restored; governor clear is recorded. Await the next shakedown instruction.`
-  17. Post-handoff objective: `Current Objective [S06.<turn>]: Begin Engineering shakedown with Tarsis Training Control.`
+  17. Post-handoff objective: `Begin Engineering shakedown with Tarsis Training Control.`
 - Guardrail: launch-envelope confirmation cannot restart the advisory timer after the advisory has already been sent, and resend-advisory only works after the advisory has been delivered.
 - Static proof: quick tests check the one-time flags, intended handler ties, staged Tarsis labels, duplicate-suppression breadcrumbs, advisory timer guard, resend-advisory guard, Tarsis dock-attempt rejection path, per-option Tarsis message breadcrumbs, Dillon guarded text stand-in, absence of blank story-dialog overlays in the startup path, and Tarsis governor-clear one-time guard.
 - Live proof still required: only Cosmos can prove the guarded text/Comms messages appear in the intended player-facing order and do not repeat unexpectedly.
@@ -342,7 +342,7 @@ Only live Cosmos smoke can prove:
 7. Confirm Helm can control Artemis.
 8. Confirm Artemis starts near/at Kestrel.
 9. Confirm no runtime crash occurs for at least 30 seconds.
-10. Confirm the left-center `text_waterfall`/black rectangle is no longer empty and shows `Current Objective [S04-parent-2026-06-07.1]: Comms request Kestrel departure clearance.`
+10. Confirm the left-center `text_waterfall`/black rectangle is no longer empty and shows `Comms request Kestrel departure clearance.`
 11. Confirm trace includes `[KHOVAN OBJECTIVE 001]` and `[KHOVAN OBJECTIVE 002]`.
 12. Confirm `tests/live_startup_trace.txt` logs `[KHOVAN ACT1 START STATE] Artemis starting energy intentionally set to 0 with generator governor active`.
 13. Confirm `tests/live_startup_trace.txt` logs `[KHOVAN ACT1 START STATE] Artemis starting ordnance set to Homing=0 Nuke=0 EMP=0 Mine=0`.
@@ -480,7 +480,7 @@ Player instruction clarity checklist:
 
 1. Clear or tail `tests/live_startup_trace.txt`.
 2. Launch Khovan Reach.
-3. Confirm first objective says `Current Objective [S04-parent-2026-06-07.1]: Comms request Kestrel departure clearance.`
+3. Confirm first objective says `Comms request Kestrel departure clearance.`
 4. Confirm Dillon/startup text explains the first task and roles: Comms requests clearance, Helm holds position, Captain coordinates.
 5. Select Kestrel and request emergency homing reserve.
 6. Confirm Homing changes from 0/10 to 2/10 and the message says exactly two homing torpedoes are loading now.
@@ -489,11 +489,11 @@ Player instruction clarity checklist:
 9. Confirm launch-envelope exit.
 10. Wait for generator advisory.
 11. Confirm the advisory explains the temporary generator governor, constrained startup resources, deliberate speed/power handling, and why Tarsis matters.
-12. Confirm objective updates to `Current Objective [S04-parent-2026-06-07.1]: Proceed to Tarsis. Comms request homing priority, generator support, and docking clearance.`
+12. Confirm objective updates to `Proceed to Tarsis. Comms request homing priority, generator support, and docking clearance.`
 13. Select Tarsis.
 14. Confirm Tarsis hail tells the player to request homing priority, generator support, and docking clearance before approach.
 15. Complete Tarsis requests.
-16. Confirm objective updates to `Current Objective [S04-parent-2026-06-07.1]: Dock normally with Tarsis. Resupply and governor handoff complete on hard dock.`
+16. Confirm objective updates to `Dock normally with Tarsis. Resupply and governor handoff complete on hard dock.`
 17. Attempt docking before clearance if testing the negative path; confirm the rejection says Tarsis docking clearance is not granted.
 18. Dock after clearance and confirm resupply/governor handoff messaging.
 19. Confirm no old contradictory text appears.

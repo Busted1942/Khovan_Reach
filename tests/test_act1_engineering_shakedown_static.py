@@ -241,8 +241,8 @@ class Act1EngineeringShakedownStaticTests(unittest.TestCase):
     def test_current_objective_marker_is_slice05_and_leads_blue_text(self) -> None:
         panel = read("scripts/systems/current_objective_panel.mast")
         self.assertIn('shared current_objective_test_marker = "S06"', panel)
-        self.assertIn('current_objective_last_message = f"[{current_objective_test_marker}.{current_objective_run_id}]: {objective_body}"', panel)
-        self.assertNotIn('current_objective_last_message = f"Current Objective [{current_objective_test_marker}]', panel)
+        self.assertIn("current_objective_last_message = objective_body", panel)
+        self.assertNotIn("current_objective_test_marker}.{current_objective_run_id}", panel)
 
     def test_slice05_verification_doc_records_static_vs_live_limits(self) -> None:
         path = ROOT / "tests" / "SLICE05_VERIFICATION.md"

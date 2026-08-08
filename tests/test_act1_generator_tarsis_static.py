@@ -337,7 +337,7 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             "=== khovan_clear_current_objective ===",
             "[KHOVAN OBJECTIVE 001] current objective initialized",
             "[KHOVAN OBJECTIVE 002] objective updated: Kestrel departure clearance",
-            "[{current_objective_test_marker}.{current_objective_run_id}]: {objective_body}",
+            "current_objective_last_message = objective_body",
             "comms_broadcast(artemis_id, current_objective_last_message, objective_color)",
             "[KHOVAN OBJECTIVE SAFE] text_waterfall update skipped: missing Artemis id",
         ]:
