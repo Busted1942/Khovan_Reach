@@ -1021,26 +1021,7 @@ Minimum required categories:
 
 # 17. Implementation sequence
 
-Recommended build slices:
-
-1. Mission shell and load proof
-2. Minimum playable bootstrap
-3. Scenario Control Panel foundation
-4. Act I Drill One
-5. Drill Two guided sequence
-6. Drill Three transfer drill
-7. Act II pivot/investigation
-8. Halcyon arrival and away mission wrapper
-9. DAMCON timer
-10. Cache run and component selection
-11. Pirate state machine
-12. Combat transition/outcomes
-13. Repair resolution
-14. Debrief support
-15. Checkpoint/reload hardening
-16. Regression harness and pre-session checks
-
-Use `docs/01_design/50_implementation_slice_plan.md` for per-slice acceptance criteria.
+See `docs/01_design/50_implementation_slice_plan.md` section 5 "Recommended first implementation order" for the authoritative build-slice sequence with both slice IDs and acceptance criteria. Do not maintain a duplicate list here — the source document is the single authority.
 
 ---
 

@@ -446,6 +446,8 @@ Fresh implementation should treat persistent current objective display as a sepa
 
 # 5. Recommended Fresh Build Order from MAST Lessons
 
+**Note:** This section uses old planning slice numbers from before `docs/01_design/50_implementation_slice_plan.md` was finalized. These are NOT the current slice IDs. Use the finalized slice plan for current work. This section is retained as historical context on the old MAST lessons.
+
 Slice 0:
 - repo cleanup and source placement
 - capture these old MAST lessons
