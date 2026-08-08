@@ -410,11 +410,10 @@ shared tarsis_resupply_text = "Tarsis Control: normal docking resupply and gener
     await task_schedule(docking_standard_player_station)
     if kestrel_yards_id != 0:
         add_role(kestrel_yards_id, "station")
-        # Stock behavior keys off capital Station; Khovan keeps only its custom Comms route at Kestrel.
-        remove_role(kestrel_yards_id, "Station")
+        add_role(kestrel_yards_id, "Station")
         add_role(kestrel_yards_id, "kestrel_yards")
-        kestrel_comms_options_status = "custom_kestrel_comms_only_stock_Station_role_removed_after_docking_helper_pass"
-        script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS 003B] Kestrel custom Comms route restored; stock Station role removed to prevent automatic production")
+        kestrel_comms_options_status = "station_and_Station_and_kestrel_yards_roles_restored_after_docking_helper_pass"
+        script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS 003B] Kestrel station roles restored after docking helper pass for Khovan Comms options")
     if tarsis_station_id != 0:
         add_role(tarsis_station_id, "station")
         remove_role(tarsis_station_id, "Station")
