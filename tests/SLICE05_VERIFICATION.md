@@ -82,6 +82,7 @@ Player-facing text is concise and delivered through the existing Comms/current-o
 
 - Engineering sets impulse to 0% and warp to 200%, then validates that the heat sinks begin to increase slowly.
 - Helm goes to full impulse, confirms speed remains at 0, then goes to warp 1 and reports speed to the Captain.
+- Engineering restores warp to 100% while leaving impulse at 0% to bleed excess heat; Helm reports updated speed, then all stop.
 - DAMCON Control confirms crew-quarters rest-cycle standby.
 - DAMCON Control confirms mess meal-cycle standby.
 - Engineering starts controlled 300% overload after Helm sets engines to all stop.
