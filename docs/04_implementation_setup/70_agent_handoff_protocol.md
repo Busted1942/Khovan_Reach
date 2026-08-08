@@ -219,6 +219,10 @@ An implementation agent working from a packet **must not**:
 - claim live proof, tests run, commits made, or merges performed that did not happen
 - create parallel files named `final`, `new`, `copy`, `old`, `merged`, `v2`, or `patched`
 
+**Helper extraction rule.** `docs/04_implementation_setup/10_mast_file_lessons.md` section 3.4 names six helper modules (`act1_helpers`, `entity_cleanup_helpers`, `resupply_helpers`, `drone_spawn_helpers`, `target_detection_helpers`, `checkpoint_system`) as one of the best old-build lessons, but `scripts/lib/` is currently empty and all logic lives in act/system files. When a slice would push a single `.mast` file past roughly 400 lines, or when two slices need the same cleanup/seeding/spawn logic, extract the shared logic to `scripts/lib/` rather than growing the act file further. This is cheapest to enforce before Slices 09 (DAMCON), 11 (pirates), and 15 (checkpoint/reload) land — each adds a state tree comparable to Slice 04's, and the lessons doc specifically expects checkpoint/reload to reuse neutral helpers rather than duplicate story-jump seeding logic. Their packets (section 3 of this doc, once written) should name `scripts/lib/` targets explicitly for entity cleanup, spawn, and checkpoint-seed helpers.
+
+`scripts/acts/act1_generator_tarsis_gate.mast` is already at 969 lines / 78 `shared` variables. This is accepted technical debt, not a defect: the file carries the deepest live-smoke history in the repo (multiple confirmed live findings and fixes — see `tests/SLICE04_VERIFICATION.md`, which still lists items in "What Remains Unproven"), and a speculative refactor risks regressing the parts of the mission with the most live evidence behind them. Do not "fix" it unprompted — only touch it if a specific slice packet requires a change inside it.
+
 ## 5.3 Implementation agent → planning agent
 
 Return:
