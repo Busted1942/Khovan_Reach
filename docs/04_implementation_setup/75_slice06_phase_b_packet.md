@@ -1,6 +1,6 @@
 # KHOVAN REACH — SLICE 06 PHASE B PACKET
 
-Status: implementation input — requires operator review before implementation  
+Status: approved implementation packet — revised during Phase B build
 Purpose: build the production Drone 01 controlled-disable and Drone 02 live-fire sequence only after the accepted Phase A API spike.
 
 This is build-side elaboration of canonical Slice 06. It does not change scenario design. Where it conflicts with a design source, implementation must stop and raise the finding rather than resolve it in code.
@@ -8,12 +8,12 @@ This is build-side elaboration of canonical Slice 06. It does not change scenari
 ```text
 Slice ID:            06B
 
-Goal:                Replace the accepted Phase A target spike with the actual Act I drill:
+Goal:                Add the actual Act I drill beside the accepted Phase A target spike:
                      Drone 01 is a passive controlled-disable target whose Weapons subsystem
                      completes only after three confirmed manual subsystem hits and a ceasefire;
                      Drone 02 is a low-pressure live-fire target that completes on destruction.
-                     Then deliver the cultural Comms packet and advance into the existing Act II
-                     transition route. This packet adopts the explicit source decision recorded in
+                     Then deliver the cultural Comms packet and set an explicit Act-II-ready
+                     marker for Slice 07 to consume. This packet adopts the explicit source decision recorded in
                      tests/SLICE06_VERIFICATION.md: Drone 01 proves Weapons subsystem disable;
                      Drone 02 completes on destruction.
 
@@ -89,8 +89,8 @@ State variables needed:
 
 Branch type:         implementation
 
-Starting branch:     slice06-drone-contact-fire at 56b9c57, after the operator-authorized
-                     inclusion of .claude/settings.local.json and this reviewed packet.
+Starting branch:     slice06-drone-contact-fire at d4138e2. `.claude/settings.local.json` is
+                     deliberately ignored by .gitignore and is not part of this packet commit.
 
 Expected return branch:
                      slice06-drone-contact-fire
@@ -145,7 +145,8 @@ Implementation tasks:
                      7. After the confirmed disable and captain/Training Control ceasefire,
                         cleanly remove Drone 01 and spawn Drone 02 at ten kilometres. Drone 02 may
                         maneuver but must remain non-lethal/training-safe; its genuine destruction
-                        event sets drone_02_destroyed and starts the handoff. Do not require a
+                     event sets drone_02_destroyed and sets drone_contact_act2_ready for Slice 07.
+                     Do not require a
                         subsystem disable or ceasefire for Drone 02.
                      8. Send the canonical cultural Comms packet through the objective broadcast
                         channel and its archive echo, set a status on every success/failure/fallback
@@ -166,8 +167,8 @@ Acceptance criteria: - Drone 01 is passive and uses the complete controlled-disa
                        fire authorization; stale delayed work cannot satisfy the gate after reset.
                      - Three confirmed MANUAL_SYSTEM=WEAPONS hits disable Drone 01's Weapons array;
                        a genuine ceasefire is required before Drone 01 completes.
-                     - Drone 02 spawns at ten kilometres and only its genuine destruction advances
-                       the drill into the existing Act II transition.
+                     - Drone 02 spawns at ten kilometres and only its genuine destruction sets
+                       the Slice-07-owned Act-II-ready marker; it does not change mission_phase.
                      - The canonical cultural packet is visible through the objective-broadcast
                        channel and archives once; no GM-only comms_receive() rendering is required.
                      - Quick/static checks pass, then the listed ACT1 checks receive live evidence.
@@ -184,7 +185,7 @@ Expected observations:
                      - ACT1-022: exactly three valid manual Weapons-subsystem hits record disable;
                        non-Weapons damage and fewer than three hits do not complete it.
                      - ACT1-023: a genuine Weapons destruction of Drone 02 records destruction,
-                       shows the Act II handoff objective, and does not confuse GM cleanup with a
+                       sets the Act-II-ready objective, and does not confuse GM cleanup with a
                        kill.
                      - ACT1-024: the canonical cultural packet is visibly broadcast and appears
                        once in the Comms archive.
@@ -211,8 +212,8 @@ What remains unproven:
                        subsystem-keyed data_set lookup is claimed here.
                      - GM-only comms_receive() rendering remains deliberately deprioritized and is
                        not a Phase B acceptance dependency.
-                     - The exact existing Act II handoff callable must be confirmed from active
-                       runtime code before it is invoked; inventing a route is prohibited.
+                     - Slice 07 owns the actual Act II callable and phase transition; Slice 06
+                       only records drone_contact_act2_ready.
 
 Next action by result:
                      - If static checks and a crewed live smoke meet all observations, update
@@ -222,8 +223,7 @@ Next action by result:
                        the evidence, enable the documented Comms/GM fallback, and record a
                        targeted API uncertainty; do not silently weaken the controlled-disable
                        requirement.
-                     - If an existing Act II route cannot be identified, stop before the handoff
-                       and raise an architecture finding rather than making an ad hoc transition.
+                     - Slice 07 consumes drone_contact_act2_ready and owns the actual phase pivot.
 
 Known risks:          - Source conflict to surface, not resolve: the detailed D3 items in the admin
                        plan describe an Engine-disable/ceasefire Drill Three, while the canonical

@@ -2,6 +2,10 @@
 
 Goal: build Slice 06 Drone 01 controlled disable and Drone 02 live-fire target, starting with the mandatory target subsystem-damage spike before implementing the full drill.
 
+## Status
+
+implemented-live-unproven — Phase A is accepted live evidence. Phase B production code and static regression coverage are present, but no Phase B crewed Cosmos smoke has run.
+
 ## Source Sections Used
 
 - `AGENTS.md`, branch lifecycle, source authority, and operator test expectations.
@@ -54,11 +58,20 @@ Phase A spike state currently owns:
 - `drone_target_spike_blocker`
 - `drone_target_spike_fallback`
 
-Full Drone 01/Drone 02 variables are intentionally not active yet. Do not create a duplicate legacy `drill_2_*` or `drill_3_*` state tree.
+Phase B production state is isolated from the spike: `drone_contact_sequence_run_id`, `drone_contact_production_available`, `drone_contact_profile_route`, `drone_contact_act2_ready`, `drone_contact_act2_handoff_status`, `drone_contact_cultural_packet_sent`, all `drone_01_*` and `drone_02_*` shared variables declared in `act1_drone_contact_fire.mast`. Drone 01 begins 15 km from Tarsis Training Beacon and every reset adds 5 km. Do not create a duplicate legacy `drill_2_*` or `drill_3_*` state tree.
 
 ## Runtime Flow
 
-Phase A only:
+Phase A remains GM-only evidence. Phase B production flow:
+
+1. Full and Compressed Shakedown make the production drill available; Direct Scenario marks the drills bypassed without failure states.
+2. Drone 01 spawns passively 15 km from Tarsis Training Beacon. Science scan, Comms hail, shield relay, Weapons lock, 1-2 km range, and a guarded 15-second stationary hold precede authorization.
+3. Only `MANUAL_SYSTEM=WEAPONS` damage increments the three-hit disable count. Every automatic gate has a named Comms/GM fallback flag.
+4. Unauthorized damage or premature destruction resets Drone 01 5 km farther from the beacon. Cleanup and reset destruction cannot advance success.
+5. Confirmed disable plus ceasefire spawns Drone 02 at 10 km. Its genuine destruction sets `drone_contact_act2_ready`; Slice 07, not Slice 06, owns `mission_phase = "act_2"`.
+6. The cultural packet is sent once through `khovan_set_current_objective`; GM-only `comms_receive()` remains out of scope.
+
+Phase A flow:
 
 1. GM enables Test Mode.
 2. Engineering shakedown completion, or the Engineering Shakedown Complete story jump, sets the Current Objective to `Slice 06 target spike ready. GM Test Mode: run Slice 06 Target Spike.`
@@ -82,13 +95,13 @@ Phase A only:
 
 ## Player-Facing Behavior
 
-This is a spike harness, not the player drill:
+Phase A is a spike harness; Phase B is the player drill:
 
 - After Slice 05 completion, Current Objective labels the Slice 06 target spike as ready instead of ending on an await-next placeholder.
 - Current Objective labels the spike as GM target spike active after the spike spawns.
 - Science sees scan text for the spike target.
 - Comms sees a Khovan hail option and drill-mode response.
-- No Drone 01/Drone 02 player sequence is implemented yet.
+- Production player instructions use the proven current-objective broadcast channel. Spike scan/hail output no longer exposes API-test instrumentation language.
 
 ## Spike Result
 

@@ -40,12 +40,12 @@ Coverage statuses:
 | ACT1-016 | 04-06 | not-covered | not yet tested |
 | ACT1-017 | 04-06 | not-covered | not yet tested |
 | ACT1-018 | 04-06 | not-covered | not yet tested |
-| ACT1-019 | 04-06 | not-covered | not yet tested |
-| ACT1-020 | 04-06 | not-covered | not yet tested |
-| ACT1-021 | 04-06 | not-covered | not yet tested |
-| ACT1-022 | 04-06 | not-covered | not yet tested |
-| ACT1-023 | 04-06 | not-covered | not yet tested |
-| ACT1-024 | 04-06 | not-covered | not yet tested |
+| ACT1-019 | 04-06 | covered-static | Slice 06 Phase B static reset-offset assertions; live unproven |
+| ACT1-020 | 04-06 | covered-static | Slice 06 Phase B static premature-destruction reset assertions; live unproven |
+| ACT1-021 | 04-06 | covered-static | Slice 06 Phase B static range and guarded 15-second hold assertions; live unproven |
+| ACT1-022 | 04-06 | covered-static | Slice 06 Phase B static MANUAL_SYSTEM=WEAPONS three-hit assertions; live unproven |
+| ACT1-023 | 04-06 | covered-static | Slice 06 Phase B static Drone 02 genuine-destruction / Act-II-ready assertions; live unproven |
+| ACT1-024 | 04-06 | covered-static | Slice 06 Phase B static duplicate-suppressed cultural objective assertions; live unproven |
 | ADMIN-001 | 16 | not-covered | not yet implemented |
 | ADMIN-002 | 16 | not-covered | not yet implemented |
 | ADMIN-003 | 16 | not-covered | not yet implemented |

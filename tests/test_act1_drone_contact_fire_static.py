@@ -37,7 +37,7 @@ class Act1DroneContactFireStaticTests(unittest.TestCase):
         self.assertLess(jump_index, drone_index)
         self.assertLess(drone_index, playable_index)
 
-    def test_phase_a_spike_state_variables_exist_without_full_drone_flow(self) -> None:
+    def test_phase_a_spike_and_phase_b_production_state_are_isolated(self) -> None:
         drone = read(DRONE_PATH)
         for phrase in [
             "shared drone_contact_fire_initialized = False",
@@ -58,25 +58,24 @@ class Act1DroneContactFireStaticTests(unittest.TestCase):
             'shared drone_target_spike_result = "unproven"',
             "Drone 01 proves Weapons subsystem disable; Drone 02 completes on destruction",
             "=== khovan_act1_drone_contact_fire_prepare_after_engineering ===",
-            'drone_contact_sequence_status = "phase_a_spike_ready_after_engineering"',
-            '"objective_id": "slice06_target_spike_ready"',
-            "GM Test Mode: run Slice 06 Target Spike.",
+            'drone_contact_sequence_status = "drone_01_ready_after_engineering"',
+            '"objective_id": "drone_01_ready"',
+            "Drone 01 training contact ready.",
         ]:
             self.assertIn(phrase, drone)
 
-        for forbidden in [
-            "drill_2_",
-            "drill_3_",
-            "drone_01_spawned = True",
-            "drone_02_spawned = True",
-            "drone_01_controlled_disable_complete",
-            "drone_02_complete",
-            "Anderson",
-            "Halcyon",
-            "pirate",
-            "cache_run",
+        for phrase in [
+            "shared drone_contact_sequence_run_id = 0",
+            "shared drone_contact_act2_ready = False",
+            "shared drone_01_spawn_offset_m = 15000",
+            "shared drone_01_weapons_hit_count = 0",
+            "shared drone_02_destroyed = False",
+            "shared drone_target_spike_available = False",
         ]:
-            self.assertNotIn(forbidden, drone)
+            self.assertIn(phrase, drone)
+
+        self.assertNotIn('mission_phase = "act_2"', drone)
+        self.assertNotIn("khovan_act2_", drone)
 
     def test_gm_only_test_mode_spike_controls_exist(self) -> None:
         drone = read(DRONE_PATH)
@@ -121,7 +120,7 @@ class Act1DroneContactFireStaticTests(unittest.TestCase):
             '//comms if has_roles(COMMS_SELECTED_ID, "khovan_slice06_spike_target")',
             '+ "Khovan: Hail Spike Target" khovan_drone_contact_fire_hail_spike_target',
             'drone_target_spike_hail_observed = True',
-            "stock enemy taunt, surrender, or hostile menu",
+            "Khovan: Hail Spike Target",
         ]:
             self.assertIn(phrase, drone)
 
@@ -156,10 +155,7 @@ class Act1DroneContactFireStaticTests(unittest.TestCase):
         # against.
         hail_body = label_body(drone, "khovan_drone_contact_fire_hail_spike_target")
         self.assertNotIn("comms_override", hail_body)
-        self.assertIn(
-            'comms_receive("Automated training target: drill-mode response acknowledged.',
-            hail_body,
-        )
+        self.assertIn('comms_receive("Training target acknowledges hail.', hail_body)
 
     def test_spike_observers_cover_selection_damage_subsystem_and_destruction(self) -> None:
         drone = read(DRONE_PATH)
@@ -294,6 +290,44 @@ class Act1DroneContactFireStaticTests(unittest.TestCase):
             "quick/static checks do not prove live cosmos",
         ]:
             self.assertIn(phrase, text)
+
+    def test_phase_b_production_contract_uses_proven_signals_and_ready_marker(self) -> None:
+        drone = read(DRONE_PATH)
+        for phrase in [
+            'shared drone_01_spawn_offset_m = 15000',
+            'drone_01_spawn_offset_m = drone_01_spawn_offset_m + 5000',
+            'sbs.distance_id(artemis_id, drone_01_target_id)',
+            'if drone_range < 1000 or drone_range > 2000:',
+            'if drone_01_stationary_hold_seconds >= 15:',
+            'default hold_run_id = drone_01_stationary_hold_run_id',
+            'if hold_run_id != drone_01_stationary_hold_run_id or not drone_01_active:',
+            'manual_system = get_inventory_value(DAMAGE_SOURCE_ID, "MANUAL_SYSTEM")',
+            'if drone_01_manual_system != "WEAPONS":',
+            'if drone_01_weapons_hit_count >= 3:',
+            'drone_01_weapons_disabled = True',
+            'drone_contact_act2_ready = True',
+            'drone_contact_act2_handoff_status = "ready_for_slice07_pivot"',
+            'if drone_contact_cultural_packet_sent:',
+            'shakedown_mode == "direct"',
+        ]:
+            self.assertIn(phrase, drone)
+
+        for flag in [
+            "drone_01_scan_fallback_available",
+            "drone_01_hail_fallback_available",
+            "drone_01_shield_relay_fallback_available",
+            "drone_01_weapons_lock_fallback_available",
+            "drone_01_range_fallback_available",
+            "drone_01_stationary_hold_fallback_available",
+            "drone_01_subsystem_hit_fallback_available",
+            "drone_01_ceasefire_fallback_available",
+        ]:
+            self.assertIn(flag, drone)
+
+        self.assertNotIn('get("system_damage"', label_body(drone, "khovan_drone_01_spawn"))
+        self.assertNotIn("MANUAL_CRITICAL_HIT", drone[drone.index('//damage/object if has_role(DAMAGE_TARGET_ID, "khovan_drone_01")'):])
+        self.assertNotIn("Observe whether", drone)
+        self.assertNotIn("existing Act II transition route", drone)
 
 
 if __name__ == "__main__":
