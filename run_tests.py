@@ -57,6 +57,19 @@ OLD_ROOT_MAST_FILENAMES = {
     "__init__.mast",
 }
 
+# Names that are deliberately bound in more than one active MAST file. Each
+# entry is an accepted design decision, not an unreviewed exception — adding
+# one is a review decision, which is the point of keeping the list explicit
+# and short rather than silencing the check.
+#
+# artemis_id: scripts/main.mast:16 declares the default 0 and
+# scripts/systems/playable_bootstrap.mast:26,33 rebinds it to the real object
+# id once the ship exists. Both must name the same variable for the binding to
+# work, and AGENTS.md section 4 requires every consumer to guard on == 0.
+ALLOWED_CROSS_FILE_SHARED = {
+    "artemis_id",
+}
+
 CONFLICT_WORDS = {
     "pass",
     "patch",
@@ -195,6 +208,7 @@ def run_static_unittests() -> tuple[list[str], int, list[str]]:
         ROOT / "tests" / "test_act1_engineering_shakedown_static.py",
         ROOT / "tests" / "test_act1_drone_contact_fire_static.py",
         ROOT / "tests" / "test_comms_proof_station_static.py",
+        ROOT / "tests" / "test_review_gate_static.py",
     ]
     suite = unittest.TestSuite()
     for test_file in test_files:
@@ -282,24 +296,39 @@ def check_old_mast_archive_warning() -> list[str]:
 
 
 def check_duplicate_shared_declarations() -> list[str]:
-    """Check for shared variable declarations in multiple MAST files."""
+    """Check for shared variable declarations in multiple MAST files.
+
+    `shared` is global across every MAST file, and a collision fails silently
+    at runtime — the handoff protocol section 3.1 calls this the most
+    expensive class of bug in this codebase.
+
+    Two blind spots were closed here on 2026-08-08:
+
+    1. The pattern was anchored at `^shared`, so an INDENTED declaration was
+       invisible. `scripts/systems/playable_bootstrap.mast` declares
+       `shared artemis_id` indented inside a conditional, which meant the one
+       genuinely cross-file shared name in the repo was the one name the
+       check could not see.
+    2. Occurrences were counted rather than distinct files, so two
+       declarations of the same name inside a SINGLE file would report as a
+       cross-file duplicate naming that file twice.
+    """
     scripts_dir = ROOT / "scripts"
     if not scripts_dir.is_dir():
         return []
 
-    shared_map = {}
+    shared_map: dict[str, set[str]] = {}
     for path in scripts_dir.rglob("*.mast"):
         text = path.read_text(encoding="utf-8", errors="ignore")
-        for match in re.finditer(r"^shared\s+(\w+)\s*=", text, re.MULTILINE):
-            name = match.group(1)
-            if name not in shared_map:
-                shared_map[name] = []
-            shared_map[name].append(rel(path))
+        for match in re.finditer(r"^[ \t]*shared\s+(\w+)\s*=", text, re.MULTILINE):
+            shared_map.setdefault(match.group(1), set()).add(rel(path))
 
     failures = []
     for name, files in sorted(shared_map.items()):
+        if name in ALLOWED_CROSS_FILE_SHARED:
+            continue
         if len(files) > 1:
-            files_str = ", ".join(sorted(set(files)))
+            files_str = ", ".join(sorted(files))
             failures.append(f"duplicate shared declaration: {name} in {files_str}")
 
     return failures

@@ -42,8 +42,17 @@ Owns work that needs whole-repo context and judgment:
 - API-uncertainty resolution and spike design
 - writing the slice packet
 - reviewing the implementation diff against the packet
+- running `python tools/review_gate.py` and resolving what it reports
+- setting the verification record's `Status` and `Acceptance Not Covered` (see section 4.3)
 - driving live smoke with the operator and recording the result
 - promoting **[UNPROVEN]** to **[LIVE]** in the API cookbook
+
+**Review by diff, not by file.** Read `git diff --stat` first, then scoped
+`git diff -- <path>`. Opening whole runtime files costs an order of magnitude
+more context than the change warrants — `act1_generator_tarsis_gate.mast` is
+969 lines and its typical slice diff is a few dozen. Read the whole file only
+when the change is structural or the diff genuinely cannot be understood
+without surrounding context.
 
 ## 2.2 Implementation agent (Codex)
 
@@ -52,7 +61,9 @@ Owns bounded, well-specified construction:
 - writing MAST for a single packet
 - writing the matching static tests
 - wiring the test file into `run_tests.py`
-- drafting the verification record's static sections
+- drafting the verification record's static sections, **except** `Status` and
+  `Acceptance Not Covered` — see section 4.3
+- citing a cookbook section and evidence tag for every MAST pattern used
 
 ## 2.3 Operator (human)
 
@@ -134,7 +145,10 @@ Keep these two parts separate. They have different lifetimes.
 ```text
 ## Status
     one of: spike-in-progress | implemented-live-unproven | live-proven | blocked
+    SET BY THE REVIEWER, not the implementation agent - see section 4.3
 ## Source Sections Used
+## Cookbook Patterns Used
+    one line per MAST pattern: section number + evidence tag + where used
 ## Files Touched
 ## State Variables
 ## Runtime Flow
@@ -174,7 +188,48 @@ next action:
 
 `AMBIGUOUS` is a first-class result. No error plus no marker is not a pass.
 
-## 4.3 Claim discipline
+## 4.3 Who owns which field
+
+Two fields are set by the reviewer, never by the implementation agent:
+
+- `Status`
+- `Acceptance Not Covered`
+
+Everything else in Part 1 may be drafted by the implementation agent.
+
+The reason is narrow and specific. These two fields are where the slice
+declares what it has *not* proven, and section 5 of `AGENTS.md` identifies
+overstated evidence as the failure mode agents hit most often here. An agent
+grading its own coverage is being asked to write down the weakness of work it
+just produced. That is not a claim about any particular agent's honesty — it
+is that the two fields exist precisely to catch the optimism the author
+cannot see in their own work, so the author is the wrong person to write them.
+
+Cost of the rule: two lines per slice, set at review. There is no ongoing
+overhead.
+
+## 4.3.1 Cookbook citation format
+
+Every MAST pattern in the diff must trace to `60_mast_api_cookbook.md`. One
+line each in `Cookbook Patterns Used`:
+
+```text
+- section 5.1 [LIVE] run-ID guard - khovan_drone_01_watch_stationary_hold
+- section 8.1 [LIVE] idempotent spawn - khovan_drone_01_spawn
+- section 7.3 [COMPILE] subsystem damage read - khovan_drone_01_damage_hook
+```
+
+This converts review from a judgment task into a lookup: the reviewer greps
+the cited section and confirms it says what the citation claims, instead of
+reading MAST and reasoning about whether an API is real. `AGENTS.md` section 4
+is blunt about why this matters — invented syntax compiles surprisingly often
+and fails only in live Cosmos, where each round trip costs an operator
+session.
+
+A pattern that cannot be cited is not a blocker and must not be guessed at.
+Raise it as a cookbook section 12 uncertainty block and route it back.
+
+## 4.4 Claim discipline
 
 Restating `AGENTS.md` section 5, because this is the rule implementation agents break most often:
 
@@ -218,6 +273,8 @@ An implementation agent working from a packet **must not**:
 - implement anything in `Do not implement`
 - claim live proof, tests run, commits made, or merges performed that did not happen
 - create parallel files named `final`, `new`, `copy`, `old`, `merged`, `v2`, or `patched`
+- set `Status` or `Acceptance Not Covered` in the verification record (section 4.3)
+- use a MAST pattern without citing its cookbook section and evidence tag (section 4.3.1)
 
 **Helper extraction rule.** `docs/04_implementation_setup/10_mast_file_lessons.md` section 3.4 names six helper modules (`act1_helpers`, `entity_cleanup_helpers`, `resupply_helpers`, `drone_spawn_helpers`, `target_detection_helpers`, `checkpoint_system`) as one of the best old-build lessons, but `scripts/lib/` is currently empty and all logic lives in act/system files. When a slice would push a single `.mast` file past roughly 400 lines, or when two slices need the same cleanup/seeding/spawn logic, extract the shared logic to `scripts/lib/` rather than growing the act file further. This is cheapest to enforce before Slices 09 (DAMCON), 11 (pirates), and 15 (checkpoint/reload) land — each adds a state tree comparable to Slice 04's, and the lessons doc specifically expects checkpoint/reload to reuse neutral helpers rather than duplicate story-jump seeding logic. Their packets (section 3 of this doc, once written) should name `scripts/lib/` targets explicitly for entity cleanup, spawn, and checkpoint-seed helpers.
 
@@ -247,18 +304,45 @@ Next safe branch/action:
 
 ## 5.4 Review gate
 
-Before the operator is asked for live smoke, the planning agent checks:
+Before the operator is asked for live smoke, the planning agent runs:
+
+```bash
+python tools/review_gate.py --base master
+```
+
+That tool answers the mechanizable half of this gate and exits non-zero on any
+failure:
+
+- [x] No design or content doc was modified
+- [x] No parallel `final`/`new`/`copy`/`old`/`merged`/`v2`/`patched` filename
+- [x] No forbidden bootstrap API reintroduced
+- [x] Every `to_object()` is None-checked
+- [x] Every ship API call on `artemis_id` is guarded against 0 in its label
+- [x] Every delayed task has a run-ID guard
+- [x] Every spawn has an existence check and a cleanup routine
+- [x] `python run_tests.py quick` passes, and the compile preflight actually ran
+- [x] `git diff --check` is clean
+
+Shared-name collisions are covered separately and continuously by
+`check_duplicate_shared_declarations()` in `run_tests.py`, so a collision
+fails `quick` for everyone rather than only at review.
+
+The remaining checks need judgment and stay with the reviewer. **A clean tool
+run is not a complete review:**
 
 - [ ] Every packet field was addressed, or the gap is stated
-- [ ] No new `shared` name collides with an existing one
-- [ ] Every automatic gate has a fallback path
-- [ ] Every delayed task has a run-ID guard
-- [ ] Every spawn has an existence check and a cleanup routine
-- [ ] Every `artemis_id` use is guarded against 0
+- [ ] Every automatic gate ships with a Comms/GM fallback and a `*_fallback_available` flag
 - [ ] Nothing in `Do not implement` was implemented
-- [ ] No design doc was modified
-- [ ] `python run_tests.py quick` passes, or the failure is documented
-- [ ] `git diff --check` is clean
+- [ ] Every MAST pattern cites a cookbook section and evidence tag (section 4.3.1)
+- [ ] `Status` and `Acceptance Not Covered` set by the reviewer (section 4.3)
+
+**Scoping.** The tool reads added lines, not whole files. `scripts/acts/`
+carries accepted live-proven debt (see `AGENTS.md` section 2 on
+`act1_generator_tarsis_gate.mast`); a whole-repo linter would fail on that
+debt from day one and be silenced within a week. Guard lookups still read the
+full current file, since the guard protecting a new line is often pre-existing.
+Use `--full` deliberately when auditing a whole file, and expect known debt to
+surface.
 
 ---
 

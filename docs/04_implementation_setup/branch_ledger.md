@@ -7,11 +7,35 @@ Purpose: record active/recent Khovan branch roles, evidence, risks, and next act
 
 Current observed branch state:
 
-- Current branch: `slice06-drone-contact-fire`
-- Current tip: `9bd4db9 docs: record Slice 06 GM-only live smoke pass (partial)`
-- `git status --short --branch`: clean at `## slice06-drone-contact-fire` (not yet pushed to origin as of this entry)
+- Current branch: `docs/review-gate-tooling`
+- `slice06-drone-contact-fire` tip: `b49f216 fix: shorten Kestrel reserve confirmation`
 - `master` remains at `6ff6f68 merge Slice 05 engineering shakedown` as of this entry; Slice 06 work has not merged back yet
 - 36 local+remote branch refs exist as of this entry, most of them merged Slice 04 children already marked deletable below. Branch cleanup is still outstanding (see `docs/04_implementation_setup/70_agent_handoff_protocol.md` section 7).
+
+## docs/review-gate-tooling
+
+Role: docs/governance + review-tooling branch
+
+Started from: `slice06-drone-contact-fire` at `b49f216`, with a clean tree (per `AGENTS.md` branch-transition discipline — no uncommitted runtime changes carried in).
+
+Purpose: mechanize the seven pattern/Git checks in `70_agent_handoff_protocol.md` section 5.4 so reviewing a Codex diff does not require reading whole MAST files by hand, and close a blind spot in the shared-name collision check.
+
+Files: `tools/review_gate.py` (new), `tests/test_review_gate_static.py` (new), `run_tests.py`, `docs/04_implementation_setup/70_agent_handoff_protocol.md`, `docs/04_implementation_setup/branch_ledger.md`. No mission runtime `.mast` file changed.
+
+Status: complete, pending merge-back approval.
+
+Evidence:
+
+- `python run_tests.py quick`: PASS, 146 checks (12 harness, 134 Python tests), 0 failures, 0 warnings, compile preflight included.
+- 31 self-tests in `tests/test_review_gate_static.py` cover both directions per check — violation detected AND clean code not flagged.
+- Negative control on the strengthened shared-name check: emptying `ALLOWED_CROSS_FILE_SHARED` reports `artemis_id` in `scripts/main.mast` + `scripts/systems/playable_bootstrap.mast`. The pre-fix `^shared` pattern reported nothing, confirming the indent blind spot was real and is now closed.
+- First run against the Slice 06 diff surfaced two findings, both verified genuine, zero false positives across 42 changed files.
+
+Known risks: the gate proves pattern conformance only — evidence class "static tests" per `AGENTS.md` section 5. It cannot prove runtime behavior, and a clean run is explicitly not a complete review; five judgment checks remain with the reviewer.
+
+Next action: operator reviews the two findings recorded in section "Findings routed to operator" below, then approves merge-back into `slice06-drone-contact-fire`.
+
+Return branch: `slice06-drone-contact-fire`.
 
 ## slice06-drone-contact-fire
 
@@ -59,6 +83,49 @@ Known risks: branch pointer remains after merge; local-only, not pushed to origi
 Next action: no further work needed on this branch. Delete local branch when branch cleanup is approved.
 
 Return branch: `slice06-drone-contact-fire`.
+
+### Findings routed to operator (from the first review-gate run, 2026-08-08)
+
+Both were found by `tools/review_gate.py --base master` against the Slice 06
+diff and then verified by hand. Neither is fixed on this branch: one is a
+design-doc question that section 8 says route rather than decide, and the
+other is runtime MAST, which must not be edited from a docs/governance branch.
+
+**Finding 1 — a design doc was edited during implementation work.**
+
+`docs/01_design/10_mast_requirements.md` section 17 changed in the Slice 06
+range: a 16-item build-slice list was deleted and replaced with a pointer to
+`docs/01_design/50_implementation_slice_plan.md` section 5.
+
+The edit itself looks correct — the deleted list duplicated the slice plan and
+its closing line referenced `khovan_reach_implementation_slice_plan_v1.md`,
+a filename that no longer exists in the active tree. The issue is process, not
+content: `AGENTS.md` section 2 routes design conflicts to the operator instead
+of resolving them in place, precisely so a good-looking edit does not slip
+into canon unreviewed.
+
+Options: (a) ratify the edit and note it in the doc's revision history, or
+(b) revert it and re-land it as its own docs branch. Recommend (a) — the
+change is sound and reverting costs more than it protects.
+
+**Finding 2 — `khovan_drone_01_reset` yields without a run-ID guard.**
+
+`scripts/acts/act1_drone_contact_fire.mast`, label `khovan_drone_01_reset`.
+The label increments `drone_contact_sequence_run_id`, then does
+`await delay_sim(seconds=1)`, then `await task_schedule(khovan_drone_01_spawn)`.
+Incrementing a run id is not the same as checking one: nothing re-reads it
+after the yield, so a story jump landing inside that one-second window resumes
+the label and spawns Drone 01 into a scene that has already moved on.
+
+Practical risk today is low — the window is one second and story jumps are
+GM-driven. It rises sharply at Slice 15 (checkpoint/reload), where story jumps
+become routine and this becomes an intermittent phantom-spawn bug that is
+expensive to reproduce.
+
+Fix shape is the cookbook section 5.1 pattern already used by
+`khovan_drone_01_watch_stationary_hold` in the same file: capture the run id
+before the delay, compare after it, bail on mismatch. Belongs in a Slice 06
+implementation branch, not here.
 
 ## slice04-player-instruction-clarity
 
