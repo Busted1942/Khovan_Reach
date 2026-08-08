@@ -85,7 +85,7 @@ Player-facing text is concise and delivered through the existing Comms/current-o
 - Engineering tests internal comms by ordering DamCon team1 to quarters and sleep, then observes increased productivity through the internal medical system.
 - DAMCON Control confirms crew-quarters rest-cycle standby.
 - After crew-quarters rest-cycle standby, DAMCON’s meal-cycle Comms confirmation is retired; Training Control reminds Engineering to keep DamCon teams in good condition, especially in battle.
-- Engineering starts controlled 300% overload after Helm sets engines to all stop.
+- Engineering sets impulse, warp, and Maneyver to 300% for the controlled overload, bleeds excess heat afterward, monitors DamCon progress, then resets them to 100%; appropriate quarters, mess, and rec/gym assignments provide sleep, eat, and workout bonuses.
 - Controlled damage is logged.
 - Engineering supervises repair.
 - Engineering sets maneuvering 190%, warp 10%, and impulse 100% for the navigation-priority preset.
