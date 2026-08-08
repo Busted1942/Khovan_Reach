@@ -151,8 +151,7 @@ class Act1EngineeringShakedownStaticTests(unittest.TestCase):
         for phrase in [
             "Engineering: Set Impulse to 0% and Warp to 200% and validate you see the heat sinks begin to increase slowly.",
             "Helm: Go to full impulse and ensure your speed remains at 0. Then to warp 1 and report your speed to the Captain.",
-            "Engineering: restore Warp to 100%. Leave Impulse at 0% to bleed off the excees heat.",
-            "Helm: Report your updated speed to the Captain and the then All Stop.",
+            "Great, everything is checking out so far. Now Engineering, let's test the internal comms. Order your DamCon team1 to their quarters and then to sleep. Observe ensure that you can observe their increased productivity through the internal medical system.",
             "rest-cycle standby confirmed in crew quarters",
             "meal-cycle standby confirmed in the mess",
             "controlled overload exercise",

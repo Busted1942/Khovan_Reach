@@ -44,7 +44,7 @@ shared engineering_shakedown_complete = False
 shared engineering_shakedown_api_uncertainty = "Engineering slider output, DAMCON location, repair completion, and navigation preset storage require live Cosmos proof before automatic gates can be claimed."
 
 shared engineering_shakedown_start_text = "Engineering: Set Impulse to 0% and Warp to 200% and validate you see the heat sinks begin to increase slowly.\nHelm: Go to full impulse and ensure your speed remains at 0. Then to warp 1 and report your speed to the Captain."
-shared engineering_no_motion_confirmed_text = "Engineering: restore Warp to 100%. Leave Impulse at 0% to bleed off the excees heat.\nHelm: Report your updated speed to the Captain and the then All Stop."
+shared engineering_no_motion_confirmed_text = "Great, everything is checking out so far. Now Engineering, let's test the internal comms. Order your DamCon team1 to their quarters and then to sleep. Observe ensure that you can observe their increased productivity through the internal medical system."
 shared damcon_rest_cycle_text = "DAMCON Control: rest-cycle standby confirmed in crew quarters."
 shared damcon_mess_instruction_text = "Training Control: now assign DAMCON teams to the mess and place them on meal-cycle standby. Comms, request DAMCON Control confirmation."
 shared damcon_meal_cycle_text = "DAMCON Control: meal-cycle standby confirmed in the mess."
