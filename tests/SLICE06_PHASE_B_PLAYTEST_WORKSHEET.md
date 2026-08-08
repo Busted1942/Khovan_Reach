@@ -58,6 +58,7 @@ Test action: Deploy Drone 01 and complete scan, hail, shield relay, and Weapons 
 
 Expected outcome:
 
+- [ ] Science's `Initial Scan` or `scan` displays: "Drone 01 is a neutral training contact. Weak shield-frequency relay data is available for Weapons."
 - [ ] Fire remains blocked outside 1–2 km.
 - [ ] Fire remains blocked until Artemis is stationary in the band for 15 seconds.
 - [ ] Movement or leaving the band resets the hold timer; stale delayed work cannot authorize fire.

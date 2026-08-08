@@ -372,6 +372,17 @@ class Act1DroneContactFireStaticTests(unittest.TestCase):
         self.assertNotIn("Observe whether", drone)
         self.assertNotIn("existing Act II transition route", drone)
 
+    def test_drone_01_science_scan_uses_the_proven_scan_result_structure(self) -> None:
+        drone = read(DRONE_PATH)
+        science_start = drone.index('//science if has_roles(SCIENCE_SELECTED_ID, "khovan_drone_01")')
+        science_end = drone.index('//enable/comms if has_roles(COMMS_SELECTED_ID, "khovan_drone_01")', science_start)
+        science_body = drone[science_start:science_end]
+        self.assertEqual(science_body.count("<scan>"), 2)
+        self.assertIn(
+            "Drone 01 is a neutral training contact. Weak shield-frequency relay data is available for Weapons.",
+            science_body,
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

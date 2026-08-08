@@ -523,10 +523,14 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
         drone_01_scan_complete = True
         drone_01_status = "science_scan_complete"
         script.write_khovan_startup_trace(f"[KHOVAN ACT1 DRONE 01 SCAN] target_id={SCIENCE_SELECTED_ID}")
+        <scan>
+            % Drone 01 is a neutral training contact. Weak shield-frequency relay data is available for Weapons.
     + "scan":
         drone_01_scan_complete = True
         drone_01_status = "science_scan_complete"
         script.write_khovan_startup_trace(f"[KHOVAN ACT1 DRONE 01 SCAN] target_id={SCIENCE_SELECTED_ID}")
+        <scan>
+            % Drone 01 is a neutral training contact. Weak shield-frequency relay data is available for Weapons.
     + "Relay Weak Shield Frequency":
         drone_01_shield_frequency_relay_complete = True
         drone_01_status = "shield_frequency_relay_complete"
