@@ -77,7 +77,6 @@ shared tarsis_governor_clear_response_sent = False
 shared generator_governor_cleared = False
 
 shared kestrel_yard_lock_visual_text = "Kestrel Yard Control: Artemis is held in yard-lock pending departure clearance. Comms, request departure clearance when the captain is ready."
-shared kestrel_generator_advisory_text = "Artemis, you have limited energy reserves. Proceed to Tarsis station and submit this authorization packet to obtain a full system recharge."
 shared kestrel_homing_reserve_text = "Kestrel Yard Control: Artemis has no homing torpedoes loaded until Comms requests the emergency reserve. The reserve is two homing torpedoes only; Tarsis handles replacement and generator acceptance."
 shared kestrel_homing_reserve_request_text = "Kestrel Yard Control: emergency homing reserve approved. Loading two homing torpedoes now. These are reserve margin under the generator governor, not a full combat load. No nukes, EMPs, or mines are released before Tarsis resupply."
 shared kestrel_homing_reserve_prompt_text = "Artemis, you may notice you are traveling exceptionally slow. We are having generator issues and could not charge your engines before you were scheduled for departure. You should request a reserve homing torpedo that your Weapons officer may use to power your engine for a short time."
@@ -96,7 +95,6 @@ shared tarsis_resupply_text = "Tarsis Control: normal docking resupply and gener
     + "Khovan: Request Departure Clearance" khovan_kestrel_request_departure_clearance
     + "Khovan: Request Emergency Homing Reserve" khovan_kestrel_request_emergency_homing_reserve
     + "Khovan: Confirm Launch-Envelope Exit" khovan_kestrel_report_launch_envelope_clear
-    + "Khovan: Resend Generator Advisory" khovan_kestrel_resend_generator_advisory
 
 //enable/comms if has_roles(COMMS_SELECTED_ID, "tarsis_station")
     script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS 007] Tarsis standard station selected")
@@ -412,9 +410,11 @@ shared tarsis_resupply_text = "Tarsis Control: normal docking resupply and gener
     await task_schedule(docking_standard_player_station)
     if kestrel_yards_id != 0:
         add_role(kestrel_yards_id, "station")
+        # Stock behavior keys off capital Station; Khovan keeps only its custom Comms route at Kestrel.
+        remove_role(kestrel_yards_id, "Station")
         add_role(kestrel_yards_id, "kestrel_yards")
-        kestrel_comms_options_status = "station_and_kestrel_yards_roles_restored_after_docking_helper_pass"
-        script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS 003B] Kestrel station/kestrel_yards roles restored after docking helper pass for Khovan Comms options")
+        kestrel_comms_options_status = "custom_kestrel_comms_only_stock_Station_role_removed_after_docking_helper_pass"
+        script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS 003B] Kestrel custom Comms route restored; stock Station role removed to prevent automatic production")
     if tarsis_station_id != 0:
         add_role(tarsis_station_id, "station")
         remove_role(tarsis_station_id, "Station")
@@ -681,10 +681,7 @@ distance: 600
         yield fail
 
     if kestrel_launch_envelope_response_sent:
-        if kestrel_generator_advisory_sent:
-            script.write_khovan_startup_trace("[KHOVAN ACT1 MSG ORDER] advisory timer ignored because already sent after duplicate launch-envelope confirmation")
-        else:
-            script.write_khovan_startup_trace("[KHOVAN ACT1 MSG ORDER] duplicate suppressed Kestrel launch-envelope response")
+        script.write_khovan_startup_trace("[KHOVAN ACT1 MSG ORDER] duplicate suppressed Kestrel launch-envelope response")
         yield success
     if artemis_id == 0 or kestrel_yards_id == 0:
         kestrel_departure_gate_status = "launch_envelope_blocked_missing_range_ids"
@@ -701,67 +698,30 @@ distance: 600
 
     launch_envelope_cleared = True
     kestrel_departure_gate_status = "launch_envelope_cleared"
-    kestrel_generator_advisory_status = "timer_started"
-    current_beat = "launch_envelope_cleared_generator_advisory_timer"
+    kestrel_generator_advisory_status = "removed_by_operator_no_packet_sent"
+    current_beat = "launch_envelope_cleared_proceed_to_tarsis"
     kestrel_generator_advisory_run_id = kestrel_generator_advisory_run_id + 1
-    script.write_khovan_startup_trace("[KHOVAN ACT1 005] launch envelope clear confirmed; Kestrel advisory timer started")
-    await task_schedule(khovan_set_current_objective, {"objective_id": "generator_advisory_standby", "objective_body": "Stand by for Kestrel generator advisory.", "objective_step": "Generator advisory standby", "objective_breadcrumb": "[KHOVAN OBJECTIVE 004] objective updated: generator advisory"})
-    await task_schedule(khovan_act1_record_progression, {"action": "launch_envelope_cleared", "detail": "distance-verified Kestrel launch envelope clear started 10-second advisory timer"})
-    task_schedule(khovan_act1_deliver_kestrel_generator_advisory_after_delay, {"advisory_run_id": kestrel_generator_advisory_run_id})
+    script.write_khovan_startup_trace("[KHOVAN ACT1 005] launch envelope clear confirmed; Kestrel advisory packet removed by operator")
+    await task_schedule(khovan_set_current_objective, {"objective_id": "tarsis_requests", "objective_body": "Proceed to Tarsis. Comms request homing priority, generator support, and docking clearance.", "objective_step": "Tarsis requests", "objective_breadcrumb": "[KHOVAN OBJECTIVE 005] objective updated: Tarsis requests"})
+    await task_schedule(khovan_act1_record_progression, {"action": "launch_envelope_cleared", "detail": "distance-verified Kestrel launch envelope clear; proceed directly to Tarsis requests"})
+    await task_schedule(khovan_act1_send_training_speed_power_reminder)
     kestrel_launch_envelope_response_sent = True
-    comms_receive("Kestrel Yard Control logs Artemis clear of the launch envelope. Stand by for generator advisory while yard telemetry catches up.", title="Kestrel Yard Control", title_color="green")
+    comms_receive("Kestrel Yard Control logs Artemis clear of the launch envelope. Proceed to Tarsis Station for the required Comms requests.", title="Kestrel Yard Control", title_color="green")
     script.write_khovan_startup_trace("[KHOVAN ACT1 MSG KESTREL 003] launch-envelope packet sent")
     script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS 006E] Kestrel launch-envelope option response sent")
     yield success
-
-=== khovan_act1_deliver_kestrel_generator_advisory_after_delay ===
-    default advisory_run_id = kestrel_generator_advisory_run_id
-    await delay_sim(seconds=10)
-    if advisory_run_id != kestrel_generator_advisory_run_id:
-        script.write_khovan_startup_trace("[KHOVAN ACT1 MSG ORDER] duplicate suppressed stale Kestrel advisory timer")
-        ->END
-    if not launch_envelope_cleared:
-        ->END
-    if kestrel_generator_packet_sent or kestrel_generator_advisory_sent:
-        script.write_khovan_startup_trace("[KHOVAN ACT1 MSG ORDER] advisory timer ignored because already sent")
-        ->END
-
-    kestrel_generator_packet_sent = True
-    kestrel_generator_advisory_sent = True
-    kestrel_generator_advisory_status = "delivered"
-    act1_comms_archive_status = "trace_and_action_log_stub; Comms archive UI not separately proven"
-    current_beat = "kestrel_generator_advisory_delivered"
-    script.write_khovan_startup_trace("[KHOVAN ACT1 006] Kestrel advisory delivered after 10-second timer")
-    await task_schedule(khovan_reach_send_safe_startup_message, {"startup_sender": "Kestrel Yard Control", "startup_text": kestrel_generator_advisory_text, "startup_title_color": "green", "startup_sender_id": kestrel_yards_id, "startup_player_id": artemis_id, "startup_breadcrumb": "[KHOVAN ACT1 MSG KESTREL 004] generator advisory packet sent"})
-    await task_schedule(khovan_set_current_objective, {"objective_id": "tarsis_requests", "objective_body": "Proceed to Tarsis. Comms request homing priority, generator support, and docking clearance.", "objective_step": "Tarsis requests", "objective_breadcrumb": "[KHOVAN OBJECTIVE 005] objective updated: Tarsis requests"})
-    await task_schedule(khovan_act1_record_progression, {"action": "kestrel_generator_advisory", "detail": "delivered by guarded text packet; archive represented by Comms response/trace/action log"})
-    await task_schedule(khovan_act1_send_training_speed_power_reminder)
-    log("Khovan Act I Kestrel generator advisory delivered after launch-envelope timer.")
-    ->END
 
 === khovan_act1_send_training_speed_power_reminder ===
     if training_speed_power_reminder_sent:
         script.write_khovan_startup_trace("[KHOVAN ACT1 MSG ORDER] duplicate suppressed Training Control speed-power reminder")
         ->END
-    if not kestrel_generator_advisory_sent:
+    if not launch_envelope_cleared:
         ->END
 
     training_speed_power_reminder_sent = True
-    script.write_khovan_startup_trace("[KHOVAN ACT1 MSG ORDER] Training Control speed-power reminder sent after advisory")
+    script.write_khovan_startup_trace("[KHOVAN ACT1 MSG ORDER] Training Control speed-power reminder sent after launch-envelope clearance")
     await task_schedule(khovan_reach_send_safe_startup_message, {"startup_sender": "Training Control", "startup_text": training_speed_power_reminder_text, "startup_title_color": "cyan", "startup_sender_id": kestrel_yards_id, "startup_player_id": artemis_id, "startup_breadcrumb": "[KHOVAN ACT1 MSG TRAINING 001] Training speed-power reminder sent"})
     ->END
-
-=== khovan_kestrel_resend_generator_advisory ===
-    script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS 006C] Kestrel resend-advisory option selected")
-    if not kestrel_generator_packet_sent or not kestrel_generator_advisory_sent:
-        comms_receive("Kestrel Yard Control has not issued the generator advisory yet.", title="Kestrel Yard Control", title_color="yellow")
-        script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS 006F] Kestrel resend-advisory option rejected before advisory")
-        yield fail
-
-    script.write_khovan_startup_trace("[KHOVAN ACT1 MSG ORDER] Kestrel advisory resend did not restart timer")
-    comms_receive(kestrel_generator_advisory_text, title="Kestrel Yard Control", title_color="green")
-    script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS 006F] Kestrel resend-advisory option response sent")
-    yield success
 
 === khovan_tarsis_hail ===
     script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS 008] Tarsis Hail option selected")

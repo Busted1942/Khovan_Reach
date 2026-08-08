@@ -97,7 +97,6 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             'shared tarsis_docking_observer_status = "not_started"',
             'shared tarsis_docking_observer_last_snapshot = "not_checked"',
             'shared kestrel_yard_lock_visual_text = "Kestrel Yard Control: Artemis is held in yard-lock pending departure clearance. Comms, request departure clearance when the captain is ready."',
-            'shared kestrel_generator_advisory_text = "Artemis, you have limited energy reserves. Proceed to Tarsis station and submit this authorization packet to obtain a full system recharge."',
             'shared kestrel_homing_reserve_text = "Kestrel Yard Control: Artemis has no homing torpedoes loaded until Comms requests the emergency reserve. The reserve is two homing torpedoes only; Tarsis handles replacement and generator acceptance."',
             'shared kestrel_homing_reserve_request_text = "Kestrel Yard Control: emergency homing reserve approved. Loading two homing torpedoes now. These are reserve margin under the generator governor, not a full combat load. No nukes, EMPs, or mines are released before Tarsis resupply."',
             'shared kestrel_homing_reserve_prompt_text = "Artemis, you may notice you are traveling exceptionally slow.',
@@ -362,15 +361,13 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
         setup_body = label_body(act1, "khovan_act1_setup_kestrel_and_tarsis_contacts")
         departure_body = label_body(act1, "khovan_kestrel_request_departure_clearance")
         launch_body = label_body(act1, "khovan_kestrel_report_launch_envelope_clear")
-        advisory_body = label_body(act1, "khovan_act1_deliver_kestrel_generator_advisory_after_delay")
         clearance_body = label_body(act1, "khovan_tarsis_request_docking_clearance")
         resupply_body = label_body(act1, "khovan_tarsis_complete_mechanical_docking_and_resupply")
 
         expectations = [
             (setup_body, "khovan_current_objective_init", "await task_schedule(khovan_current_objective_init)"),
             (departure_body, "Helm clear the Kestrel launch envelope: move at least 1 km from Kestrel, then Comms confirm exit.", "[KHOVAN OBJECTIVE 003] objective updated: launch envelope (1 km minimum)"),
-            (launch_body, "Stand by for Kestrel generator advisory.", "[KHOVAN OBJECTIVE 004] objective updated: generator advisory"),
-            (advisory_body, "Proceed to Tarsis. Comms request homing priority, generator support, and docking clearance.", "[KHOVAN OBJECTIVE 005] objective updated: Tarsis requests"),
+            (launch_body, "Proceed to Tarsis. Comms request homing priority, generator support, and docking clearance.", "[KHOVAN OBJECTIVE 005] objective updated: Tarsis requests"),
             (clearance_body, "Dock normally with Tarsis. Resupply and governor handoff complete on hard dock.", "[KHOVAN OBJECTIVE 006] objective updated: Tarsis docking/resupply"),
             (resupply_body, "Begin Engineering shakedown with Tarsis Training Control.", "[KHOVAN OBJECTIVE 007] objective updated: Engineering shakedown ready"),
         ]
@@ -393,8 +390,7 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             "Kestrel Yard Control: emergency homing reserve approved. Loading two homing torpedoes now. These are reserve margin under the generator governor, not a full combat load. No nukes, EMPs, or mines are released before Tarsis resupply.",
             "Kestrel Yard Control: departure clearance granted. Helm, clear the launch envelope by moving at least 1 km from Kestrel. Comms, confirm once Artemis is outside the yard boundary.",
             "Helm clear the Kestrel launch envelope: move at least 1 km from Kestrel, then Comms confirm exit.",
-            "Kestrel Yard Control logs Artemis clear of the launch envelope. Stand by for generator advisory while yard telemetry catches up.",
-            "Artemis, you have limited energy reserves. Proceed to Tarsis station and submit this authorization packet to obtain a full system recharge.",
+            "Kestrel Yard Control logs Artemis clear of the launch envelope. Proceed to Tarsis Station for the required Comms requests.",
             "Training Control: keep speed and power changes deliberate. Treat the governor as active until Tarsis completes the handoff. Comms should coordinate homing priority, generator support, and docking clearance with Tarsis.",
             "Proceed to Tarsis. Comms request homing priority, generator support, and docking clearance.",
             "Tarsis Station: Artemis, we read you. Production Control and Generator Acceptance are standing by. Request homing priority, generator support, and docking clearance before approach.",
@@ -449,9 +445,10 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             "[KHOVAN ACT1 DOCK 001K] Kestrel Legendary docking helper skipped for startup mechanical hold fallback",
             "await task_schedule(docking_standard_player_station)",
             'add_role(kestrel_yards_id, "station")',
+            'remove_role(kestrel_yards_id, "Station")',
             'add_role(kestrel_yards_id, "kestrel_yards")',
-            'kestrel_comms_options_status = "station_and_kestrel_yards_roles_restored_after_docking_helper_pass"',
-            "[KHOVAN ACT1 COMMS 003B] Kestrel station/kestrel_yards roles restored after docking helper pass for Khovan Comms options",
+            'kestrel_comms_options_status = "custom_kestrel_comms_only_stock_Station_role_removed_after_docking_helper_pass"',
+            "[KHOVAN ACT1 COMMS 003B] Kestrel custom Comms route restored; stock Station role removed to prevent automatic production",
             'add_role(tarsis_station_id, "station")',
             'remove_role(tarsis_station_id, "Station")',
             'tarsis_comms_options_status = "station_role_restored_after_docking_helper_pass"',
@@ -475,7 +472,6 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
         for forbidden in [
             '"tsn, friendly, kestrel_yards, khovan_origin"',
             '"tsn, friendly, tarsis_station, khovan_drill_resupply"',
-            'remove_role(kestrel_yards_id, "Station")',
             "khovan_act1_comms_test_option",
             "Khovan Test Option",
             "khovan_reach_keep_tarsis_priority_docking_hidden",
@@ -517,7 +513,7 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
         )
         self.assertLess(
             setup_body.index("await task_schedule(docking_standard_player_station)"),
-            setup_body.index('kestrel_comms_options_status = "station_and_kestrel_yards_roles_restored_after_docking_helper_pass"'),
+            setup_body.index('kestrel_comms_options_status = "custom_kestrel_comms_only_stock_Station_role_removed_after_docking_helper_pass"'),
         )
 
     def test_tarsis_docking_setup_waits_for_docking_clearance(self) -> None:
@@ -814,11 +810,9 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             '+ "Khovan: Request Departure Clearance" khovan_kestrel_request_departure_clearance',
             '+ "Khovan: Request Emergency Homing Reserve" khovan_kestrel_request_emergency_homing_reserve',
             '+ "Khovan: Confirm Launch-Envelope Exit" khovan_kestrel_report_launch_envelope_clear',
-            '+ "Khovan: Resend Generator Advisory" khovan_kestrel_resend_generator_advisory',
             "[KHOVAN ACT1 COMMS 006] Kestrel Hail option selected",
             "[KHOVAN ACT1 COMMS 006A] Kestrel departure-clearance option selected",
             "[KHOVAN ACT1 COMMS 006B] Kestrel launch-envelope option selected",
-            "[KHOVAN ACT1 COMMS 006C] Kestrel resend-advisory option selected",
             "=== khovan_kestrel_request_departure_clearance ===",
             "=== khovan_kestrel_request_emergency_homing_reserve ===",
             "=== khovan_kestrel_report_launch_envelope_clear ===",
@@ -879,7 +873,6 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
         self.assertIn("yield fail", launch_body)
         self.assertIn("[KHOVAN ACT1 COMMS 006E] Kestrel launch-envelope option rejected before clearance", launch_body)
         self.assertIn("if kestrel_launch_envelope_response_sent:", launch_body)
-        self.assertIn("[KHOVAN ACT1 MSG ORDER] advisory timer ignored because already sent after duplicate launch-envelope confirmation", launch_body)
         self.assertIn("[KHOVAN ACT1 MSG ORDER] duplicate suppressed Kestrel launch-envelope response", launch_body)
         self.assertIn("if artemis_id == 0 or kestrel_yards_id == 0:", launch_body)
         self.assertIn('kestrel_departure_gate_status = "launch_envelope_blocked_missing_range_ids"', launch_body)
@@ -891,34 +884,13 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
         self.assertIn("[KHOVAN ACT1 LAUNCH BLOCKED] launch envelope not cleared: Artemis", launch_body)
         self.assertIn("Artemis must be at least", launch_body)
         self.assertIn("launch_envelope_cleared = True", launch_body)
-        self.assertIn("kestrel_generator_advisory_run_id = kestrel_generator_advisory_run_id + 1", launch_body)
-        self.assertIn("[KHOVAN ACT1 005] launch envelope clear confirmed; Kestrel advisory timer started", launch_body)
+        self.assertIn('kestrel_generator_advisory_status = "removed_by_operator_no_packet_sent"', launch_body)
+        self.assertIn("[KHOVAN ACT1 005] launch envelope clear confirmed; Kestrel advisory packet removed by operator", launch_body)
         self.assertIn("kestrel_launch_envelope_response_sent = True", launch_body)
         self.assertIn("[KHOVAN ACT1 COMMS 006E] Kestrel launch-envelope option response sent", launch_body)
-        self.assertIn("task_schedule(khovan_act1_deliver_kestrel_generator_advisory_after_delay", launch_body)
-
-    def test_kestrel_advisory_waits_ten_seconds_sends_training_reminder_and_does_not_add_profile_selection(self) -> None:
-        act1 = read(ACT1_PATH)
-        body = label_body(act1, "khovan_act1_deliver_kestrel_generator_advisory_after_delay")
-        for phrase in [
-            "await delay_sim(seconds=10)",
-            "if advisory_run_id != kestrel_generator_advisory_run_id:",
-            "[KHOVAN ACT1 MSG ORDER] duplicate suppressed stale Kestrel advisory timer",
-            "if not launch_envelope_cleared:",
-            "if kestrel_generator_packet_sent or kestrel_generator_advisory_sent:",
-            "[KHOVAN ACT1 MSG ORDER] advisory timer ignored because already sent",
-            "kestrel_generator_packet_sent = True",
-            "kestrel_generator_advisory_sent = True",
-            "[KHOVAN ACT1 006] Kestrel advisory delivered after 10-second timer",
-            "await task_schedule(khovan_reach_send_safe_startup_message",
-            '"startup_sender": "Kestrel Yard Control"',
-            '"startup_text": kestrel_generator_advisory_text',
-            '"startup_sender_id": kestrel_yards_id',
-            "[KHOVAN ACT1 MSG KESTREL 004] generator advisory packet sent",
-            "delivered by guarded text packet; archive represented by Comms response/trace/action log",
-            "await task_schedule(khovan_act1_send_training_speed_power_reminder)",
-        ]:
-            self.assertIn(phrase, body)
+        self.assertIn("await task_schedule(khovan_act1_send_training_speed_power_reminder)", launch_body)
+        self.assertNotIn("khovan_act1_deliver_kestrel_generator_advisory_after_delay", act1)
+        self.assertNotIn("kestrel_generator_advisory_text", act1)
 
     def test_homing_reserve_prompt_waits_ten_seconds_after_departure_and_skips_loaded_reserve(self) -> None:
         act1 = read(ACT1_PATH)
@@ -934,15 +906,14 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             "[KHOVAN ACT1 RESERVE PROMPT] 10-second departure-clearance reminder sent",
         ]:
             self.assertIn(phrase, body)
-        self.assertNotIn("comms_receive(kestrel_generator_advisory_text", body)
 
         training_body = label_body(act1, "khovan_act1_send_training_speed_power_reminder")
         for phrase in [
             "if training_speed_power_reminder_sent:",
             "[KHOVAN ACT1 MSG ORDER] duplicate suppressed Training Control speed-power reminder",
-            "if not kestrel_generator_advisory_sent:",
+            "if not launch_envelope_cleared:",
             "training_speed_power_reminder_sent = True",
-            "[KHOVAN ACT1 MSG ORDER] Training Control speed-power reminder sent after advisory",
+            "[KHOVAN ACT1 MSG ORDER] Training Control speed-power reminder sent after launch-envelope clearance",
             "await task_schedule(khovan_reach_send_safe_startup_message",
             '"startup_sender": "Training Control"',
             '"startup_text": training_speed_power_reminder_text',
@@ -952,10 +923,7 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             self.assertIn(phrase, training_body)
         self.assertNotIn("comms_receive(", training_body)
 
-        resend_body = label_body(act1, "khovan_kestrel_resend_generator_advisory")
-        self.assertIn("if not kestrel_generator_packet_sent or not kestrel_generator_advisory_sent:", resend_body)
-        self.assertIn("[KHOVAN ACT1 MSG ORDER] Kestrel advisory resend did not restart timer", resend_body)
-        self.assertNotIn("kestrel_generator_advisory_run_id = kestrel_generator_advisory_run_id + 1", resend_body)
+        self.assertNotIn("khovan_kestrel_resend_generator_advisory", act1)
 
         for forbidden in [
             "Training Control has three profiles",
@@ -1166,7 +1134,6 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             "[KHOVAN ACT1 MSG KESTREL 001]",
             "[KHOVAN ACT1 MSG KESTREL 002]",
             "[KHOVAN ACT1 MSG KESTREL 003]",
-            "[KHOVAN ACT1 MSG KESTREL 004]",
             "[KHOVAN ACT1 MSG TRAINING 001]",
             "[KHOVAN ACT1 MSG TARSIS 001]",
             "[KHOVAN ACT1 MSG TARSIS 002]",
@@ -1201,7 +1168,6 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             "[KHOVAN ACT1 VISUAL 002]",
             "[KHOVAN ACT1 004]",
             "[KHOVAN ACT1 005]",
-            "[KHOVAN ACT1 006]",
             "[KHOVAN ACT1 007]",
             "[KHOVAN ACT1 008]",
             "[KHOVAN ACT1 009]",
