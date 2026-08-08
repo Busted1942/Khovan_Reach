@@ -1,7 +1,6 @@
 # Slice 01 audio wrapper stub. Real playback API needs Cosmos smoke validation.
 
 shared dillon_clip_1_stub_text = "Dillon: Crew of Artemis, this is a qualification cruise. First task: get the ship out of Kestrel cleanly. Comms, request departure clearance. Helm, hold position until Kestrel releases the yard-lock. Captain, coordinate the sequence."
-shared dillon_clip_1_stub_sent = False
 shared dillon_clip_1_delivery_mode = "text_standin_safe_comms_no_lifeform_overlay"
 shared dillon_clip_1_comms_echo_status = "not_sent"
 

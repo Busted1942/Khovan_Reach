@@ -50,7 +50,6 @@ shared tarsis_resupply_homing_torpedoes = 10
 shared tarsis_resupply_nukes = 3
 shared tarsis_resupply_emps = 6
 shared tarsis_resupply_mines = 6
-shared energy_restored = False
 shared tarsis_docking_setup_role_status = "not_enabled"
 shared tarsis_mechanical_dock_observed = False
 shared tarsis_docking_observer_status = "not_started"

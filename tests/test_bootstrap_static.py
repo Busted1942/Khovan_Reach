@@ -350,7 +350,6 @@ class BootstrapStaticTests(unittest.TestCase):
         self.assertNotIn("Captain. Crew of Artemis. This is a qualification cruise.", audio)
         self.assertNotIn("Standard pattern: depart Kestrel", audio)
         self.assertNotIn("Captain, the ship is yours.", audio)
-        self.assertIn("shared dillon_clip_1_stub_sent = False", audio)
         self.assertIn("=== khovan_reach_stub_dillon_clip_1 ===", audio)
         self.assertIn("if dillon_clip_1_stub_sent:", audio)
         self.assertIn("[KHOVAN ACT1 MSG ORDER] duplicate suppressed Dillon Clip 1 stub", audio)

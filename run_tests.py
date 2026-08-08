@@ -248,6 +248,30 @@ def check_old_mast_archive_warning() -> list[str]:
     return []
 
 
+def check_duplicate_shared_declarations() -> list[str]:
+    """Check for shared variable declarations in multiple MAST files."""
+    scripts_dir = ROOT / "scripts"
+    if not scripts_dir.is_dir():
+        return []
+
+    shared_map = {}
+    for path in scripts_dir.rglob("*.mast"):
+        text = path.read_text(encoding="utf-8", errors="ignore")
+        for match in re.finditer(r"^shared\s+(\w+)\s*=", text, re.MULTILINE):
+            name = match.group(1)
+            if name not in shared_map:
+                shared_map[name] = []
+            shared_map[name].append(rel(path))
+
+    failures = []
+    for name, files in sorted(shared_map.items()):
+        if len(files) > 1:
+            files_str = ", ".join(sorted(set(files)))
+            failures.append(f"duplicate shared declaration: {name} in {files_str}")
+
+    return failures
+
+
 def print_group(label: str, items: list[str]) -> None:
     for item in items:
         print(f"{label}: {item}")
@@ -285,6 +309,9 @@ def run_quick() -> int:
     pytest_failures, _ = run_pytest_doc_checks()
     failures.extend(pytest_failures)
     harness_checks_run += 1
+
+    harness_checks_run += 1
+    failures.extend(check_duplicate_shared_declarations())
 
     warnings.extend(check_old_mast_archive_warning())
     total_checks_run = harness_checks_run + static_tests_run

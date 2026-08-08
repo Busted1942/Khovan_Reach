@@ -89,7 +89,6 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             "shared artemis_start_mines = 0",
             'shared artemis_start_ordnance_runtime_apply_status = "not_applied"',
             "shared tarsis_resupply_energy = 1000",
-            "shared energy_restored = False",
             'shared tarsis_docking_setup_role_status = "not_enabled"',
             "shared tarsis_mechanical_dock_observed = False",
             'shared tarsis_docking_observer_status = "not_started"',
