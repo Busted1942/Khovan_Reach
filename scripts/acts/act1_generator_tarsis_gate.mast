@@ -25,6 +25,9 @@ shared kestrel_launch_envelope_response_sent = False
 shared kestrel_generator_advisory_run_id = 0
 shared kestrel_generator_advisory_status = "pending_launch_envelope"
 shared kestrel_generator_advisory_sent = False
+shared kestrel_homing_reserve_prompt_run_id = 0
+shared kestrel_homing_reserve_prompt_status = "pending_departure_clearance"
+shared kestrel_homing_reserve_prompt_sent = False
 shared training_speed_power_reminder_sent = False
 shared shakedown_prompt_sent = False
 
@@ -77,6 +80,7 @@ shared kestrel_yard_lock_visual_text = "Kestrel Yard Control: Artemis is held in
 shared kestrel_generator_advisory_text = "Kestrel Yard Control: advisory packet follows. Artemis is operating under a temporary generator governor. Expect constrained startup resources and deliberate speed/power handling until Tarsis completes generator acceptance. Tarsis has the acceptance package and will clear the handoff after docking/resupply."
 shared kestrel_homing_reserve_text = "Kestrel Yard Control: Artemis has no homing torpedoes loaded until Comms requests the emergency reserve. The reserve is two homing torpedoes only; Tarsis handles replacement and generator acceptance."
 shared kestrel_homing_reserve_request_text = "Kestrel Yard Control: emergency homing reserve approved. Loading two homing torpedoes now. These are reserve margin under the generator governor, not a full combat load. No nukes, EMPs, or mines are released before Tarsis resupply."
+shared kestrel_homing_reserve_prompt_text = "Artemis, you may notice you are traveling exceptionally slow. We are having generator issues and could not charge your engines before you were scheduled for departure. You should request a reserve homing torpedo that your Weapons officer may use to power your engine for a short time."
 shared training_speed_power_reminder_text = "Training Control: keep speed and power changes deliberate. Treat the governor as active until Tarsis completes the handoff. Comms should coordinate homing priority, generator support, and docking clearance with Tarsis."
 shared tarsis_homing_priority_text = "Tarsis Control: homing production priority set for Artemis. Replacement torpedoes will be prioritized during resupply."
 shared tarsis_generator_support_text = "Tarsis Generator Acceptance: Kestrel package received. We can clear the governor after docking and yard-lock synchronization."
@@ -172,6 +176,9 @@ shared tarsis_resupply_text = "Tarsis Control: normal docking resupply and gener
     kestrel_generator_advisory_status = "pending_launch_envelope"
     kestrel_generator_advisory_run_id = 0
     kestrel_generator_advisory_sent = False
+    kestrel_homing_reserve_prompt_run_id = 0
+    kestrel_homing_reserve_prompt_status = "pending_departure_clearance"
+    kestrel_homing_reserve_prompt_sent = False
     training_speed_power_reminder_sent = False
     shakedown_prompt_sent = False
     tarsis_gate_status = "waiting_for_kestrel_departure"
@@ -235,6 +242,9 @@ shared tarsis_resupply_text = "Tarsis Control: normal docking resupply and gener
     kestrel_generator_advisory_status = "pending_launch_envelope"
     kestrel_generator_advisory_run_id = kestrel_generator_advisory_run_id + 1
     kestrel_generator_advisory_sent = False
+    kestrel_homing_reserve_prompt_run_id = kestrel_homing_reserve_prompt_run_id + 1
+    kestrel_homing_reserve_prompt_status = "pending_departure_clearance"
+    kestrel_homing_reserve_prompt_sent = False
     training_speed_power_reminder_sent = False
     shakedown_prompt_sent = False
     tarsis_gate_status = "waiting_for_kestrel_departure"
@@ -279,6 +289,9 @@ shared tarsis_resupply_text = "Tarsis Control: normal docking resupply and gener
     kestrel_generator_advisory_status = "delivered"
     kestrel_generator_advisory_run_id = kestrel_generator_advisory_run_id + 1
     kestrel_generator_advisory_sent = True
+    kestrel_homing_reserve_prompt_run_id = kestrel_homing_reserve_prompt_run_id + 1
+    kestrel_homing_reserve_prompt_status = "not_applicable_post_tarsis"
+    kestrel_homing_reserve_prompt_sent = False
     training_speed_power_reminder_sent = True
     shakedown_prompt_sent = False
     homing_reserve_status = "superseded_by_tarsis_resupply"
@@ -506,6 +519,24 @@ distance: 600
 +++ throttle
     DOCKING_PLAYER.data_set.set("playerThrottle", 0, 0)
 
+=== khovan_act1_deliver_homing_reserve_prompt_after_departure_clearance ===
+    default prompt_run_id = kestrel_homing_reserve_prompt_run_id
+    await delay_sim(seconds=10)
+    if prompt_run_id != kestrel_homing_reserve_prompt_run_id:
+        script.write_khovan_startup_trace("[KHOVAN ACT1 MSG ORDER] duplicate suppressed stale Kestrel homing-reserve prompt timer")
+        ->END
+    if not kestrel_departure_clearance_granted:
+        ->END
+    if homing_reserve_status == "loaded_by_kestrel_comms" or kestrel_homing_reserve_prompt_sent:
+        kestrel_homing_reserve_prompt_status = "not_sent_reserve_already_requested"
+        script.write_khovan_startup_trace("[KHOVAN ACT1 MSG ORDER] Kestrel homing-reserve prompt skipped because reserve is already loaded")
+        ->END
+    kestrel_homing_reserve_prompt_sent = True
+    kestrel_homing_reserve_prompt_status = "sent_after_departure_clearance"
+    script.write_khovan_startup_trace("[KHOVAN ACT1 RESERVE PROMPT] 10-second departure-clearance reminder sent")
+    await task_schedule(khovan_reach_send_safe_startup_message, {"startup_sender": "Kestrel Yard Control", "startup_text": kestrel_homing_reserve_prompt_text, "startup_title_color": "yellow", "startup_sender_id": kestrel_yards_id, "startup_player_id": artemis_id, "startup_breadcrumb": "[KHOVAN ACT1 MSG KESTREL 002A] homing-reserve prompt sent"})
+    ->END
+
 === khovan_act1_show_kestrel_yard_lock_visual_fallback ===
     if kestrel_yard_lock_message_sent:
         script.write_khovan_startup_trace("[KHOVAN ACT1 MSG ORDER] duplicate suppressed Kestrel yard-lock startup message")
@@ -627,6 +658,8 @@ distance: 600
         yield success
 
     kestrel_departure_clearance_granted = True
+    kestrel_homing_reserve_prompt_run_id = kestrel_homing_reserve_prompt_run_id + 1
+    kestrel_homing_reserve_prompt_status = "timer_started_after_departure_clearance"
     kestrel_departure_gate_status = "clearance_granted_waiting_launch_envelope"
     current_beat = "kestrel_departure_clearance_granted"
     script.write_khovan_startup_trace("[KHOVAN ACT1 004] Kestrel departure clearance granted")
@@ -634,6 +667,7 @@ distance: 600
     await task_schedule(khovan_set_current_objective, {"objective_id": "launch_envelope", "objective_body": "Helm clear the Kestrel launch envelope: move at least 1 km from Kestrel, then Comms confirm exit.", "objective_step": "Launch envelope", "objective_breadcrumb": "[KHOVAN OBJECTIVE 003] objective updated: launch envelope (1 km minimum)"})
     await task_schedule(khovan_act1_record_progression, {"action": "kestrel_departure_clearance", "detail": "departure clearance granted; waiting for launch envelope confirmation; energy remains at source-authorized start value until Tarsis handoff"})
     kestrel_departure_clearance_response_sent = True
+    task_schedule(khovan_act1_deliver_homing_reserve_prompt_after_departure_clearance, {"prompt_run_id": kestrel_homing_reserve_prompt_run_id})
     comms_receive("Kestrel Yard Control: departure clearance granted. Helm, clear the launch envelope by moving at least 1 km from Kestrel. Comms, confirm once Artemis is outside the yard boundary.", title="Kestrel Yard Control", title_color="green")
     script.write_khovan_startup_trace("[KHOVAN ACT1 MSG KESTREL 002] departure clearance packet sent")
     script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS 006D] Kestrel departure-clearance option response sent")

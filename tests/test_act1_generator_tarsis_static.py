@@ -72,6 +72,9 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             "shared kestrel_departure_clearance_response_sent = False",
             "shared kestrel_launch_envelope_response_sent = False",
             "shared kestrel_generator_advisory_sent = False",
+            "shared kestrel_homing_reserve_prompt_run_id = 0",
+            'shared kestrel_homing_reserve_prompt_status = "pending_departure_clearance"',
+            "shared kestrel_homing_reserve_prompt_sent = False",
             "shared training_speed_power_reminder_sent = False",
             "shared shakedown_prompt_sent = False",
             "shared homing_reserve_count = 2",
@@ -97,6 +100,7 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             'shared kestrel_generator_advisory_text = "Kestrel Yard Control: advisory packet follows. Artemis is operating under a temporary generator governor. Expect constrained startup resources and deliberate speed/power handling until Tarsis completes generator acceptance. Tarsis has the acceptance package and will clear the handoff after docking/resupply."',
             'shared kestrel_homing_reserve_text = "Kestrel Yard Control: Artemis has no homing torpedoes loaded until Comms requests the emergency reserve. The reserve is two homing torpedoes only; Tarsis handles replacement and generator acceptance."',
             'shared kestrel_homing_reserve_request_text = "Kestrel Yard Control: emergency homing reserve approved. Loading two homing torpedoes now. These are reserve margin under the generator governor, not a full combat load. No nukes, EMPs, or mines are released before Tarsis resupply."',
+            'shared kestrel_homing_reserve_prompt_text = "Artemis, you may notice you are traveling exceptionally slow.',
             'shared training_speed_power_reminder_text = "Training Control: keep speed and power changes deliberate. Treat the governor as active until Tarsis completes the handoff. Comms should coordinate homing priority, generator support, and docking clearance with Tarsis."',
             'shared tarsis_homing_priority_text = "Tarsis Control: homing production priority set for Artemis. Replacement torpedoes will be prioritized during resupply."',
             'shared tarsis_generator_support_text = "Tarsis Generator Acceptance: Kestrel package received. We can clear the governor after docking and yard-lock synchronization."',
@@ -838,6 +842,8 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
         self.assertNotIn("khovan_kestrel_release_yard_transfer_energy", clearance_body)
         self.assertIn('"detail": "departure clearance granted; waiting for launch envelope confirmation; energy remains at source-authorized start value until Tarsis handoff"', clearance_body)
         self.assertIn("kestrel_departure_clearance_response_sent = True", clearance_body)
+        self.assertIn("kestrel_homing_reserve_prompt_run_id = kestrel_homing_reserve_prompt_run_id + 1", clearance_body)
+        self.assertIn("task_schedule(khovan_act1_deliver_homing_reserve_prompt_after_departure_clearance", clearance_body)
         self.assertIn("Kestrel Yard Control: departure clearance granted. Helm, clear the launch envelope by moving at least 1 km from Kestrel. Comms, confirm once Artemis is outside the yard boundary.", clearance_body)
         self.assertIn("[KHOVAN ACT1 COMMS 006D] Kestrel departure-clearance option response sent", clearance_body)
         self.assertNotIn('set_data_set_value(artemis_id, "energy"', clearance_body)
@@ -911,6 +917,21 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             "[KHOVAN ACT1 MSG KESTREL 004] generator advisory packet sent",
             "delivered by guarded text packet; archive represented by Comms response/trace/action log",
             "await task_schedule(khovan_act1_send_training_speed_power_reminder)",
+        ]:
+            self.assertIn(phrase, body)
+
+    def test_homing_reserve_prompt_waits_ten_seconds_after_departure_and_skips_loaded_reserve(self) -> None:
+        act1 = read(ACT1_PATH)
+        body = label_body(act1, "khovan_act1_deliver_homing_reserve_prompt_after_departure_clearance")
+        for phrase in [
+            "await delay_sim(seconds=10)",
+            "if prompt_run_id != kestrel_homing_reserve_prompt_run_id:",
+            "if not kestrel_departure_clearance_granted:",
+            'if homing_reserve_status == "loaded_by_kestrel_comms" or kestrel_homing_reserve_prompt_sent:',
+            'kestrel_homing_reserve_prompt_status = "not_sent_reserve_already_requested"',
+            "kestrel_homing_reserve_prompt_sent = True",
+            '"startup_text": kestrel_homing_reserve_prompt_text',
+            "[KHOVAN ACT1 RESERVE PROMPT] 10-second departure-clearance reminder sent",
         ]:
             self.assertIn(phrase, body)
         self.assertNotIn("comms_receive(kestrel_generator_advisory_text", body)
