@@ -434,6 +434,19 @@ def run_quick() -> int:
         f"SUMMARY: {'FAIL' if failures else 'PASS'} "
         f"({len(failures)} failure(s), {len(warnings)} warning(s))"
     )
+
+    # A skipped MAST compile preflight is a real evidence-class gap (AGENTS.md
+    # section 5), not an ordinary warning. Burying it in a generic warning
+    # count lets a PASS on a machine without Cosmos installed look identical
+    # to a PASS with the strongest offline evidence class included. Call it
+    # out on its own line so it cannot be missed by reading the summary alone.
+    if any("sbs_utils library not found" in warning for warning in warnings):
+        print(
+            "EVIDENCE GAP: MAST compile preflight SKIPPED on this machine "
+            "(sbs_utils library not found) - static checks only this run. "
+            "See AGENTS.md section 5. Do not claim compile-preflight coverage."
+        )
+
     return 1 if failures else 0
 
 

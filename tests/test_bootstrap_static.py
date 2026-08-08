@@ -545,6 +545,17 @@ class BootstrapStaticTests(unittest.TestCase):
         self.assertIn("boot-001", text)
         self.assertIn("boot-012", text)
 
+    def test_quick_flags_skipped_compile_preflight_loudly(self) -> None:
+        # A skipped MAST compile preflight (no local Cosmos install) is a real
+        # evidence-class gap, not an ordinary warning - a PASS with it skipped
+        # must not read identically to a PASS with it included. Verified live
+        # by temporarily hiding the sbslib and confirming this line printed,
+        # then restoring it; this test locks the mechanism in place.
+        runner = read("run_tests.py")
+        self.assertIn('"sbs_utils library not found" in warning', runner)
+        self.assertIn("EVIDENCE GAP", runner)
+        self.assertIn("Do not claim compile-preflight coverage", runner)
+
     def test_slice01_verification_records_live_smoke_requirements(self) -> None:
         text = read("tests/SLICE01_VERIFICATION.md").lower()
         self.assertIn("live cosmos smoke evidence and runtime blockers", text)
