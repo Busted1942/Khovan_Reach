@@ -1,8 +1,12 @@
 # Khovan Reach GM-only story jump presets.
 # Active presets seed accepted Slice 04/Slice 05 runtime states; future story beats stay out of this menu.
+# jump_id values align with the JUMP-nnn canonical names in docs/01_design/40_admin_testing_plan.md
+# section 6.1/6.3 where a clean match exists. See "Engineering Shakedown Complete" below for the one
+# preset that does not yet have a canonical JUMP-nnn match (docs/04_implementation_setup/branch_ledger.md
+# and tests/ADMIN_JUMP_VERIFICATION.md carry the finding).
 
 shared story_jump_registry_initialized = False
-shared story_jump_registry_ids = "mission_start|post_tarsis_resupply|engineering_shakedown_complete"
+shared story_jump_registry_ids = "mission_start_generator_governor|tarsis_resupply_complete|engineering_shakedown_complete"
 shared story_jump_preset_count = 3
 shared story_jump_metadata_required_fields = "jump_id|display_name|target_scene|mode_access|mission_phase|required_prior_flags|seeded_state_summary|entities|timers|clips|gm_display|expected_next_event|validation_checks|recovery_notes|skipped_observations"
 shared story_jump_last_id = "none"
@@ -24,15 +28,15 @@ shared story_jump_gm_display = "none"
 shared story_jump_validation_checks = "none"
 shared story_jump_recovery_notes = "none"
 
-shared story_jump_preset_mission_start_metadata = "jump_id=mission_start; display_name=Mission Start; target_scene=1; mode_access=test_mode; mission_phase=act_1; required_prior_flags=none; seeded_state_summary=Slice 04 source-authorized mission start reset; entities=reuse Artemis, Kestrel Yards, and Tarsis Station without proof stations; timers=stale Kestrel advisory timer invalidated; clips=Dillon Clip 1 stub may replay; gm_display=Mission Start preset ready; expected_next_event=Comms request Kestrel departure clearance; validation_checks=mission_phase,current_scene,current_beat,last_checkpoint,zero_energy,zero_ordnance; recovery_notes=use for fresh start validation; skipped_observations=none"
-shared story_jump_preset_post_tarsis_resupply_metadata = "jump_id=post_tarsis_resupply; display_name=Post-Tarsis / Engineering Ready; target_scene=2; mode_access=test_mode; mission_phase=act_1; required_prior_flags=none; seeded_state_summary=Slice 04 post-resupply governor-cleared state; entities=reuse Artemis, Kestrel Yards, and Tarsis Station without proof stations; timers=stale Kestrel advisory timer invalidated; clips=none; gm_display=Post-Tarsis handoff preset ready; expected_next_event=Begin Engineering shakedown with Tarsis Training Control; validation_checks=mission_phase,current_scene,current_beat,last_checkpoint,full_energy,full_armament; recovery_notes=use to test the Slice 05 entry point after Slice 04 handoff; skipped_observations=manual jump skips live proof of Kestrel/Tarsis Comms sequence and mechanical docking"
-shared story_jump_preset_engineering_shakedown_complete_metadata = "jump_id=engineering_shakedown_complete; display_name=Engineering Shakedown Complete; target_scene=2; mode_access=test_mode; mission_phase=act_1; required_prior_flags=none; seeded_state_summary=Slice 05 engineering shakedown complete state after Tarsis resupply; entities=reuse Artemis, Kestrel Yards, and Tarsis Station without proof stations; timers=stale Kestrel advisory and Slice 05 observer fallbacks invalidated; clips=none; gm_display=Engineering shakedown complete preset ready; expected_next_event=Slice 06 target spike ready; validation_checks=mission_phase,current_scene,current_beat,last_checkpoint,full_energy,full_armament,engineering_shakedown_complete; recovery_notes=use to test content immediately after Slice 05; skipped_observations=manual jump skips live proof of engineering shakedown gates, DAMCON positioning, overload damage, repair, and nav preset"
+shared story_jump_preset_mission_start_generator_governor_metadata = "jump_id=mission_start_generator_governor; jump_number=JUMP-001; display_name=Mission Start; target_scene=1; mode_access=test_mode; mission_phase=act_1; required_prior_flags=none; seeded_state_summary=Slice 04 source-authorized mission start reset; entities=reuse Artemis, Kestrel Yards, and Tarsis Station without proof stations; timers=stale Kestrel advisory timer invalidated; clips=Dillon Clip 1 stub may replay; gm_display=Mission Start preset ready; expected_next_event=Comms request Kestrel departure clearance; validation_checks=mission_phase,current_scene,current_beat,last_checkpoint,zero_energy,zero_ordnance; recovery_notes=use for fresh start validation; skipped_observations=none"
+shared story_jump_preset_tarsis_resupply_complete_metadata = "jump_id=tarsis_resupply_complete; jump_number=JUMP-004; display_name=Post-Tarsis / Engineering Ready; target_scene=2; mode_access=test_mode; mission_phase=act_1; required_prior_flags=none; seeded_state_summary=Slice 04 post-resupply governor-cleared state; entities=reuse Artemis, Kestrel Yards, and Tarsis Station without proof stations; timers=stale Kestrel advisory timer invalidated; clips=none; gm_display=Post-Tarsis handoff preset ready; expected_next_event=Begin Engineering shakedown with Tarsis Training Control; validation_checks=mission_phase,current_scene,current_beat,last_checkpoint,full_energy,full_armament; recovery_notes=use to test the Slice 05 entry point after Slice 04 handoff; skipped_observations=manual jump skips live proof of Kestrel/Tarsis Comms sequence and mechanical docking"
+shared story_jump_preset_engineering_shakedown_complete_metadata = "jump_id=engineering_shakedown_complete; jump_number=none_not_yet_specified_see_admin_plan_JUMP-008_mismatch; display_name=Engineering Shakedown Complete; target_scene=2; mode_access=test_mode; mission_phase=act_1; required_prior_flags=none; seeded_state_summary=Slice 05 engineering shakedown complete state after Tarsis resupply; entities=reuse Artemis, Kestrel Yards, and Tarsis Station without proof stations; timers=stale Kestrel advisory and Slice 05 observer fallbacks invalidated; clips=none; gm_display=Engineering shakedown complete preset ready; expected_next_event=Slice 06 target spike ready; validation_checks=mission_phase,current_scene,current_beat,last_checkpoint,full_energy,full_armament,engineering_shakedown_complete; recovery_notes=use to test content immediately after Slice 05; skipped_observations=manual jump skips live proof of engineering shakedown gates, DAMCON positioning, overload damage, repair, and nav preset. NOTE: admin_testing_plan.md JUMP-008 is defined as engineering_shakedown_START (engineering_shakedown_complete=false), which is the OPPOSITE of what this preset seeds. This preset has no canonical JUMP-nnn match; it sits between JUMP-008 and JUMP-009 in the spec's sequence. Needs an operator decision: add a new JUMP number to the spec, or accept this preset stays unnumbered."
 
 //comms/gamemaster/khovan_story_jump_presets if has_roles(COMMS_ORIGIN_ID, "gamemaster") and test_mode_enabled
     + "Back" //comms/gamemaster/khovan_scenario_control_panel
-    + "Mission Start" khovan_story_jump_preset_mission_start
-    + "Post-Tarsis / Engineering Ready" khovan_story_jump_preset_post_tarsis_resupply
-    + "Engineering Shakedown Complete" khovan_story_jump_preset_engineering_shakedown_complete
+    + "JUMP-001 Mission Start" khovan_story_jump_preset_mission_start_generator_governor
+    + "JUMP-004 Tarsis Resupply Complete" khovan_story_jump_preset_tarsis_resupply_complete
+    + "Engineering Shakedown Complete (no JUMP-nnn match)" khovan_story_jump_preset_engineering_shakedown_complete
 
 === khovan_story_jump_initialize_registry ===
     story_jump_registry_initialized = True
@@ -49,14 +53,14 @@ shared story_jump_preset_engineering_shakedown_complete_metadata = "jump_id=engi
     log("Khovan story jump preset registry initialized with active Slice 04 and Slice 05 seeds only.")
     ->END
 
-=== khovan_story_jump_preset_mission_start ===
-    await task_schedule(khovan_story_jump_execute_preset, {"jump_id": "mission_start"})
+=== khovan_story_jump_preset_mission_start_generator_governor ===
+    await task_schedule(khovan_story_jump_execute_preset, {"jump_id": "mission_start_generator_governor"})
     comms_receive(story_jump_last_summary, title="Khovan Story Jump", title_color="cyan")
     comms_navigate("//comms/gamemaster/khovan_story_jump_presets")
     ->END
 
-=== khovan_story_jump_preset_post_tarsis_resupply ===
-    await task_schedule(khovan_story_jump_execute_preset, {"jump_id": "post_tarsis_resupply"})
+=== khovan_story_jump_preset_tarsis_resupply_complete ===
+    await task_schedule(khovan_story_jump_execute_preset, {"jump_id": "tarsis_resupply_complete"})
     comms_receive(story_jump_last_summary, title="Khovan Story Jump", title_color="cyan")
     comms_navigate("//comms/gamemaster/khovan_story_jump_presets")
     ->END
@@ -68,7 +72,7 @@ shared story_jump_preset_engineering_shakedown_complete_metadata = "jump_id=engi
     ->END
 
 === khovan_story_jump_execute_preset ===
-    default jump_id = "mission_start"
+    default jump_id = "mission_start_generator_governor"
     story_jump_generation_id = story_jump_generation_id + 1
     transition_held = False
     story_jump_last_id = jump_id
@@ -82,7 +86,7 @@ shared story_jump_preset_engineering_shakedown_complete_metadata = "jump_id=engi
     story_jump_framework_warning = "none"
     story_jump_skipped_observations = "none"
 
-    if jump_id == "mission_start":
+    if jump_id == "mission_start_generator_governor":
         await task_schedule(khovan_act1_story_jump_seed_mission_start)
         story_jump_last_display_name = "Mission Start"
         story_jump_last_target_scene = 1
@@ -91,7 +95,7 @@ shared story_jump_preset_engineering_shakedown_complete_metadata = "jump_id=engi
         story_jump_seeded_state_summary = "Slice 04 mission start restored: generator governor active, visible energy 0, all ordnance 0, Kestrel reserve held."
         story_jump_clips = "Dillon Clip 1 stub may replay during contact setup"
         story_jump_gm_display = "Mission Start preset seeded."
-    elif jump_id == "post_tarsis_resupply":
+    elif jump_id == "tarsis_resupply_complete":
         await task_schedule(khovan_act1_story_jump_seed_post_tarsis_handoff)
         story_jump_last_display_name = "Post-Tarsis / Engineering Ready"
         story_jump_last_target_scene = 2

@@ -8,8 +8,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 PRESET_IDS = [
-    "mission_start",
-    "post_tarsis_resupply",
+    "mission_start_generator_governor",
+    "tarsis_resupply_complete",
     "engineering_shakedown_complete",
 ]
 
@@ -64,7 +64,7 @@ class StoryJumpPresetStaticTests(unittest.TestCase):
         story_jump = read("scripts/systems/story_jump_presets.mast")
         for phrase in [
             "shared story_jump_registry_initialized = False",
-            'shared story_jump_registry_ids = "mission_start|post_tarsis_resupply|engineering_shakedown_complete"',
+            'shared story_jump_registry_ids = "mission_start_generator_governor|tarsis_resupply_complete|engineering_shakedown_complete"',
             "shared story_jump_preset_count = 3",
             "shared story_jump_metadata_required_fields =",
             "shared story_jump_generation_id = 0",
@@ -120,9 +120,9 @@ class StoryJumpPresetStaticTests(unittest.TestCase):
     def test_each_button_routes_to_named_handler_and_common_executor(self) -> None:
         story_jump = read("scripts/systems/story_jump_presets.mast")
         expected_labels = {
-            "mission_start": "Mission Start",
-            "post_tarsis_resupply": "Post-Tarsis / Engineering Ready",
-            "engineering_shakedown_complete": "Engineering Shakedown Complete",
+            "mission_start_generator_governor": "JUMP-001 Mission Start",
+            "tarsis_resupply_complete": "JUMP-004 Tarsis Resupply Complete",
+            "engineering_shakedown_complete": "Engineering Shakedown Complete (no JUMP-nnn match)",
         }
 
         for preset_id, display in expected_labels.items():
@@ -135,7 +135,7 @@ class StoryJumpPresetStaticTests(unittest.TestCase):
             )
 
         self.assertIn("=== khovan_story_jump_execute_preset ===", story_jump)
-        self.assertIn('default jump_id = "mission_start"', story_jump)
+        self.assertIn('default jump_id = "mission_start_generator_governor"', story_jump)
 
     def test_executor_calls_active_slice04_seed_helpers(self) -> None:
         story_jump = read("scripts/systems/story_jump_presets.mast")
@@ -143,9 +143,9 @@ class StoryJumpPresetStaticTests(unittest.TestCase):
         for phrase in [
             "story_jump_generation_id = story_jump_generation_id + 1",
             "transition_held = False",
-            'if jump_id == "mission_start":',
+            'if jump_id == "mission_start_generator_governor":',
             "await task_schedule(khovan_act1_story_jump_seed_mission_start)",
-            'elif jump_id == "post_tarsis_resupply":',
+            'elif jump_id == "tarsis_resupply_complete":',
             "await task_schedule(khovan_act1_story_jump_seed_post_tarsis_handoff)",
             'elif jump_id == "engineering_shakedown_complete":',
             "await task_schedule(khovan_act1_story_jump_seed_engineering_shakedown_complete)",

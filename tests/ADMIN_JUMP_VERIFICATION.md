@@ -14,10 +14,24 @@ Scope: GM-only Test Mode story jump presets for Slice 04/Slice 05 setup/smoke wo
 - Engineering Shakedown Complete reuses the Post-Tarsis seed, then marks Slice 05 engineering shakedown complete.
 - Neither preset creates proof stations or player-console admin controls.
 
+## Preset ID Rename (2026-08-08, plan-hardening)
+
+Preset jump_id values were renamed to align with the JUMP-nnn canonical names in `docs/01_design/40_admin_testing_plan.md` section 6.1/6.3, per operator decision:
+
+| Old jump_id | New jump_id | JUMP-nnn |
+|---|---|---|
+| `mission_start` | `mission_start_generator_governor` | JUMP-001 |
+| `post_tarsis_resupply` | `tarsis_resupply_complete` | JUMP-004 |
+| `engineering_shakedown_complete` | `engineering_shakedown_complete` (unchanged) | none — see note below |
+
+**Open finding, not yet resolved:** `engineering_shakedown_complete` has no clean JUMP-nnn match. The admin plan defines JUMP-008 as `engineering_shakedown_start` (`engineering_shakedown_complete = false`), which is the *opposite* state from what this preset seeds. This preset seeds the state *after* all Act I v2.2 engineering-shakedown gates are complete, sitting between JUMP-008 and JUMP-009 in the spec's sequence. It kept its descriptive (non-numbered) jump_id. Resolving this requires an operator decision: add a new JUMP number to the admin plan, or accept this preset stays outside the JUMP-nnn scheme permanently.
+
+All references below to `mission_start` and `post_tarsis_resupply` in this doc's live-smoke history predate the rename and describe the presets as they existed at the time; they are left as historical record, not corrected in place.
+
 ## What Quick/Static Checks Prove
 
 - `tests/test_story_jump_presets_static.py` checks that the story jump route is GM-only and Test Mode gated.
-- Static checks require the registry to contain only `mission_start`, `post_tarsis_resupply`, and `engineering_shakedown_complete`.
+- Static checks require the registry to contain only `mission_start_generator_governor`, `tarsis_resupply_complete`, and `engineering_shakedown_complete`.
 - Static checks require the Slice 04 presets to call the Slice 04 seed helpers and the Slice 05 preset to call the engineering shakedown complete seed helper.
 - Static checks reject the retired future placeholder preset names.
 - `tests/test_act1_generator_tarsis_static.py` checks that:
