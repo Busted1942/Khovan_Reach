@@ -189,17 +189,35 @@ class Act1DroneContactFireStaticTests(unittest.TestCase):
         ]:
             self.assertIn(phrase, destroy_route_body)
 
-    def test_cleanup_handler_sets_and_clears_cleanup_in_progress_flag(self) -> None:
+    def test_cleanup_handler_sets_cleanup_in_progress_flag_and_does_not_clear_it(self) -> None:
+        # Bugfix 2026-08-08 (live-confirmed, reproduced across 4 independent cleanup
+        # events): sbs.delete_object()'s //damage/destroy hook is deferred/queued, not
+        # synchronous. The cleanup handler's own CLEANUP trace line always logs BEFORE
+        # the resulting DAMAGE/DESTROY events fire. An earlier version of this guard
+        # cleared cleanup_in_progress immediately after sbs.delete_object() as a
+        # same-build "fallback," which cleared the flag before the destroy handler ever
+        # got to read it - live trace showed every cleanup reporting
+        # destruction_source=unattributed_zero_damage instead of gm_cleanup. The cleanup
+        # handler must set the flag and leave it set; only the destroy handler (once the
+        # deferred hook actually fires) or the next spawn's reset may clear it.
         drone = read(DRONE_PATH)
         cleanup_body = label_body(drone, "khovan_drone_contact_fire_cleanup_target_spike")
         self.assertIn("drone_target_spike_cleanup_in_progress = True", cleanup_body)
-        self.assertIn("drone_target_spike_cleanup_in_progress = False", cleanup_body)
+        self.assertNotIn("drone_target_spike_cleanup_in_progress = False", cleanup_body)
         set_index = cleanup_body.index("drone_target_spike_cleanup_in_progress = True")
         delete_index = cleanup_body.index("sbs.delete_object(drone_target_spike_target_id)")
         self.assertLess(
             set_index, delete_index,
             "cleanup_in_progress must be set True before sbs.delete_object() is called",
         )
+
+    def test_reset_flags_clears_cleanup_in_progress_as_a_safety_net(self) -> None:
+        # If sbs.delete_object() ever fails to trigger the destroy hook at all, the
+        # flag must not leak forward into a future, unrelated kill. The next spawn's
+        # reset is the safety net.
+        drone = read(DRONE_PATH)
+        reset_body = label_body(drone, "khovan_drone_contact_fire_reset_target_spike_flags")
+        self.assertIn("drone_target_spike_cleanup_in_progress = False", reset_body)
 
     def test_scenario_control_panel_reports_spike_status(self) -> None:
         panel = read("scripts/systems/scenario_control_panel.mast")

@@ -142,15 +142,23 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
             set_science_selection(artemis_id, 0)
             set_comms_selection(artemis_id, 0)
             set_weapons_selection(artemis_id, 0)
-        # Destroy-hook guard setup (2026-08-08): sbs.delete_object() fires the same
-        # //damage/destroy hook a genuine Weapons kill fires (confirmed live). Set this
-        # flag immediately before the call so the destroy handler can attribute the
-        # event to cleanup rather than combat. Consumed (read and cleared) inside the
-        # destroy handler; also cleared below as a fallback in case delete_object() does
-        # not trigger the hook synchronously in some future Cosmos build.
+        # Destroy-hook guard setup (2026-08-08, bugfix 2026-08-08 live): sbs.delete_object()
+        # fires the same //damage/destroy hook a genuine Weapons kill fires (confirmed
+        # live). Set this flag immediately before the call so the destroy handler can
+        # attribute the event to cleanup rather than combat. Confirmed live (reproduced
+        # across 4 independent cleanup events, pre- and post-fix) that the CLEANUP trace
+        # line always logs BEFORE the resulting DAMAGE/DESTROY events - the destroy hook
+        # is deferred/queued, not synchronous within this call. An earlier version of this
+        # fix cleared the flag immediately after sbs.delete_object() as a same-build
+        # "fallback," which was backwards: it cleared the flag before the destroy handler
+        # ever got to read it, so the guard reported unattributed_zero_damage on every
+        # cleanup instead of gm_cleanup. Do NOT clear the flag here. It is consumed
+        # (read and cleared) inside the destroy handler once the deferred hook actually
+        # fires. If sbs.delete_object() ever fails to trigger the hook at all, the flag
+        # is still cleared safely by khovan_drone_contact_fire_reset_target_spike_flags
+        # on the next spawn.
         drone_target_spike_cleanup_in_progress = True
         sbs.delete_object(drone_target_spike_target_id)
-        drone_target_spike_cleanup_in_progress = False
     drone_target_spike_target_id = 0
     drone_target_spike_active = False
     drone_target_spike_cleanup_count = drone_target_spike_cleanup_count + 1
