@@ -8,6 +8,8 @@ shared engineering_shakedown_status = "not_initialized"
 shared engineering_shakedown_detection_mode = "automatic_helm_no_motion_and_engine_damage_observers; comms_fallback_for_unverified_engineering_slider_damcon_location_repair_navigation_preset"
 shared engineering_shakedown_last_step = "none"
 shared engineering_shakedown_start_response_sent = False
+shared engineering_shakedown_undock_watch_run_id = 0
+shared engineering_shakedown_undock_observer_status = "not_started"
 shared engineering_impulse_zero_warp_200_requested = False
 shared engineering_no_motion_validation_requested = False
 shared engineering_no_motion_detection_mode = "automatic_playerThrottle_cur_speed_position_delta_observer_engineering_slider_keys_unverified"
@@ -52,7 +54,6 @@ shared repair_complete_text = "Training Control: repair complete. Engineering, s
 shared navigation_priority_confirmed_text = "Training Control: Engineering systems shakedown complete. Controlled contact handling is next."
 
 //comms if has_roles(COMMS_SELECTED_ID, "tarsis_station") and generator_governor_cleared and not engineering_shakedown_complete
-    + "Khovan: Begin Engineering Shakedown" khovan_act1_engineering_shakedown_start if engineering_shakedown_available and not engineering_shakedown_started
     + "Khovan: Fallback Confirm No-Motion" khovan_engineering_confirm_no_motion if engineering_no_motion_fallback_available and not engineering_no_motion_confirmed
     + "Khovan: Fallback DAMCON Crew-Quarters Standby" khovan_engineering_confirm_damcon_rest_cycle if damcon_rest_cycle_fallback_available and not damcon_rest_cycle_confirmed
     + "Khovan: Fallback DAMCON Mess Standby" khovan_engineering_confirm_damcon_meal_cycle if damcon_meal_cycle_fallback_available and not damcon_meal_cycle_confirmed
@@ -68,6 +69,8 @@ shared navigation_priority_confirmed_text = "Training Control: Engineering syste
     engineering_shakedown_status = "initialized_waiting_for_tarsis_handoff"
     engineering_shakedown_last_step = "waiting_for_tarsis_handoff"
     engineering_shakedown_start_response_sent = False
+    engineering_shakedown_undock_watch_run_id = engineering_shakedown_undock_watch_run_id + 1
+    engineering_shakedown_undock_observer_status = "not_started"
     engineering_impulse_zero_warp_200_requested = False
     engineering_no_motion_validation_requested = False
     engineering_no_motion_fallback_available = False
@@ -96,6 +99,8 @@ shared navigation_priority_confirmed_text = "Training Control: Engineering syste
     engineering_shakedown_status = "available_after_tarsis_handoff"
     engineering_shakedown_last_step = "available_after_tarsis_handoff"
     engineering_shakedown_start_response_sent = False
+    engineering_shakedown_undock_watch_run_id = engineering_shakedown_undock_watch_run_id + 1
+    engineering_shakedown_undock_observer_status = "waiting_for_tarsis_undock"
     engineering_impulse_zero_warp_200_requested = False
     engineering_no_motion_validation_requested = False
     engineering_no_motion_fallback_available = False
@@ -116,6 +121,34 @@ shared navigation_priority_confirmed_text = "Training Control: Engineering syste
     engineering_shakedown_complete = False
     script.write_khovan_startup_trace("[KHOVAN ACT1 ENG 002] Engineering shakedown available after Tarsis handoff")
     await task_schedule(khovan_scenario_control_panel_update_overview)
+    task_schedule(khovan_engineering_watch_tarsis_undock_for_shakedown, {"watch_run_id": engineering_shakedown_undock_watch_run_id})
+    ->END
+
+=== khovan_engineering_watch_tarsis_undock_for_shakedown ===
+    default watch_run_id = 0
+    if watch_run_id != engineering_shakedown_undock_watch_run_id:
+        ->END
+    if engineering_shakedown_started or not engineering_shakedown_available:
+        ->END
+    if artemis_id == 0:
+        engineering_shakedown_undock_observer_status = "waiting_for_artemis_id"
+        ->END
+
+    artemis_object = to_object(artemis_id)
+    if artemis_object is None:
+        engineering_shakedown_undock_observer_status = "waiting_for_artemis_object"
+        ->END
+
+    undock_dock_state = artemis_object.data_set.get("dock_state", "unknown")
+    undock_dock_base_id = artemis_object.data_set.get("dock_base_id", 0)
+    if undock_dock_state == "docked" and undock_dock_base_id == tarsis_station_id:
+        engineering_shakedown_undock_observer_status = "waiting_for_tarsis_undock"
+        await delay_sim(seconds=1)
+        jump khovan_engineering_watch_tarsis_undock_for_shakedown
+
+    engineering_shakedown_undock_observer_status = "tarsis_undock_observed"
+    script.write_khovan_startup_trace(f"[KHOVAN ACT1 ENG UNDOCK] Artemis undocked from Tarsis state={undock_dock_state} base={undock_dock_base_id}")
+    await task_schedule(khovan_act1_engineering_shakedown_start)
     ->END
 
 === khovan_act1_story_jump_seed_engineering_shakedown_complete ===

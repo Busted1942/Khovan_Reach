@@ -45,6 +45,8 @@ class Act1EngineeringShakedownStaticTests(unittest.TestCase):
             "shared engineering_shakedown_available = False",
             "shared engineering_shakedown_started = False",
             'shared engineering_shakedown_status = "not_initialized"',
+            "shared engineering_shakedown_undock_watch_run_id = 0",
+            'shared engineering_shakedown_undock_observer_status = "not_started"',
             "shared engineering_impulse_zero_warp_200_requested = False",
             "shared engineering_no_motion_validation_requested = False",
             "shared engineering_no_motion_confirmed = False",
@@ -96,14 +98,14 @@ class Act1EngineeringShakedownStaticTests(unittest.TestCase):
         self.assertIn('last_checkpoint = "engineering_shakedown_complete"', complete_seed_body)
         self.assertIn("await task_schedule(khovan_act1_drone_contact_fire_prepare_after_engineering)", complete_seed_body)
 
-    def test_player_comms_route_is_tarsis_gated_and_not_admin_exposed(self) -> None:
+    def test_player_comms_fallback_route_is_tarsis_gated_and_start_is_undock_triggered(self) -> None:
         engineering = read(ENGINEERING_PATH)
+        generator = read(GENERATOR_PATH)
         self.assertIn(
             '//comms if has_roles(COMMS_SELECTED_ID, "tarsis_station") and generator_governor_cleared and not engineering_shakedown_complete',
             engineering,
         )
         for phrase in [
-            '+ "Khovan: Begin Engineering Shakedown" khovan_act1_engineering_shakedown_start if engineering_shakedown_available and not engineering_shakedown_started',
             '+ "Khovan: Fallback Confirm No-Motion" khovan_engineering_confirm_no_motion if engineering_no_motion_fallback_available and not engineering_no_motion_confirmed',
             '+ "Khovan: Fallback DAMCON Crew-Quarters Standby" khovan_engineering_confirm_damcon_rest_cycle if damcon_rest_cycle_fallback_available and not damcon_rest_cycle_confirmed',
             '+ "Khovan: Fallback DAMCON Mess Standby" khovan_engineering_confirm_damcon_meal_cycle if damcon_meal_cycle_fallback_available and not damcon_meal_cycle_confirmed',
@@ -113,6 +115,17 @@ class Act1EngineeringShakedownStaticTests(unittest.TestCase):
             '+ "Khovan: Fallback Confirm Navigation Priority" khovan_engineering_confirm_navigation_priority if navigation_priority_preset_fallback_available and not navigation_priority_preset_set',
         ]:
             self.assertIn(phrase, engineering)
+        self.assertNotIn('"Khovan: Begin Engineering Shakedown"', engineering)
+        prepare_body = label_body(engineering, "khovan_act1_engineering_shakedown_prepare_after_tarsis")
+        watch_body = label_body(engineering, "khovan_engineering_watch_tarsis_undock_for_shakedown")
+        self.assertIn("engineering_shakedown_undock_watch_run_id = engineering_shakedown_undock_watch_run_id + 1", prepare_body)
+        self.assertIn("task_schedule(khovan_engineering_watch_tarsis_undock_for_shakedown", prepare_body)
+        self.assertIn("if watch_run_id != engineering_shakedown_undock_watch_run_id:", watch_body)
+        self.assertIn('artemis_object.data_set.get("dock_state", "unknown")', watch_body)
+        self.assertIn("undock_dock_base_id == tarsis_station_id", watch_body)
+        self.assertIn("await delay_sim(seconds=1)", watch_body)
+        self.assertIn("await task_schedule(khovan_act1_engineering_shakedown_start)", watch_body)
+        self.assertIn("await task_schedule(khovan_act1_engineering_shakedown_prepare_after_tarsis)", label_body(generator, "khovan_tarsis_complete_mechanical_docking_and_resupply"))
 
         self.assertNotIn("gamemaster", engineering.lower())
         self.assertNotIn("@gui", engineering)

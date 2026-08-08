@@ -55,7 +55,7 @@ The implementation also sets `shakedown_mode = "full"` when Slice 05 becomes ava
 ## Runtime Flow
 
 1. Slice 04 Tarsis resupply or the approved Post-Tarsis GM test preset calls `khovan_act1_engineering_shakedown_prepare_after_tarsis`.
-2. The existing Tarsis Comms contact offers `Khovan: Begin Engineering Shakedown` after governor clear.
+2. A run-ID-guarded observer waits for Artemis to undock from Tarsis after resupply, then starts the Engineering Shakedown messaging automatically. The Tarsis Comms route retains only later fallback controls.
 3. Training Control instructs impulse 0 / warp 200 and asks Captain/Helm to validate no motion.
 4. No-motion validation first uses an automatic observer: Helm full throttle, actual speed near zero, and negligible position delta.
 5. If the no-motion observer times out because Engineering slider keys cannot be verified, a fallback confirmation appears.
