@@ -106,6 +106,10 @@ A follow-up live pass (2026-08-08) confirmed two of the three fixes directly fro
 - **`Read Target Spike Status` button was clicked. Handler confirmed executing** (`[KHOVAN ACT1 DRONE SPIKE STATUS]` traced) **but nothing rendered on any screen the operator watched.** This is a real, narrower finding than before — not "never tested," but "executes and produces no visible output." Needs a comparison against other `comms_receive()` calls from the same route family before attempting a fix (see Known Risks).
 - **Destroy-hook guard's `cleanup_in_progress` flag branch was tested and FAILED.** Two GM Cleanup runs on freshly spawned targets both reported `destruction_source=unattributed_zero_damage` instead of `gm_cleanup`. Root cause found and fixed: `sbs.delete_object()`'s destroy hook fires deferred/queued relative to the calling handler (confirmed by trace ordering across 4 independent cleanup events), and the prior fix cleared the guard flag before the deferred handler ever read it. **Fixed; not yet re-tested.**
 
+**Fourth live pass (2026-08-08), after a confirmed server restart:**
+- **Destroy-hook guard: RE-TESTED AND CONFIRMED FIXED.** Both branches now live-confirmed. Guard work is done.
+- **GM `comms_receive()` rendering: FINDING WIDENED FROM SPIKE-SPECIFIC TO CROSS-CUTTING.** The requested diagnostic — does the short one-line Cleanup confirmation render? — came back negative: "No, I see no text when cleanup happens. The drone just disappeared." Every GM-only `comms_receive()` call in this file has now been tested and confirmed to execute without ever rendering, while the identical shape called from a player-facing route is confirmed working. An operator screenshot showed a `(unknown)` sender-identity label where a proven working message shows a real title (e.g. "Tarsis Docking Control") — consistent with GM routes lacking the bound identity every other working call supplies via `comms_override()`. Applied an experimental fix (wrap every GM-only `comms_receive()` in this file with `comms_override(COMMS_ORIGIN_ID, COMMS_ORIGIN_ID, from_name=...)`) and downgraded the cookbook's `[LIVE]` tag on the bare shape. **Not yet live-tested.**
+
 See Live Smoke Log at the end of this file for the full record, both corrections, and both fixes.
 
 Quick/static checks prove the spike harness exists, imports, initializes, exposes GM-only controls, spawns a neutral training target, includes Science/Comms hooks, and includes selection/damage/destruction observers.
@@ -183,11 +187,11 @@ Repo/branch assumption: run from `slice06-drone-contact-fire` after `python run_
 - Live (2026-08-08, GM console only): boot chain reaches BOOT 010 live; Artemis start state matches source doc; Kestrel Yards and Tarsis Station spawn and appear as GM contacts; Scenario Control Panel renders correctly; Test Mode toggle correctly gates Story Jumps and Slice 06 Target Spike visibility; Spawn Target Spike works and flips `drone_target_spike_active`; Cleanup Target Spike correctly reverts the menu.
 - Live (2026-08-08, 4-station operator pass, trace-verified): target non-attack behavior confirmed; Science scan while alive confirmed; Comms hail confirmed with no stock-menu interference; Weapons target selection confirmed; Weapons fire/kill confirmed with a real, trace-verified damage progression; destroy-hook guard design (GM cleanup vs. real kill, distinguished by damage value) confirmed workable on live data — this pass predates the guard's implementation, it validated the design, not the code.
 - Live (2026-08-08, fix-verification follow-up pass, trace-verified): both bugfixes from commit f33d9aa confirmed working live, not just compile-clean — manual subsystem targeting sets correctly (`manual_system=SHPSYS.WEAPONS` observed, no longer discarded), and the destroy-hook guard's damage-value fallback branch correctly attributed a real kill (`destruction_source=genuine_weapons_kill`).
+- Live (2026-08-08, second follow-up pass, trace-verified): destroy-hook guard's `cleanup_in_progress` flag branch — found broken, root-caused, fixed, and re-tested in the same pass. Two post-fix cleanups both correctly logged `destruction_source=gm_cleanup`. **The destroy-hook guard is fully live-confirmed on both branches.**
 
 ## Acceptance Not Covered
 
-- `Read Target Spike Status` renders nothing visible despite the handler confirmed executing (`[KHOVAN ACT1 DRONE SPIKE STATUS]` traced, operator watching the screen, nothing appeared). This is now a real rendering gap to diagnose, not a "never triggered" gap — see Known Risks for the comparison needed before a fix is attempted.
-- The destroy-hook guard's `cleanup_in_progress` flag branch was tested live and found broken (reported `unattributed_zero_damage` instead of `gm_cleanup` on two separate cleanup events). Root-caused and fixed; not yet re-tested.
+- **GM `comms_receive()` rendering — cross-cutting, not spike-specific.** Every GM-only route in this file (Spawn, Select, Read Status, Cleanup) is confirmed to execute correctly and has never rendered visibly for the GM, across 3+ sessions. An experimental fix (`comms_override` wrap) is applied but not yet live-tested. If confirmed, `scenario_control_panel.mast` and `story_jump_presets.mast` need the same fix, since they use the identical disconfirmed pattern.
 - Weapons-console damage readout visibility to a crewed station — likely blocked on the same data_set.get() bug rather than a separate UI gap, but not yet re-confirmed after the fix.
 - Full Drone 01 and Drone 02 sequence remains unimplemented until Phase A is accepted or a fallback/blocker is documented.
 - Test-instrumentation text is confirmed present in player-facing Comms/Science output (deliberately deferred per operator direction, not a Phase A blocker).
@@ -203,22 +207,21 @@ Repo/branch assumption: run from `slice06-drone-contact-fire` after `python run_
   **Status: FIXED AND LIVE-CONFIRMED (2026-08-08 follow-up pass).** Trace shows `manual_system=SHPSYS.WEAPONS` firing on a real hit and no longer being discarded. `manual_subsystem_hit_observed` sets correctly.
 - `system_damage` values may not reflect manual subsystem hits without extra handling — root-caused above; the fix makes the default-value bug harmless, but per-subsystem differentiation is still unproven and both fields still read one generic value by design until a per-subsystem key is found.
 - **Confirmed live 2026-08-08, root-caused, not yet re-verified after fix:** the operator could kill the target via Weapons but did not know where to read damage on it from any station UI. Likely the same root cause as above. Re-evaluate before assuming a separate UI-visibility problem exists.
-- Destruction events fire reliably; the GM-cleanup-vs-real-kill distinction is implemented as a two-layer guard in `//damage/destroy`. **Fallback branch (nonzero damage): live-confirmed working**, `destruction_source=genuine_weapons_kill` correctly attributed a real kill. **Primary flag branch: FOUND BROKEN, then FIXED (not yet re-verified).** A live test running GM Cleanup twice on freshly spawned targets (no damage applied) reported `destruction_source=unattributed_zero_damage` both times instead of `gm_cleanup`. Root cause, confirmed by trace ordering across 4 independent cleanup events (2 pre-fix, 2 post-fix): `sbs.delete_object()`'s `//damage/destroy` hook is deferred/queued relative to the calling handler, not synchronous — the `CLEANUP` trace line always logs before the resulting `DAMAGE`/`DESTROY` events. The prior fix cleared `drone_target_spike_cleanup_in_progress` immediately after the `sbs.delete_object()` call as a same-build safety measure, which cleared the flag before the deferred destroy handler ever read it, guaranteeing the primary signal never worked. **Fixed:** the premature clear is removed; the flag stays set until the destroy handler consumes it, with the next spawn's reset as the safety net if the hook never fires. **Not yet re-tested live.**
+- Destruction events fire reliably; the GM-cleanup-vs-real-kill distinction is implemented as a two-layer guard in `//damage/destroy`. **Both branches now live-confirmed working (2026-08-08).** Fallback branch (nonzero damage): `destruction_source=genuine_weapons_kill` correctly attributed a real kill. Primary flag branch: found broken by a live test (`unattributed_zero_damage` instead of `gm_cleanup` on two cleanups), root-caused (the destroy hook is deferred/queued relative to the calling handler — confirmed by `CLEANUP` always tracing before the resulting `DAMAGE`/`DESTROY` events across all 4 cleanup events observed, 2 pre-fix and 2 post-fix), fixed (removed a premature flag-clear that was defeating the guard), and re-tested: two cleanups after the fix both correctly logged `destruction_source=gm_cleanup`. **Destroy-hook guard is done.**
 - If subsystem detection proves unreliable in further testing, Drone 01 needs the documented Comms/captain-confirmation fallback as its primary path. Not needed based on evidence so far — the live-confirmed fix above works.
-- **`Read Target Spike Status` rendering, narrowed but still unresolved (2026-08-08).** Confirmed the handler executes: `[KHOVAN ACT1 DRONE SPIKE STATUS]` traced correctly when the operator clicked the button. But the operator, watching the screen, saw nothing render anywhere. This is no longer "was it triggered" — it demonstrably was. `khovan_scenario_control_panel_update_overview`'s handlers use the identical `comms_receive(text_variable, title=..., title_color="cyan")` pattern from the same GM Test-Mode route family, and the short one-line Spawn/Cleanup confirmation messages in this same file use the same call shape too. Before attempting any fix, check whether those ALSO fail to render — that determines whether this is systemic to GM `comms_receive()` from this route family, specific to long multi-line report text (the status report is ~16 lines joined with `\n`; the short confirmations are one line), or specific to only this one handler. Do not guess at a fix without that comparison; no proven alternative display API is documented in the cookbook for this case.
+- **`Read Target Spike Status` and ALL GM comms_receive() calls in this file — CROSS-CUTTING FINDING (widened 2026-08-08).** Confirmed the handler executes every time (7 handler runs in one session, each correctly reflecting real state transitions), and confirmed — per the diagnostic comparison this section previously called for — that the short one-line Cleanup confirmation ALSO never renders ("The drone just disappeared," no text). This is not specific to the long status report. Every `comms_receive()` call from every GM-only route in this file has now been tested and confirmed to execute without ever rendering visibly. Distinguishing data point: the same bare `comms_receive()` shape called from the player-facing Comms hail route IS live-confirmed working. The failure is specific to GM-only routes (`COMMS_ORIGIN_ID` gated on `has_roles(..., "gamemaster")`), not to `comms_receive()` broadly. A screenshot of the GM console showed a `(unknown)` label rendering where a message sender's identity/title would normally appear — consistent with GM routes lacking the bound sender identity that every other proven-working `comms_receive()` call supplies via `comms_override()`. **Action taken (experimental, not yet live-tested):** wrapped every GM-only `comms_receive()` call in this file in `comms_override(COMMS_ORIGIN_ID, COMMS_ORIGIN_ID, from_name="Khovan Slice 06 Spike")` — the one proven-live shape not yet tried for a GM route. Cookbook section 6.2's `[LIVE]` tag on the bare shape has been downgraded to `[UNPROVEN — DISCONFIRMED FOR GM ROUTES]`. If the experiment works, `scenario_control_panel.mast` and `story_jump_presets.mast` need the identical fix — they use the same disconfirmed bare shape and have never been independently confirmed to render for the GM either. If the experiment also fails, there is no third proven `comms_receive()` shape in the cookbook to try next; escalate as an API-uncertainty finding rather than guessing further.
 - **Confirmed, deliberately deferred (operator direction, 2026-08-08):** test-instrumentation text is exposed directly to player-facing consoles — the Comms hail response (line 185) and two Science scan/intel result blocks (lines 167, 172) contain dev-facing phrasing like "Observe whether any stock enemy taunt... appears" and "Check whether this is sufficient for the future Drone 01 Science gate." Not fixed now per explicit operator call ("OK for now, clean up later"). Must be cleaned before this spike's text patterns are reused as a template for Drone 01/Drone 02 player-facing content.
 - **Confirmed live 2026-08-08**: `sbs.delete_object()` inside `khovan_drone_contact_fire_cleanup_target_spike` fires the same `//damage/destroy` hook a genuine Weapons kill would. Trace evidence: `[KHOVAN ACT1 DRONE SPIKE CLEANUP] cleanup_count=1` immediately followed by `[KHOVAN ACT1 DRONE SPIKE DAMAGE] ... weapons_damage=0.0 engines_damage=0.0` and `[KHOVAN ACT1 DRONE SPIKE DESTROY]`. GM cleanup and real combat destruction are currently indistinguishable through `drone_target_spike_destroyed_observed`. Since the recorded Drone 02 source decision is "completes on destruction," Phase B must not treat `destroyed_observed` alone as a valid completion signal — it needs a guard (e.g. only trust destruction when accompanied by nonzero `weapons_damage_value`/`engines_damage_value`, or route GM cleanup through a path that does not touch the shared destroy hook).
 
 ## Next Action
 
-Phase A station mechanics are live-proven with a genuinely 4-station crew (2026-08-08): spawn, non-attack, Science scan (while alive), Comms hail (no stock-menu interference), Weapons selection/fire/kill. The subsystem-targeting bug fix is **live-confirmed**. The destroy-hook guard's damage-value fallback is **live-confirmed**; its primary flag branch was **found broken by a live test, root-caused, and fixed** (not yet re-verified). Two items remain before Phase A closes:
+Phase A station mechanics are live-proven with a genuinely 4-station crew (2026-08-08): spawn, non-attack, Science scan (while alive), Comms hail (no stock-menu interference), Weapons selection/fire/kill. The subsystem-targeting bug fix is **live-confirmed**. The destroy-hook guard is **fully live-confirmed, both branches — done.** One item remains before Phase A closes:
 
-1. **Destroy-hook guard primary signal — re-test after the 2026-08-08 flag-clearing bugfix.** Spawn a fresh target, run GM Cleanup on it with zero damage applied, confirm the trace now shows `destruction_source=gm_cleanup` instead of `unattributed_zero_damage`.
-2. **`Read Target Spike Status` rendering — handler confirmed executing, output still not visible.** Before attempting a fix, check whether the Scenario Control Panel's own overview report (same `comms_receive()` pattern) and this file's short one-line Spawn/Cleanup confirmations render visibly. That comparison determines whether the problem is systemic to GM `comms_receive()` calls, specific to long multi-line report text, or specific to this one handler — see Known Risks.
+1. **GM `comms_receive()` rendering — cross-cutting finding, experimental fix applied, not yet live-tested.** Every GM-only route in this file (Spawn, Select, Read Status, Cleanup) executes correctly but has never rendered visibly for the GM, across 3+ sessions. An experimental fix wraps all of them in `comms_override(COMMS_ORIGIN_ID, COMMS_ORIGIN_ID, from_name=...)` — the one proven-live `comms_receive()` shape not yet tried for a GM route. Needs a live re-test: restart, spawn a target, try Read Target Spike Status and Cleanup again. If either now renders, the same fix needs to land in `scenario_control_panel.mast` and `story_jump_presets.mast` as a follow-up, since they share the disconfirmed bare shape. If neither renders, there is no third proven shape to try — escalate as an API-uncertainty finding rather than continuing to guess.
 
 Test-instrumentation text visible to players (Comms hail response, two Science scan/intel blocks) is a confirmed, deliberately deferred cleanup item — not blocking Phase A, but must land before this spike's patterns are reused for Drone 01/02 player-facing content.
 
-Stop after Phase A only if item 1 above still fails after the re-test, or if item 2's diagnostic comparison is inconclusive.
+Stop after Phase A only if item 1's re-test shows the comms_override experiment also fails to render.
 
 ---
 
@@ -599,4 +602,92 @@ next action: 1) re-run the same GM Cleanup test with the flag-clearing
   Cleanup confirmation messages render visibly - this will show whether
   the problem is systemic to GM comms_receive(), specific to long
   multi-line reports, or specific to this one handler.
+```
+
+### LIVE SMOKE 2026-08-08 (destroy-hook guard confirmed working; GM comms_receive() finding widens)
+
+```text
+branch: slice06-drone-contact-fire
+build: locally installed Artemis3-x64-release, restarted per this file's guidance
+result: PARTIAL - one item confirmed fixed, one finding widened from
+        spike-specific to cross-cutting
+
+scope: Operator restarted the server (confirmed via a fresh
+       [KHOVAN EARLY 001] script.py entered trace line) and re-ran the
+       destroy-hook guard test and the Read Target Spike Status test.
+
+checks:
+- Destroy-hook guard, cleanup_in_progress flag branch: PASS, CONFIRMED
+  FIXED. Two cleanups this session both correctly logged
+  destruction_source=gm_cleanup:
+    20:24:15.240281 [DRONE SPIKE DESTROY] destroyed_id=4611686018427387917 destruction_source=gm_cleanup
+    20:25:25.548308 [DRONE SPIKE DESTROY] destroyed_id=4611686018427387918 destruction_source=gm_cleanup
+  The b68513c fix (do not clear cleanup_in_progress before the deferred
+  destroy hook fires) works. Both branches of the destroy-hook guard are
+  now live-confirmed.
+- Read Target Spike Status: handler fired reliably 7 times this session,
+  correctly reflecting real state transitions each time (unproven ->
+  manual_subsystem_hit_observed_... -> destruction_observed_gm_cleanup_
+  not_a_kill). Operator saw nothing on screen every single time. This
+  rules out "didn't notice" - the display genuinely does not render.
+- Diagnostic requested last entry: does the short one-line Cleanup
+  confirmation ("Slice 06 target spike cleaned up.") render? Operator
+  confirmed: no, nothing appears - "The drone just disappeared."
+  FINDING WIDENS: this is not specific to the long, multi-line status
+  report. Every comms_receive() call from every GM-only route in this
+  file - Spawn, Select, Read Status, Cleanup - has now been confirmed to
+  execute (trace-proven) and never render visibly. The Scenario Control
+  Panel uses the identical bare comms_receive() shape and has never been
+  independently confirmed to render either.
+- Distinguishing data point: the Comms hail response
+  (khovan_drone_contact_fire_hail_spike_target), a PLAYER-facing route
+  using the exact same bare comms_receive() shape, IS live-confirmed
+  working (operator report, prior session: "comms passed"). The failure
+  is specific to GM-only (COMMS_ORIGIN_ID gated on
+  has_roles(..., "gamemaster")) routes, not to comms_receive() in
+  general.
+- Visual clue from an operator screenshot of the GM console: a
+  "(unknown)" label renders in the position where a message sender's
+  title/identity would normally appear (compare the proven Tarsis
+  Docking Control dialog, which shows "Tarsis Docking Control" via
+  comms_override's from_name parameter). This is consistent with GM
+  routes lacking a bound sender identity, which every OTHER proven-live
+  comms_receive() call in the codebase supplies via comms_override().
+
+action taken: applied an EXPERIMENTAL fix, not yet live-tested. Wrapped
+  every GM-only comms_receive() call in act1_drone_contact_fire.mast
+  (Spawn, Select, Read Status, Cleanup) in
+  comms_override(COMMS_ORIGIN_ID, COMMS_ORIGIN_ID, from_name="Khovan
+  Slice 06 Spike"). This reuses the ONLY proven-live comms_receive()
+  shape not yet tried for a GM route - every other confirmed-working
+  comms_receive() call in the codebase (Dillon Clip 1, Tarsis docking
+  rejection) uses comms_override(); the bare shape has now failed for
+  every GM route tested and succeeded for the one player route tested.
+  Deliberately left the Comms hail response (player-facing, already
+  confirmed working) untouched. Did NOT touch scenario_control_panel.mast
+  or story_jump_presets.mast, which use the same disconfirmed bare shape -
+  scoped this experiment to Slice 06's own file first; if it works, those
+  two files need the same fix as a follow-up, cross-cutting change.
+  Downgraded the cookbook's [LIVE] tag on the bare comms_receive() shape
+  to [UNPROVEN - DISCONFIRMED FOR GM ROUTES] with the full evidence
+  trail, since "cited to a working file" and "confirmed rendering
+  observed live" are different evidence classes and this repo's own
+  rule is not to conflate them.
+
+trace_marker_last: [KHOVAN ACT1 DRONE SPIKE DESTROY] destroyed_id=4611686018427387918 destruction_source=gm_cleanup
+
+blocker: comms_override experiment not yet live-tested. If it also
+  fails to render, this needs an API-uncertainty escalation rather than
+  further blind attempts - there is no third proven comms_receive()
+  shape left in the cookbook to try.
+
+next action: 1) restart, spawn a target, try Read Target Spike Status
+  and Cleanup again with the comms_override experiment in place; 2) if
+  either now renders, apply the same fix to scenario_control_panel.mast
+  and story_jump_presets.mast as a follow-up change and re-promote the
+  cookbook tag to [LIVE]; 3) if neither renders, stop guessing and
+  escalate as an API-uncertainty finding - the operator may need to
+  consult Cosmos/Artemis reference material outside this repo, or the
+  GM console may display messages in a UI surface not yet identified
+  from a screenshot.
 ```

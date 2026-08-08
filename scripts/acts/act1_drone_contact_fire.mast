@@ -104,13 +104,27 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
     script.write_khovan_startup_trace(f"[KHOVAN ACT1 DRONE SPIKE SPAWN] target_id={drone_target_spike_target_id} spawn_count={drone_target_spike_spawn_count}")
     await task_schedule(khovan_set_current_objective, {"objective_id": "slice06_target_spike", "objective_body": "GM target spike active. Science scan, Comms hail, Weapons select, then test subsystem damage/destruction evidence.", "objective_step": "Slice 06 target spike", "objective_breadcrumb": "[KHOVAN OBJECTIVE 016S] objective updated: Slice 06 target spike"})
     await task_schedule(khovan_scenario_control_panel_update_overview)
-    comms_receive("Slice 06 target spike spawned as a neutral training target. Live-smoke Science scan, Comms hail, Weapons target selection, subsystem damage, destruction, and unwanted stock-menu behavior.", title="Khovan Slice 06 Spike", title_color="cyan")
+    # EXPERIMENTAL (2026-08-08, unproven): live smoke confirmed the bare comms_receive()
+    # call below never rendered visibly for the GM across 3+ sessions, on every GM-only
+    # route in this file, while the same bare comms_receive() shape DID render correctly
+    # for the player-facing Comms hail response at khovan_drone_contact_fire_hail_
+    # spike_target. The cookbook's [LIVE] tag for bare comms_receive() (section 6.2) was
+    # written for a player-facing case and does not appear to hold for GM-only routes.
+    # Every OTHER proven-live comms_receive() call in this codebase wraps it in
+    # comms_override(sender_id, player_id, from_name=...); this is the only proven shape
+    # left untried. COMMS_ORIGIN_ID is guaranteed valid here since the route itself
+    # requires has_roles(COMMS_ORIGIN_ID, "gamemaster") to match. Needs a live re-test
+    # before this can be trusted; if it also fails, escalate as an API-uncertainty finding
+    # rather than trying further variations blind.
+    with comms_override(COMMS_ORIGIN_ID, COMMS_ORIGIN_ID, from_name="Khovan Slice 06 Spike"):
+        comms_receive("Slice 06 target spike spawned as a neutral training target. Live-smoke Science scan, Comms hail, Weapons target selection, subsystem damage, destruction, and unwanted stock-menu behavior.", title="Khovan Slice 06 Spike", title_color="cyan")
     comms_navigate("//comms/gamemaster/khovan_drone_contact_fire_spike")
     ->END
 
 === khovan_drone_contact_fire_select_target_spike ===
     if not drone_target_spike_active or drone_target_spike_target_id == 0:
-        comms_receive("Slice 06 target spike is not active.", title="Khovan Slice 06 Spike", title_color="yellow")
+        with comms_override(COMMS_ORIGIN_ID, COMMS_ORIGIN_ID, from_name="Khovan Slice 06 Spike"):
+            comms_receive("Slice 06 target spike is not active.", title="Khovan Slice 06 Spike", title_color="yellow")
         comms_navigate("//comms/gamemaster/khovan_drone_contact_fire_spike")
         yield fail
 
@@ -122,14 +136,16 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
     drone_target_spike_status = "selected_for_science_comms_weapons"
     drone_contact_last_step = "target_spike_selected"
     script.write_khovan_startup_trace(f"[KHOVAN ACT1 DRONE SPIKE SELECT] target_id={drone_target_spike_target_id}")
-    comms_receive("Slice 06 target spike selected for Science, Comms, and Weapons where available.", title="Khovan Slice 06 Spike", title_color="cyan")
+    with comms_override(COMMS_ORIGIN_ID, COMMS_ORIGIN_ID, from_name="Khovan Slice 06 Spike"):
+        comms_receive("Slice 06 target spike selected for Science, Comms, and Weapons where available.", title="Khovan Slice 06 Spike", title_color="cyan")
     comms_navigate("//comms/gamemaster/khovan_drone_contact_fire_spike")
     ->END
 
 === khovan_drone_contact_fire_report_target_spike ===
     drone_target_spike_report = f"SLICE 06 TARGET SPIKE\nactive. {drone_target_spike_active}\ntarget_id. {drone_target_spike_target_id}\nstatus. {drone_target_spike_status}\nscan_observed. {drone_target_spike_scan_observed}\nhail_observed. {drone_target_spike_hail_observed}\nweapons_selected. {drone_target_spike_weapons_selected}\ndamage_observed. {drone_target_spike_damage_observed}\nmanual_subsystem_hit. {drone_target_spike_manual_subsystem_hit_observed}\nmanual_subsystem. {drone_target_spike_manual_subsystem}\nmanual_critical_hit. {drone_target_spike_manual_critical_hit_observed}\nweapons_damage. {drone_target_spike_weapons_damage_value}\nengines_damage. {drone_target_spike_engines_damage_value}\ndestroyed_observed. {drone_target_spike_destroyed_observed}\ndestruction_source. {drone_target_spike_destruction_source}\nstock_comms_menu. {drone_target_spike_stock_comms_menu_observation}\ntraining_safe. {drone_target_spike_training_safe_observation}\nresult. {drone_target_spike_result}\nblocker. {drone_target_spike_blocker}"
     script.write_khovan_startup_trace(f"[KHOVAN ACT1 DRONE SPIKE STATUS] status_read requested target_id={drone_target_spike_target_id} active={drone_target_spike_active} result={drone_target_spike_result}")
-    comms_receive(drone_target_spike_report, title="Khovan Slice 06 Spike", title_color="cyan")
+    with comms_override(COMMS_ORIGIN_ID, COMMS_ORIGIN_ID, from_name="Khovan Slice 06 Spike"):
+        comms_receive(drone_target_spike_report, title="Khovan Slice 06 Spike", title_color="cyan")
     comms_navigate("//comms/gamemaster/khovan_drone_contact_fire_spike")
     ->END
 
@@ -167,7 +183,8 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
     drone_contact_last_step = "target_spike_cleanup"
     script.write_khovan_startup_trace(f"[KHOVAN ACT1 DRONE SPIKE CLEANUP] cleanup_count={drone_target_spike_cleanup_count}")
     await task_schedule(khovan_scenario_control_panel_update_overview)
-    comms_receive("Slice 06 target spike cleaned up.", title="Khovan Slice 06 Spike", title_color="cyan")
+    with comms_override(COMMS_ORIGIN_ID, COMMS_ORIGIN_ID, from_name="Khovan Slice 06 Spike"):
+        comms_receive("Slice 06 target spike cleaned up.", title="Khovan Slice 06 Spike", title_color="cyan")
     comms_navigate("//comms/gamemaster/khovan_drone_contact_fire_spike")
     ->END
 

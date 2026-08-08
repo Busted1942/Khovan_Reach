@@ -299,11 +299,17 @@ Target-selected route, with its `//enable/comms` companion (`scripts/acts/act1_g
 
 ## 6.2 Sending
 
-**[LIVE]** Plain message to the acting console:
+**[UNPROVEN — DISCONFIRMED FOR GM ROUTES, corrected 2026-08-08]** Plain (bare) message to the acting console, cited from `scenario_control_panel.mast`:
 
 ```mast
     comms_receive(text, title="Khovan Scenario Control", title_color="cyan")
 ```
+
+This was previously tagged **[LIVE]** in this cookbook, meaning "cited to a working file in this repo" — but "cited to a working file" is not the same evidence class as "confirmed rendering observed live," and this repo's own rule is not to conflate them. Live smoke on 2026-08-08 tested this exact call shape from **every GM-only route in `act1_drone_contact_fire.mast`** (Spawn, Select, Read Target Spike Status, Cleanup) across 3+ sessions: the operator confirmed each handler executes correctly (trace breadcrumbs fire every time, state changes correctly), but **nothing ever rendered visibly on the GM console for any of them.** The Scenario Control Panel uses this identical bare shape and has never been independently confirmed to render either — its own report was never distinguished from "the menu navigates correctly," which is not the same claim.
+
+Contrast: the **same bare shape, called from a player-facing route** (`khovan_drone_contact_fire_hail_spike_target`, Comms hail to a player console) — **is** live-confirmed working (operator report, 2026-08-08). The failure appears specific to GM-only (`COMMS_ORIGIN_ID` gated on `has_roles(..., "gamemaster")`) routes, not to `comms_receive()` in general.
+
+**Do not use this bare shape for a new GM-only route.** Use the `comms_override` shape below instead — it is the only proven-live pattern that has not also failed for a GM route in this build. See `act1_drone_contact_fire.mast:82-176` for an in-progress experimental fix (wraps every GM-only `comms_receive()` call in `comms_override(COMMS_ORIGIN_ID, COMMS_ORIGIN_ID, from_name=...)`), not yet live re-tested. If it also fails, this needs an API-uncertainty escalation to the operator rather than further guessing — see `tests/SLICE06_VERIFICATION.md` Known Risks for the full record.
 
 **[LIVE]** Return the GM to the menu after an action, or the menu closes (`scenario_control_panel.mast:53`):
 
@@ -318,6 +324,15 @@ Target-selected route, with its `//enable/comms` companion (`scripts/acts/act1_g
         with comms_override(startup_sender_id, startup_player_id, from_name=startup_sender):
             comms_receive(startup_text, title=startup_sender, title_color=startup_title_color)
 ```
+
+**[UNPROVEN — experimental, 2026-08-08]** The same shape, applied to a GM-only route by using `COMMS_ORIGIN_ID` as both sender and player id, since a GM console has no separate NPC/player pair the way a docking hook does:
+
+```mast
+    with comms_override(COMMS_ORIGIN_ID, COMMS_ORIGIN_ID, from_name="Khovan Slice 06 Spike"):
+        comms_receive(text, title="Khovan Slice 06 Spike", title_color="cyan")
+```
+
+Not yet live re-tested (see `act1_drone_contact_fire.mast`). If confirmed live, this becomes the required shape for every GM-only `comms_receive()` call and `scenario_control_panel.mast` / `story_jump_presets.mast` should be updated to match — they currently use the disconfirmed bare shape above and have never been independently confirmed to render for the GM either.
 
 **[LIVE]** Text-waterfall broadcast — this is how the Current Objective is delivered (`scripts/systems/current_objective_panel.mast:58`):
 

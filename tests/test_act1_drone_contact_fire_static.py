@@ -125,6 +125,42 @@ class Act1DroneContactFireStaticTests(unittest.TestCase):
         ]:
             self.assertIn(phrase, drone)
 
+    def test_gm_comms_receive_calls_use_comms_override_experiment(self) -> None:
+        # Experimental fix, 2026-08-08: live smoke confirmed the bare comms_receive()
+        # call in every GM-only route in this file never rendered visibly for the GM
+        # across 3+ sessions (Spawn, Select, Read Target Spike Status, Cleanup all
+        # confirmed executing via trace but producing no visible output). The one
+        # untried proven-live shape from the cookbook is comms_override(sender_id,
+        # player_id, from_name=...) wrapping comms_receive() - every other confirmed-
+        # working comms_receive() call in the codebase uses it. Not yet live re-tested;
+        # this test only locks in that the experiment is actually present in the code.
+        drone = read(DRONE_PATH)
+        gm_handlers = [
+            "khovan_drone_contact_fire_spawn_target_spike",
+            "khovan_drone_contact_fire_select_target_spike",
+            "khovan_drone_contact_fire_report_target_spike",
+            "khovan_drone_contact_fire_cleanup_target_spike",
+        ]
+        for handler in gm_handlers:
+            body = label_body(drone, handler)
+            self.assertIn(
+                'with comms_override(COMMS_ORIGIN_ID, COMMS_ORIGIN_ID, from_name="Khovan Slice 06 Spike"):',
+                body,
+                f"{handler} should wrap its comms_receive() call(s) in comms_override",
+            )
+
+        # The player-facing Comms hail response is deliberately left as bare
+        # comms_receive() - it was already live-confirmed working (operator report,
+        # "comms passed"), and touching a proven-working call site without cause
+        # would be exactly the kind of unforced change this repo's discipline warns
+        # against.
+        hail_body = label_body(drone, "khovan_drone_contact_fire_hail_spike_target")
+        self.assertNotIn("comms_override", hail_body)
+        self.assertIn(
+            'comms_receive("Automated training target: drill-mode response acknowledged.',
+            hail_body,
+        )
+
     def test_spike_observers_cover_selection_damage_subsystem_and_destruction(self) -> None:
         drone = read(DRONE_PATH)
         for phrase in [
