@@ -294,6 +294,38 @@ def check_duplicate_shared_declarations() -> list[str]:
     return failures
 
 
+def extract_admin_test_ids(text: str) -> set[str]:
+    """Collect every test ID the admin testing plan defines.
+
+    Two forms appear in the plan and both are authoritative:
+
+    1. Literal tokens, e.g. ``DAMCON-001 cascade trigger starts timer``.
+    2. Range statements, e.g. ``JUMPTEST-001 through JUMPTEST-021 correspond
+       to JUMP-001 through JUMP-021`` and ``D2-004 through D2-013 steps 1-10
+       advance correctly``. These define every ID in the span, but only the
+       two endpoints appear as literal tokens.
+
+    Literal-only extraction silently drops the interior of a range. That is
+    how JUMPTEST-002..020 and D2-005..012 went missing from the coverage
+    matrix: both the plan side and the matrix side were scanned the same way,
+    so the two agreed by shared blindness rather than by matching.
+
+    Numbering gaps that are NOT spanned by a range statement (DAMCON 007-009,
+    PIRATE 007-009, SAVE-009, etc.) are deliberate decade-grouping in the
+    plan and must stay absent.
+    """
+    ids = set(re.findall(r"\b([A-Z]+\d*\-\d+)\b", text))
+    for match in re.finditer(
+        r"\b([A-Z]+\d*)\-(\d+)\s+through\s+\1\-(\d+)\b", text
+    ):
+        prefix = match.group(1)
+        start_token, end_token = match.group(2), match.group(3)
+        width = len(start_token)
+        for number in range(int(start_token), int(end_token) + 1):
+            ids.add(f"{prefix}-{number:0{width}d}")
+    return ids
+
+
 def check_test_coverage_matrix() -> list[str]:
     """Verify test coverage matrix exists and is consistent with admin testing plan."""
     matrix_file = ROOT / "tests" / "test_coverage_matrix.md"
@@ -305,7 +337,7 @@ def check_test_coverage_matrix() -> list[str]:
         return ["missing admin testing plan: docs/01_design/40_admin_testing_plan.md"]
 
     admin_text = admin_plan.read_text(encoding="utf-8")
-    admin_ids = set(re.findall(r"\b([A-Z]+\d*\-\d+)\b", admin_text))
+    admin_ids = extract_admin_test_ids(admin_text)
 
     matrix_text = matrix_file.read_text(encoding="utf-8")
     matrix_ids = set(re.findall(r"^\|\s*([A-Z]+\d*\-\d+)\s*\|", matrix_text, re.MULTILINE))
