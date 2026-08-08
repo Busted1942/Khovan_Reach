@@ -108,6 +108,28 @@ def check_old_mast_filenames() -> list[str]:
     return failures
 
 
+def check_no_live_mast_files_outside_runtime() -> list[str]:
+    """Cosmos scans the whole mission directory, not just imported files.
+
+    A live .mast file sitting under archive/, docs_external/, or
+    reference_missions/ can be picked up by that scan even though nothing
+    in the active runtime imports it, and can collide by filename with an
+    active or future runtime file (e.g. main.mast, damcon_timer.mast).
+    Reference material in these folders must use a defanged extension
+    such as .mast.archive so Cosmos never parses it as live MAST.
+    """
+    scan_roots = ["archive", "docs_external", "reference_missions"]
+    failures = []
+    for folder in scan_roots:
+        folder_path = ROOT / folder
+        if not folder_path.is_dir():
+            continue
+        for path in folder_path.rglob("*.mast"):
+            if path.is_file():
+                failures.append(f"live .mast file outside runtime scope: {rel(path)}")
+    return failures
+
+
 def check_slice01_bootstrap_files() -> list[str]:
     required = [
         "description.txt",
@@ -326,6 +348,8 @@ def run_quick() -> int:
     failures.extend(check_required_folders())
     harness_checks_run += 1
     failures.extend(check_old_mast_filenames())
+    harness_checks_run += 1
+    failures.extend(check_no_live_mast_files_outside_runtime())
     harness_checks_run += 1
     failures.extend(check_conflicting_doc_filenames(required_docs))
     harness_checks_run += 1
