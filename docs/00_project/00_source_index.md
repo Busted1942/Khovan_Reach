@@ -35,7 +35,8 @@ The current active source tree is this package.
 
 Repo-root implementation-agent control:
 
-- `AGENTS.md`
+- `AGENTS.md` (governing control file for all implementation agents)
+- `CLAUDE.md` (build-side orientation; defers to `AGENTS.md` on process)
 
 ---
 
@@ -83,6 +84,12 @@ Do not expose secret pirate truth in player-facing game resources.
 - `docs/04_implementation_setup/30_implementation_project_start_prompt.md`
 - `docs/04_implementation_setup/40_slice01_bootstrap_findings.md`
 - `docs/04_implementation_setup/50_future_reusable_mission_kernel.md`
+- `docs/04_implementation_setup/60_mast_api_cookbook.md`
+- `docs/04_implementation_setup/70_agent_handoff_protocol.md`
+
+`60_mast_api_cookbook.md` records MAST/sbs_utils syntax already proven in this repo's active runtime code. It is implementation evidence, not design authority, and each pattern is tagged live / compile-only / unproven.
+
+`70_agent_handoff_protocol.md` defines the slice-packet-in / verification-record-out contract used when work is split across planning and implementation agents. It governs process only.
 
 These are setup and handoff documents for starting or restarting the coding project. They preserve useful prior-build lessons without making old code authoritative.
 
