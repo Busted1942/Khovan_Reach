@@ -97,7 +97,7 @@ Do not implement:                explicit out-of-scope list
 
 **State variables needed.** List exact names before any code is written. State-name collision across MAST files is the most expensive class of bug in this codebase, because `shared` is global and failures are silent. Cross-check against existing names with a repo-wide grep before writing the packet.
 
-**Runtime owner model.** Which file owns which route, timer, and state group. Prevents two files racing on the same gate.
+**Runtime owner model.** Which file owns which route, timer, and state group. Prevents two files racing on the same gate. For Act I, see `docs/01_design/10_mast_requirements.md` section 7 "Scene ownership matrix" — every scene is already classified as AUTO / GM-SUP / GM-DRIVE with stated runtime and GM responsibilities. For Acts II/III, fill explicitly in the packet since no equivalent matrix exists.
 
 **Do not implement.** Slice 01A's out-of-scope list is the model — it names twelve specific mechanics. Scope creep in this project historically arrives as "while I was in there."
 
@@ -116,6 +116,8 @@ Slices that should carry an explicit spike phase, based on their API risk:
 | 11 pirates | arrival timer, state transitions, docking backstop |
 | 12 combat | force authorization, hostile transition, outcome persistence |
 | 15 reload | checkpoint payload round-trip, irreversible state preservation |
+
+**Important note on gate maps:** `docs/01_design/10_mast_requirements.md` section 8.9 provides the only canonical automation gate map — it covers Act I only. Acts II/III have no equivalent gate map yet. Slices 07–16 must define their own gate/fallback pairs in their packets since no pre-computed table exists. This is a real design cost but prevents false assumptions about what Cosmos exposes.
 
 ---
 

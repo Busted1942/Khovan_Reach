@@ -217,6 +217,8 @@ A story-jump seed invalidates pending timers by bumping the same counter (`act1_
 
 **[LIVE]** `scripts/acts/act1_engineering_shakedown.mast:199-250`.
 
+For Act I, the canonical table of preferred detection and fallback methods for every gate is in `docs/01_design/10_mast_requirements.md` section 8.9 "Act I automation gate map". This section documents the MAST pattern; section 8.9 documents which gate uses which pattern.
+
 MAST has no "watch this value" primitive here. Automatic gates are built as a self-jumping tick label with a tick ceiling and a documented fallback:
 
 ```mast
