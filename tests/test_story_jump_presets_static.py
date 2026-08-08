@@ -121,7 +121,7 @@ class StoryJumpPresetStaticTests(unittest.TestCase):
         story_jump = read("scripts/systems/story_jump_presets.mast")
         expected_labels = {
             "mission_start": "Mission Start",
-            "post_tarsis_resupply": "Post-Tarsis / Await Shakedown",
+            "post_tarsis_resupply": "Post-Tarsis / Engineering Ready",
             "engineering_shakedown_complete": "Engineering Shakedown Complete",
         }
 
@@ -234,7 +234,7 @@ class StoryJumpPresetStaticTests(unittest.TestCase):
             "expected observation",
             "failure/ambiguous observation",
             "mission start",
-            "post-tarsis / await shakedown",
+            "post-tarsis / engineering ready",
             "energy is 0",
             "homing/nuke/emp/mine are 0",
             "energy is full",

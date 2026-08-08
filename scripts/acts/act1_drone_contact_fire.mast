@@ -1,0 +1,237 @@
+# Khovan Reach Slice 06 Drone contact/fire spike.
+# Phase A only: prove target spawn, scan, hail, weapons selection, subsystem damage, destruction, and cleanup.
+
+shared drone_contact_fire_initialized = False
+shared drone_contact_sequence_status = "not_initialized"
+shared drone_contact_detection_mode = "phase_a_spike_only_live_cosmos_proof_required"
+shared drone_contact_last_step = "none"
+shared drone_contact_source_decision = "Drone 01 proves Weapons subsystem disable; Drone 02 completes on destruction by user decision after source ambiguity review."
+
+shared drone_target_spike_available = False
+shared drone_target_spike_active = False
+shared drone_target_spike_target_id = 0
+shared drone_target_spike_navproxy_id = 0
+shared drone_target_spike_spawn_count = 0
+shared drone_target_spike_cleanup_count = 0
+shared drone_target_spike_status = "not_started"
+shared drone_target_spike_scan_observed = False
+shared drone_target_spike_hail_observed = False
+shared drone_target_spike_weapons_selected = False
+shared drone_target_spike_damage_observed = False
+shared drone_target_spike_manual_subsystem_hit_observed = False
+shared drone_target_spike_manual_subsystem = "none"
+shared drone_target_spike_weapons_damage_value = 0
+shared drone_target_spike_engines_damage_value = 0
+shared drone_target_spike_destroyed_observed = False
+shared drone_target_spike_stock_comms_menu_observation = "live_smoke_required"
+shared drone_target_spike_training_safe_observation = "live_smoke_required"
+shared drone_target_spike_result = "unproven"
+shared drone_target_spike_blocker = "live_smoke_required"
+shared drone_target_spike_fallback = "If automatic scan, target selection, subsystem hit, or destruction evidence fails live, use Comms/captain confirmation and GM mark as final fallback."
+
+//comms/gamemaster/khovan_drone_contact_fire_spike if has_roles(COMMS_ORIGIN_ID, "gamemaster") and test_mode_enabled
+    + "Back" //comms/gamemaster/khovan_scenario_control_panel
+    + "Spawn Target Spike" khovan_drone_contact_fire_spawn_target_spike if not drone_target_spike_active
+    + "Select Target Spike" khovan_drone_contact_fire_select_target_spike if drone_target_spike_active
+    + "Read Target Spike Status" khovan_drone_contact_fire_report_target_spike
+    + "Cleanup Target Spike" khovan_drone_contact_fire_cleanup_target_spike if drone_target_spike_active or drone_target_spike_destroyed_observed
+
+=== khovan_act1_initialize_drone_contact_fire ===
+    drone_contact_fire_initialized = True
+    drone_contact_sequence_status = "phase_a_spike_ready"
+    drone_contact_last_step = "initialized"
+    drone_target_spike_available = True
+    drone_target_spike_active = False
+    drone_target_spike_status = "ready"
+    script.write_khovan_startup_trace("[KHOVAN ACT1 DRONE 001] Slice 06 target subsystem-damage spike initialized")
+    await task_schedule(khovan_scenario_control_panel_update_overview)
+    ->END
+
+=== khovan_act1_drone_contact_fire_prepare_after_engineering ===
+    drone_contact_fire_initialized = True
+    drone_contact_sequence_status = "phase_a_spike_ready_after_engineering"
+    drone_contact_last_step = "ready_after_engineering"
+    drone_target_spike_available = True
+    if drone_target_spike_status == "not_started":
+        drone_target_spike_status = "ready"
+    script.write_khovan_startup_trace("[KHOVAN ACT1 DRONE 002] Slice 06 target spike ready after Engineering shakedown")
+    await task_schedule(khovan_set_current_objective, {"objective_id": "slice06_target_spike_ready", "objective_body": "Slice 06 target spike ready. GM Test Mode: run Slice 06 Target Spike.", "objective_step": "Slice 06 target spike ready", "objective_breadcrumb": "[KHOVAN OBJECTIVE 016] objective updated: Slice 06 target spike ready"})
+    await task_schedule(khovan_scenario_control_panel_update_overview)
+    ->END
+
+=== khovan_drone_contact_fire_reset_target_spike_flags ===
+    drone_target_spike_scan_observed = False
+    drone_target_spike_hail_observed = False
+    drone_target_spike_weapons_selected = False
+    drone_target_spike_damage_observed = False
+    drone_target_spike_manual_subsystem_hit_observed = False
+    drone_target_spike_manual_subsystem = "none"
+    drone_target_spike_weapons_damage_value = 0
+    drone_target_spike_engines_damage_value = 0
+    drone_target_spike_destroyed_observed = False
+    drone_target_spike_result = "unproven"
+    drone_target_spike_blocker = "live_smoke_required"
+    ->END
+
+=== khovan_drone_contact_fire_spawn_target_spike ===
+    if drone_target_spike_active:
+        await task_schedule(khovan_drone_contact_fire_report_target_spike)
+        yield success
+
+    await task_schedule(khovan_drone_contact_fire_reset_target_spike_flags)
+    drone_target_spike_spawn_count = drone_target_spike_spawn_count + 1
+    drone_contact_sequence_status = "target_spike_spawn_requested"
+    drone_contact_last_step = "target_spike_spawn"
+    drone_target_spike_status = "spawn_requested"
+    drone_target_spike_target = npc_spawn(32000, 0, 12000, "Slice 06 Spike Target", "khovan_training, neutral, khovan_slice06_spike_target, khovan_drone_spike_target", "tsn_warpster", "behav_npcship")
+    drone_target_spike_target_id = to_id(drone_target_spike_target)
+    drone_target_spike_navproxy = sim.add_navproxy(drone_target_spike_target_id, "Slice 06 Spike Target", "tsn_warpster", "#FC3")
+    drone_target_spike_navproxy_id = to_id(drone_target_spike_navproxy)
+    drone_target_spike_active = True
+    drone_target_spike_status = "spawned_neutral_training_target"
+
+    if artemis_id != 0 and drone_target_spike_target_id != 0:
+        link(artemis_id, "extra_scan_source", drone_target_spike_target_id)
+        set_science_selection(artemis_id, drone_target_spike_target_id)
+        set_comms_selection(artemis_id, drone_target_spike_target_id)
+
+    script.write_khovan_startup_trace(f"[KHOVAN ACT1 DRONE SPIKE SPAWN] target_id={drone_target_spike_target_id} spawn_count={drone_target_spike_spawn_count}")
+    await task_schedule(khovan_set_current_objective, {"objective_id": "slice06_target_spike", "objective_body": "GM target spike active. Science scan, Comms hail, Weapons select, then test subsystem damage/destruction evidence.", "objective_step": "Slice 06 target spike", "objective_breadcrumb": "[KHOVAN OBJECTIVE 016S] objective updated: Slice 06 target spike"})
+    await task_schedule(khovan_scenario_control_panel_update_overview)
+    comms_receive("Slice 06 target spike spawned as a neutral training target. Live-smoke Science scan, Comms hail, Weapons target selection, subsystem damage, destruction, and unwanted stock-menu behavior.", title="Khovan Slice 06 Spike", title_color="cyan")
+    comms_navigate("//comms/gamemaster/khovan_drone_contact_fire_spike")
+    ->END
+
+=== khovan_drone_contact_fire_select_target_spike ===
+    if not drone_target_spike_active or drone_target_spike_target_id == 0:
+        comms_receive("Slice 06 target spike is not active.", title="Khovan Slice 06 Spike", title_color="yellow")
+        comms_navigate("//comms/gamemaster/khovan_drone_contact_fire_spike")
+        yield fail
+
+    if artemis_id != 0:
+        set_science_selection(artemis_id, drone_target_spike_target_id)
+        set_comms_selection(artemis_id, drone_target_spike_target_id)
+        set_weapons_selection(artemis_id, drone_target_spike_target_id)
+
+    drone_target_spike_status = "selected_for_science_comms_weapons"
+    drone_contact_last_step = "target_spike_selected"
+    script.write_khovan_startup_trace(f"[KHOVAN ACT1 DRONE SPIKE SELECT] target_id={drone_target_spike_target_id}")
+    comms_receive("Slice 06 target spike selected for Science, Comms, and Weapons where available.", title="Khovan Slice 06 Spike", title_color="cyan")
+    comms_navigate("//comms/gamemaster/khovan_drone_contact_fire_spike")
+    ->END
+
+=== khovan_drone_contact_fire_report_target_spike ===
+    drone_target_spike_report = f"SLICE 06 TARGET SPIKE\nactive. {drone_target_spike_active}\ntarget_id. {drone_target_spike_target_id}\nstatus. {drone_target_spike_status}\nscan_observed. {drone_target_spike_scan_observed}\nhail_observed. {drone_target_spike_hail_observed}\nweapons_selected. {drone_target_spike_weapons_selected}\ndamage_observed. {drone_target_spike_damage_observed}\nmanual_subsystem_hit. {drone_target_spike_manual_subsystem_hit_observed}\nmanual_subsystem. {drone_target_spike_manual_subsystem}\nweapons_damage. {drone_target_spike_weapons_damage_value}\nengines_damage. {drone_target_spike_engines_damage_value}\ndestroyed_observed. {drone_target_spike_destroyed_observed}\nstock_comms_menu. {drone_target_spike_stock_comms_menu_observation}\ntraining_safe. {drone_target_spike_training_safe_observation}\nresult. {drone_target_spike_result}\nblocker. {drone_target_spike_blocker}"
+    comms_receive(drone_target_spike_report, title="Khovan Slice 06 Spike", title_color="cyan")
+    comms_navigate("//comms/gamemaster/khovan_drone_contact_fire_spike")
+    ->END
+
+=== khovan_drone_contact_fire_cleanup_target_spike ===
+    if drone_target_spike_navproxy_id != 0:
+        sim.delete_navproxy_by_id(drone_target_spike_navproxy_id)
+        drone_target_spike_navproxy_id = 0
+    if drone_target_spike_target_id != 0:
+        if artemis_id != 0:
+            set_science_selection(artemis_id, 0)
+            set_comms_selection(artemis_id, 0)
+            set_weapons_selection(artemis_id, 0)
+        sbs.delete_object(drone_target_spike_target_id)
+    drone_target_spike_target_id = 0
+    drone_target_spike_active = False
+    drone_target_spike_cleanup_count = drone_target_spike_cleanup_count + 1
+    drone_target_spike_status = "cleaned_up"
+    drone_contact_sequence_status = "target_spike_cleaned_up"
+    drone_contact_last_step = "target_spike_cleanup"
+    script.write_khovan_startup_trace(f"[KHOVAN ACT1 DRONE SPIKE CLEANUP] cleanup_count={drone_target_spike_cleanup_count}")
+    await task_schedule(khovan_scenario_control_panel_update_overview)
+    comms_receive("Slice 06 target spike cleaned up.", title="Khovan Slice 06 Spike", title_color="cyan")
+    comms_navigate("//comms/gamemaster/khovan_drone_contact_fire_spike")
+    ->END
+
+//enable/science if has_roles(SCIENCE_SELECTED_ID, "khovan_slice06_spike_target")
+
+//science if has_roles(SCIENCE_SELECTED_ID, "khovan_slice06_spike_target")
+    + "Initial Scan":
+        drone_target_spike_scan_observed = True
+        drone_target_spike_status = "science_scan_observed"
+        drone_contact_last_step = "target_spike_science_scan"
+        script.write_khovan_startup_trace(f"[KHOVAN ACT1 DRONE SPIKE SCAN] science scan observed target_id={SCIENCE_SELECTED_ID}")
+        <scan>
+            % Slice 06 target spike scan observed. Neutral training target, no lethal posture claimed until live smoke proves behavior.
+    + "scan":
+        drone_target_spike_scan_observed = True
+        drone_target_spike_status = "science_scan_observed"
+        drone_contact_last_step = "target_spike_science_scan"
+        script.write_khovan_startup_trace(f"[KHOVAN ACT1 DRONE SPIKE SCAN] scan observed target_id={SCIENCE_SELECTED_ID}")
+        <scan>
+            % Slice 06 target spike scan observed. Check whether this is sufficient for the future Drone 01 Science gate.
+    + "intel":
+        drone_target_spike_scan_observed = True
+        script.write_khovan_startup_trace(f"[KHOVAN ACT1 DRONE SPIKE INTEL] intel observed target_id={SCIENCE_SELECTED_ID}")
+        <scan>
+            % Intel package: training target for subsystem/damage spike. Observe whether subsystem targeting and damage events are reliable.
+
+//enable/comms if has_roles(COMMS_SELECTED_ID, "khovan_slice06_spike_target")
+
+//comms if has_roles(COMMS_SELECTED_ID, "khovan_slice06_spike_target")
+    + "Khovan: Hail Spike Target" khovan_drone_contact_fire_hail_spike_target
+
+=== khovan_drone_contact_fire_hail_spike_target ===
+    drone_target_spike_hail_observed = True
+    drone_target_spike_status = "comms_hail_observed"
+    drone_contact_last_step = "target_spike_hail"
+    drone_target_spike_stock_comms_menu_observation = "custom_khovan_route_visible_live_check_stock_menus"
+    script.write_khovan_startup_trace(f"[KHOVAN ACT1 DRONE SPIKE HAIL] hail observed target_id={COMMS_SELECTED_ID}")
+    comms_receive("Automated training target: drill-mode response acknowledged. Observe whether any stock enemy taunt, surrender, or hostile menu appears alongside this custom route.", title="Slice 06 Spike Target", title_color="green")
+    ->END
+
+//select/weapons if has_role(WEAPONS_ORIGIN_ID, "__player__")
+    if drone_target_spike_active and drone_target_spike_target_id != 0:
+        selected_weapons_target_id = get_weapons_selection(WEAPONS_ORIGIN_ID)
+        if selected_weapons_target_id == drone_target_spike_target_id:
+            drone_target_spike_weapons_selected = True
+            drone_target_spike_status = "weapons_selection_observed"
+            drone_contact_last_step = "target_spike_weapons_selected"
+            script.write_khovan_startup_trace(f"[KHOVAN ACT1 DRONE SPIKE WEAPONS SELECT] origin={WEAPONS_ORIGIN_ID} target_id={selected_weapons_target_id}")
+    ->END
+
+//damage/object if has_role(DAMAGE_TARGET_ID, "khovan_slice06_spike_target")
+    drone_target_spike_damage_observed = True
+    drone_target_spike_status = "damage_observed"
+    drone_contact_last_step = "target_spike_damage"
+    system = get_inventory_value(DAMAGE_SOURCE_ID, "MANUAL_SYSTEM")
+    target_id = get_inventory_value(DAMAGE_SOURCE_ID, "MANUAL_CRITICAL_HIT")
+    spike_target = to_object(DAMAGE_TARGET_ID)
+    if spike_target is not None:
+        drone_target_spike_weapons_damage_value = spike_target.data_set.get("system_damage", sbs.SHPSYS.WEAPONS)
+        drone_target_spike_engines_damage_value = spike_target.data_set.get("system_damage", sbs.SHPSYS.ENGINES)
+    if target_id != 0:
+        set_inventory_value(DAMAGE_SOURCE_ID, "MANUAL_SYSTEM", None)
+        set_inventory_value(DAMAGE_SOURCE_ID, "MANUAL_CRITICAL_HIT", None)
+        if target_id == DAMAGE_TARGET_ID and system is not None:
+            drone_target_spike_manual_subsystem_hit_observed = True
+            drone_target_spike_manual_subsystem = system.name
+            drone_target_spike_result = "manual_subsystem_hit_observed_live_unverified_until_operator_confirms"
+            drone_target_spike_blocker = "none_if_live_operator_confirms_values"
+    script.write_khovan_startup_trace(f"[KHOVAN ACT1 DRONE SPIKE DAMAGE] target_id={DAMAGE_TARGET_ID} manual_target={target_id} manual_system={system} weapons_damage={drone_target_spike_weapons_damage_value} engines_damage={drone_target_spike_engines_damage_value}")
+    ->END
+
+//damage/destroy if has_role(DESTROYED_ID, "khovan_slice06_spike_target")
+    drone_target_spike_destroyed_observed = True
+    drone_target_spike_active = False
+    drone_target_spike_status = "destroyed_observed"
+    drone_contact_last_step = "target_spike_destroyed"
+    drone_target_spike_result = "destruction_observed_live_unverified_until_operator_confirms"
+    drone_target_spike_blocker = "none_if_live_operator_confirms_destruction_event"
+    if drone_target_spike_navproxy_id != 0:
+        sim.delete_navproxy_by_id(drone_target_spike_navproxy_id)
+        drone_target_spike_navproxy_id = 0
+    remove_role(DESTROYED_ID, "khovan_slice06_spike_target")
+    remove_role(DESTROYED_ID, "khovan_drone_spike_target")
+    if artemis_id != 0:
+        set_science_selection(artemis_id, 0)
+        set_comms_selection(artemis_id, 0)
+        set_weapons_selection(artemis_id, 0)
+    drone_target_spike_target_id = 0
+    script.write_khovan_startup_trace(f"[KHOVAN ACT1 DRONE SPIKE DESTROY] destroyed_id={DESTROYED_ID}")
+    ->END

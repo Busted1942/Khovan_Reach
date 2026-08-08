@@ -49,7 +49,7 @@ shared damcon_meal_cycle_text = "DAMCON Control: meal-cycle standby confirmed in
 shared controlled_overload_instruction_text = "Training Control: controlled overload exercise. Helm, set engines to all stop. Engineering, set impulse and warp output to three hundred percent. Do not prevent the overload. Captain, hold movement orders until damage is logged."
 shared controlled_damage_logged_text = "Training Control: controlled damage logged. Engineering, assign repair crews and supervise repair. Captain, hold movement until Engineering reports recovery."
 shared repair_complete_text = "Training Control: repair complete. Engineering, set maneuvering to one hundred ninety percent, warp to ten percent, and impulse to one hundred percent. Save or select the navigation-priority preset and report ready."
-shared navigation_priority_confirmed_text = "Training Control: Engineering systems shakedown complete. Await next shakedown instruction."
+shared navigation_priority_confirmed_text = "Training Control: Engineering systems shakedown complete. Controlled contact handling is next."
 
 //comms if has_roles(COMMS_SELECTED_ID, "tarsis_station") and generator_governor_cleared and not engineering_shakedown_complete
     + "Khovan: Begin Engineering Shakedown" khovan_act1_engineering_shakedown_start if engineering_shakedown_available and not engineering_shakedown_started
@@ -149,7 +149,7 @@ shared navigation_priority_confirmed_text = "Training Control: Engineering syste
     current_scene = 2
     current_beat = "engineering_shakedown_complete"
     last_checkpoint = "engineering_shakedown_complete"
-    await task_schedule(khovan_set_current_objective, {"objective_id": "engineering_shakedown_complete", "objective_body": "Engineering shakedown complete. Await next shakedown instruction.", "objective_step": "Engineering shakedown complete", "objective_breadcrumb": "[KHOVAN OBJECTIVE 015J] objective updated: Engineering shakedown complete admin preset"})
+    await task_schedule(khovan_act1_drone_contact_fire_prepare_after_engineering)
     script.write_khovan_startup_trace("[KHOVAN JUMP ACT1 ENG COMPLETE] engineering shakedown complete seed requested")
     log("Khovan admin jump seeded Slice 05 engineering shakedown complete.")
     ->END
@@ -469,7 +469,7 @@ shared navigation_priority_confirmed_text = "Training Control: Engineering syste
     current_beat = "engineering_shakedown_complete"
     last_checkpoint = "engineering_shakedown_complete"
     script.write_khovan_startup_trace("[KHOVAN ACT1 ENG 010] Engineering shakedown complete after navigation priority confirmation")
-    await task_schedule(khovan_set_current_objective, {"objective_id": "engineering_shakedown_complete", "objective_body": "Engineering shakedown complete. Await next shakedown instruction.", "objective_step": "Engineering shakedown complete", "objective_breadcrumb": "[KHOVAN OBJECTIVE 015] objective updated: Engineering shakedown complete"})
+    await task_schedule(khovan_act1_drone_contact_fire_prepare_after_engineering)
     await task_schedule(khovan_scenario_control_panel_update_overview)
     comms_receive(navigation_priority_confirmed_text, title="Training Control", title_color="green")
     yield success

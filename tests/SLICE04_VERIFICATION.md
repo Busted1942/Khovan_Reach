@@ -196,7 +196,7 @@ Act I message-ordering and player instruction clarity bug:
   14. Tarsis docking objective: `Current Objective [S04-parent-2026-06-07.1]: Dock normally with Tarsis. Resupply and governor handoff complete on hard dock.`
   15. Pre-clearance rejection: `Tarsis Docking Control: docking clearance not granted. Complete Tarsis Comms traffic before approach.`
   16. Resupply/governor handoff: `Tarsis Control: normal docking resupply and generator handoff confirmed. Full energy and armament restored; governor clear is recorded. Await the next shakedown instruction.`
-  17. Post-handoff objective: `Current Objective [S04-parent-2026-06-07.1]: Await next shakedown instruction.`
+  17. Post-handoff objective: `Current Objective [S06.<turn>]: Begin Engineering shakedown with Tarsis Training Control.`
 - Guardrail: launch-envelope confirmation cannot restart the advisory timer after the advisory has already been sent, and resend-advisory only works after the advisory has been delivered.
 - Static proof: quick tests check the one-time flags, intended handler ties, staged Tarsis labels, duplicate-suppression breadcrumbs, advisory timer guard, resend-advisory guard, Tarsis dock-attempt rejection path, per-option Tarsis message breadcrumbs, Dillon guarded text stand-in, absence of blank story-dialog overlays in the startup path, and Tarsis governor-clear one-time guard.
 - Live proof still required: only Cosmos can prove the guarded text/Comms messages appear in the intended player-facing order and do not repeat unexpectedly.

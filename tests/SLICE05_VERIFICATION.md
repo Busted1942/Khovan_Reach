@@ -115,7 +115,7 @@ Quick/static checks do not prove live Cosmos UI behavior, Engineering data-set v
 Repo/branch assumption: run from `slice05-engineering-shakedown` after `python run_tests.py quick` and `git diff --check` pass.
 
 1. Launch Khovan Reach.
-2. Reach Post-Tarsis / Await Next Shakedown Instruction via normal Slice 04 path or approved GM-only test preset.
+2. Reach Post-Tarsis / Engineering Ready via normal Slice 04 path or approved GM-only test preset.
 3. Confirm Artemis is mission-ready after Tarsis handoff.
 4. Select Tarsis Station in Comms and start Engineering shakedown.
 5. Confirm Current Objective updates to impulse zero / warp 200 task.
@@ -128,7 +128,7 @@ Repo/branch assumption: run from `slice05-engineering-shakedown` after `python r
 12. Confirm repair supervision/repair completion fallback path.
 13. Set maneuvering 190%, warp 10%, and impulse 100%, save or select the navigation-priority preset, then use fallback confirmation unless a preset detector is added.
 14. Confirm `engineering_shakedown_complete` is set in Scenario Control Panel overview.
-15. Confirm Current Objective advances to Engineering shakedown complete / next instruction.
+15. Confirm Current Objective advances to Slice 06 target spike ready.
 16. Confirm player consoles do not show admin controls.
 17. Confirm Slice 04 Kestrel/Tarsis basics did not regress.
 18. Optional shortcut check: GM Scenario Control -> Enable Test Mode -> Test Mode Story Jumps -> Engineering Shakedown Complete.

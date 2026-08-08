@@ -7,7 +7,7 @@ Scope: GM-only Test Mode story jump presets for Slice 04/Slice 05 setup/smoke wo
 
 - The GM Test Mode story jump menu now exposes exactly three active presets:
   - Mission Start
-  - Post-Tarsis / Await Shakedown
+  - Post-Tarsis / Engineering Ready
   - Engineering Shakedown Complete
 - Retired future placeholder jumps are not active in the menu.
 - Mission Start and Post-Tarsis seed accepted Slice 04 state through `scripts/acts/act1_generator_tarsis_gate.mast`.
@@ -22,7 +22,7 @@ Scope: GM-only Test Mode story jump presets for Slice 04/Slice 05 setup/smoke wo
 - Static checks reject the retired future placeholder preset names.
 - `tests/test_act1_generator_tarsis_static.py` checks that:
   - Mission Start resets zero energy, zero ordnance, active governor, held Kestrel reserve, and the Kestrel departure objective.
-  - Post-Tarsis seeds cleared governor, full energy/armament requests, Tarsis completion flags, docked-state setup, and the await-shakedown objective.
+  - Post-Tarsis seeds cleared governor, full energy/armament requests, Tarsis completion flags, docked-state setup, and the Engineering-ready objective.
   - Both helpers invalidate stale Kestrel generator-advisory timers.
 
 ## What Only Live Cosmos Smoke Can Prove
@@ -30,8 +30,8 @@ Scope: GM-only Test Mode story jump presets for Slice 04/Slice 05 setup/smoke wo
 - The GM can see Khovan Scenario Control from the GM Comms console.
 - Test Mode reveals Story Jumps only to the GM.
 - Mission Start visibly returns Artemis to the Kestrel start condition.
-- Post-Tarsis visibly gives Artemis full energy and armament and places the scenario at the await-shakedown handoff.
-- Engineering Shakedown Complete visibly places the scenario after the engineering shakedown, with the current objective awaiting the next instruction.
+- Post-Tarsis visibly gives Artemis full energy and armament and places the scenario at the Engineering shakedown handoff.
+- Engineering Shakedown Complete visibly places the scenario after the engineering shakedown, with the current objective pointing to the Slice 06 target spike.
 - The current objective text appears in the live text/comms surface after each jump.
 - Repeated jumps do not leave stale Kestrel advisory messages firing in the wrong state.
 
@@ -58,14 +58,14 @@ Failure/ambiguous observation:
 - A retired jump such as Drill 2, Anderson, Cascade, Pirate Arrival, or Debrief appears.
 - Current objective does not update, or stale Tarsis/Kestrel messages appear in the wrong state.
 
-6. From the same GM jump menu, select `Post-Tarsis / Await Shakedown`.
+6. From the same GM jump menu, select `Post-Tarsis / Engineering Ready`.
 
 Expected observation:
 - Artemis is at/near Tarsis and treated as post-resupply.
 - Energy is full, expected value 1000.
 - Armament is full: Homing 10, Nuke 3, EMP 6, Mine 6.
-- Current objective says `Await next shakedown instruction.`
-- Scenario Control overview reports Act I, scene 2, post-Tarsis/await-shakedown state.
+- Current objective says `Begin Engineering shakedown with Tarsis Training Control.`
+- Scenario Control overview reports Act I, scene 2, post-Tarsis/Engineering-ready state.
 
 Failure/ambiguous observation:
 - Energy is restored but armament is not.
@@ -79,7 +79,7 @@ Expected observation:
 - Artemis is at/near Tarsis and treated as post-resupply.
 - Energy is full, expected value 1000.
 - Armament is full: Homing 10, Nuke 3, EMP 6, Mine 6.
-- Current objective says `Engineering shakedown complete. Await next shakedown instruction.`
+- Current objective says `Slice 06 target spike ready. GM Test Mode: run Slice 06 Target Spike.`
 - Scenario Control overview reports `engineering_shakedown_complete. True`.
 
 Failure/ambiguous observation:

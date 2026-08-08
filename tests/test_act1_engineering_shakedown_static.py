@@ -94,7 +94,7 @@ class Act1EngineeringShakedownStaticTests(unittest.TestCase):
         self.assertIn("engineering_shakedown_complete = True", complete_seed_body)
         self.assertIn('current_beat = "engineering_shakedown_complete"', complete_seed_body)
         self.assertIn('last_checkpoint = "engineering_shakedown_complete"', complete_seed_body)
-        self.assertIn('"objective_id": "engineering_shakedown_complete"', complete_seed_body)
+        self.assertIn("await task_schedule(khovan_act1_drone_contact_fire_prepare_after_engineering)", complete_seed_body)
 
     def test_player_comms_route_is_tarsis_gated_and_not_admin_exposed(self) -> None:
         engineering = read(ENGINEERING_PATH)
@@ -148,7 +148,8 @@ class Act1EngineeringShakedownStaticTests(unittest.TestCase):
             "repair complete",
             "maneuvering to one hundred ninety percent, warp to ten percent, and impulse to one hundred percent",
             "Engineering systems shakedown complete",
-            "Await next shakedown instruction",
+            "Controlled contact handling is next",
+            "khovan_act1_drone_contact_fire_prepare_after_engineering",
             '"objective_id": "engineering_impulse_zero_warp_200"',
             '"objective_id": "damcon_crew_quarters_standby"',
             '"objective_id": "damcon_mess_standby"',
@@ -156,7 +157,7 @@ class Act1EngineeringShakedownStaticTests(unittest.TestCase):
             '"objective_id": "controlled_overload_damage"',
             '"objective_id": "engineering_repair_supervision"',
             '"objective_id": "navigation_priority_preset"',
-            '"objective_id": "engineering_shakedown_complete"',
+            "drone_contact_fire_prepare_after_engineering",
         ]:
             self.assertIn(phrase, engineering)
 
@@ -239,8 +240,8 @@ class Act1EngineeringShakedownStaticTests(unittest.TestCase):
 
     def test_current_objective_marker_is_slice05_and_leads_blue_text(self) -> None:
         panel = read("scripts/systems/current_objective_panel.mast")
-        self.assertIn('shared current_objective_test_marker = "S05-engineering-2026-06-07.1"', panel)
-        self.assertIn('current_objective_last_message = f"[{current_objective_test_marker}]: {objective_body}"', panel)
+        self.assertIn('shared current_objective_test_marker = "S06"', panel)
+        self.assertIn('current_objective_last_message = f"[{current_objective_test_marker}.{current_objective_run_id}]: {objective_body}"', panel)
         self.assertNotIn('current_objective_last_message = f"Current Objective [{current_objective_test_marker}]', panel)
 
     def test_slice05_verification_doc_records_static_vs_live_limits(self) -> None:

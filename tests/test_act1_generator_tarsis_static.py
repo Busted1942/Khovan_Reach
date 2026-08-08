@@ -281,8 +281,8 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             "artemis_object.pos = Vec3(18000, 0, 500)",
             'artemis_object.data_set.set("dock_base_id", tarsis_station_id, 0)',
             'artemis_object.data_set.set("dock_state", "docked", 0)',
-            '"objective_id": "await_shakedown_instruction"',
-            "Await next shakedown instruction.",
+            '"objective_id": "engineering_shakedown_ready"',
+            "Begin Engineering shakedown with Tarsis Training Control.",
             "await task_schedule(khovan_scenario_control_panel_update_overview)",
         ]:
             self.assertIn(phrase, body)
@@ -332,13 +332,13 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             'shared current_objective_mode = "text_waterfall"',
             "shared current_objective_visible = False",
             "shared current_objective_run_id = 0",
-            'shared current_objective_test_marker = "S05-engineering-2026-06-07.1"',
+            'shared current_objective_test_marker = "S06"',
             "=== khovan_current_objective_init ===",
             "=== khovan_set_current_objective ===",
             "=== khovan_clear_current_objective ===",
             "[KHOVAN OBJECTIVE 001] current objective initialized",
             "[KHOVAN OBJECTIVE 002] objective updated: Kestrel departure clearance",
-            "[{current_objective_test_marker}]: {objective_body}",
+            "[{current_objective_test_marker}.{current_objective_run_id}]: {objective_body}",
             "comms_broadcast(artemis_id, current_objective_last_message, objective_color)",
             "[KHOVAN OBJECTIVE SAFE] text_waterfall update skipped: missing Artemis id",
         ]:
@@ -369,7 +369,7 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             (launch_body, "Stand by for Kestrel generator advisory.", "[KHOVAN OBJECTIVE 004] objective updated: generator advisory"),
             (advisory_body, "Proceed to Tarsis. Comms request homing priority, generator support, and docking clearance.", "[KHOVAN OBJECTIVE 005] objective updated: Tarsis requests"),
             (clearance_body, "Dock normally with Tarsis. Resupply and governor handoff complete on hard dock.", "[KHOVAN OBJECTIVE 006] objective updated: Tarsis docking/resupply"),
-            (resupply_body, "Await next shakedown instruction.", "[KHOVAN OBJECTIVE 007] objective updated: await next shakedown instruction"),
+            (resupply_body, "Begin Engineering shakedown with Tarsis Training Control.", "[KHOVAN OBJECTIVE 007] objective updated: Engineering shakedown ready"),
         ]
         for body, text, breadcrumb in expectations:
             self.assertIn(text, body)
@@ -401,7 +401,7 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             "Dock normally with Tarsis. Resupply and governor handoff complete on hard dock.",
             "Tarsis Docking Control: docking clearance not granted. Complete Tarsis Comms traffic before approach.",
             "Tarsis Control: normal docking resupply and generator handoff confirmed. Full energy and armament restored; governor clear is recorded. Await the next shakedown instruction.",
-            "Await next shakedown instruction.",
+            "Begin Engineering shakedown with Tarsis Training Control.",
         ]:
             self.assertIn(phrase, active_copy)
 
@@ -1224,7 +1224,6 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             "@gui",
             "//gui",
             "arbitrary variable",
-            "drone",
             "damcon",
             "pirate",
             "comms test station",
