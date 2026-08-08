@@ -32,3 +32,5 @@ before_rollback_*.patch
 tests/live_smoke_last_bootstrap.txt
 
 tests/live_startup_trace.txt
+
+.claude/settings.local.json
