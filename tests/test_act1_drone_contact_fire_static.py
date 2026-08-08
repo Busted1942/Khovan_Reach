@@ -251,6 +251,49 @@ class Act1DroneContactFireStaticTests(unittest.TestCase):
         reset_body = label_body(drone, "khovan_drone_contact_fire_reset_target_spike_flags")
         self.assertIn("drone_target_spike_cleanup_in_progress = False", reset_body)
 
+    def test_drone_01_reset_respawn_carries_a_run_id_guard(self) -> None:
+        # The reset path deletes Drone 01, yields, then respawns it. The yield is
+        # a window a story jump can land in: the jump seeds bump
+        # drone_contact_sequence_run_id, and without a guard the pending reset
+        # spawns Drone 01 into the scene the jump landed in. Incrementing the
+        # counter is not the same as checking it - the original code did the
+        # former and not the latter.
+        drone = read(DRONE_PATH)
+
+        reset_body = label_body(drone, "khovan_drone_01_reset")
+        self.assertIn(
+            "drone_contact_sequence_run_id = drone_contact_sequence_run_id + 1",
+            reset_body,
+            "reset must bump the generation counter before scheduling the respawn",
+        )
+        self.assertIn(
+            'task_schedule(khovan_drone_01_reset_respawn, {"reset_run_id": drone_contact_sequence_run_id})',
+            reset_body,
+            "reset must hand the current run id to the delayed respawn",
+        )
+        self.assertNotIn(
+            "delay_sim",
+            reset_body,
+            "the yield belongs in the guarded respawn label, not the reset label",
+        )
+
+        respawn_body = label_body(drone, "khovan_drone_01_reset_respawn")
+        self.assertIn("default reset_run_id = drone_contact_sequence_run_id", respawn_body)
+        # Cookbook section 5.1 requires three guards, not one.
+        self.assertIn("if reset_run_id != drone_contact_sequence_run_id:", respawn_body)
+        self.assertIn("if drone_contact_act2_ready:", respawn_body)
+        self.assertIn("if drone_01_active:", respawn_body)
+
+        # The stale check must come after the yield; guarding before the delay
+        # proves nothing, because the jump happens during it.
+        delay_at = respawn_body.index("delay_sim")
+        guard_at = respawn_body.index("if reset_run_id != drone_contact_sequence_run_id:")
+        self.assertLess(
+            delay_at,
+            guard_at,
+            "run-ID comparison must happen after the delay, not before it",
+        )
+
     def test_scenario_control_panel_reports_spike_status(self) -> None:
         panel = read("scripts/systems/scenario_control_panel.mast")
         for phrase in [

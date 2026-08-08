@@ -485,9 +485,34 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
         await task_schedule(khovan_set_current_objective, {"objective_id": "drone_01_reset", "objective_body": "Training Control: unauthorized hit detected. Target reset. Reacquire, reestablish range, and wait for clearance.", "objective_step": "Drone 01 reset", "objective_breadcrumb": "[KHOVAN ACT1 DRONE 01 RESET] unauthorized-hit reset message"})
     else:
         await task_schedule(khovan_set_current_objective, {"objective_id": "drone_01_reset", "objective_body": "Training Control: target destroyed. Drill objective was controlled subsystem disable. Target reset for repeat.", "objective_step": "Drone 01 reset", "objective_breadcrumb": "[KHOVAN ACT1 DRONE 01 RESET] premature-destruction reset message"})
+    task_schedule(khovan_drone_01_reset_respawn, {"reset_run_id": drone_contact_sequence_run_id})
+    ->END
+
+=== khovan_drone_01_reset_respawn ===
+    default reset_run_id = drone_contact_sequence_run_id
     # delete_object() dispatches //damage/destroy asynchronously; yield so the
     # production destroy guard consumes cleanup_in_progress before reset flags clear it.
     await delay_sim(seconds=1)
+    # Run-ID guard, cookbook section 5.1. The yield above is a window a story
+    # jump can land in: the jump seeds bump drone_contact_sequence_run_id
+    # (see khovan_act1_drone_contact_fire_init and
+    # khovan_act1_drone_contact_fire_prepare_after_engineering), so a reset
+    # scheduled before the jump must not spawn Drone 01 into the scene the
+    # jump landed in. Incrementing the counter in the reset label is not by
+    # itself a guard - nothing re-read it after the delay before this label
+    # existed.
+    if reset_run_id != drone_contact_sequence_run_id:
+        script.write_khovan_startup_trace("[KHOVAN ACT1 DRONE 01 RESET] stale respawn suppressed after story-jump seed")
+        ->END
+    # Precondition still true: a reset respawn is pointless once the drill has
+    # handed off to Act II.
+    if drone_contact_act2_ready:
+        script.write_khovan_startup_trace("[KHOVAN ACT1 DRONE 01 RESET] respawn suppressed after Act II handoff")
+        ->END
+    # Not-already-done: something else may have deployed Drone 01 during the yield.
+    if drone_01_active:
+        script.write_khovan_startup_trace("[KHOVAN ACT1 DRONE 01 RESET] respawn suppressed drone already active")
+        ->END
     await task_schedule(khovan_drone_01_spawn)
     ->END
 
