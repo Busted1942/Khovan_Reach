@@ -609,7 +609,7 @@ Breadcrumb convention: `[KHOVAN <AREA> <NUMBER>] <message>`. Breadcrumbs are app
 
 `tests/live_startup_trace.txt` (append-only crash breadcrumbs) and `tests/live_smoke_last_bootstrap.txt` (last-success audit) are separate evidence classes. Both are gitignored. Do not merge them.
 
-Per `AGENTS.md` section 5: a breadcrumb marker string is **not** proof of live success. Quick tests may check that markers exist; they must not claim the run worked.
+Per `AGENTS.md` section 8: a breadcrumb marker string is **not** proof of live success. Quick tests may check that markers exist; they must not claim the run worked.
 
 ---
 

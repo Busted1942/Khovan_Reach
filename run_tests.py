@@ -12,6 +12,17 @@ from io import StringIO
 from pathlib import Path
 
 
+# Several active docs use non-ASCII characters (e.g. the arrow in "GM Comms ->
+# Khovan Scenario Control -> ..."-style navigation notes). If a failure or
+# warning message ever quotes doc text containing one, printing it on a
+# default Windows console (cp1252) raises UnicodeEncodeError and crashes the
+# whole run instead of reporting the failure. Force UTF-8 with a safe
+# fallback so a reporting bug never masks a real check failure.
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+if hasattr(sys.stderr, "reconfigure"):
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
 ROOT = Path(__file__).resolve().parent
 SOURCE_INDEX = ROOT / "docs" / "00_project" / "00_source_index.md"
 

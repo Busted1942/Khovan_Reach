@@ -6,7 +6,7 @@ Purpose: full slice packets for Slices 07 through 16, written to the 21-field te
 
 ## Why this file exists, and what it is not
 
-`docs/01_design/50_implementation_slice_plan.md` is the design authority for *what* each slice is. It is off-limits to edit during implementation work (`CLAUDE.md`, `AGENTS.md` section 1, `70_agent_handoff_protocol.md` section 5.2). This file is the build-side elaboration of Slices 07–16 into handoff-ready packets. It adds no scenario design and changes no scenario intent.
+`docs/01_design/50_implementation_slice_plan.md` is the design authority for *what* each slice is. It is off-limits to edit during implementation work (`AGENTS.md` section 2, `70_agent_handoff_protocol.md` section 5.2). This file is the build-side elaboration of Slices 07–16 into handoff-ready packets. It adds no scenario design and changes no scenario intent.
 
 Where this file and the slice plan disagree about *design*, the slice plan wins and the disagreement is a finding to route to the operator — several are recorded below. Where they differ in *detail*, this file is simply more specific.
 
@@ -1525,7 +1525,7 @@ Next action by result:
 
 Known risks:         GOLD-005 requires deliberately destroying Artemis in live Cosmos; script
                        the operator request carefully with full expected/failure observations
-                       per AGENTS.md section 6.
+                       per AGENTS.md section 9.
 
 Do not implement:    Regression harness (Slice 16).
                      Any new gameplay state.

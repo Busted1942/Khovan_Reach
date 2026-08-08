@@ -1,19 +1,21 @@
 # AGENTS.md — Khovan Reach Implementation Agent Rules
 
-Status: repo-root implementation-agent control file
-Purpose: Keep coding and documentation agents aligned with the active repo-consolidated source set, Git/GitHub discipline, test-first delivery, branch lifecycle safety, and operator-facing test expectations.
+Status: repo-root governing control file for every coding/documentation agent working here — Claude Code, Codex, or any other tool
+Purpose: Keep agents aligned with the active repo-consolidated source set, Git/GitHub discipline, test-first delivery, branch lifecycle safety, and operator-facing test expectations, regardless of which AI is driving.
+
+This file is tool-agnostic by design. Tool-specific entry files (`CLAUDE.md`, `CODEX.md`) exist only as short pointers here — see `docs/00_project/00_source_index.md` section 2 for the full list. Do not fork rules into a tool-specific file; if a rule applies, it belongs here so every agent sees the same one.
 
 ---
 
 # 1. Source authority
 
-Use `docs/00_project/00_source_index.md` as the source map.
+Use `docs/00_project/00_source_index.md` as the source map. Nothing outside that map is authority.
 
 Do not treat old Pass files, old MAST files, patch bundles, archived notes, reference missions, generated files, or local clones as current scenario authority unless explicitly promoted.
 
-Do not create parallel active files with names like `final`, `new`, `copy`, `old`, `merged`, `v2`, or `patched`.
+Do not create parallel active files with names like `final`, `new`, `copy`, `old`, `merged`, `v2`, or `patched`. Edit stable canonical paths in place and rely on Git history for versioning.
 
-Edit stable canonical paths in place and rely on Git history for versioning.
+Do not reference `archive/`, `docs_external/_local_clones/`, `reference_missions/_local_clones/`, or `old_mast` from any runtime file. **Git-ignored folders are not runtime-ignored** — Cosmos scans the whole mission directory, not just files reachable from `story.mast`. A stray live `.mast` file sitting in an ignored folder can still collide by filename with an active or future runtime file.
 
 ---
 
@@ -23,11 +25,85 @@ Implementation agents may change runtime code, tests, documentation, and tooling
 
 If implementation discovers an architecture issue, surface it as a finding, blocker, source-update proposal, or slice-plan change. Do not silently change scenario intent to fit implementation convenience.
 
-Do not change scenario design, player-facing content, qualification criteria, DAMCON timing, Hessler behavior, pirate fiction, or debrief content unless the task explicitly targets those docs.
+Do not change scenario design, player-facing content, qualification criteria, DAMCON timing, Hessler behavior, pirate fiction, or debrief content unless the task explicitly targets those docs. Concretely, this means: **do not edit `docs/01_design/` or `docs/02_content/` during implementation work.** Design conflicts are surfaced as findings and routed to the operator — never resolved in place, never worked around silently.
+
+Do not reintroduce `artemis_ship_name`, `sim_create()`, `player_spawn(`, or `assign_client_to_ship` into the bootstrap path. LegendaryMissions owns the console and player-spawn lifecycle; Khovan only binds state to the ship it creates.
+
+Do not carry docs/governance changes into a runtime implementation branch, or start docs work from a branch with uncommitted runtime changes — see section 7 for the full branch-transition checklist.
 
 ---
 
-# 3. Git and GitHub discipline
+# 3. Orientation — read order and repo shape
+
+Read in this order before any artifact-changing work:
+
+1. This file — governing.
+2. `docs/00_project/00_source_index.md` — which files are canonical.
+3. `docs/04_implementation_setup/70_agent_handoff_protocol.md` — the slice-packet-in / verification-record-out contract.
+4. `docs/04_implementation_setup/60_mast_api_cookbook.md` — proven MAST syntax. Read before writing any `.mast`.
+5. The specific design sections named in the current slice packet — sections, not whole files. Context spent on unrelated design docs is context not spent on the packet.
+
+## Commands
+
+```bash
+python run_tests.py quick
+```
+
+`quick` is the only supported invocation. There is no full/slow mode.
+
+## Repo shape
+
+```text
+story.json / script.py / story.mast   mission package entry (root, required by Cosmos)
+scripts/main.mast                     imports every active runtime file
+scripts/systems/                      cross-cutting: bootstrap, objective panel, GM control panel, jumps
+scripts/acts/                         act/scene gameplay gates
+scripts/lib/                          shared helpers
+tests/                                static tests + per-slice verification records
+docs/01_design/                       scenario canon - DO NOT EDIT during implementation
+docs/04_implementation_setup/         handoff, API, and findings docs
+archive/, docs_external/, reference_missions/   reference only, never runtime-referenced
+```
+
+Load chain: `story.json → script.py → story.mast → LegendaryMissions.server_console → scripts/main.mast @map/khovan_reach`.
+
+---
+
+# 4. Writing MAST
+
+Use `docs/04_implementation_setup/60_mast_api_cookbook.md`. Every pattern in it is cited to a working file in this repo and tagged **[LIVE]** / **[COMPILE]** / **[UNPROVEN]**.
+
+**Do not write MAST from memory.** If the cookbook does not cover it, use the API-uncertainty format in cookbook section 12 rather than guessing. Invented syntax compiles surprisingly often and fails only in live Cosmos, where each round trip costs an operator session.
+
+Non-negotiable patterns, all learned from real failures:
+
+- Guard `if artemis_id == 0: ->END` before any ship API call.
+- None-check every `to_object()`.
+- Every delayed task carries a run-ID guard so story jumps invalidate it.
+- Every automatic gate ships with a Comms/GM fallback and a `*_fallback_available` flag.
+- Every spawn has an existence check and a cleanup routine.
+- Duplicate-suppress every player-facing message.
+- Set a status string on every branch, including failure branches — the GM overview reads them.
+
+---
+
+# 5. Evidence classes
+
+Never conflate these. This is the rule most often broken here.
+
+| Class | Proves | Does not prove |
+|---|---|---|
+| Static tests | file/text structure | anything at runtime |
+| MAST compile preflight | `story.mast` + imports compile | runtime values, GUI lifecycle, player assignment, renderer behavior, playability |
+| Live Cosmos smoke | actual behavior | — |
+
+A breadcrumb marker in `tests/live_startup_trace.txt` proves the marker was reached, not that the feature works. If live Cosmos contradicts static tests, **live wins.** Update the record, add a regression check, and do not claim the slice complete until the live failure is fixed or documented as a blocker.
+
+Report honestly: never claim files were edited, tested, committed, pushed, merged, or live-smoked unless that action actually happened. This applies to every result an agent records, not only final claims — a "Pass" written into a verification record based on a report is not the same evidence class as a "Pass" verified against the trace log, and the two must not be conflated either.
+
+---
+
+# 6. Git and GitHub discipline
 
 Before artifact-changing work, inspect:
 
@@ -46,11 +122,9 @@ git diff --stat
 
 Keep commits coherent and source-referenced. Do not commit secrets, unrelated debris, accidental generated files, local clones, caches, or unreviewed large binaries.
 
-Do not claim files were edited, tested, committed, pushed, merged, or live-smoked unless that action actually happened.
-
 ---
 
-# 4. Branch Lifecycle and Return-to-Work Checks
+# 7. Branch Lifecycle and Return-to-Work Checks
 
 Before artifact-changing work, confirm branch lifecycle state. Do not rely on `git status` alone; identify whether the current branch is appropriate for the task.
 
@@ -88,7 +162,7 @@ git diff --stat
 
 If the quick test command is unavailable, document that directly.
 
-Commit, stash, or intentionally discard local changes before switching. Do not carry unresolved docs/test/governance changes into runtime implementation work.
+Commit, stash, or intentionally discard local changes before switching. Do not carry unresolved docs/test/governance changes into runtime implementation work, and do not start docs work from a branch with uncommitted runtime changes.
 
 ## Docs/governance branch closing
 
@@ -140,7 +214,7 @@ Assistants should proactively guide branch opening, closing, merge-back, and ret
 
 ---
 
-# 5. Runtime Load and GUI Lifecycle Testing
+# 8. Runtime Load and GUI Lifecycle Testing
 
 For Cosmos/MAST work, `python run_tests.py quick` must protect the active runtime load path, not just source hygiene.
 
@@ -152,9 +226,7 @@ Quick tests should fail when active runtime files reference:
 - forbidden old module names
 - files outside the active mission load path
 
-Git-ignored folders are not runtime-ignored. If external reference clones live under the active Cosmos mission root, active runtime files must not reference them.
-
-When available, quick should also run the installed SBS Utils / MAST compile-preflight path. Treat this as a middle evidence class: stronger than text-only static checks because it compiles `story.mast` and imported active MAST files, but weaker than live Cosmos smoke because it does not prove runtime values, GUI/page lifecycle, player assignment, renderer behavior, or server/client playability.
+When available, quick should also run the installed SBS Utils / MAST compile-preflight path. This is the middle evidence class from section 5: stronger than text-only static checks because it compiles `story.mast` and imported active MAST files, but weaker than live Cosmos smoke because it does not prove runtime values, GUI/page lifecycle, player assignment, renderer behavior, or server/client playability.
 
 When live Cosmos reports a missing load file, add a targeted regression check so the same class of failure is caught by `quick` before the next live run.
 
@@ -167,8 +239,6 @@ For SBS Utils / MAST bootstrap work, quick tests should also check the lifecycle
 
 Static tests cannot fully prove live runtime behavior. Live Cosmos smoke remains required for mission-load acceptance items such as BOOT-001 and BOOT-012.
 
-If live Cosmos fails after quick tests pass, treat the live failure as stronger evidence. Update the verification note, add a regression/static check where feasible, and do not claim the slice complete until the live failure is fixed or documented as a blocker.
-
 When live Cosmos crashes or goes ambiguous with empty `mast.runtime.log` / `mast.compile.log`, use a route-smoke breadcrumb trace before guessing at runtime fixes. Keep the evidence classes separate:
 
 - last-success audit, such as `tests/live_smoke_last_bootstrap.txt`
@@ -180,7 +250,7 @@ Quick tests may check that route-smoke markers exist and trace files are ignored
 
 ---
 
-# 6. Operator Test Expectation
+# 9. Operator Test Expectation
 
 When asking the human operator to run a test, app launch, live smoke, UI check, generated-artifact review, branch workflow check, documentation review, or negative-control test, include the expected observable result before asking for the test.
 

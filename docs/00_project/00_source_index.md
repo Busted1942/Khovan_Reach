@@ -35,8 +35,11 @@ The current active source tree is this package.
 
 Repo-root implementation-agent control:
 
-- `AGENTS.md` (governing control file for all implementation agents)
-- `CLAUDE.md` (build-side orientation; defers to `AGENTS.md` on process)
+- `AGENTS.md` (single governing control file for every coding/documentation agent — Claude Code, Codex, or any other tool. All rules live here.)
+- `CLAUDE.md` (tool-loaded pointer only, for Claude Code's auto-loaded-file convention. No rules of its own — see `AGENTS.md`.)
+- `CODEX.md` (tool-loaded pointer only, mirroring `CLAUDE.md` for Codex-style tools. No rules of its own — see `AGENTS.md`.)
+
+Do not add rules to `CLAUDE.md` or `CODEX.md`. If a rule is needed, it goes in `AGENTS.md` so every agent sees the same one — that is the entire reason these pointer files exist instead of tool-specific copies.
 
 ---
 

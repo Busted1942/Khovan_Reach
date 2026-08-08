@@ -231,7 +231,7 @@ Return:
 2. The verification record Part 1, with `Acceptance Not Covered` honestly filled.
 3. `python run_tests.py quick` output, verbatim.
 4. Any API-uncertainty blocks raised.
-5. The completion report from `AGENTS.md` section 4:
+5. The completion report from `AGENTS.md` section 7:
 
 ```text
 Starting branch:
@@ -264,7 +264,7 @@ Before the operator is asked for live smoke, the planning agent checks:
 
 # 6. Operator test expectation
 
-Per `AGENTS.md` section 6, any request for operator action must include the full block. Never say only "run this."
+Per `AGENTS.md` section 9, any request for operator action must include the full block. Never say only "run this."
 
 ```text
 What changed:
