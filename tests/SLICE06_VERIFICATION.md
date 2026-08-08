@@ -189,3 +189,72 @@ Repo/branch assumption: run from `slice06-drone-contact-fire` after `python run_
 ## Next Action
 
 Run quick checks and diff check. Then live-smoke Phase A. Stop after Phase A if target selection, subsystem damage, training-safe behavior, or stock-menu behavior cannot be proven or reasonably fallback-confirmed.
+
+---
+
+## Live Smoke Log (append-only)
+
+### LIVE SMOKE 2026-08-08 (partial — GM-only pass)
+
+```text
+branch: slice06-drone-contact-fire
+commit: 33cd0c1
+build: locally installed Artemis3-x64-release, server + 1 local client (Game Master console)
+result: PARTIAL
+
+scope: GM-console-only functional pass, driven by Claude Code via desktop control.
+       Science/Comms/Weapons station behavior NOT exercised this pass — no client
+       was seated at those consoles. This is not a substitute for a crewed run.
+
+checks:
+- boot chain reached [KHOVAN BOOT 010] playable bootstrap complete: PASS
+  (trace shows full sequence: bootstrap state -> SCP init -> jump registry ->
+  engineering shakedown init -> drone contact fire init -> playable_bootstrap ->
+  generator/Tarsis gate init -> debug runtime -> BOOT 009/010)
+- Artemis start state matches source doc Act I canon: PASS
+  (Energy 0, Homing 0/10, Nuke 0/3, EMP 0/6, Mine 0/6 observed on server HUD)
+- Kestrel Yards and Tarsis Station spawn and appear as GM contacts: PASS
+- Scenario Control Panel renders live with correct button set: PASS
+- Test Mode toggle correctly gates "Test Mode Story Jumps" and
+  "Slice 06 Target Spike" visibility (hidden off, shown on): PASS
+- Slice 06 Target Spike route renders with correct conditional buttons
+  (Spawn only when inactive; Select/Cleanup appear once active): PASS
+- Spawn Target Spike: PASS
+  (khovan_training contact group appeared, drone_target_spike_active flipped,
+  trace: [KHOVAN ACT1 DRONE SPIKE SPAWN] target_id=4611686018427387917 spawn_count=1)
+- Read Target Spike Status: AMBIGUOUS
+  (label executes without error and comms_navigate returns to the same menu
+  cleanly, but no report text was found rendering anywhere in the Game Master
+  console UI after repeated attempts, including after maximizing the window
+  and toggling the comms-list panel. Not confirmed working; not confirmed broken.)
+- Cleanup Target Spike: PASS with a finding
+  (menu correctly reverted to spawn-only state; drone_target_spike_active
+  cleared)
+- Science scan / Comms hail / Weapons selection / manual subsystem damage:
+  NOT TESTED this pass (no station client connected)
+
+trace_marker_last: [KHOVAN ACT1 DRONE SPIKE DESTROY] destroyed_id=4611686018427387917
+
+finding: GM Cleanup fires the //damage/destroy hook.
+  sbs.delete_object() inside khovan_drone_contact_fire_cleanup_target_spike
+  triggers the same //damage/destroy handler a real combat kill would, so
+  Cleanup sets drone_target_spike_destroyed_observed = True with
+  manual_target=None, manual_system=None, weapons_damage=0.0, engines_damage=0.0.
+  GM cleanup and genuine Weapons-caused destruction are currently
+  indistinguishable through this hook. If Phase B uses destruction_observed as
+  a completion signal (per the recorded Drone 02 source decision), this needs
+  a guard before Phase B build, e.g. only trust destruction as a real kill
+  when accompanied by nonzero weapons_damage_value, or gate GM cleanup through
+  a separate code path that does not touch the shared destroy hook.
+
+blocker: Read Target Spike Status visibility unresolved. Does not block Phase A
+  spawn/cleanup mechanics, but blocks confidently reading spike state from the
+  GM console for anyone running this live without a trace-file tail open.
+
+next action: Investigate where GM-context comms_receive() actually renders in
+  this Cosmos build (may need a Communication-console pass, or the reply may
+  need routing through a different mechanism for GM-comms routes specifically).
+  Run the remaining Phase A checklist items (Science scan, Comms hail, Weapons
+  selection, subsystem damage) with a full crew before calling Phase A complete.
+  Resolve the Cleanup/destroy-hook finding before Phase B.
+```
