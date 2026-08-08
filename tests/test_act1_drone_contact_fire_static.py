@@ -51,7 +51,10 @@ class Act1DroneContactFireStaticTests(unittest.TestCase):
             "shared drone_target_spike_weapons_selected = False",
             "shared drone_target_spike_damage_observed = False",
             "shared drone_target_spike_manual_subsystem_hit_observed = False",
+            "shared drone_target_spike_manual_critical_hit_observed = False",
             "shared drone_target_spike_destroyed_observed = False",
+            'shared drone_target_spike_destruction_source = "not_observed"',
+            "shared drone_target_spike_cleanup_in_progress = False",
             'shared drone_target_spike_result = "unproven"',
             "Drone 01 proves Weapons subsystem disable; Drone 02 completes on destruction",
             "=== khovan_act1_drone_contact_fire_prepare_after_engineering ===",
@@ -131,16 +134,72 @@ class Act1DroneContactFireStaticTests(unittest.TestCase):
             '//damage/object if has_role(DAMAGE_TARGET_ID, "khovan_slice06_spike_target")',
             'system = get_inventory_value(DAMAGE_SOURCE_ID, "MANUAL_SYSTEM")',
             'target_id = get_inventory_value(DAMAGE_SOURCE_ID, "MANUAL_CRITICAL_HIT")',
-            'spike_target.data_set.get("system_damage", sbs.SHPSYS.WEAPONS)',
-            'spike_target.data_set.get("system_damage", sbs.SHPSYS.ENGINES)',
+            'spike_target.data_set.get("system_damage", 0)',
             "drone_target_spike_manual_subsystem_hit_observed = True",
+            "drone_target_spike_manual_critical_hit_observed = True",
             '//damage/destroy if has_role(DESTROYED_ID, "khovan_slice06_spike_target")',
             "drone_target_spike_destroyed_observed = True",
             "sbs.delete_object(drone_target_spike_target_id)",
             "[KHOVAN ACT1 DRONE SPIKE DAMAGE]",
             "[KHOVAN ACT1 DRONE SPIKE DESTROY]",
+            "[KHOVAN ACT1 DRONE SPIKE STATUS]",
         ]:
             self.assertIn(phrase, drone)
+
+        for forbidden in [
+            'sbs.SHPSYS.WEAPONS)',
+            'sbs.SHPSYS.ENGINES)',
+        ]:
+            self.assertNotIn(forbidden, drone)
+
+    def test_damage_handler_does_not_gate_subsystem_hit_on_critical_hit_match(self) -> None:
+        # Bug fixed 2026-08-08: the prior code required MANUAL_CRITICAL_HIT to match
+        # DAMAGE_TARGET_ID *and* MANUAL_SYSTEM to be non-None in the same event before
+        # recording a subsystem hit. Live smoke showed a real MANUAL_SYSTEM signal
+        # discarded by that AND. Assert the two are tracked independently.
+        drone = read(DRONE_PATH)
+        # //damage/object is a route, not a label; slice the file between its header
+        # and the next route/label header instead.
+        start = drone.index('//damage/object if has_role(DAMAGE_TARGET_ID, "khovan_slice06_spike_target")')
+        end = drone.index("//damage/destroy", start)
+        damage_route_body = drone[start:end]
+
+        self.assertIn("if system is not None:", damage_route_body)
+        self.assertIn("drone_target_spike_manual_subsystem_hit_observed = True", damage_route_body)
+        self.assertIn("if target_id is not None and target_id != 0:", damage_route_body)
+        self.assertIn("drone_target_spike_manual_critical_hit_observed = True", damage_route_body)
+        self.assertNotIn(
+            "if target_id == DAMAGE_TARGET_ID and system is not None:", damage_route_body
+        )
+
+    def test_destroy_handler_has_cleanup_vs_combat_guard(self) -> None:
+        # Confirmed live 2026-08-08: sbs.delete_object() in cleanup fires the same
+        # //damage/destroy hook a genuine Weapons kill fires. The destroy handler must
+        # distinguish source rather than treating destroyed_observed alone as a kill.
+        drone = read(DRONE_PATH)
+        start = drone.index('//damage/destroy if has_role(DESTROYED_ID, "khovan_slice06_spike_target")')
+        destroy_route_body = drone[start:]
+
+        for phrase in [
+            "if drone_target_spike_cleanup_in_progress:",
+            'drone_target_spike_destruction_source = "gm_cleanup"',
+            "elif drone_target_spike_weapons_damage_value > 0 or drone_target_spike_engines_damage_value > 0:",
+            'drone_target_spike_destruction_source = "genuine_weapons_kill"',
+            'drone_target_spike_destruction_source = "unattributed_zero_damage"',
+        ]:
+            self.assertIn(phrase, destroy_route_body)
+
+    def test_cleanup_handler_sets_and_clears_cleanup_in_progress_flag(self) -> None:
+        drone = read(DRONE_PATH)
+        cleanup_body = label_body(drone, "khovan_drone_contact_fire_cleanup_target_spike")
+        self.assertIn("drone_target_spike_cleanup_in_progress = True", cleanup_body)
+        self.assertIn("drone_target_spike_cleanup_in_progress = False", cleanup_body)
+        set_index = cleanup_body.index("drone_target_spike_cleanup_in_progress = True")
+        delete_index = cleanup_body.index("sbs.delete_object(drone_target_spike_target_id)")
+        self.assertLess(
+            set_index, delete_index,
+            "cleanup_in_progress must be set True before sbs.delete_object() is called",
+        )
 
     def test_scenario_control_panel_reports_spike_status(self) -> None:
         panel = read("scripts/systems/scenario_control_panel.mast")

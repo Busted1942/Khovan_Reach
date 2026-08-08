@@ -374,7 +374,9 @@ Note `+ "Label":` with a trailing colon opens an inline block; without a colon i
 
 ## 7.3 Damage and subsystem hits
 
-**[UNPROVEN]** `act1_drone_contact_fire.mast:198-217`. This is the highest-risk API in the mission — Slice 06's whole spike exists to test it. Do not build Drone 01 on it until live smoke confirms.
+**[UNPROVEN]** `act1_drone_contact_fire.mast:213-248`. This is the highest-risk API in the mission — Slice 06's whole spike exists to test it. Do not build Drone 01 on it until live smoke confirms the fixed version below.
+
+**Bugfix history (2026-08-08):** the original code passed `sbs.SHPSYS.WEAPONS`/`sbs.SHPSYS.ENGINES` as the *default-value* argument of `.get(key, default)` instead of using them as subsystem selectors — `.get()` is a flat key lookup (proven pattern: `artemis_object.data_set.get("playerThrottle", 0)`, section 8), so both fields silently read the same generic `"system_damage"` total. Separately, subsystem-hit detection required `MANUAL_CRITICAL_HIT` to match `DAMAGE_TARGET_ID` **and** `MANUAL_SYSTEM` to be non-`None` in the same event; live smoke on 2026-08-08 showed `MANUAL_SYSTEM` fire once as `SHPSYS.WEAPONS` on an event where `MANUAL_CRITICAL_HIT` was `None`, and the AND discarded that real signal. Full account in `tests/SLICE06_VERIFICATION.md` Known Risks and the Live Smoke Log entry dated 2026-08-08 ("operator pass, weapons exercised") plus its correction.
 
 ```mast
 //damage/object if has_role(DAMAGE_TARGET_ID, "khovan_slice06_spike_target")
@@ -382,23 +384,55 @@ Note `+ "Label":` with a trailing colon opens an inline block; without a colon i
     target_id = get_inventory_value(DAMAGE_SOURCE_ID, "MANUAL_CRITICAL_HIT")
     spike_target = to_object(DAMAGE_TARGET_ID)
     if spike_target is not None:
-        drone_target_spike_weapons_damage_value = spike_target.data_set.get("system_damage", sbs.SHPSYS.WEAPONS)
-    if target_id != 0:
-        # Consume the manual-hit inventory values so they do not leak into the next hit.
-        set_inventory_value(DAMAGE_SOURCE_ID, "MANUAL_SYSTEM", None)
-        set_inventory_value(DAMAGE_SOURCE_ID, "MANUAL_CRITICAL_HIT", None)
-        if target_id == DAMAGE_TARGET_ID and system is not None:
-            drone_target_spike_manual_subsystem = system.name
+        # No proven per-subsystem data_set key exists yet - both fields read the
+        # same generic total until one is proven live. Do not treat them as
+        # independently reliable per-subsystem values.
+        drone_target_spike_weapons_damage_value = spike_target.data_set.get("system_damage", 0)
+        drone_target_spike_engines_damage_value = spike_target.data_set.get("system_damage", 0)
+    # Track subsystem-lock (MANUAL_SYSTEM) and critical-hit (MANUAL_CRITICAL_HIT)
+    # independently - do not require both in the same event until live evidence
+    # justifies it (see bugfix history above).
+    if system is not None:
+        drone_target_spike_manual_subsystem_hit_observed = True
+        drone_target_spike_manual_subsystem = system.name
+    if target_id is not None and target_id != 0:
+        drone_target_spike_manual_critical_hit_observed = True
+    # Consume the manual-hit inventory values unconditionally so they do not leak
+    # into the next hit.
+    set_inventory_value(DAMAGE_SOURCE_ID, "MANUAL_SYSTEM", None)
+    set_inventory_value(DAMAGE_SOURCE_ID, "MANUAL_CRITICAL_HIT", None)
     ->END
 ```
 
-**[UNPROVEN]** Destruction (`act1_drone_contact_fire.mast:219-237`). Note the roles are removed and selections cleared, because object cleanup timing is not guaranteed:
+**[UNPROVEN]** Destruction, with the GM-cleanup-vs-combat-kill guard (`act1_drone_contact_fire.mast:250-284`). The guard's damage-value branch is **confirmed workable on live trace data** (2026-08-08: a GM cleanup produced `weapons_damage=0.0 engines_damage=0.0`; a real Weapons kill produced climbing nonzero values) — the `cleanup_in_progress` flag branch itself still needs a live re-test. Roles are removed and selections cleared, because object cleanup timing is not guaranteed:
 
 ```mast
 //damage/destroy if has_role(DESTROYED_ID, "khovan_slice06_spike_target")
     drone_target_spike_destroyed_observed = True
+    # sbs.delete_object() in cleanup fires this same hook a genuine kill fires.
+    # Primary signal: a flag the cleanup handler sets immediately before its
+    # delete_object() call, consumed here. Fallback: a real kill leaves nonzero
+    # damage; zero damage with no cleanup flag is unattributed, not assumed genuine.
+    if drone_target_spike_cleanup_in_progress:
+        drone_target_spike_destruction_source = "gm_cleanup"
+        drone_target_spike_cleanup_in_progress = False
+    elif drone_target_spike_weapons_damage_value > 0 or drone_target_spike_engines_damage_value > 0:
+        drone_target_spike_destruction_source = "genuine_weapons_kill"
+    else:
+        drone_target_spike_destruction_source = "unattributed_zero_damage"
     remove_role(DESTROYED_ID, "khovan_slice06_spike_target")
     ->END
+```
+
+The cleanup handler sets the flag immediately before `sbs.delete_object()`, and clears it again after the call as a fallback in case the hook does not fire synchronously in some future Cosmos build:
+
+```mast
+=== khovan_drone_contact_fire_cleanup_target_spike ===
+    ...
+    drone_target_spike_cleanup_in_progress = True
+    sbs.delete_object(drone_target_spike_target_id)
+    drone_target_spike_cleanup_in_progress = False
+    ...
 ```
 
 Known open questions on this group are listed in `tests/SLICE06_VERIFICATION.md` under Known Risks/API Uncertainties. Read that before touching damage detection.

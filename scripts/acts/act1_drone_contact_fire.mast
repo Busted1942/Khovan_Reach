@@ -20,9 +20,12 @@ shared drone_target_spike_weapons_selected = False
 shared drone_target_spike_damage_observed = False
 shared drone_target_spike_manual_subsystem_hit_observed = False
 shared drone_target_spike_manual_subsystem = "none"
+shared drone_target_spike_manual_critical_hit_observed = False
 shared drone_target_spike_weapons_damage_value = 0
 shared drone_target_spike_engines_damage_value = 0
 shared drone_target_spike_destroyed_observed = False
+shared drone_target_spike_destruction_source = "not_observed"
+shared drone_target_spike_cleanup_in_progress = False
 shared drone_target_spike_stock_comms_menu_observation = "live_smoke_required"
 shared drone_target_spike_training_safe_observation = "live_smoke_required"
 shared drone_target_spike_result = "unproven"
@@ -66,9 +69,12 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
     drone_target_spike_damage_observed = False
     drone_target_spike_manual_subsystem_hit_observed = False
     drone_target_spike_manual_subsystem = "none"
+    drone_target_spike_manual_critical_hit_observed = False
     drone_target_spike_weapons_damage_value = 0
     drone_target_spike_engines_damage_value = 0
     drone_target_spike_destroyed_observed = False
+    drone_target_spike_destruction_source = "not_observed"
+    drone_target_spike_cleanup_in_progress = False
     drone_target_spike_result = "unproven"
     drone_target_spike_blocker = "live_smoke_required"
     ->END
@@ -121,7 +127,8 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
     ->END
 
 === khovan_drone_contact_fire_report_target_spike ===
-    drone_target_spike_report = f"SLICE 06 TARGET SPIKE\nactive. {drone_target_spike_active}\ntarget_id. {drone_target_spike_target_id}\nstatus. {drone_target_spike_status}\nscan_observed. {drone_target_spike_scan_observed}\nhail_observed. {drone_target_spike_hail_observed}\nweapons_selected. {drone_target_spike_weapons_selected}\ndamage_observed. {drone_target_spike_damage_observed}\nmanual_subsystem_hit. {drone_target_spike_manual_subsystem_hit_observed}\nmanual_subsystem. {drone_target_spike_manual_subsystem}\nweapons_damage. {drone_target_spike_weapons_damage_value}\nengines_damage. {drone_target_spike_engines_damage_value}\ndestroyed_observed. {drone_target_spike_destroyed_observed}\nstock_comms_menu. {drone_target_spike_stock_comms_menu_observation}\ntraining_safe. {drone_target_spike_training_safe_observation}\nresult. {drone_target_spike_result}\nblocker. {drone_target_spike_blocker}"
+    drone_target_spike_report = f"SLICE 06 TARGET SPIKE\nactive. {drone_target_spike_active}\ntarget_id. {drone_target_spike_target_id}\nstatus. {drone_target_spike_status}\nscan_observed. {drone_target_spike_scan_observed}\nhail_observed. {drone_target_spike_hail_observed}\nweapons_selected. {drone_target_spike_weapons_selected}\ndamage_observed. {drone_target_spike_damage_observed}\nmanual_subsystem_hit. {drone_target_spike_manual_subsystem_hit_observed}\nmanual_subsystem. {drone_target_spike_manual_subsystem}\nmanual_critical_hit. {drone_target_spike_manual_critical_hit_observed}\nweapons_damage. {drone_target_spike_weapons_damage_value}\nengines_damage. {drone_target_spike_engines_damage_value}\ndestroyed_observed. {drone_target_spike_destroyed_observed}\ndestruction_source. {drone_target_spike_destruction_source}\nstock_comms_menu. {drone_target_spike_stock_comms_menu_observation}\ntraining_safe. {drone_target_spike_training_safe_observation}\nresult. {drone_target_spike_result}\nblocker. {drone_target_spike_blocker}"
+    script.write_khovan_startup_trace(f"[KHOVAN ACT1 DRONE SPIKE STATUS] status_read requested target_id={drone_target_spike_target_id} active={drone_target_spike_active} result={drone_target_spike_result}")
     comms_receive(drone_target_spike_report, title="Khovan Slice 06 Spike", title_color="cyan")
     comms_navigate("//comms/gamemaster/khovan_drone_contact_fire_spike")
     ->END
@@ -135,7 +142,15 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
             set_science_selection(artemis_id, 0)
             set_comms_selection(artemis_id, 0)
             set_weapons_selection(artemis_id, 0)
+        # Destroy-hook guard setup (2026-08-08): sbs.delete_object() fires the same
+        # //damage/destroy hook a genuine Weapons kill fires (confirmed live). Set this
+        # flag immediately before the call so the destroy handler can attribute the
+        # event to cleanup rather than combat. Consumed (read and cleared) inside the
+        # destroy handler; also cleared below as a fallback in case delete_object() does
+        # not trigger the hook synchronously in some future Cosmos build.
+        drone_target_spike_cleanup_in_progress = True
         sbs.delete_object(drone_target_spike_target_id)
+        drone_target_spike_cleanup_in_progress = False
     drone_target_spike_target_id = 0
     drone_target_spike_active = False
     drone_target_spike_cleanup_count = drone_target_spike_cleanup_count + 1
@@ -203,16 +218,32 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
     target_id = get_inventory_value(DAMAGE_SOURCE_ID, "MANUAL_CRITICAL_HIT")
     spike_target = to_object(DAMAGE_TARGET_ID)
     if spike_target is not None:
-        drone_target_spike_weapons_damage_value = spike_target.data_set.get("system_damage", sbs.SHPSYS.WEAPONS)
-        drone_target_spike_engines_damage_value = spike_target.data_set.get("system_damage", sbs.SHPSYS.ENGINES)
-    if target_id != 0:
-        set_inventory_value(DAMAGE_SOURCE_ID, "MANUAL_SYSTEM", None)
-        set_inventory_value(DAMAGE_SOURCE_ID, "MANUAL_CRITICAL_HIT", None)
-        if target_id == DAMAGE_TARGET_ID and system is not None:
-            drone_target_spike_manual_subsystem_hit_observed = True
-            drone_target_spike_manual_subsystem = system.name
-            drone_target_spike_result = "manual_subsystem_hit_observed_live_unverified_until_operator_confirms"
-            drone_target_spike_blocker = "none_if_live_operator_confirms_values"
+        # Bugfix (2026-08-08, confirmed live): data_set.get(key, default) is a flat key
+        # lookup where the second argument is a fallback DEFAULT VALUE, not a subsystem
+        # selector (proven pattern: artemis_object.data_set.get("playerThrottle", 0),
+        # cookbook section 8). The prior code passed sbs.SHPSYS.WEAPONS/ENGINES as that
+        # default, which is nonsensical for a damage float and was never reached anyway
+        # since "system_damage" is always present. There is no proven per-subsystem
+        # data_set key yet, so weapons/engines damage both read the same generic
+        # "system_damage" total until one is proven live. Do not treat these two fields
+        # as independently reliable per-subsystem values before that is proven.
+        drone_target_spike_weapons_damage_value = spike_target.data_set.get("system_damage", 0)
+        drone_target_spike_engines_damage_value = spike_target.data_set.get("system_damage", 0)
+    # Bugfix (2026-08-08, confirmed live): previously required MANUAL_CRITICAL_HIT to
+    # match DAMAGE_TARGET_ID AND MANUAL_SYSTEM to be non-None in the same event before
+    # recording a subsystem hit. Live smoke 2026-08-08 showed MANUAL_SYSTEM fired
+    # (SHPSYS.WEAPONS) on an event where MANUAL_CRITICAL_HIT was None, and the AND
+    # discarded that real signal. Track subsystem-lock (MANUAL_SYSTEM) and critical-hit
+    # (MANUAL_CRITICAL_HIT) independently until live evidence justifies requiring both.
+    if system is not None:
+        drone_target_spike_manual_subsystem_hit_observed = True
+        drone_target_spike_manual_subsystem = system.name
+        drone_target_spike_result = "manual_subsystem_hit_observed_live_unverified_until_operator_confirms"
+        drone_target_spike_blocker = "none_if_live_operator_confirms_values"
+    if target_id is not None and target_id != 0:
+        drone_target_spike_manual_critical_hit_observed = True
+    set_inventory_value(DAMAGE_SOURCE_ID, "MANUAL_SYSTEM", None)
+    set_inventory_value(DAMAGE_SOURCE_ID, "MANUAL_CRITICAL_HIT", None)
     script.write_khovan_startup_trace(f"[KHOVAN ACT1 DRONE SPIKE DAMAGE] target_id={DAMAGE_TARGET_ID} manual_target={target_id} manual_system={system} weapons_damage={drone_target_spike_weapons_damage_value} engines_damage={drone_target_spike_engines_damage_value}")
     ->END
 
@@ -221,7 +252,23 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
     drone_target_spike_active = False
     drone_target_spike_status = "destroyed_observed"
     drone_contact_last_step = "target_spike_destroyed"
-    drone_target_spike_result = "destruction_observed_live_unverified_until_operator_confirms"
+    # Destroy-hook guard (2026-08-08, confirmed workable on live trace data):
+    # sbs.delete_object() in cleanup fires this same hook a genuine Weapons kill fires.
+    # Primary signal: drone_target_spike_cleanup_in_progress, set by the cleanup handler
+    # immediately before its delete_object() call and consumed (read + cleared) here.
+    # Fallback signal, used only if cleanup_in_progress is False: a real kill leaves a
+    # nonzero value in weapons/engines damage; a destroy with neither signal present is
+    # unattributed and should not be assumed genuine without further investigation.
+    if drone_target_spike_cleanup_in_progress:
+        drone_target_spike_destruction_source = "gm_cleanup"
+        drone_target_spike_result = "destruction_observed_gm_cleanup_not_a_kill"
+        drone_target_spike_cleanup_in_progress = False
+    elif drone_target_spike_weapons_damage_value > 0 or drone_target_spike_engines_damage_value > 0:
+        drone_target_spike_destruction_source = "genuine_weapons_kill"
+        drone_target_spike_result = "destruction_observed_genuine_weapons_kill"
+    else:
+        drone_target_spike_destruction_source = "unattributed_zero_damage"
+        drone_target_spike_result = "destruction_observed_unattributed_needs_investigation"
     drone_target_spike_blocker = "none_if_live_operator_confirms_destruction_event"
     if drone_target_spike_navproxy_id != 0:
         sim.delete_navproxy_by_id(drone_target_spike_navproxy_id)
@@ -233,5 +280,5 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
         set_comms_selection(artemis_id, 0)
         set_weapons_selection(artemis_id, 0)
     drone_target_spike_target_id = 0
-    script.write_khovan_startup_trace(f"[KHOVAN ACT1 DRONE SPIKE DESTROY] destroyed_id={DESTROYED_ID}")
+    script.write_khovan_startup_trace(f"[KHOVAN ACT1 DRONE SPIKE DESTROY] destroyed_id={DESTROYED_ID} destruction_source={drone_target_spike_destruction_source}")
     ->END
