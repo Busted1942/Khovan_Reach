@@ -92,7 +92,7 @@ This is a spike harness, not the player drill:
 
 ## Spike Result
 
-Status: partial live proof (GM-console-only pass, 2026-08-08). Spawn and cleanup mechanics are live-proven. Status readback is live-ambiguous. Science/Comms/Weapons station behavior is still live-unproven — no crewed pass has been run. See Live Smoke Log at the end of this file for the full record.
+Status: partial live proof (GM-console pass 2026-08-08, plus a second operator pass same date exercising Weapons/Science). Spawn, cleanup, non-attack behavior, Science scan, and Weapons selection/fire/kill are live-proven. Status readback (`Read Target Spike Status`) remains live-ambiguous. Comms hail and stock-menu suppression remain untested. Manual subsystem targeting is now confirmed live-UNAVAILABLE against this contact type — a new finding requiring a Drone 01 design decision before Phase B, not just an open risk. See Live Smoke Log at the end of this file for the full record.
 
 Quick/static checks prove the spike harness exists, imports, initializes, exposes GM-only controls, spawns a neutral training target, includes Science/Comms hooks, and includes selection/damage/destruction observers.
 
@@ -167,37 +167,39 @@ Repo/branch assumption: run from `slice06-drone-contact-fire` after `python run_
 - Static: source ambiguity is documented and Drone 02 destruction decision is recorded.
 - Static: no full Drone 01/Drone 02 flow is falsely claimed.
 - Live (2026-08-08, GM console only): boot chain reaches BOOT 010 live; Artemis start state matches source doc; Kestrel Yards and Tarsis Station spawn and appear as GM contacts; Scenario Control Panel renders correctly; Test Mode toggle correctly gates Story Jumps and Slice 06 Target Spike visibility; Spawn Target Spike works and flips `drone_target_spike_active`; Cleanup Target Spike correctly reverts the menu.
+- Live (2026-08-08, operator pass): target non-attack behavior confirmed; Science scan confirmed; Weapons target selection confirmed; Weapons fire/kill confirmed. Station crewing arrangement for this pass (single client vs. simultaneous multi-station) was not recorded — confirm before treating this as proof of a genuinely crewed session.
 
 ## Acceptance Not Covered
 
-- Live Cosmos must prove target non-attack behavior. Not tested — no station client connected this pass.
-- Live Cosmos must prove scan/hail route visibility. Not tested.
-- Live Cosmos must prove no unwanted stock enemy menus. Not tested.
-- Live Cosmos must prove Weapons target selection. Not tested.
-- Live Cosmos must prove damage/object and damage/destroy events from genuine combat. Not tested — the only live destroy event observed so far was GM-cleanup-triggered, not a Weapons kill (see Known Risks).
-- Live Cosmos must prove manual subsystem targeting data if it is expected for Drone 01. Not tested.
-- `Read Target Spike Status` is live-ambiguous: the label executes without error and returns to the same menu cleanly, but no report text was found rendering anywhere in the Game Master console across repeated attempts, including after maximizing the window and toggling the comms-list panel. Not confirmed working; not confirmed broken. Needs investigation into where GM-context `comms_receive()` actually renders in this Cosmos build before this can be trusted as a working status readout.
+- Live Cosmos must prove scan/hail route visibility for Comms specifically, and no unwanted stock enemy menus. Not tested this pass — Comms hail was not exercised or reported. This is a significant remaining gap: stock-menu suppression is one of the two things this spike exists to prove (the other being subsystem damage).
+- Live Cosmos must prove damage/object and damage/destroy events from genuine combat, distinguishable from GM cleanup. A real Weapons kill was confirmed live (2026-08-08), but the specific A/B trace comparison against a GM Cleanup destroy event (requested to confirm the destroy-hook finding below) was not explicitly performed or reported this pass.
+- **Live-confirmed as unavailable, 2026-08-08:** manual subsystem targeting does not appear to be exposed against this contact through normal Weapons console targeting. This is no longer "not tested" — it is a live finding requiring a Phase B design decision (see Known Risks).
+- Whether Weapons-console damage readout is visible to a crewed station for this contact type — live-confirmed as NOT visible/known to the operator this pass. Needs investigation.
+- `Read Target Spike Status` remains live-ambiguous. It was retried this pass but only after the target had already been destroyed ("target gone"), which does not test the original question — whether the report renders while a station is seated and the target is alive. Still unresolved.
 - Full Drone 01 and Drone 02 sequence remains unimplemented until Phase A is accepted or a fallback/blocker is documented.
 
 ## Known Risks/API Uncertainties
 
 - Neutral `npc_spawn` may still have stock behaviors not visible in static checks.
 - `get_weapons_selection` may not fire consistently.
-- `MANUAL_SYSTEM` / `MANUAL_CRITICAL_HIT` may be absent or not reliable.
-- `system_damage` values may not reflect manual subsystem hits without extra handling.
+- **Confirmed live 2026-08-08 (operator pass):** manual subsystem targeting is unavailable against the Slice 06 spike target through normal Weapons console targeting — the operator reported no subsystem-targeting option existed against this contact. This was previously listed as a hypothetical risk (`MANUAL_SYSTEM` / `MANUAL_CRITICAL_HIT` may be absent); it is now a confirmed-live finding, not a hypothetical. **Design implication for Phase B:** Drone 01 requires subsystem-hit detection per the source docs. If this Cosmos build cannot expose subsystem targeting for a custom neutral contact, the documented Comms/captain-confirmation fallback needs to become Drone 01's primary detection path, not a last-resort fallback. This is now a decision point for the operator before Phase B design, not a residual risk to note and move past.
+- `system_damage` values may not reflect manual subsystem hits without extra handling — unresolved, and now moot if subsystem targeting itself is unavailable (see above).
+- **New finding, live 2026-08-08:** the operator could kill the target via Weapons but did not know where or how to read damage on it from any station UI. May share a root cause with the `Read Target Spike Status` rendering gap below (custom/GM-spawned contacts may not receive the same UI treatment as standard hostiles), or may be a separate Weapons-console gap. Needs investigation before Phase B assumes players can see subsystem/hull damage live during Drone 01/02.
 - Destruction events may fire, but object cleanup timing may affect status reading.
-- If subsystem detection is unavailable, Drone 01 needs a documented Comms/captain confirmation or GM final fallback rather than fake automatic detection.
+- If subsystem detection is unavailable, Drone 01 needs a documented Comms/captain confirmation or GM final fallback rather than fake automatic detection. **This condition is now confirmed true, not hypothetical — see above.**
 - **Confirmed live 2026-08-08**: `sbs.delete_object()` inside `khovan_drone_contact_fire_cleanup_target_spike` fires the same `//damage/destroy` hook a genuine Weapons kill would. Trace evidence: `[KHOVAN ACT1 DRONE SPIKE CLEANUP] cleanup_count=1` immediately followed by `[KHOVAN ACT1 DRONE SPIKE DAMAGE] ... weapons_damage=0.0 engines_damage=0.0` and `[KHOVAN ACT1 DRONE SPIKE DESTROY]`. GM cleanup and real combat destruction are currently indistinguishable through `drone_target_spike_destroyed_observed`. Since the recorded Drone 02 source decision is "completes on destruction," Phase B must not treat `destroyed_observed` alone as a valid completion signal — it needs a guard (e.g. only trust destruction when accompanied by nonzero `weapons_damage_value`/`engines_damage_value`, or route GM cleanup through a path that does not touch the shared destroy hook).
 
 ## Next Action
 
-Phase A GM-console mechanics (spawn/cleanup/visibility gating) are live-proven; the crewed half is not. Before calling Phase A complete:
+Phase A GM-console mechanics and most station mechanics (spawn, non-attack, Science scan, Weapons selection/fire/kill) are now live-proven (2026-08-08). Remaining before Phase A can be called complete:
 
-1. Run a crewed pass with clients seated at Science, Comms, and Weapons to exercise scan/hail/selection/subsystem-damage against a live-spawned target.
-2. Resolve the `Read Target Spike Status` rendering ambiguity.
-3. Add a destruction-source guard (see Known Risks) before Phase B uses `destroyed_observed` as the Drone 02 completion signal.
+1. Test Comms hail specifically, and confirm no stock enemy taunt/surrender/hostile menus interfere — not yet tested.
+2. Retry `Read Target Spike Status` while the target is still alive and a station is seated — the only attempt so far was after destruction, which doesn't test the real question.
+3. Run the destroy-hook A/B comparison directly: trace-compare a real Weapons kill against a GM Cleanup destroy event to confirm they are distinguishable, or confirm they are not (see Known Risks).
+4. Add a destruction-source guard before Phase B uses `destroyed_observed` as the Drone 02 completion signal.
+5. **New, higher priority than the above:** route the confirmed subsystem-targeting-unavailable finding to the operator as an explicit Drone 01 design decision. If subsystem detection genuinely cannot be automated against a custom contact in this Cosmos build, Drone 01's design needs to commit to the Comms/captain-confirmation path as primary before Phase B is scoped, not discover this mid-build.
 
-Stop after Phase A if target selection, subsystem damage, training-safe behavior, or stock-menu behavior cannot be proven or reasonably fallback-confirmed.
+Stop after Phase A if stock-menu behavior cannot be proven or reasonably fallback-confirmed, or if the operator decision in item 5 changes Drone 01's scope.
 
 ---
 
@@ -266,4 +268,80 @@ next action: Investigate where GM-context comms_receive() actually renders in
   Run the remaining Phase A checklist items (Science scan, Comms hail, Weapons
   selection, subsystem damage) with a full crew before calling Phase A complete.
   Resolve the Cleanup/destroy-hook finding before Phase B.
+```
+
+### LIVE SMOKE 2026-08-08 (partial — operator pass, weapons exercised)
+
+```text
+branch: slice06-drone-contact-fire
+commit: (at time of pass; run_tests.py quick was passing)
+build: locally installed Artemis3-x64-release
+result: PARTIAL
+
+scope: Operator-driven pass. Station crewing arrangement (single client cycling
+       stations vs. multiple simultaneous clients) not recorded — confirm before
+       trusting this as proof of a genuinely crewed, simultaneous-station session.
+
+checks:
+- Spawn Target Spike: PASS (screenshot confirms one "Slice 06 Spike Target"
+  contact, khovan_training group, tsn allegiance tag)
+- Target does not attack Artemis: PASS
+- Science scan: PASS
+- Comms hail / stock-menu suppression: NOT TESTED this pass — not reported.
+  This is a real gap: the training-safe Comms hail behavior and stock
+  enemy-menu suppression are exactly the finding this checklist exists to
+  catch, per the Known Risks entry on npc_spawn stock behaviors.
+- Weapons target selection/lock: PASS ("I can fire on the target")
+- Weapons fire / damage recorded: PASS ("I can kill it") but with a finding —
+  operator reported not knowing where/how to read damage on this contact from
+  the Weapons console. Damage values may only be confirmable via the trace
+  file, not from any in-game station UI, for this contact type.
+- Manual subsystem targeting: FAIL / CONFIRMED UNAVAILABLE — operator reports
+  no subsystem-targeting option exists against this contact ("not a standard
+  target"). This moves the Known Risks entry on MANUAL_SYSTEM /
+  MANUAL_CRITICAL_HIT from hypothetical to confirmed-live: subsystem hit
+  detection is NOT available through normal Weapons targeting against a
+  GM-spawned neutral contact in this Cosmos build.
+- Destruction: PASS ("Pass") — but the specific check requested (compare
+  trace damage values on this real Weapons kill against a separate GM Cleanup
+  destroy event, to confirm they are distinguishable per the destroy-hook
+  finding above) was not explicitly reported as done. Not confirmed either
+  way.
+- Read Target Spike Status: retried AFTER the target was destroyed
+  ("Target gone"). This does not resolve the original open question, which
+  was whether the status report renders anywhere in the console UI while a
+  station is seated and the target is still alive. Still AMBIGUOUS/open.
+
+trace_marker_last: not captured this pass — recommend tailing
+  tests/live_startup_trace.txt during the next pass so damage values and
+  destroy-hook markers can be read directly rather than inferred from the UI.
+
+finding (NEW, confirmed live): manual subsystem targeting is unavailable
+  against the Slice 06 spike target through normal Weapons console targeting.
+  Design implication: Drone 01 (per docs/01_design/10_mast_requirements.md
+  section 8.5 and the admin plan's ACT1-021/D2 subsystem-hit checks) requires
+  subsystem-hit detection. If this Cosmos build genuinely cannot expose
+  MANUAL_SYSTEM/MANUAL_CRITICAL_HIT for a custom neutral contact, Drone 01
+  needs the documented Comms/captain-confirmation fallback from Known Risks
+  as its PRIMARY path, not a fallback of last resort. This is now a design
+  decision point for Phase B, not a residual risk.
+
+finding (NEW): Weapons-side damage readout is not visible/known to the
+  operator for this contact type. May be the same root cause as the
+  Read Target Spike Status GM-rendering gap (custom/GM-spawned contacts not
+  getting the same UI treatment as standard hostiles), or may be a separate
+  Weapons-console-specific gap. Needs investigation before Phase B assumes
+  players can see subsystem/hull damage during Drone 01/02.
+
+blocker: same as prior entry — Read Target Spike Status rendering, still
+  unresolved, now compounded by the Weapons damage-readout gap above.
+  Destroy-hook guard (see Known Risks) still not built and still not
+  confirmed distinguishable in a live A/B comparison.
+
+next action: 1) confirm crewing arrangement for this pass (single client vs.
+  simultaneous stations) so the record is accurate; 2) explicitly test Comms
+  hail / stock-menu suppression; 3) retry Read Target Spike Status while the
+  target is still alive; 4) run the GM-Cleanup-vs-real-kill trace comparison
+  directly; 5) route the subsystem-targeting-unavailable finding to the
+  operator as a Drone 01 design decision before Phase B.
 ```
