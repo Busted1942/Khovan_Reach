@@ -106,6 +106,7 @@ class Act1DroneContactFireStaticTests(unittest.TestCase):
             'link(artemis_id, "extra_scan_source", drone_target_spike_target_id)',
             "set_science_selection(artemis_id, drone_target_spike_target_id)",
             "set_comms_selection(artemis_id, drone_target_spike_target_id)",
+            'drone_target_spike_status = "spawned_inert_hostile_scan_target"',
             "[KHOVAN ACT1 DRONE SPIKE SPAWN]",
         ]:
             self.assertIn(phrase, spawn_body)

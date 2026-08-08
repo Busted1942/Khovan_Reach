@@ -160,7 +160,7 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
     drone_target_spike_navproxy = sim.add_navproxy(drone_target_spike_target_id, "Slice 06 Spike Target", "kralien_cruiser", "#FC3")
     drone_target_spike_navproxy_id = to_id(drone_target_spike_navproxy)
     drone_target_spike_active = True
-    drone_target_spike_status = "spawned_neutral_training_target"
+    drone_target_spike_status = "spawned_inert_hostile_scan_target"
 
     if artemis_id != 0 and drone_target_spike_target_id != 0:
         link(artemis_id, "extra_scan_source", drone_target_spike_target_id)
