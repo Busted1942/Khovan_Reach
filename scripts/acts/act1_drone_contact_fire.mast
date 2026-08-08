@@ -249,29 +249,6 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
     comms_navigate("//comms/gamemaster/khovan_drone_contact_fire_spike")
     ->END
 
-//enable/science if has_roles(SCIENCE_SELECTED_ID, "khovan_slice06_spike_target")
-
-//science if has_roles(SCIENCE_SELECTED_ID, "khovan_slice06_spike_target")
-    + "Initial Scan":
-        drone_target_spike_scan_observed = True
-        drone_target_spike_status = "science_scan_observed"
-        drone_contact_last_step = "target_spike_science_scan"
-        script.write_khovan_startup_trace(f"[KHOVAN ACT1 DRONE SPIKE SCAN] science scan observed target_id={SCIENCE_SELECTED_ID}")
-        <scan>
-            % Slice 06 target spike scan complete. Neutral training target; maintain normal station procedures.
-    + "scan":
-        drone_target_spike_scan_observed = True
-        drone_target_spike_status = "science_scan_observed"
-        drone_contact_last_step = "target_spike_science_scan"
-        script.write_khovan_startup_trace(f"[KHOVAN ACT1 DRONE SPIKE SCAN] scan observed target_id={SCIENCE_SELECTED_ID}")
-        <scan>
-            % Slice 06 target spike scan complete. Target is available for training contact procedures.
-    + "intel":
-        drone_target_spike_scan_observed = True
-        script.write_khovan_startup_trace(f"[KHOVAN ACT1 DRONE SPIKE INTEL] intel observed target_id={SCIENCE_SELECTED_ID}")
-        <scan>
-            % Intel package: training target for contact, targeting, and damage-control procedures.
-
 //enable/comms if has_roles(COMMS_SELECTED_ID, "khovan_slice06_spike_target")
 
 //comms if has_roles(COMMS_SELECTED_ID, "khovan_slice06_spike_target")

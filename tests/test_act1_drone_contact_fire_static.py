@@ -97,7 +97,7 @@ class Act1DroneContactFireStaticTests(unittest.TestCase):
         self.assertNotIn("@gui", drone)
         self.assertNotIn("//gui", drone)
 
-    def test_spike_spawn_uses_small_neutral_training_target_and_scan_comms_hooks(self) -> None:
+    def test_spike_spawn_uses_small_neutral_training_target_and_stock_scan_comms_hooks(self) -> None:
         drone = read(DRONE_PATH)
         spawn_body = label_body(drone, "khovan_drone_contact_fire_spawn_target_spike")
         for phrase in [
@@ -113,9 +113,6 @@ class Act1DroneContactFireStaticTests(unittest.TestCase):
             self.assertIn(phrase, spawn_body)
 
         for phrase in [
-            '//enable/science if has_roles(SCIENCE_SELECTED_ID, "khovan_slice06_spike_target")',
-            '//science if has_roles(SCIENCE_SELECTED_ID, "khovan_slice06_spike_target")',
-            'drone_target_spike_scan_observed = True',
             '//enable/comms if has_roles(COMMS_SELECTED_ID, "khovan_slice06_spike_target")',
             '//comms if has_roles(COMMS_SELECTED_ID, "khovan_slice06_spike_target")',
             '+ "Khovan: Hail Spike Target" khovan_drone_contact_fire_hail_spike_target',
@@ -123,6 +120,9 @@ class Act1DroneContactFireStaticTests(unittest.TestCase):
             "Khovan: Hail Spike Target",
         ]:
             self.assertIn(phrase, drone)
+
+        self.assertNotIn('//enable/science if has_roles(SCIENCE_SELECTED_ID, "khovan_slice06_spike_target")', drone)
+        self.assertNotIn('//science if has_roles(SCIENCE_SELECTED_ID, "khovan_slice06_spike_target")', drone)
 
     def test_gm_comms_receive_calls_use_comms_override_experiment(self) -> None:
         # Experimental fix, 2026-08-08: live smoke confirmed the bare comms_receive()
