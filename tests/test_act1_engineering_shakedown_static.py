@@ -149,8 +149,8 @@ class Act1EngineeringShakedownStaticTests(unittest.TestCase):
         self.assertEqual(label_positions, sorted(label_positions))
 
         for phrase in [
-            "Engineering systems shakedown begins",
-            "impulse output to zero percent and warp output to two hundred percent",
+            "Engineering: Set Impulse to 0% and Warp to 200% and validate you see the heat sinks begin to increase slowly.",
+            "Helm: Go to full impulse and ensure your speed remains at 0. Then to warp 1 and report your speed to the Captain.",
             "no-motion validation logged",
             "rest-cycle standby confirmed in crew quarters",
             "meal-cycle standby confirmed in the mess",

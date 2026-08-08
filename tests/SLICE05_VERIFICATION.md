@@ -80,9 +80,8 @@ The implementation also sets `shakedown_mode = "full"` when Slice 05 becomes ava
 
 Player-facing text is concise and delivered through the existing Comms/current-objective path:
 
-- Engineering systems shakedown begins.
-- Engineering sets impulse zero and warp 200.
-- Captain/Helm confirms full-impulse no-motion behavior.
+- Engineering sets impulse to 0% and warp to 200%, then validates that the heat sinks begin to increase slowly.
+- Helm goes to full impulse, confirms speed remains at 0, then goes to warp 1 and reports speed to the Captain.
 - DAMCON Control confirms crew-quarters rest-cycle standby.
 - DAMCON Control confirms mess meal-cycle standby.
 - Engineering starts controlled 300% overload after Helm sets engines to all stop.
