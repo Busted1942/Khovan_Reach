@@ -186,7 +186,7 @@ Act I message-ordering and player instruction clarity bug:
   4. Kestrel departure: `Kestrel Yard Control: departure clearance granted. Helm, clear the launch envelope by moving at least 1 km from Kestrel. Comms, confirm once Artemis is outside the yard boundary.`
   5. Departure objective: `Helm clear the Kestrel launch envelope: move at least 1 km from Kestrel, then Comms confirm exit.`
   6. Kestrel launch-envelope: `Kestrel Yard Control logs Artemis clear of the launch envelope. Stand by for generator advisory while yard telemetry catches up.`
-  7. Kestrel advisory: `Kestrel Yard Control: advisory packet follows. Artemis is operating under a temporary generator governor. Expect constrained startup resources and deliberate speed/power handling until Tarsis completes generator acceptance. Tarsis has the acceptance package and will clear the handoff after docking/resupply.`
+  7. Kestrel advisory: `Artemis, you have limited energy reserves. Proceed to Tarsis station and submit this authorization packet to obtain a full system recharge.`
   8. Training reminder: `Training Control: keep speed and power changes deliberate. Treat the governor as active until Tarsis completes the handoff. Comms should coordinate homing priority, generator support, and docking clearance with Tarsis.`
   9. Tarsis objective: `Proceed to Tarsis. Comms request homing priority, generator support, and docking clearance.`
   10. Tarsis hail: `Tarsis Station: Artemis, we read you. Production Control and Generator Acceptance are standing by. Request homing priority, generator support, and docking clearance before approach.`

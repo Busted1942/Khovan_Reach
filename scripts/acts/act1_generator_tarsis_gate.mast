@@ -77,7 +77,7 @@ shared tarsis_governor_clear_response_sent = False
 shared generator_governor_cleared = False
 
 shared kestrel_yard_lock_visual_text = "Kestrel Yard Control: Artemis is held in yard-lock pending departure clearance. Comms, request departure clearance when the captain is ready."
-shared kestrel_generator_advisory_text = "Kestrel Yard Control: advisory packet follows. Artemis is operating under a temporary generator governor. Expect constrained startup resources and deliberate speed/power handling until Tarsis completes generator acceptance. Tarsis has the acceptance package and will clear the handoff after docking/resupply."
+shared kestrel_generator_advisory_text = "Artemis, you have limited energy reserves. Proceed to Tarsis station and submit this authorization packet to obtain a full system recharge."
 shared kestrel_homing_reserve_text = "Kestrel Yard Control: Artemis has no homing torpedoes loaded until Comms requests the emergency reserve. The reserve is two homing torpedoes only; Tarsis handles replacement and generator acceptance."
 shared kestrel_homing_reserve_request_text = "Kestrel Yard Control: emergency homing reserve approved. Loading two homing torpedoes now. These are reserve margin under the generator governor, not a full combat load. No nukes, EMPs, or mines are released before Tarsis resupply."
 shared kestrel_homing_reserve_prompt_text = "Artemis, you may notice you are traveling exceptionally slow. We are having generator issues and could not charge your engines before you were scheduled for departure. You should request a reserve homing torpedo that your Weapons officer may use to power your engine for a short time."
