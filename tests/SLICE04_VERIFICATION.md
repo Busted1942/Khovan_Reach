@@ -91,7 +91,7 @@ Emergency reserve behavior:
 - Source intent preserved: generator governor remains active, Artemis starts with 0 homing torpedoes and no nukes/EMPs/mines, Kestrel can release exactly 2 homing torpedoes through Comms, and Tarsis remains required for homing replacement plus generator acceptance.
 - Live failure fixed: fresh load showed `Homing 2/10` because the Slice 04 start-state code explicitly set `Homing_NUM = 2`.
 - Change: Kestrel Comms now includes `Khovan: Request Emergency Homing Reserve`.
-- Response text: `Kestrel Yard Control: emergency homing reserve approved. Loading two homing torpedoes now. These are reserve margin under the generator governor, not a full combat load. No nukes, EMPs, or mines are released before Tarsis resupply.`
+- Response text: `Emergency homing torpedo trasfer complete. Use them to speed your journey Artemis.`
 - Runtime behavior: fresh load requests Homing `0`; the Kestrel reserve request sets `Homing_NUM` to `2` once; repeat selection is suppressed and cannot raise the count above 2.
 - Range gate: emergency homing reserve release requires Artemis within 600 m of Kestrel. If Artemis is farther away, Kestrel rejects the request and does not load the reserve.
 - Breadcrumbs: `[KHOVAN ACT1 RESERVE 001] emergency homing reserve requested`, `[KHOVAN ACT1 RESERVE RANGE]` with current Kestrel range, `[KHOVAN ACT1 RESERVE 002] emergency homing reserve load requested`, `[KHOVAN ACT1 RESERVE 003] emergency homing reserve applied homing=2`, and `[KHOVAN ACT1 RESERVE 004] emergency homing reserve already loaded; homing remains 2` on repeat.
@@ -182,7 +182,7 @@ Act I message-ordering and player instruction clarity bug:
 - Story sequence text:
   1. Dillon: `Dillon: Crew of Artemis, this is a qualification cruise. First task: get the ship out of Kestrel cleanly. Comms, request departure clearance. Helm, hold position until Kestrel releases the yard-lock. Captain, coordinate the sequence.`
   2. Startup objective: `Comms request Kestrel departure clearance.`
-  3. Kestrel emergency reserve: `Kestrel Yard Control: emergency homing reserve approved. Loading two homing torpedoes now. These are reserve margin under the generator governor, not a full combat load. No nukes, EMPs, or mines are released before Tarsis resupply.`
+  3. Kestrel emergency reserve: `Emergency homing torpedo trasfer complete. Use them to speed your journey Artemis.`
   4. Kestrel departure: `Kestrel Yard Control: departure clearance granted. Helm, clear the launch envelope by moving at least 1 km from Kestrel. Comms, confirm once Artemis is outside the yard boundary.`
   5. Departure objective: `Helm clear the Kestrel launch envelope: move at least 1 km from Kestrel, then Comms confirm exit.`
   6. Kestrel launch-envelope: `Kestrel Yard Control logs Artemis clear of the launch envelope. Stand by for generator advisory while yard telemetry catches up.`
