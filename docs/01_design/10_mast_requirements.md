@@ -1040,7 +1040,7 @@ Recommended build slices:
 15. Checkpoint/reload hardening
 16. Regression harness and pre-session checks
 
-Use `khovan_reach_implementation_slice_plan_v1.md` for per-slice acceptance criteria.
+Use `docs/01_design/50_implementation_slice_plan.md` for per-slice acceptance criteria.
 
 ---
 
