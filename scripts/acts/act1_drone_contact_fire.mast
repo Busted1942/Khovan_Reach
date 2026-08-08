@@ -150,9 +150,14 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
     drone_contact_sequence_status = "target_spike_spawn_requested"
     drone_contact_last_step = "target_spike_spawn"
     drone_target_spike_status = "spawn_requested"
-    drone_target_spike_target = npc_spawn(32000, 0, 12000, "Slice 06 Spike Target", "khovan_training, neutral, khovan_slice06_spike_target, khovan_drone_spike_target", "tsn_warpster", "behav_npcship")
+    # API uncertainty / GM-only scan spike (2026-08-08): a hostile Kralien hull is
+    # expected to expose the engine's normal shield-frequency scan data.  The
+    # playership behavior has no NPC AI driver, so this active NPC should remain
+    # stationary and cannot fire or repair itself without a client.  Live Cosmos
+    # must confirm both observations; no production Drone behavior depends on it.
+    drone_target_spike_target = npc_spawn(32000, 0, 12000, "Slice 06 Spike Target", "kralien, khovan_training, khovan_slice06_spike_target, khovan_drone_spike_target", "kralien_cruiser", "behav_playership")
     drone_target_spike_target_id = to_id(drone_target_spike_target)
-    drone_target_spike_navproxy = sim.add_navproxy(drone_target_spike_target_id, "Slice 06 Spike Target", "tsn_warpster", "#FC3")
+    drone_target_spike_navproxy = sim.add_navproxy(drone_target_spike_target_id, "Slice 06 Spike Target", "kralien_cruiser", "#FC3")
     drone_target_spike_navproxy_id = to_id(drone_target_spike_navproxy)
     drone_target_spike_active = True
     drone_target_spike_status = "spawned_neutral_training_target"

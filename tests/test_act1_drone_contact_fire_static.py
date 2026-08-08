@@ -97,14 +97,12 @@ class Act1DroneContactFireStaticTests(unittest.TestCase):
         self.assertNotIn("@gui", drone)
         self.assertNotIn("//gui", drone)
 
-    def test_spike_spawn_uses_small_neutral_training_target_and_stock_scan_comms_hooks(self) -> None:
+    def test_spike_spawn_uses_inert_hostile_target_and_stock_scan_comms_hooks(self) -> None:
         drone = read(DRONE_PATH)
         spawn_body = label_body(drone, "khovan_drone_contact_fire_spawn_target_spike")
         for phrase in [
-            'npc_spawn(32000, 0, 12000, "Slice 06 Spike Target"',
-            '"khovan_training, neutral, khovan_slice06_spike_target, khovan_drone_spike_target"',
-            '"behav_npcship"',
-            'sim.add_navproxy(drone_target_spike_target_id, "Slice 06 Spike Target"',
+            'npc_spawn(32000, 0, 12000, "Slice 06 Spike Target", "kralien, khovan_training, khovan_slice06_spike_target, khovan_drone_spike_target", "kralien_cruiser", "behav_playership")',
+            'sim.add_navproxy(drone_target_spike_target_id, "Slice 06 Spike Target", "kralien_cruiser", "#FC3")',
             'link(artemis_id, "extra_scan_source", drone_target_spike_target_id)',
             "set_science_selection(artemis_id, drone_target_spike_target_id)",
             "set_comms_selection(artemis_id, drone_target_spike_target_id)",
@@ -123,6 +121,7 @@ class Act1DroneContactFireStaticTests(unittest.TestCase):
 
         self.assertNotIn('//enable/science if has_roles(SCIENCE_SELECTED_ID, "khovan_slice06_spike_target")', drone)
         self.assertNotIn('//science if has_roles(SCIENCE_SELECTED_ID, "khovan_slice06_spike_target")', drone)
+        self.assertIn("playership behavior has no NPC AI driver", spawn_body)
 
     def test_gm_comms_receive_calls_use_comms_override_experiment(self) -> None:
         # Experimental fix, 2026-08-08: live smoke confirmed the bare comms_receive()
