@@ -1,16 +1,64 @@
 # Branch Ledger
 
 Status: lightweight implementation branch ledger
-Last updated: 2026-06-07
+Last updated: 2026-08-08
 
 Purpose: record active/recent Khovan branch roles, evidence, risks, and next actions from observable Git history. Do not treat this file as a substitute for `git log`, `git branch --all`, or source authority in `docs/00_project/00_source_index.md`.
 
 Current observed branch state:
 
-- Current branch: `master`
-- Current `master` tip: `f05a47d merge Slice 04 generator-governor start`
-- `git status --short --branch`: clean at `master...origin/master`
-- Current visible Slice 04 integration branch: `slice04-generator-governor-start`
+- Current branch: `slice06-drone-contact-fire`
+- Current tip: `9bd4db9 docs: record Slice 06 GM-only live smoke pass (partial)`
+- `git status --short --branch`: clean at `## slice06-drone-contact-fire` (not yet pushed to origin as of this entry)
+- `master` remains at `6ff6f68 merge Slice 05 engineering shakedown` as of this entry; Slice 06 work has not merged back yet
+- 36 local+remote branch refs exist as of this entry, most of them merged Slice 04 children already marked deletable below. Branch cleanup is still outstanding (see `docs/04_implementation_setup/70_agent_handoff_protocol.md` section 7).
+
+## slice06-drone-contact-fire
+
+Role: current Slice 06 implementation branch (Drone 01/Drone 02, Phase A target subsystem-damage spike)
+
+Started from: `master` at `6ff6f68 merge Slice 05 engineering shakedown`.
+
+Purpose: build and prove the mandatory target subsystem-damage spike required by the Slice 06 plan entry before the full Drone 01/Drone 02 drill is implemented.
+
+Files: `scripts/acts/act1_drone_contact_fire.mast`, `tests/test_act1_drone_contact_fire_static.py`, `tests/SLICE06_VERIFICATION.md`, plus small touch-ups to Slice 04/05 files and `run_tests.py` wiring.
+
+Status: active, in progress. Phase A GM-console mechanics (spawn/cleanup/visibility gating) are live-proven as of the 2026-08-08 GM-only smoke pass recorded in `tests/SLICE06_VERIFICATION.md`. Science/Comms/Weapons station behavior and the `Read Target Spike Status` readback remain unproven or ambiguous.
+
+Evidence:
+
+- Commit `ae95519 feat: add Slice 06 target subsystem-damage spike (Phase A, live-unproven)`.
+- Commit `9bd4db9 docs: record Slice 06 GM-only live smoke pass (partial)`.
+- `python run_tests.py quick`: PASS as of `9bd4db9` (0 failures, 0 warnings, 96 tests).
+- Live smoke log in `tests/SLICE06_VERIFICATION.md` records a real finding: GM `Cleanup Target Spike` fires the same `//damage/destroy` hook a genuine Weapons kill would, via `sbs.delete_object()`. Needs a guard before Phase B trusts `destroyed_observed` as the Drone 02 completion signal.
+
+Known risks: Phase B (full Drone 01/Drone 02 drill) must not start until the crewed Science/Comms/Weapons pass runs and the destroy-hook finding is resolved.
+
+Next action: run the crewed live-smoke pass named in `tests/SLICE06_VERIFICATION.md` Next Action; resolve the status-readback ambiguity; add the destruction-source guard; then proceed to Phase B.
+
+Return branch: `master`, once Phase A (or a documented fallback) is accepted.
+
+## docs/plan-hardening
+
+Role: docs/governance branch
+
+Started from: `slice06-drone-contact-fire` at `ae95519`, after the Slice 06 Phase A spike was committed (per `AGENTS.md` branch-transition discipline — no uncommitted runtime changes were carried into the docs branch).
+
+Purpose: add the agent-handoff foundation docs needed to build the remaining slices with a mix of Claude Code and Codex — `CLAUDE.md`, `docs/04_implementation_setup/60_mast_api_cookbook.md`, `docs/04_implementation_setup/70_agent_handoff_protocol.md` — and register them in the source index.
+
+Status: merged back into `slice06-drone-contact-fire` via `33cd0c1 merge docs/plan-hardening: agent handoff foundations`. No runtime code changed.
+
+Evidence:
+
+- Commit `508c2e6 docs: add agent handoff foundations for mixed Claude/Codex build`.
+- Merge commit `33cd0c1` on `slice06-drone-contact-fire`.
+- `python run_tests.py quick`: PASS before and after merge.
+
+Known risks: branch pointer remains after merge; local-only, not pushed to origin as of this entry.
+
+Next action: no further work needed on this branch. Delete local branch when branch cleanup is approved.
+
+Return branch: `slice06-drone-contact-fire`.
 
 ## slice04-player-instruction-clarity
 

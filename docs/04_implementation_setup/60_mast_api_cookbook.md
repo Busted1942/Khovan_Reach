@@ -469,6 +469,10 @@ Do not "clean this up."
     sbs.delete_object(target_id)
 ```
 
+**[LIVE] Gotcha, confirmed 2026-08-08 Slice 06 GM smoke pass:** `sbs.delete_object()` fires the same `//damage/destroy` hook a genuine Weapons kill fires. Trace evidence from a GM `Cleanup Target Spike` click: `[KHOVAN ACT1 DRONE SPIKE CLEANUP] cleanup_count=1` was immediately followed by `[KHOVAN ACT1 DRONE SPIKE DAMAGE] ... weapons_damage=0.0 engines_damage=0.0` and `[KHOVAN ACT1 DRONE SPIKE DESTROY]` — despite no shot ever being fired.
+
+**Implication:** any `*_destroyed_observed`-style flag set inside a `//damage/destroy` handler cannot by itself distinguish a GM despawn from a real combat kill. If a slice uses destruction as a completion signal (Slice 06's Drone 02 does, by recorded source decision), guard it — e.g. only trust destruction when it arrives with nonzero damage values, or route GM cleanup through a path that clears roles/state *before* calling `sbs.delete_object()` so the shared hook has nothing left to match. This applies to every future slice with a GM despawn control over a scorable/gated entity — Slices 09, 11, and 12 are the most likely to hit it again.
+
 ---
 
 # 9. Ship data and docking
