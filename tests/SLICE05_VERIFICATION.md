@@ -198,3 +198,48 @@ Current implementation finding: no-motion and engine-damage gates have observer-
 ## Next Action
 
 Run `python run_tests.py quick` and `git diff --check`. Then live-smoke the checklist above. Do not commit until quick passes, diff check passes, and the live result is either accepted as playable or documented as a blocker.
+
+---
+
+## Live Smoke Log (append-only)
+
+### LIVE SMOKE 2026-08-09 (engineering slider detection — PASS, API confirmed)
+
+**Ran:** Engineering shakedown step 1, design `10_mast_requirements.md` 8.4 — "Engineering sets impulse engines to 0 and warp engines to 200". Operator drove the Engineering console directly; no Comms confirmation used.
+
+**Result: PASS, automatic.** `khovan_engineering_watch_power_preset` self-confirmed from `get_engineering_value` with no operator confirmation step. Trace (`tests/live_startup_trace.txt`, 20:44):
+
+```text
+tick=31 impulse_raw=1.0 warp_raw=1.0
+tick=32 impulse_raw=0.0 warp_raw=1.0
+tick=33 impulse_raw=0.0 warp_raw=1.85654878616333
+tick=34 impulse_raw=0.0 warp_raw=2.005048990249634
+[KHOVAN ACT1 ENG POWER PRESET CONFIRMED] source=automatic_engineering_value_observer impulse=0.0 warp=2.005048990249634
+```
+
+**Confirmed, now [LIVE] in cookbook 9.3:**
+
+1. `eng_control_value` is **live slider state**, not preset storage — it tracked the console in real time across consecutive ticks.
+2. Scale is `1.0` = 100%. A 200% setting read `2.005048990249634`.
+3. Values **ramp and overshoot**. Comparisons must use tolerance bands; `warp == 2.0` would never have matched, and a poll landing on tick 33 would have read `1.857`.
+4. An observer must **keep watching after arming its Comms fallback**. Confirmation landed on tick 34 — four ticks past the 30-tick timeout. The prior build returned at timeout and would have missed this entirely; that was found and fixed in the same session.
+
+**Label set — dumped live, corrects the LegendaryMissions list.** `khovan_engineering_dump_engineering_slots` output (20:43):
+
+```text
+index=0 BEAM    index=1 TORP     index=2 IMPULSE       index=3 WARP
+index=4 MANEUVER index=5 SENSORS index=6 FRONT SHIELD  index=7 REAR SHIELD
+```
+
+`legendarymissions/gamemaster_comms/gamemaster_comms.mast:50` lists `"torpedo"` and `"Jump"`; neither exists on this build. `get_engineering_value(id, "torpedo")` returns its default here, which is indistinguishable from a slider at rest — a silent-wrong-answer trap for any future gate. `"Impulse"`/`"Warp"` matched only because lookup is case-insensitive.
+
+**Still unproven after this pass:**
+
+- Whether a **saved preset** (the `S`-then-number binding) is readable at all. This key exposes live sliders only, so "Engineering has a preset configured" is not gateable through it — only "the sliders currently read X". Operator raised the preset-vs-live distinction during the session; it is real.
+- DAMCON team location/readiness — no clean accessor; state lives in grid objects and inventory values.
+- Repair completion.
+- Whether the label set is the same on other hulls. `legendarymissions/ai/grid_ai.mast:37-42` rewrites slot 3 to `JUMP` or `WARP` by drive type, so a jump-drive hull would differ. Dump rather than assume.
+
+**Not established:** Artemis's `shipData` hull key. LegendaryMissions owns player spawn, and nothing in this repo sets it, so the dump above is recorded as "the player ship as spawned by LegendaryMissions" rather than attributed to a named hull.
+
+**Separate observation, not this gate.** The no-motion gate declined correctly in the same session: the ship moved (`speed` 7 → 16, `distance_sq` to 5.6M). `playerThrottle` read `2.0`, above 1.0, which looks like a warp factor rather than impulse throttle. `engineering_shakedown_start_text` instructs Helm "Confirm impulse reads zero, then warp 1" — going to warp guarantees motion, which is the opposite of what a no-motion test measures. **Raised as a content finding for the operator**, not changed here: that text is `docs/02_content/` territory.

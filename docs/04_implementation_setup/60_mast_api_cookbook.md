@@ -833,7 +833,7 @@ Guard it for premature and duplicate signals — both were observed in Slice 04.
 
 `sbs_utils/procedural/space_objects.py:353`. It walks up to 30 `eng_control_label` slots on the ship's data set and returns the matching `eng_control_value`. Matching is case-insensitive (`label.lower() == name.lower()`).
 
-**Label set — use the observed one, not the LegendaryMissions list.** Dumped live from Artemis (`tsn_light_cruiser`) 2026-08-09:
+**Label set — use the observed one, not the LegendaryMissions list.** Dumped live from Artemis 2026-08-09. (Artemis's `shipData` hull key is not established — LegendaryMissions owns player spawn and nothing in this repo sets it — so treat this as the label set of the player ship as spawned, not as a property of a named hull.)
 
 ```text
 index=0 BEAM    index=1 TORP     index=2 IMPULSE       index=3 WARP
