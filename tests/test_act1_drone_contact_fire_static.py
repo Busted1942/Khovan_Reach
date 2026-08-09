@@ -298,10 +298,6 @@ class Act1DroneContactFireStaticTests(unittest.TestCase):
             spawn_body,
         )
         self.assertIn(
-            'sim.add_navproxy(drone_01_target_id, "Drone 01", "kralien_cruiser", "#FC3")',
-            spawn_body,
-        )
-        self.assertIn(
             'task_schedule(khovan_drone_01_deliver_deploy_prompt_after_delay, {"deploy_prompt_run_id": drone_contact_sequence_run_id})',
             spawn_body,
         )
@@ -394,16 +390,58 @@ class Act1DroneContactFireStaticTests(unittest.TestCase):
         self.assertNotIn("Observe whether", drone)
         self.assertNotIn("existing Act II transition route", drone)
 
-    def test_drone_01_science_scan_uses_the_proven_scan_result_structure(self) -> None:
+    def test_drone_01_spawn_matches_the_bare_spike_target_baseline(self) -> None:
+        # Regression guard for the 2026-08-09 live symptom: Drone 01's Science panel
+        # showed Khovan override text instead of the engine's normal Kralien return,
+        # while the GM Spike Target - spawned bare - showed the stock return with
+        # shield frequencies. Drone 01 must stay configured the same way the Spike
+        # Target is: identical hull/behavior/stock roles, and none of the extra
+        # plumbing that diverted the Science return.
+        drone = read(DRONE_PATH)
+        spike_spawn = label_body(drone, "khovan_drone_contact_fire_spawn_target_spike")
+        drone_spawn = label_body(drone, "khovan_drone_01_spawn")
+
+        for stock_config in ['"kralien, raider', '"kralien_cruiser", "behav_npcship"']:
+            self.assertIn(stock_config, spike_spawn)
+            self.assertIn(stock_config, drone_spawn)
+
+        for forbidden in [
+            "sim.add_navproxy",
+            'link(artemis_id, "extra_scan_source"',
+            "set_science_selection(artemis_id, drone_01_target_id)",
+            "set_comms_selection(artemis_id, drone_01_target_id)",
+        ]:
+            self.assertNotIn(forbidden, spike_spawn)
+            self.assertNotIn(forbidden, drone_spawn)
+
+    def test_drone_01_science_route_does_not_override_the_stock_scan(self) -> None:
+        # The two removed entries were + "Initial Scan": and + "scan":, each with a
+        # <scan> block. A <scan> block replaces the engine's scan return, and the
+        # "scan" label additionally shadows the stock button. Neither may come back
+        # without live evidence that the shield-frequency return survives it.
         drone = read(DRONE_PATH)
         science_start = drone.index('//science if has_roles(SCIENCE_SELECTED_ID, "khovan_drone_01")')
         science_end = drone.index('//enable/comms if has_roles(COMMS_SELECTED_ID, "khovan_drone_01")', science_start)
         science_body = drone[science_start:science_end]
-        self.assertEqual(science_body.count("<scan>"), 2)
-        self.assertIn(
+
+        self.assertEqual(science_body.count("<scan>"), 0)
+        self.assertNotIn('+ "scan":', science_body)
+        self.assertNotIn('+ "Initial Scan":', science_body)
+        self.assertNotIn(
             "Drone 01 is a neutral training contact. Weak shield-frequency relay data is available for Weapons.",
             science_body,
         )
+
+        # The drill still has to reach fire authorization. The relay button carries
+        # both gates, and the Comms fallback stays armed as the independent route.
+        self.assertIn('+ "Relay Weak Shield Frequency":', science_body)
+        self.assertIn("drone_01_scan_complete = True", science_body)
+        self.assertIn("drone_01_shield_frequency_relay_complete = True", science_body)
+        self.assertIn(
+            '+ "Khovan: Fallback Scan" khovan_drone_01_fallback_scan if drone_01_scan_fallback_available',
+            drone,
+        )
+        self.assertIn("drone_01_scan_fallback_available = True", label_body(drone, "khovan_drone_01_spawn"))
 
 
 if __name__ == "__main__":

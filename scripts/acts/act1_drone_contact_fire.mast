@@ -422,10 +422,16 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
         drone_01_range_fallback_available = True
         script.write_khovan_startup_trace("[KHOVAN ACT1 DRONE 01 BLOCKED] npc_spawn returned id 0")
         ->END
-    drone_01_navproxy = sim.add_navproxy(drone_01_target_id, "Drone 01", "kralien_cruiser", "#FC3")
-    drone_01_navproxy_id = to_id(drone_01_navproxy)
+    # Spike parity (2026-08-09): the GM Spike Target renders the engine's normal
+    # Kralien Science return - including shield frequencies - because it is spawned
+    # bare: no nav proxy, no extra_scan_source link, no forced Science/Comms
+    # selection, no Khovan //science route. Drone 01 had all four and showed the
+    # Khovan override text instead. Keep this spawn bare so both contacts behave
+    # identically. The nav proxy is the least likely contributor and the most
+    # visible loss - restore the two lines removed here only after live smoke
+    # proves the stock scan return survives it.
     drone_01_active = True
-    drone_01_status = "spawned_passive_at_training_beacon_offset"
+    drone_01_status = "spawned_stock_kralien_cruiser_at_training_beacon_offset"
     # GM/Comms confirmations are final fallbacks for every automatic production gate.
     drone_01_scan_fallback_available = True
     drone_01_hail_fallback_available = True
@@ -435,10 +441,6 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
     drone_01_stationary_hold_fallback_available = True
     drone_contact_sequence_status = "drone_01_active"
     drone_contact_last_step = "drone_01_spawn"
-    if artemis_id != 0:
-        link(artemis_id, "extra_scan_source", drone_01_target_id)
-        set_science_selection(artemis_id, drone_01_target_id)
-        set_comms_selection(artemis_id, drone_01_target_id)
     script.write_khovan_startup_trace(f"[KHOVAN ACT1 DRONE 01 SPAWN] target_id={drone_01_target_id} offset_m={drone_01_spawn_offset_m} spawn_count={drone_01_spawn_count}")
     await task_schedule(khovan_set_current_objective, {"objective_id": "drone_01_scan", "objective_body": "Drone 01 deployed. Science scan the contact; Comms hail it and relay its weak shield frequency to Weapons.", "objective_step": "Drone 01 scan and hail", "objective_breadcrumb": "[KHOVAN OBJECTIVE 017] Drone 01 deployed"})
     task_schedule(khovan_drone_01_deliver_deploy_prompt_after_delay, {"deploy_prompt_run_id": drone_contact_sequence_run_id})
@@ -508,22 +510,29 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
 
 //enable/science if has_roles(SCIENCE_SELECTED_ID, "khovan_drone_01")
 
+# Spike parity (2026-08-09): the "Initial Scan" and "scan" entries that used to sit
+# here each carried a <scan> block, which replaced the engine's normal Kralien scan
+# return - the one that lists shield frequencies - with fixed Khovan text. That is
+# the observed live symptom: Drone 01's Science panel showed "Drone 01 is a neutral
+# training contact..." where the GM Spike Target, which has no Khovan //science
+# route at all, shows the stock return. Both scan-overriding entries are removed.
+#
+# Only the drill-specific relay button remains. It does not shadow a stock button
+# name and carries no <scan> block, so the stock scan should render alongside it.
+# drone_01_scan_complete is set here because Science cannot relay a frequency it has
+# not already read off the scan; the Comms "Khovan: Fallback Scan" route is still
+# armed at spawn as the independent fallback required by AGENTS.md section 4.
+#
+# UNPROVEN until live smoke: that a //science route with no <scan> block leaves the
+# stock return intact. If the stock scan is still suppressed, delete this route and
+# //enable/science entirely - the Spike Target proves a bare contact works - and
+# drive both gates from the existing Comms fallbacks.
 //science if has_roles(SCIENCE_SELECTED_ID, "khovan_drone_01")
-    + "Initial Scan":
-        drone_01_scan_complete = True
-        drone_01_status = "science_scan_complete"
-        script.write_khovan_startup_trace(f"[KHOVAN ACT1 DRONE 01 SCAN] target_id={SCIENCE_SELECTED_ID}")
-        <scan>
-            % Drone 01 is a neutral training contact. Weak shield-frequency relay data is available for Weapons.
-    + "scan":
-        drone_01_scan_complete = True
-        drone_01_status = "science_scan_complete"
-        script.write_khovan_startup_trace(f"[KHOVAN ACT1 DRONE 01 SCAN] target_id={SCIENCE_SELECTED_ID}")
-        <scan>
-            % Drone 01 is a neutral training contact. Weak shield-frequency relay data is available for Weapons.
     + "Relay Weak Shield Frequency":
+        drone_01_scan_complete = True
         drone_01_shield_frequency_relay_complete = True
         drone_01_status = "shield_frequency_relay_complete"
+        script.write_khovan_startup_trace(f"[KHOVAN ACT1 DRONE 01 SCAN RELAY] target_id={SCIENCE_SELECTED_ID}")
         await task_schedule(khovan_set_current_objective, {"objective_id": "drone_01_weapons_lock", "objective_body": "Weapons lock beams on Drone 01. Helm establish 1-2 km range and hold stationary for 15 seconds.", "objective_step": "Drone 01 lock and range", "objective_breadcrumb": "[KHOVAN OBJECTIVE 018] shield relay complete"})
 
 //enable/comms if has_roles(COMMS_SELECTED_ID, "khovan_drone_01")
