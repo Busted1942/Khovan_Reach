@@ -454,6 +454,38 @@ class Act1DroneContactFireStaticTests(unittest.TestCase):
         # The Spike Target is the reference configuration and must stay routeless too.
         self.assertNotIn('//enable/science if has_roles(SCIENCE_SELECTED_ID, "khovan_slice06', drone)
 
+    def test_drone_01_hull_is_held_so_three_subsystem_hits_can_land(self) -> None:
+        # Design 10_mast_requirements.md 8.5 gate 9 wants three confirmed Weapons-array
+        # hits, but shipData.yaml gives kralien_cruiser "hullpoints": 2 and manual
+        # subsystem targeting only reaches systems once shields are down. Live
+        # 2026-08-09: destroyed on the first hit. The hull is held at zero accumulated
+        # hits while the drill is live.
+        drone = read(DRONE_PATH)
+        damage_start = drone.index('//damage/object if has_role(DAMAGE_TARGET_ID, "khovan_drone_01")')
+        damage_end = drone.index('//damage/destroy if has_role(DESTROYED_ID, "khovan_drone_01")', damage_start)
+        body = code_only(drone[damage_start:damage_end])
+
+        self.assertIn("if drone_01_active and not drone_01_weapons_disabled:", body)
+        self.assertIn('set_data_set_value(DAMAGE_TARGET_ID, "hull_hit_counter", 0, 0)', body)
+
+        # Shields must NOT be restored - manual subsystem targeting cannot reach the
+        # Weapons array through an intact shield.
+        self.assertNotIn("shield_val", body)
+
+        # The manual-hit inventory read has to come before anything else in the
+        # handler, or a yield could lose the signal the whole drill depends on.
+        self.assertLess(
+            body.index('get_inventory_value(DAMAGE_SOURCE_ID, "MANUAL_SYSTEM")'),
+            body.index('set_data_set_value(DAMAGE_TARGET_ID, "hull_hit_counter", 0, 0)'),
+            "MANUAL_SYSTEM must be read before the hull hold",
+        )
+
+        # Holding stops at disable so the ceasefire/cleanup phase behaves normally,
+        # and the three-hit gate itself is untouched.
+        self.assertIn("if drone_01_weapons_hit_count >= 3:", body)
+        self.assertIn("drone_01_weapons_disabled = True", body)
+        self.assertIn("drone_01_hull_restore_count = 0", label_body(drone, "khovan_drone_01_reset_flags"))
+
     def test_drone_01_is_hailable_and_answers_the_hail(self) -> None:
         # Second-order effect of removing the //science route, confirmed live and in
         # sbs_utils v1.3.0 source: comms.py set_buttons() returns before the button

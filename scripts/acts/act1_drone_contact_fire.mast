@@ -54,6 +54,7 @@ shared drone_01_reset_message_sent = False
 shared drone_01_hail_response_text = "Drone 01 confirms receipt of comms."
 shared drone_01_known_scan_text = "Drone 01: TSN training contact. Transponder active."
 shared drone_01_known_marked = False
+shared drone_01_hull_restore_count = 0
 
 shared drone_02_active = False
 shared drone_02_target_id = 0
@@ -398,6 +399,9 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
     # Cleared per spawn: khovan_drone_01_mark_scan_known seeds the scan key on the new
     # object id, and a reset respawn is a different object that starts unknown again.
     drone_01_known_marked = False
+    # Per-spawn counter, so the GM overview shows hull holds for the current attempt
+    # rather than a total across resets.
+    drone_01_hull_restore_count = 0
     ->END
 
 === khovan_drone_01_spawn ===
@@ -675,7 +679,43 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
     ->END
 
 //damage/object if has_role(DAMAGE_TARGET_ID, "khovan_drone_01")
+    # Read the manual-hit inventory value FIRST. Everything below this line is
+    # bookkeeping; anything that yields before this read risks losing the signal.
     manual_system = get_inventory_value(DAMAGE_SOURCE_ID, "MANUAL_SYSTEM")
+    # Drill survivability (2026-08-09). Design 10_mast_requirements.md section 8.5
+    # gate 9 requires "Drone 01 Weapons array disabled in three confirmed hits", but
+    # shipData.yaml gives kralien_cruiser "hullpoints": 2 (kralien_battleship 3,
+    # kralien_dreadnought 4 - no Kralien warship hull reaches a safe margin). Manual
+    # subsystem targeting also requires the target's shields to be down first, so by
+    # the time subsystem hits can land at all the hull is the only thing left. Three
+    # hits into a two-point hull is not survivable: the operator saw Drone 01
+    # destroyed on the first hit. This is a design-vs-engine conflict, recorded as a
+    # FINDING - the build side does not get to quietly reduce the three-hit gate.
+    #
+    # Build-side fix: hold the hull at zero accumulated hits for as long as the drill
+    # is live, so the drone can absorb the three subsystem hits the gate asks for.
+    # Shields are deliberately NOT restored - they have to stay down or manual
+    # subsystem targeting cannot reach the Weapons array at all.
+    #
+    # Restoration stops the moment drone_01_weapons_disabled goes True, so the drone
+    # is normally destructible again for the ceasefire/cleanup phase and Drone 02.
+    #
+    # "hull_hit_counter" is the key the stock DMX helper reads as hull damage
+    # (data/missions/common/dmx.py:59, blob.get("hull_hit_counter", 0)); the paired
+    # shield key "shield_val" is written the same way in
+    # legendarymissions/collisions/collision.mast:54-56. set_data_set_value() itself
+    # is cookbook-proven [LIVE] (section 9.1).
+    #
+    # UNPROVEN: that writing hull_hit_counter back to 0 actually prevents destruction.
+    # It is read as a damage accumulator, not documented as writable. If Drone 01 is
+    # still destroyed on an early hit, do NOT escalate by inventing more keys - the
+    # proven fallback is to respawn on a tougher hull key and, failing that, run the
+    # disable via the GM "Khovan: Fallback Weapons Hit" route. Raise an API-uncertainty
+    # finding per cookbook section 12.
+    if drone_01_active and not drone_01_weapons_disabled:
+        set_data_set_value(DAMAGE_TARGET_ID, "hull_hit_counter", 0, 0)
+        drone_01_hull_restore_count = drone_01_hull_restore_count + 1
+        script.write_khovan_startup_trace(f"[KHOVAN ACT1 DRONE 01 HULL HOLD] restore_count={drone_01_hull_restore_count} target_id={DAMAGE_TARGET_ID}")
     if not drone_01_fire_authorized:
         drone_01_status = "unauthorized_damage_reset"
         script.write_khovan_startup_trace(f"[KHOVAN ACT1 DRONE 01 RESET] unauthorized damage target_id={DAMAGE_TARGET_ID}")
