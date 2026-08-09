@@ -53,7 +53,7 @@ shared repair_complete_text = "Training Control: repair complete. Engineering, s
 shared navigation_priority_confirmed_text = "Training Control: Engineering systems shakedown complete. Controlled contact handling is next."
 
 //comms if has_roles(COMMS_SELECTED_ID, "tarsis_station") and generator_governor_cleared and not engineering_shakedown_complete
-    + "Khovan: Fallback Confirm No-Motion" khovan_engineering_confirm_no_motion if engineering_no_motion_fallback_available and not engineering_no_motion_confirmed
+    + "Khovan: Confirm Speed 0 at Full Impulse" khovan_engineering_confirm_no_motion if engineering_no_motion_fallback_available and not engineering_no_motion_confirmed
     + "Khovan: Fallback DAMCON Crew-Quarters Standby" khovan_engineering_confirm_damcon_rest_cycle if damcon_rest_cycle_fallback_available and not damcon_rest_cycle_confirmed
     + "Khovan: Confirm Controlled Overload Started" khovan_engineering_start_controlled_overload if damcon_rest_cycle_confirmed and not controlled_overload_started
     + "Khovan: Fallback Confirm Controlled Damage" khovan_engineering_confirm_controlled_damage if controlled_overload_damage_fallback_available and not controlled_overload_damage_detected
@@ -281,7 +281,7 @@ shared navigation_priority_confirmed_text = "Training Control: Engineering syste
         engineering_no_motion_observer_status = "fallback_timeout_engineering_slider_keys_unverified"
         engineering_no_motion_fallback_available = True
         script.write_khovan_startup_trace("[KHOVAN ACT1 ENG NO MOTION FALLBACK] automatic observer timed out; Comms fallback enabled")
-        await task_schedule(khovan_engineering_send_message, {"engineering_message_text": "Training Control: no-motion observer cannot verify the Engineering slider state. If Engineering set impulse zero and warp two hundred and Helm sees no movement, use fallback confirmation.", "engineering_message_color": "yellow", "engineering_message_breadcrumb": "[KHOVAN ACT1 ENG NO MOTION FALLBACK] guarded fallback message sent"})
+        await task_schedule(khovan_engineering_send_message, {"engineering_message_text": "Tarsis Station: We need your comms officer to validate some ship updates. They will have to click on Tarsis station to refresh their comms panel. Report your ships progress through the shakedown cruise.", "engineering_message_color": "yellow", "engineering_message_breadcrumb": "[KHOVAN ACT1 ENG NO MOTION FALLBACK] guarded fallback message sent"})
         ->END
 
     await delay_sim(seconds=1)
