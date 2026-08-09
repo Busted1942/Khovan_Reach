@@ -456,7 +456,7 @@ class Act1EngineeringShakedownStaticTests(unittest.TestCase):
             "Artemis - Captain: Cleared for departure. Take her 2 km off the station.",
             "Artemis - Engineering: On the captain's order, Impulse 0%, Warp 200%. We are validating heat sinks.",
             "Artemis - Engineering: Impulse zero, warp two hundred. Heat sinks reading clean.\\nArtemis - Helm: Now increase impulse power to 100% and ensure your speed stays at 0.",
-            "Artemis - Engineering: Good. Set a rally point in a crew quarters and assign a DAMCON team to it. That is where they wait between jobs. Selecting a team also shows its medical status.",
+            "Artemis - Engineering: Now, set the rally point for one of your DamCon teams to the crew quarters and then click on them to monitor their status. While they are off duty, they will return to this position.\\nArtemis - Engineering: After 1 minute, you will notice that crew assigned to the quarters, mess, or gym will recieve a status boost that will enhance their performance.",
             "Artemis - Engineering: Confirmed.",
             "Artemis - Engineering: Crews work fastest with real time in quarters, mess, and gym. Injured teams go to sickbay. They will run themselves into the ground, so managing them is on you. Look after them when the pressure is low and they will carry you when it is high.",
             "Artemis - Engineering: Controlled overload next. Impulse, Warp, and Maneuver to 300%. Watch your heat and how DAMCON responds.",
