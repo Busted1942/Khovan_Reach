@@ -107,7 +107,7 @@ class Act1EngineeringShakedownStaticTests(unittest.TestCase):
         )
         for phrase in [
             '+ "Khovan: Confirm Speed 0 at Full Impulse" khovan_engineering_confirm_no_motion if engineering_no_motion_fallback_available and not engineering_no_motion_confirmed',
-            '+ "Khovan: Fallback DAMCON Crew-Quarters Standby" khovan_engineering_confirm_damcon_rest_cycle if damcon_rest_cycle_fallback_available and not damcon_rest_cycle_confirmed',
+            '+ "Khovan: DamCon Team in Crew Quarters and Rested" khovan_engineering_confirm_damcon_rest_cycle if damcon_rest_cycle_fallback_available and not damcon_rest_cycle_confirmed',
             '+ "Khovan: Confirm Controlled Overload Started" khovan_engineering_start_controlled_overload if damcon_rest_cycle_confirmed and not controlled_overload_started',
             '+ "Khovan: Fallback Confirm Controlled Damage" khovan_engineering_confirm_controlled_damage if controlled_overload_damage_fallback_available and not controlled_overload_damage_detected',
             '+ "Khovan: Fallback Confirm Repair Complete" khovan_engineering_confirm_repair_complete if controlled_overload_repair_fallback_available and not controlled_overload_repair_confirmed',
