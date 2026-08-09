@@ -50,18 +50,43 @@ Six modules, from `10_mast_file_lessons.md` section 3.4. Each owns a *category o
 
 ## 3.1 `scripts/lib/entity_cleanup_helpers.mast`
 
-**Owns:** deleting spawned objects and their navproxies, and the destroy-source attribution guard.
+**ALREADY ASSIGNED — Slice 07B owns creating this file.** Correction, 2026-08-08:
+rev 1.0 of this plan sequenced this module "before Slice 11." That was written
+without checking `80_slice_packets_07_16.md`, where Slice 07B lists
+`scripts/lib/entity_cleanup_helpers.mast (new - see 1.6)` in Files to modify and
+task 2 as "Create `scripts/lib/entity_cleanup_helpers.mast` with a generic
+'despawn object, drop navproxy, clear all three selections' routine." It arrives
+four slices earlier than this plan said.
 
-**Why it is first.** This is the one module that already has hard live evidence behind it. Slice 06 confirmed that `sbs.delete_object()` fires the same `//damage/destroy` hook a genuine Weapons kill fires, that the hook is **deferred/queued** relative to the calling handler, and that a premature flag clear defeats the guard. That was found across four independent cleanup events and cost multiple live passes.
+The packet also already states the ownership rule this document arrives at
+independently in section 4: "it owns no state of its own."
 
-Slice 11 spawns two pirate vessels and Slice 12 destroys them. They will hit this exact behaviour. Re-deriving it is a guaranteed repeat of a solved problem.
+**Owns:** deleting spawned objects and their navproxies, clearing selections, and
+the destroy-source attribution guard.
 
-**Interface:**
-- a cleanup routine taking an object id, deleting navproxy then object, setting a cleanup-in-progress flag
-- a destroy-hook attribution helper distinguishing GM cleanup from a genuine kill
-- an existence check helper
+**What this plan still contributes.** The Slice 07B interface covers despawn and
+deselect. It does **not** mention the destroy-source attribution guard, and that
+omission is the expensive one. Slice 06 confirmed live that `sbs.delete_object()`
+fires the same `//damage/destroy` hook a genuine Weapons kill fires, that the hook
+is **deferred/queued** relative to the calling handler, and that a premature flag
+clear defeats the guard. That took four independent cleanup events and multiple
+live passes to find and fix.
 
-**State it owns:** a generic `*_cleanup_in_progress` convention. Consumers pass their own id; the helper must not own per-entity flags.
+Slice 11 spawns two pirate vessels; Slice 12 destroys them and must distinguish a
+genuine kill from cleanup to set `pirate_outcome` correctly. It will hit this
+behaviour identically.
+
+**Recommendation:** Slice 07B's packet should extend task 2 to include the
+attribution guard, or Slice 12's packet should name it explicitly as a reuse
+dependency. Otherwise the finding gets re-derived live. **Routed to the operator**
+as a packet amendment — this document does not amend packets.
+
+**Interface (proposed, extending the 07B definition):**
+- cleanup routine taking an object id: delete navproxy, delete object, clear selections, set a cleanup-in-progress flag
+- destroy-hook attribution helper distinguishing GM cleanup from a genuine kill
+- existence check helper
+
+**State it owns:** none. A generic `*_cleanup_in_progress` convention where consumers pass their own id.
 
 ## 3.2 `scripts/lib/drone_spawn_helpers.mast`
 
@@ -115,16 +140,25 @@ Rule 2 is the one most likely to be broken under time pressure, and it is the on
 
 # 5. Sequencing
 
+Corrected 2026-08-08 against the actual packets.
+
 | Order | Module | Trigger | Cost if skipped |
 |---|---|---|---|
-| 1 | `entity_cleanup_helpers` | before Slice 11 spawns pirates | re-deriving the deferred-destroy-hook finding live |
-| 2 | `drone_spawn_helpers` | with the above (same packet) | duplicated spawn/fallback logic in 3 files |
+| 1 | `entity_cleanup_helpers` | **Slice 07B, already assigned** | re-deriving the deferred-destroy-hook finding live |
+| 2 | `drone_spawn_helpers` | Slice 07B or 11, wherever the second spawner lands | duplicated spawn/fallback logic across act files |
 | 3 | `target_detection_helpers` | before Slice 11 range work | duplicated observer/tick-ceiling logic |
 | 4 | `checkpoint_system` | Slice 15 Phase A spike | highest — the no-fail premise depends on it |
 | 5 | `resupply_helpers` | when Act III needs rearm | low; copy from Act I |
 | 6 | `act1_helpers` | only if Act I work resumes | none currently |
 
-Items 1-3 are one packet's worth of work and should be their own slice-shaped unit **before** Slice 11, not folded into it. Doing them inside Slice 11 repeats the Slice 06 pattern where architecture and features churned together across 83 commits.
+Rev 1.0 proposed items 1-3 as a standalone slice-shaped unit before Slice 11.
+That is retracted: item 1 is already inside Slice 07B, so carving it out now would
+mean amending a written packet to create a dependency that does not need to exist.
+
+The remaining sequencing advice still holds for items 2 and 3 — decide where they
+live *before* the slice that needs them opens, rather than discovering the shared
+need mid-slice. That is the Slice 06 failure pattern, where architecture and
+features churned together across 83 commits.
 
 ---
 
@@ -140,5 +174,17 @@ Extraction is refactoring, so the bar is *no behaviour change*:
 ---
 
 # 7. Revision
+
+Rev 1.1 (2026-08-08) — corrected against `80_slice_packets_07_16.md`.
+`entity_cleanup_helpers.mast` is already a **Slice 07B** deliverable with a
+defined interface and the same no-state-of-its-own rule this plan derived
+independently — four slices earlier than rev 1.0 claimed. Section 3.1 and the
+section 5 sequencing table are corrected, and rev 1.0's proposal to carve items
+1-3 into a standalone pre-Slice-11 unit is retracted.
+
+The plan's remaining contribution to that module is narrower but real: the 07B
+interface covers despawn and deselect and does **not** mention the destroy-source
+attribution guard, which Slice 06 paid several live passes to find. That gap is
+routed to the operator as a packet amendment rather than fixed here.
 
 Rev 1.0 (2026-08-08) — initial plan. Written while `scripts/lib/` was still empty and three act files sat at 507-983 lines.

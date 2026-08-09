@@ -95,13 +95,25 @@ Two columns are added beyond the Act I format, because Acts II/III carry far mor
 | Wrong component detected at install | shared state comparison at repair gate | cookbook 4.1 `[LIVE]` | HIGH | — (runtime-owned) |
 | Return transit to Halcyon Drift | distance threshold | cookbook 9.1 `[LIVE]` | HIGH | GM mark |
 
-**On the component-selection row.** This is the highest-value LOW in the document. The play guide gives Science a four-option inventory with deliberate foils, and the qualification card depends on the choice being Science's. Nothing in the cookbook proves a selectable list UI. Options, in preference order:
+**On the component-selection row — already decided; cite, do not re-open.**
 
-1. **Comms menu as the list.** Each component is a Comms menu entry on the cache object. Uses only proven routes; the choice is real and runtime-readable. Fiction cost: a cache inventory arriving over Comms rather than a Science console readout. **Recommended.**
-2. GM presents the list verbally, Science answers, GM marks. Zero API risk, full GM load, choice not runtime-readable.
-3. Spike a Science-console list UI. Highest fidelity, unknown feasibility, `@gui` is currently forbidden in active MAST by `test_gm_only_test_mode_spike_controls_exist`.
+Rev 1.0 of this document presented this as an open design question with three
+options. That was written without reading the Slice 10 packet, which had already
+resolved it. The packet's Known Risks field states:
 
-Option 1 needs a design ruling because it changes the player-facing fiction. Routed, not decided.
+> "The requirements specify option semantics but not the presentation mechanism;
+> the cookbook has no proven inventory/selection-prompt pattern. Expect to use a
+> Comms-route option list (the proven pattern) rather than inventing a UI. Raise
+> an API-uncertainty block if tempted to do otherwise."
+
+That is the ruling. The Comms-route option list is the expected mechanism, and the
+escalation path for deviating from it is already specified. The `LOW` confidence
+rating above stands — there is genuinely no proven list UI — but it is a known
+constraint with a chosen workaround, not an open question.
+
+Slice 10 also already owns the semantics (four option classes, `cache_retry_required`
+on a wrong first pick, a timer-consequence marker recording the cost) and the
+`cache_selection_fallback_available` flag. Nothing here supersedes any of it.
 
 ## 4.3 Pirate arrival and deception (Slice 11)
 
@@ -154,19 +166,38 @@ Option 1 needs a design ruling because it changes the player-facing fiction. Rou
 
 ---
 
-# 5. Rows that must be spiked before their packet is written
+# 5. Relationship to the existing slice packets
 
-Ranked by cost of discovering the problem live:
+**Correction, 2026-08-08.** Rev 1.0 of this section listed five rows as "must be
+spiked before their packet is written." That framing was wrong and is retracted.
+All ten packets in `80_slice_packets_07_16.md` are already written, and they
+already flag their own spikes. This document does not lead that work; it
+supplements it.
 
-| # | Row | Slice | Why it must be spiked first |
-|---|---|---|---|
-| 1 | Science component selection | 09/10 | No proven list UI; drives a qualification card. If option 1 above is rejected there is no fallback that keeps the choice runtime-readable. |
-| 2 | Checkpoint payload round-trip | 15 | Already flagged in handoff protocol 3.2. If state cannot round-trip, the no-fail design premise fails. |
-| 3 | Pirate hostile transition | 12 | `[UNPROVEN]`. If roles/behaviour cannot flip post-spawn, pirates must spawn hostile, which breaks the salvage-cover fiction. |
-| 4 | Pirate flee/despawn | 12 | No proven behaviour; affects cleanup and the `pirate_outcome` state model. |
-| 5 | Cache docking | 09/10 | Docking wrapper is proven for Tarsis; the cache is a different object class. |
+What the packets already establish, verified by reading them:
 
-Rows 3 and 4 can share one Slice 12 Phase A spike. Rows 1 and 5 can share one Slice 09/10 spike.
+| Row flagged here | Already covered by | Standing |
+|---|---|---|
+| Science component selection | Slice 10 Known Risks | **Already decided** — see below |
+| Checkpoint payload round-trip | Slice 15, marked **SPIKE REQUIRED** | Already flagged |
+| Pirate hostile transition | Slice 12 Phase A, marked **SPIKE REQUIRED** | Already flagged, and the packet already records the cookbook gap |
+| Pirate flee/despawn | Slice 12 Phase B tasks 1-2 | Already scoped |
+| Cache docking | Slice 10 task 2 | Scoped, reusing the 07B cleanup helper |
+
+Slices 09, 11, 12, and 15 all carry an explicit **SPIKE REQUIRED** header in the
+packets. That is the authoritative spike list. This document adds no slices to it.
+
+**What this document does add**, and why it is still worth ratifying: the packets
+carry nine `*_fallback_available` flags spread across ten slices, but no
+consolidated preferred-detection table. Section 8.9 gives Act I one page showing
+every gate, its detection, and its fallback side by side. Sections 3 and 4 above
+are that page for Acts II/III, with two columns section 8.9 does not have —
+a cookbook citation and a confidence rating. The value is the consolidated view
+and the evidence tagging, not the identification of unknowns.
+
+**Reading order when they disagree:** the packet wins. A packet is a build
+contract with named files, state, and test IDs. This is a policy overview.
+Any disagreement is a finding against this document, not against the packet.
 
 ---
 
@@ -179,5 +210,25 @@ Rows 3 and 4 can share one Slice 12 Phase A spike. Rows 1 and 5 can share one Sl
 ---
 
 # 7. Revision
+
+Rev 1.1 (2026-08-08) — corrected against `80_slice_packets_07_16.md`, which rev 1.0
+had not been read against. Three changes:
+
+- Section 5 retracted and rewritten. It had claimed five rows "must be spiked
+  before their packet is written." All ten packets already exist, and Slices 09,
+  11, 12, and 15 already carry **SPIKE REQUIRED** headers. The packets are the
+  authoritative spike list.
+- The component-selection discussion retracted. It had posed an open design
+  question with three options; Slice 10's Known Risks had already chosen the
+  Comms-route option list and specified the escalation path.
+- Added the precedence rule: where this document and a packet disagree, the
+  packet wins and the difference is a finding against this document.
+
+**Process note.** Rev 1.0 was written from the play guide and the cookbook without
+reading the existing packets in full, and was marked ready to ratify. Had it been
+ratified as written, it would have imported a retracted framing and a re-opened
+design question into design authority. Any future document proposing policy over
+Slices 07-16 must be cross-read against `80_slice_packets_07_16.md` before it is
+offered for ratification.
 
 Rev 1.0 (2026-08-08) — initial proposal, written against play guide Scenes 5-15 and cookbook tags as of `slice06-drone-contact-fire`.
