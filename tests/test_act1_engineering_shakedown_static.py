@@ -112,7 +112,7 @@ class Act1EngineeringShakedownStaticTests(unittest.TestCase):
             '+ "Khovan: DamCon Team in Crew Quarters and Rested" khovan_engineering_confirm_damcon_rest_cycle if damcon_rest_cycle_fallback_available and not damcon_rest_cycle_confirmed',
             '+ "Khovan: Confirm Controlled Overload Started" khovan_engineering_start_controlled_overload if damcon_rest_cycle_confirmed and not controlled_overload_started',
             '+ "Khovan: Fallback Confirm Controlled Damage" khovan_engineering_confirm_controlled_damage if controlled_overload_damage_fallback_available and not controlled_overload_damage_detected',
-            '+ "Khovan: Fallback Confirm Repair Complete" khovan_engineering_confirm_repair_complete if controlled_overload_repair_fallback_available and not controlled_overload_repair_confirmed',
+            '+ "Khovan: Confirm Repairs Complete" khovan_engineering_confirm_repair_complete if controlled_overload_repair_fallback_available and not controlled_overload_repair_confirmed',
             '+ "Khovan: Fallback Confirm Navigation Priority" khovan_engineering_confirm_navigation_priority if navigation_priority_preset_fallback_available and not navigation_priority_preset_set',
         ]:
             self.assertIn(phrase, engineering)
@@ -168,7 +168,7 @@ class Act1EngineeringShakedownStaticTests(unittest.TestCase):
             "Engineering: Now we are going to perform a controlled overload to test our damage control systems. Set Impulse, Warp, and Manuver to 300%. Monitor the systems heat and your DamCon team's response to the failure.",
             "Engineering: Now we are going to do a controlled overload exercise. Set Impulse, Warp and Maneyver to 300% and wait for them to overload. Bleed off the excess heat after the overload and monitor your DamCon team progress and then reset them to 100%.",
             "Note that you get a bonus to your sleep, eat and workout bonuses when your teams are in the appropriate rooms, quarters, mess, or rec/gym.",
-            "controlled damage logged",
+            "We saw the damage and will leave it to you to monitor repairs. Did you see how your rested crew was able to race through the ship to get to the damage quicker than your non-rested crew? Manage your crew well.\\nComms: Confirm when engineering reports repairs are complete.",
             "repair complete",
             "maneuvering to one hundred ninety percent, warp to ten percent, and impulse to one hundred percent",
             "Engineering systems shakedown complete",
