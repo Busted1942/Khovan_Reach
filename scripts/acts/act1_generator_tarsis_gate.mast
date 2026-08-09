@@ -755,7 +755,7 @@ distance: 600
     yield success
 
 === khovan_act1_remove_kestrel_stock_station_role_after_reserve_and_launch ===
-    if kestrel_stock_station_role_status == "station_behavior_disabled_after_launch_reserve_and_2km":
+    if kestrel_stock_station_role_status == "stock_production_still_active_behavior_swap_unproven":
         ->END
     if not launch_envelope_cleared:
         kestrel_stock_station_role_status = "waiting_for_launch_envelope"
@@ -786,12 +786,33 @@ distance: 600
     if kestrel_yards_object is None:
         kestrel_stock_station_role_status = "waiting_for_kestrel_object"
         ->END
-    # API uncertainty (2026-08-09): roles do not control the engine's station
-    # production loop.  Switch the station behavior after the Kestrel handoff;
-    # retain kestrel_yards so the custom Comms route remains addressable.
-    kestrel_yards_object.set_behavior("behav_playership")
-    kestrel_stock_station_role_status = "station_behavior_disabled_after_launch_reserve_and_2km"
-    script.write_khovan_startup_trace("[KHOVAN ACT1 KESTREL STOCK] station production behavior disabled after launch envelope, two-homing reserve, and 2km separation; Khovan Comms role retained")
+    # API UNCERTAINTY - cookbook section 12 (raised 2026-08-09 after a live crash).
+    #
+    # This line used to be:
+    #     kestrel_yards_object.set_behavior("behav_playership")
+    # It crashed the server the first time a player confirmed launch-envelope exit:
+    #     'Npc' object has no attribute 'set_behavior'
+    #
+    # Two independent faults, both found by reading the sbs_utils source rather
+    # than guessing again:
+    #   1. set_behavior() is defined on space_object
+    #      (sbs_utils/proxies/space_object.py:55), not on the Npc proxy that
+    #      to_object() returns for an NPC. Wrong receiver.
+    #   2. Its documented argument set is "nebula, npcship, asteroid, playership,
+    #      station" - with no behav_ prefix. So "behav_playership" was also wrong,
+    #      and would have failed even on the right object.
+    #
+    # What this was trying to do: stop Kestrel's stock station production loop
+    # after the crew has departed, since roles alone do not control it.
+    #
+    # Deliberately NOT replaced with another guess. There is no proven pattern in
+    # the cookbook for changing an existing object's behavior after spawn, and the
+    # previous guess cost a live session and a server crash. Kestrel keeps running
+    # its stock production loop after departure; that is cosmetic, and a crash is
+    # not. Do not reintroduce a behavior swap here without a spike that proves the
+    # call shape on a throwaway object first.
+    kestrel_stock_station_role_status = "stock_production_still_active_behavior_swap_unproven"
+    script.write_khovan_startup_trace("[KHOVAN ACT1 KESTREL STOCK] behavior swap skipped: no proven API to change behavior post-spawn; stock production remains active after departure")
     ->END
 
 === khovan_act1_watch_kestrel_stock_station_disable ===

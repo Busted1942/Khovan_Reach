@@ -900,8 +900,8 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             "if kestrel_stock_station_range <= kestrel_stock_station_disable_range_m:",
             "task_schedule(khovan_act1_watch_kestrel_stock_station_disable",
             'kestrel_yards_object.set_behavior("behav_playership")',
-            'kestrel_stock_station_role_status = "station_behavior_disabled_after_launch_reserve_and_2km"',
-            "Khovan Comms role retained",
+            'kestrel_stock_station_role_status = "stock_production_still_active_behavior_swap_unproven"',
+            "stock production remains active after departure",
         ]:
             self.assertIn(phrase, stock_role_body)
         self.assertNotIn("remove_role(kestrel_yards_id", stock_role_body)

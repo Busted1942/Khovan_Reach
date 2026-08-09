@@ -744,6 +744,48 @@ Recommended spike or next action:
 
 If the uncertainty blocks a gameplay gate, the correct response is a spike phase — the pattern Slice 06 used — not a guess wrapped in a fallback.
 
+## 12.1 Open: changing an object's behavior after spawn
+
+```text
+API uncertainty:
+Question:            How do you change an already-spawned object's behavior
+                     module (e.g. stop a station's stock production loop)
+                     without despawning and respawning it?
+
+Sources checked:     sbs_utils/proxies/space_object.py:55, sbs_utils/mock/sbs.py:926,
+                     this cookbook sections 8.1-8.5, live crash 2026-08-09.
+
+What appears documented:
+                     set_behavior(name) exists on space_object, and its docstring
+                     lists the valid names as: nebula, npcship, asteroid,
+                     playership, station. No behav_ prefix.
+
+What appears inferred:
+                     That the same call is reachable from a MAST label on an NPC.
+                     It is NOT. to_object() returns an Npc proxy for NPC objects,
+                     and Npc has no set_behavior attribute.
+
+Risk:                HIGH, and already realised. The call
+                     kestrel_yards_object.set_behavior("behav_playership") crashed
+                     the server ('Npc' object has no attribute 'set_behavior') the
+                     first time a player confirmed launch-envelope exit. It had
+                     two independent faults - wrong receiver AND a behav_ prefix
+                     that is not in the documented name set - and static tests plus
+                     compile preflight both passed with it in place. This is the
+                     section 5 evidence table in one line: compile proves compile.
+
+Recommended spike or next action:
+                     Do not reintroduce a behavior swap without proving the call
+                     shape on a throwaway spawned object under GM Test Mode first.
+                     Prove, in order: (a) how to get a space_object rather than an
+                     Npc proxy from an id inside MAST, (b) that set_behavior
+                     accepts a bare name like "playership", (c) that the swap
+                     actually stops stock production and does not break selection,
+                     Comms addressability, or cleanup.
+                     Until then Kestrel keeps its stock production loop after
+                     departure. That is cosmetic; the crash was not.
+```
+
 ---
 
 # 13. Maintaining this file
