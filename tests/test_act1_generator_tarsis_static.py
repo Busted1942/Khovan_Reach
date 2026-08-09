@@ -100,18 +100,17 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             'shared tarsis_docking_observer_status = "not_started"',
             'shared tarsis_docking_observer_last_snapshot = "not_checked"',
             'shared kestrel_yard_lock_visual_text = "Kestrel Yard Control: Artemis is held in yard-lock pending departure clearance. Comms, request departure clearance when the captain is ready."',
-            'shared kestrel_homing_reserve_text = "Kestrel Yard Control: Artemis has no homing torpedoes loaded until Comms requests the emergency reserve. The reserve is two homing torpedoes only; Tarsis handles replacement and generator acceptance."',
-            'shared kestrel_homing_reserve_request_text = "Emergency homing transfer complete, Artemis. Two rounds only. Your Weapons officer can convert one to energy if you need the speed."',
-            'shared kestrel_homing_reserve_prompt_text = "Artemis, you are running slower than you should be.',
-            'shared training_speed_power_reminder_text = "Stay on the shakedown plan, Artemis. And pass along to your captain that the yard commander would like this ship kept in one piece for at least another ten thousand parsecs."',
-            'shared tarsis_generator_support_text = "Tarsis Control: generator acceptance authorized. Request docking clearance when you are ready to come alongside."',
-            'shared tarsis_hail_text = "Tarsis Station: Artemis, we read you. Generator Acceptance is standing by. Request generator support and docking clearance before approach."',
+            'shared kestrel_homing_reserve_text = "Kestrel Yard Control: Artemis has no homing torpedoes loaded until Comms requests the emergency reserve. The reserve is two rounds only; Tarsis handles full replacement when it accepts the authorization packet."',
+            'shared kestrel_homing_reserve_request_text = "Emergency homing transfer complete, Artemis. Two rounds only, and that is reserve margin under the governor, not a combat load. Dump one into the engines if you need the speed; Tarsis restores the rest when they accept your authorization packet."',
+            'shared kestrel_homing_reserve_prompt_text = "Artemis, you are running slower than you should be. That is the generator governor we warned you about, and it holds until Tarsis accepts your authorization packet. If the captain wants speed before then, Comms request the emergency homing reserve. Engineering and Weapons can dump the charge from a torpedo into the engines for a partial refill."',
+            'shared tarsis_generator_support_text = "Tarsis Control: authorization packet accepted and the generator handoff is logged. We clear the governor and restore your banks once you are docked. Request docking clearance when you are ready to come alongside."',
+            'shared tarsis_hail_text = "Tarsis Station: Artemis, we read you. Kestrel signalled your governor. Submit your authorization packet and we will take the generator handoff, then request docking clearance."',
             'shared tarsis_docking_clearance_text = "Tarsis Docking Control: docking clearance granted. Helm, approach within tolerance and initiate docking."',
             "shared tarsis_resupply_homing_torpedoes = 10",
             "shared tarsis_resupply_nukes = 3",
             "shared tarsis_resupply_emps = 6",
             "shared tarsis_resupply_mines = 6",
-            'shared tarsis_resupply_text = "Tarsis Control: resupply authorized and the generator governor is cleared. Artemis is released to complete her shakedown."',
+            'shared tarsis_resupply_text = "Tarsis Control: authorization packet closed out. Governor cleared, banks charged, ordnance restored. Artemis is released to complete her shakedown."',
             "shared tarsis_generator_support_requested = False",
             "shared tarsis_docking_clearance_requested = False",
             "shared tarsis_generator_support_response_sent = False",
@@ -384,18 +383,18 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
         for phrase in [
             "Dillon: Crew of Artemis, this is a qualification cruise. First task: get the ship out of Kestrel cleanly. Comms, request departure clearance. Helm, hold position until Kestrel releases the yard-lock. Captain, coordinate the sequence.",
             "Comms, request departure clearance from Kestrel Yard Control.",
-            "Emergency homing transfer complete, Artemis. Two rounds only. Your Weapons officer can convert one to energy if you need the speed.",
-            "Kestrel Yard Control: departure clearance granted. Helm, clear the launch envelope by moving at least 1 km from Kestrel. Comms, confirm once Artemis is outside the yard boundary.",
+            "Emergency homing transfer complete, Artemis. Two rounds only, and that is reserve margin under the governor, not a combat load. Dump one into the engines if you need the speed; Tarsis restores the rest when they accept your authorization packet.",
+            "Kestrel Yard Control: departure clearance granted. Be advised, Artemis is leaving under a temporary generator governor.",
             "Helm, clear the launch envelope: take us at least 1 km off Kestrel. Comms, confirm when we are out.",
-            "Kestrel Yard Control logs Artemis clear of the launch envelope. Proceed to Tarsis Station for the required Comms requests.",
+            "Kestrel Yard Control logs Artemis clear of the launch envelope. Proceed to Tarsis: submit the authorization packet, then request docking clearance.",
             "Stay on the shakedown plan, Artemis. And pass along to your captain that the yard commander would like this ship kept in one piece for at least another ten thousand parsecs.",
             "Come about for Tarsis. Comms, request generator support and docking clearance before we approach.",
-            "Tarsis Station: Artemis, we read you. Generator Acceptance is standing by. Request generator support and docking clearance before approach.",
-            "Tarsis Control: generator acceptance authorized. Request docking clearance when you are ready to come alongside.",
+            "Tarsis Station: Artemis, we read you. Kestrel signalled your governor. Submit your authorization packet and we will take the generator handoff, then request docking clearance.",
+            "Tarsis Control: authorization packet accepted and the generator handoff is logged. We clear the governor and restore your banks once you are docked. Request docking clearance when you are ready to come alongside.",
             "Tarsis Docking Control: docking clearance granted. Helm, approach within tolerance and initiate docking.",
             "Helm, bring us alongside and dock. Resupply and the generator handoff complete once we are hard docked.",
             "Tarsis Docking Control: docking clearance not granted. Complete Tarsis Comms traffic before approach.",
-            "Tarsis Control: resupply authorized and the generator governor is cleared. Artemis is released to complete her shakedown.",
+            "Tarsis Control: authorization packet closed out. Governor cleared, banks charged, ordnance restored. Artemis is released to complete her shakedown.",
             "Resupply complete. Stand by for Dillon to begin the Engineering shakedown.",
         ]:
             self.assertIn(phrase, active_copy)
@@ -834,7 +833,7 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
         self.assertIn("kestrel_departure_clearance_response_sent = True", clearance_body)
         self.assertIn("kestrel_homing_reserve_prompt_run_id = kestrel_homing_reserve_prompt_run_id + 1", clearance_body)
         self.assertIn("task_schedule(khovan_act1_deliver_homing_reserve_prompt_after_departure_clearance", clearance_body)
-        self.assertIn("Kestrel Yard Control: departure clearance granted. Helm, clear the launch envelope by moving at least 1 km from Kestrel. Comms, confirm once Artemis is outside the yard boundary.", clearance_body)
+        self.assertIn("Kestrel Yard Control: departure clearance granted. Be advised, Artemis is leaving under a temporary generator governor.", clearance_body)
         self.assertIn("[KHOVAN ACT1 COMMS 006D] Kestrel departure-clearance option response sent", clearance_body)
         self.assertNotIn('set_data_set_value(artemis_id, "energy"', clearance_body)
 
