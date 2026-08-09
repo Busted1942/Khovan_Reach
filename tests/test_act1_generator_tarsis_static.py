@@ -68,6 +68,8 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             'shared kestrel_yard_lock_visual_mode = "mechanical_yard_lock_overlay_fallback"',
             'shared kestrel_yard_lock_visual_status = "not_initialized"',
             'shared kestrel_comms_options_status = "not_rendered"',
+            "shared kestrel_comms_post_setup_run_id = 0",
+            'shared kestrel_comms_post_setup_status = "not_scheduled"',
             "shared kestrel_yard_lock_message_sent = False",
             "shared kestrel_departure_clearance_response_sent = False",
             "shared kestrel_launch_envelope_response_sent = False",
@@ -439,11 +441,10 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             "[KHOVAN ACT1 DOCK 001] docking setup scheduled",
             "[KHOVAN ACT1 DOCK 001K] Kestrel Legendary docking helper skipped for startup mechanical hold fallback",
             "await task_schedule(docking_standard_player_station)",
-            'add_role(kestrel_yards_id, "station")',
             'add_role(kestrel_yards_id, "Station")',
             'add_role(kestrel_yards_id, "kestrel_yards")',
-            'kestrel_comms_options_status = "stock_station_role_cleared_kestrel_yards_retained_for_khovan_comms"',
-            "[KHOVAN ACT1 COMMS 003B] Kestrel stock station role cleared; kestrel_yards retained for Khovan Comms options",
+            'kestrel_comms_post_setup_status = "scheduled_after_standard_docking_setup"',
+            'await task_schedule(khovan_act1_finalize_kestrel_opening_comms, {"comms_setup_run_id": kestrel_comms_post_setup_run_id})',
             'add_role(tarsis_station_id, "station")',
             'remove_role(tarsis_station_id, "Station")',
             'tarsis_comms_options_status = "station_role_restored_after_docking_helper_pass"',
@@ -508,8 +509,51 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
         )
         self.assertLess(
             setup_body.index("await task_schedule(docking_standard_player_station)"),
-            setup_body.index('kestrel_comms_options_status = "stock_station_role_cleared_kestrel_yards_retained_for_khovan_comms"'),
+            setup_body.index('kestrel_comms_post_setup_status = "scheduled_after_standard_docking_setup"'),
         )
+
+    def test_kestrel_post_setup_comms_cleanup_is_guarded_and_preserves_routes(self) -> None:
+        act1 = read(ACT1_PATH)
+        setup_body = label_body(act1, "khovan_act1_setup_kestrel_and_tarsis_contacts")
+        cleanup_body = label_body(act1, "khovan_act1_finalize_kestrel_opening_comms")
+
+        self.assertIn(
+            'await task_schedule(khovan_act1_finalize_kestrel_opening_comms, {"comms_setup_run_id": kestrel_comms_post_setup_run_id})',
+            setup_body,
+        )
+        for phrase in [
+            "default comms_setup_run_id = kestrel_comms_post_setup_run_id",
+            "await delay_sim(seconds=1)",
+            "if comms_setup_run_id != kestrel_comms_post_setup_run_id:",
+            'kestrel_comms_post_setup_status = "stale_run_ignored"',
+            'kestrel_comms_post_setup_status = "failed_missing_kestrel_id"',
+            'kestrel_comms_post_setup_status = "failed_missing_kestrel_object"',
+            'remove_role(kestrel_yards_id, "Station")',
+            'add_role(kestrel_yards_id, "kestrel_yards")',
+            'if has_role(kestrel_yards_id, "station"):',
+            'kestrel_comms_post_setup_status = "failed_stock_station_role_retained"',
+            'kestrel_comms_post_setup_status = "complete_stock_station_role_cleared"',
+            "[KHOVAN ACT1 COMMS 003D] Kestrel post-setup cleanup complete: stock station role cleared roles=",
+        ]:
+            self.assertIn(phrase, cleanup_body)
+
+        for seed_label in [
+            "khovan_act1_initialize_generator_tarsis_gate",
+            "khovan_act1_story_jump_seed_mission_start",
+            "khovan_act1_story_jump_seed_post_tarsis_handoff",
+        ]:
+            self.assertIn(
+                "kestrel_comms_post_setup_run_id = kestrel_comms_post_setup_run_id + 1",
+                label_body(act1, seed_label),
+            )
+
+        for route in [
+            '+ "Hail Kestrel Yards" khovan_kestrel_hail',
+            '+ "Request Departure Clearance" khovan_kestrel_request_departure_clearance',
+            '+ "Request Emergency Homing Reserve" khovan_kestrel_request_emergency_homing_reserve',
+            '+ "Confirm Launch-Envelope Exit" khovan_kestrel_report_launch_envelope_clear',
+        ]:
+            self.assertIn(route, act1)
 
     def test_tarsis_docking_setup_waits_for_docking_clearance(self) -> None:
         act1 = read(ACT1_PATH)
