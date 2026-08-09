@@ -160,7 +160,7 @@ class Act1EngineeringShakedownStaticTests(unittest.TestCase):
             "Captain: You are cleared for departure. Bring your ship to at least 2 KM from the station.",
             "Engineering: On Captin command, set Impulse to 0% and Warp to 200% so we can validate your heat sinks.",
             "Helm: Validate that Impuse speed reads 0, then go to warp 1, wait for the speed to stabilze and report ship speed to captian.",
-            "Great, everything is checking out so far. Now Engineering, let's test the internal comms. Order your DamCon team1 to their quarters and then to sleep. Observe ensure that you can observe their increased productivity through the internal medical system.",
+            "Great, everything is checking out so far. Let's test some internal comms systems next.\\nEngineering: Click on one of the crew quarters, click set rally point, and then choose one of your DamCon teams. This will set their idle position. Note that you can read their medical status when you click on DamCon teams. In addition, if they idle in the quarters, mess or gym, they will perform at their peak. Take care of your crew when the preassure is low and they will take care of you when the preassure is high.",
             "Engineering: keep your DamCon teams in good condition, especially in battle. They may mean the difference between life and oblivion.",
             "rest-cycle standby confirmed in crew quarters",
             "Engineering: Now we are going to do a controlled overload exercise. Set Impulse, Warp and Maneyver to 300% and wait for them to overload. Bleed off the excess heat after the overload and monitor your DamCon team progress and then reset them to 100%.",
