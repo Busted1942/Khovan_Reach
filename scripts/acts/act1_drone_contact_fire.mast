@@ -51,6 +51,9 @@ shared drone_01_subsystem_hit_fallback_available = False
 shared drone_01_ceasefire_fallback_available = False
 shared drone_01_instruction_sent = False
 shared drone_01_reset_message_sent = False
+shared drone_01_hail_response_text = "Drone 01 confirms receipt of comms."
+shared drone_01_known_scan_text = "Drone 01: TSN training contact. Transponder active."
+shared drone_01_known_marked = False
 
 shared drone_02_active = False
 shared drone_02_target_id = 0
@@ -392,6 +395,9 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
     drone_01_subsystem_hit_fallback_available = False
     drone_01_ceasefire_fallback_available = False
     drone_01_reset_message_sent = False
+    # Cleared per spawn: khovan_drone_01_mark_scan_known seeds the scan key on the new
+    # object id, and a reset respawn is a different object that starts unknown again.
+    drone_01_known_marked = False
     ->END
 
 === khovan_drone_01_spawn ===
@@ -441,9 +447,58 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
     drone_01_stationary_hold_fallback_available = True
     drone_contact_sequence_status = "drone_01_active"
     drone_contact_last_step = "drone_01_spawn"
+    await task_schedule(khovan_drone_01_mark_scan_known)
     script.write_khovan_startup_trace(f"[KHOVAN ACT1 DRONE 01 SPAWN] target_id={drone_01_target_id} offset_m={drone_01_spawn_offset_m} spawn_count={drone_01_spawn_count}")
     await task_schedule(khovan_set_current_objective, {"objective_id": "drone_01_scan", "objective_body": "Drone 01 deployed. Science scan the contact; Comms hail it and relay its weak shield frequency to Weapons.", "objective_step": "Drone 01 scan and hail", "objective_breadcrumb": "[KHOVAN OBJECTIVE 017] Drone 01 deployed"})
     task_schedule(khovan_drone_01_deliver_deploy_prompt_after_delay, {"deploy_prompt_run_id": drone_contact_sequence_run_id})
+    ->END
+
+=== khovan_drone_01_mark_scan_known ===
+    # Why this exists (2026-08-09, root cause read out of installed sbs_utils v1.3.0):
+    # sbs_utils/procedural/comms.py set_buttons() gates the entire Khovan Comms route
+    # behind the Science known state -
+    #     unk = science_is_unknown(oo, so)
+    #     if unk:
+    #         ...send_comms_selection_info(origin_id, "", "white", "unknown")
+    #         return          # returns BEFORE the button loop
+    # and science.py science_is_unknown() is True while data_set["scan"] is None, "",
+    # "no data", or "Default Scan". A freshly spawned NPC is exactly that, so Drone 01
+    # rendered as "unknown" with no hail button - the live symptom reported 2026-08-09.
+    #
+    # This was previously masked: the removed <scan> block wrote scan text on panel
+    # render, which made the drone known as a side effect. Tarsis and Kestrel get the
+    # same effect on purpose via science_set_scan_data() at
+    # act1_generator_tarsis_gate.mast:421-425.
+    #
+    # Neither sbs_utils helper is usable here. science_set_scan_data() ends with
+    # target_blob.set("scan_type_list", scan_tabs, 0) where scan_tabs is "" for a plain
+    # string, and science_update_scan_data() sets scan_type_list to "scan" whenever it
+    # is currently unset. Either write collapses the stock tab strip - scan/status/
+    # intel/bio plus the A-E frequency bars - which is the thing the previous two
+    # commits recovered. An absent scan_type_list is what makes the engine render its
+    # own full panel, so it must stay absent.
+    #
+    # So write only the scan key and leave scan_type_list alone. This is the same call
+    # sbs_utils itself makes internally (science.py: so.data_set.set(tab, info, oo.side)).
+    #
+    # UNPROVEN in this repo: data_set.set() from MAST. Only data_set.get() is cookbook-
+    # proven (section 8). If this call errors or the drone is still "unknown" on Comms,
+    # do NOT reach for science_set_scan_data as a quick fix - it costs the frequency
+    # panel. Use the Tarsis Comms "Khovan: Fallback Hail" route and raise an
+    # API-uncertainty finding instead.
+    if artemis_id == 0 or drone_01_target_id == 0:
+        drone_01_hail_fallback_available = True
+        script.write_khovan_startup_trace("[KHOVAN ACT1 DRONE 01 KNOWN] skipped, missing artemis or drone id")
+        ->END
+    artemis_object = to_object(artemis_id)
+    drone_object = to_object(drone_01_target_id)
+    if artemis_object is None or drone_object is None:
+        drone_01_hail_fallback_available = True
+        script.write_khovan_startup_trace("[KHOVAN ACT1 DRONE 01 KNOWN] skipped, missing artemis or drone object")
+        ->END
+    drone_object.data_set.set("scan", drone_01_known_scan_text, artemis_object.side)
+    drone_01_known_marked = True
+    script.write_khovan_startup_trace(f"[KHOVAN ACT1 DRONE 01 KNOWN] scan key seeded target_id={drone_01_target_id} side={artemis_object.side}")
     ->END
 
 === khovan_drone_01_deliver_deploy_prompt_after_delay ===
@@ -554,8 +609,14 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
 
 === khovan_drone_01_hail ===
     drone_01_hail_complete = True
+    drone_01_hail_fallback_available = False
     drone_01_status = "comms_hail_complete"
     script.write_khovan_startup_trace(f"[KHOVAN ACT1 DRONE 01 HAIL] target_id={COMMS_SELECTED_ID}")
+    # Bare comms_receive() is the proven-live shape for a player-facing Comms reply in
+    # this file - it is what khovan_drone_contact_fire_hail_spike_target uses, operator-
+    # confirmed working. Do not wrap this one in comms_override; that wrapper is the
+    # GM-only route workaround and is a separate, still-experimental case.
+    comms_receive(drone_01_hail_response_text, title="Drone 01", title_color="green")
     await task_schedule(khovan_set_current_objective, {"objective_id": "drone_01_relay", "objective_body": "Drone 01 acknowledges training status. Science relay the weak shield frequency to Weapons.", "objective_step": "Drone 01 shield relay", "objective_breadcrumb": "[KHOVAN OBJECTIVE 017A] Drone 01 hail complete"})
     ->END
 
@@ -747,8 +808,14 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
     ->END
 
 === khovan_drone_01_fallback_hail ===
+    # Tarsis-side confirmation for when Drone 01 itself is not selectable on Comms -
+    # for example if khovan_drone_01_mark_scan_known failed and the contact is still
+    # rendering as "unknown". Relays the drone's response rather than dropping it.
     drone_01_hail_complete = True
     drone_01_hail_fallback_available = False
+    drone_01_status = "comms_hail_confirmed_via_tarsis"
+    script.write_khovan_startup_trace(f"[KHOVAN ACT1 DRONE 01 HAIL] confirmed via Tarsis Comms target_id={drone_01_target_id}")
+    comms_receive(drone_01_hail_response_text, title="Drone 01", title_color="green")
     ->END
 
 === khovan_drone_01_fallback_shield_relay ===

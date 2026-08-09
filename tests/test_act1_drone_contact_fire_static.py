@@ -13,6 +13,17 @@ def read(path: str) -> str:
     return (ROOT / path).read_text(encoding="utf-8")
 
 
+def code_only(text: str) -> str:
+    """Strip MAST comment lines.
+
+    Several handlers in this file carry long root-cause comments that name the very
+    sbs_utils APIs the tests forbid in code (science_set_scan_data, scan_type_list,
+    <scan>). Assertions about what the runtime does must look at code lines only, or
+    documenting a hazard would trip the guard against it.
+    """
+    return "\n".join(line for line in text.splitlines() if not line.lstrip().startswith("#"))
+
+
 def label_body(text: str, label: str) -> str:
     match = re.search(
         rf"^=== {re.escape(label)} ===(?P<body>.*?)(?=^=== |\Z)",
@@ -436,13 +447,52 @@ class Act1DroneContactFireStaticTests(unittest.TestCase):
         ]:
             self.assertNotIn(forbidden, drone)
 
-        # Line-scoped so the explanatory comment above the removal, which names
+        # Code-scoped so the explanatory comment above the removal, which names
         # <scan> in prose, does not trip this.
-        code_lines = [line for line in drone.splitlines() if not line.lstrip().startswith("#")]
-        self.assertNotIn("<scan>", "\n".join(code_lines))
+        self.assertNotIn("<scan>", code_only(drone))
 
         # The Spike Target is the reference configuration and must stay routeless too.
         self.assertNotIn('//enable/science if has_roles(SCIENCE_SELECTED_ID, "khovan_slice06', drone)
+
+    def test_drone_01_is_hailable_and_answers_the_hail(self) -> None:
+        # Second-order effect of removing the //science route, confirmed live and in
+        # sbs_utils v1.3.0 source: comms.py set_buttons() returns before the button
+        # loop when science_is_unknown() is True, so a never-scanned contact renders
+        # as "unknown" with no Khovan Comms route. The removed <scan> block used to
+        # mask this by writing scan text on panel render.
+        drone = read(DRONE_PATH)
+        self.assertIn('shared drone_01_hail_response_text = "Drone 01 confirms receipt of comms."', drone)
+
+        known_body = label_body(drone, "khovan_drone_01_mark_scan_known")
+        # Guards required by AGENTS.md section 4.
+        self.assertIn("if artemis_id == 0 or drone_01_target_id == 0:", known_body)
+        self.assertIn("if artemis_object is None or drone_object is None:", known_body)
+        # Writes only the scan key. scan_type_list must stay absent or the engine stops
+        # rendering its own full panel - see the science-route tests above.
+        self.assertIn(
+            'drone_object.data_set.set("scan", drone_01_known_scan_text, artemis_object.side)',
+            known_body,
+        )
+        drone_code = code_only(drone)
+        self.assertNotIn("scan_type_list", drone_code)
+        self.assertNotIn("science_set_scan_data", drone_code)
+        self.assertNotIn("science_update_scan_data", drone_code)
+        # Seeded at spawn and cleared per spawn, since a reset respawn is a new object.
+        self.assertIn("await task_schedule(khovan_drone_01_mark_scan_known)", label_body(drone, "khovan_drone_01_spawn"))
+        self.assertIn("drone_01_known_marked = False", label_body(drone, "khovan_drone_01_reset_flags"))
+
+        # The hail must actually answer, on both the direct and the Tarsis route.
+        for handler in ["khovan_drone_01_hail", "khovan_drone_01_fallback_hail"]:
+            body = label_body(drone, handler)
+            self.assertIn(
+                'comms_receive(drone_01_hail_response_text, title="Drone 01", title_color="green")',
+                body,
+                f"{handler} should send the Drone 01 response",
+            )
+            self.assertIn("drone_01_hail_complete = True", body)
+            # Player-facing reply, so bare comms_receive - comms_override is the
+            # GM-only-route workaround and is still experimental.
+            self.assertNotIn("comms_override", code_only(body))
 
     def test_drone_01_scan_and_relay_gates_survive_science_route_removal(self) -> None:
         # With no //science route, the Tarsis Comms routes are the only way to reach
