@@ -635,6 +635,40 @@ for it while it does.
     artemis_object.data_set.set("playerThrottle", 0, 0)
 ```
 
+### That trailing argument is an INDEX, not a default
+
+**[LIVE] — corrected 2026-08-09. A previous claim in this repo was wrong.**
+
+`sbs_utils/mock/sbs.py:632` declares the getter as:
+
+```python
+def get(self, name, index=0):
+    values = self.values.get(name, {})
+    value = values.get(index, None)
+```
+
+So `data_set.get("energy", 0)` means *"read `energy` at index 0"*, not *"read `energy`, defaulting to 0 if missing"*. The setter has always made this obvious — every call above passes a trailing `0` that nobody would read as a default — but the getter was documented backwards.
+
+`act1_drone_contact_fire.mast` carries a comment asserting the opposite, tagged "confirmed live". What was actually confirmed live is that the **fix worked**, and reading index 0 of a scalar returns the same value either way. The live evidence never discriminated between the two readings.
+
+The indexed form is what makes array-valued keys reachable. From `legendarymissions/comms/enemy_surrender.mast:47-52`:
+
+```mast
+    blob = to_blob(COMMS_SELECTED_ID)
+    ->END if blob is None
+    shield_count = blob.get("shield_count", 0)
+    ->END if shield_count is None
+    s_ratio = 100
+    for s in range(shield_count):
+        s_max = blob.get("shield_max_val", s )
+        s_cur = blob.get("shield_val", s )
+        s_ratio = min(s_cur/s_max, s_ratio)
+```
+
+`shield_val` is a per-shield array read by index. `shield_count` is scalar, so it takes index 0.
+
+**Consequence for per-subsystem damage.** Slice 06 concluded there is "no proven per-subsystem `data_set` key" after `get("system_damage", sbs.SHPSYS.WEAPONS)` failed. That call may have been closer to correct than the replacement — the enum was in the index slot, which is where a subsystem selector would belong. Slice 06 fixed a *second*, independent bug in the same handler (an `and` that discarded a real `MANUAL_SYSTEM` signal), and that fix alone could explain the recovery. **Still [UNPROVEN]** — nothing here shows `SHPSYS.WEAPONS` is a valid index for `system_damage`. It reopens the question rather than settling it, and it is a cheap thing to test in the Slice 12 combat spike: read `system_damage` at several indices and trace all of them.
+
 **[LIVE]** Reading (`act1_engineering_shakedown.mast:227-234`):
 
 ```mast
@@ -875,3 +909,173 @@ Naming trap worth keeping separate:
 # 13. Maintaining this file
 
 Add an entry when you prove a new API in live smoke. Promote a tag from **[UNPROVEN]** to **[LIVE]** only when a slice verification doc records the live observation. Keep citations pointing at active `scripts/` files, never at `archive/`.
+
+---
+
+# 14. Patterns from LegendaryMissions and SecretMeeting
+
+Extracted 2026-08-09 from the Tier 2 clones at
+`<Cosmos>/_khovan_reach_tier2_references/reference_missions/_local_clones/`.
+LegendaryMissions is 112 MAST files across 27 topic folders and is the richest
+API evidence available outside this repo.
+
+**Evidence standing.** These are **[REFERENCE]**: real shipping code from the
+official org, so the call shapes are almost certainly valid, but nothing here
+has run inside Khovan. Treat a pattern as **[UNPROVEN]** on first use in this
+repo and promote it only from a live smoke record. Also remember `AGENTS.md`
+section 1 — reference missions supply *syntax*, never scenario design.
+
+Everything below answers a question this repo had actually asked.
+
+## 14.1 Despawning a ship without faking a kill
+
+**[REFERENCE]** `comms/enemy_surrender.mast:130-148`.
+
+Slice 06 learned the hard way that `sbs.delete_object()` fires the same
+`//damage/destroy` hook a genuine Weapons kill fires, so cleanup and combat are
+indistinguishable at the hook. LegendaryMissions never fights that. It flies
+surrendered ships home and deletes them only once they are far away:
+
+```mast
+======== take_surrendered_home  =========
+    await delay_sim(5)
+    surrendered = role("surrendered")
+    for ship in surrendered:
+        ship_obj = to_object(ship)
+        continue if ship_obj is None
+        spawn_pos = Vec3(ship_obj.spawn_pos)
+        _pos = ship_obj.pos
+        target_pos(ship, spawn_pos.x, spawn_pos.y, spawn_pos.z, throttle=1.5, target_id=0)
+        diff = _pos - spawn_pos
+        continue if diff.length() > 500
+        sbs.delete_object(ship)
+    jump take_surrendered_home
+```
+
+Four things worth stealing:
+
+- **`ship_obj.spawn_pos`** — objects remember where they spawned. No bookkeeping needed to send one home.
+- **`target_pos(id, x, y, z, throttle=, target_id=)`** — how to order an NPC to fly somewhere.
+- **A role as a work queue.** `role("surrendered")` is the whole list; adding the role enqueues a ship.
+- **One self-jumping sweeper** for every ship in that state, rather than a timer per ship.
+
+For Slice 12's `pirate_outcome = fled`, this is the shape to copy: flag the ship, let one sweeper walk it off the map, and delete it far from the player where the destroy hook cannot be confused with a kill.
+
+## 14.2 Surrender
+
+**[REFERENCE]** `comms/enemy_surrender.mast:117-129`. Slice 12 needs
+`pirate_surrendered_observed`; this is a complete worked example.
+
+```mast
+======== comms_do_surrender ========
+    player = to_object(COMMS_ORIGIN_ID)
+    ->END if player is None
+    comms_receive(f"""OK we give up, {player.name}.""", title_color=surrender_color)
+    add_role(COMMS_SELECTED_ID, "surrendered")
+    remove_role(COMMS_SELECTED_ID, "raider")
+    set_data_set_value(COMMS_SELECTED_ID, "surrender_flag", 1)
+    fleet_remove_ship(COMMS_SELECTED_ID)
+    yield SUCCESS
+```
+
+Note the state change is **four coordinated writes**: add the new role, remove
+the combat role, set an engine-visible flag, and pull the ship out of its fleet.
+Dropping any one leaves the ship half-surrendered — still targeted by fleet AI,
+or still offered a surrender button.
+
+The offering route also shows how to make a Comms option *conditional on ship
+state* rather than on mission flags — it reads shield ratio, crew species, and a
+per-ship `surrender_count` to decide whether surrender is even plausible. Slice
+11's `pirate_cover_status` can gate options the same way.
+
+## 14.3 Guard clauses: the inline form
+
+**[REFERENCE]** used throughout LegendaryMissions.
+
+This repo writes every guard as two lines. The reference code uses a
+one-line form, and inside loops a `continue` variant:
+
+```mast
+    ->END if blob is None
+    ->END if shield_count is None
+    continue if ship_obj is None
+```
+
+Same semantics as the two-line `if x is None:` / `->END`. Worth adopting for
+simple None-checks — `AGENTS.md` section 4 requires the guard, not a particular
+spelling, and the terser form makes a long label readable. Keep the block form
+when the failure branch has to set a status or a fallback flag.
+
+## 14.4 Hostility and relationship checks
+
+**[REFERENCE]** `ai/npc_brains.mast:30`, `comms/enemy_stations.mast:3`,
+`science_scans/science.mast:16`.
+
+```mast
+    side_are_enemies(COMMS_ORIGIN_ID, COMMS_SELECTED_ID)
+    side_are_allies(SCIENCE_ORIGIN_ID, SCIENCE_SELECTED_ID)
+    is_space_object_id(COMMS_SELECTED_ID)
+    has_any_role(COMMS_SELECTED_ID, "Station,ship")
+```
+
+`side_are_enemies` is the relationship test the whole reference codebase gates
+on. Slice 12 needs exactly this to know when pirates have turned hostile, and
+`has_any_role(id, "a,b")` is the comma-separated any-of form — distinct from
+`has_roles(id, "a, b")`, which is all-of.
+
+## 14.5 Why stock routes win, and the rule that follows
+
+**[LIVE]** in this repo (the Kestrel Comms failure, 2026-08-09), corroborated by
+`comms/enemy_stations.mast:3-5` and `comms/enemy_taunt.mast:27`.
+
+Stock Comms and Science routes gate on the generic roles:
+
+```mast
+//comms if has_any_role(COMMS_ORIGIN_ID, "__player__,admiral") and side_are_enemies(...) and has_roles(COMMS_SELECTED_ID, 'Station')
+//science if side_are_allies(SCIENCE_ORIGIN_ID, SCIENCE_SELECTED_ID) and has_roles(SCIENCE_SELECTED_ID, "Station")
+```
+
+So any object carrying a station role is *also* claimed by LegendaryMissions'
+own routes, and the stock panel owns the right-hand option list. That is
+precisely the Kestrel failure: Khovan's block evaluated and traced every click
+while the player saw the stock panel. See section 8.2 for the rule.
+
+The corollary for Act III: a cache, a derelict, or a pirate given a stock role
+inherits stock behavior you did not write. Give objects Khovan-specific roles
+and add stock roles only when stock behavior is genuinely wanted.
+
+## 14.6 Spawn-time vs runtime behavior names
+
+**[REFERENCE]** `SecretMeeting/story.mast:79`, `LegendaryMissions` throughout.
+
+```mast
+    station_object = npc_spawn(0,0,0, "Starbase Phoenix", "tsn, station", "starbase_civil", "behav_station")
+    amb_id = npc_spawn(100, 0, -2000, "Praetor of Peace", "Ambassador", "tsn_warpster", "behav_npcship")
+    asteroid = terrain_spawn(v2.x, v2.y, v2.z, None, "#,asteroid", a_type, "behav_asteroid")
+```
+
+Spawn takes the **prefixed** name (`behav_station`). The runtime `set_behavior()`
+API takes the **bare** name (`station`) per its own docstring. See section 12.1 —
+mixing the two is what crashed the server on 2026-08-09.
+
+**`set_behavior` appears in none of the 112 LegendaryMissions files.** There is
+no precedent to copy, which is itself evidence: changing behavior after spawn is
+not a routine operation in this engine. Section 12.1 stays open.
+
+## 14.7 Where to look next
+
+Folders not yet mined, mapped to the slices that will want them:
+
+| Folder | Likely relevant to |
+|---|---|
+| `docking/` | Slice 10 cache docking — `docking_dock_with_friendly_station`, `docking_dock_with_resupply_ship` |
+| `science_scans/` | Slices 07/11 scan gating by role |
+| `fleets/` | Slices 11/12 pirate group behavior |
+| `damage/`, `collisions/` | Slice 12 combat outcomes |
+| `gamemaster/`, `gamemaster_comms/` | GM controls, and the unresolved GM `comms_receive()` rendering question |
+| `data_panels/`, `consoles/` | Slice 10 component selection UI |
+| `grid_comms/`, `ai/` | Slice 09 DAMCON |
+
+**Method that worked:** grep the clones for the specific API or behavior in
+question *before* raising an API uncertainty. Both expensive failures on
+2026-08-09 had answers sitting in material this repo already held.
