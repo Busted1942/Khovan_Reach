@@ -644,7 +644,7 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
         observer_body = label_body(act1, "khovan_tarsis_watch_mechanical_docking_after_clearance")
         self.assertIn("if tarsis_mechanical_dock_observed:", observer_body)
         self.assertIn('for player_id in role("__player__"):', observer_body)
-        self.assertIn('observed_dock_state = observed_player.data_set.get("dock_state", "unknown")', observer_body)
+        self.assertIn('observed_dock_state = observed_player.data_set.get("dock_state", 0)', observer_body)
         self.assertIn('observed_dock_base_id = observed_player.data_set.get("dock_base_id", 0)', observer_body)
         self.assertIn('observer_snapshot = f"player={player_id} state={observed_dock_state} base={observed_dock_base_id} tarsis={tarsis_station_id}"', observer_body)
         self.assertIn("if observer_snapshot != tarsis_docking_observer_last_snapshot:", observer_body)

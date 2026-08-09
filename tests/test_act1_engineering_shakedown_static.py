@@ -481,7 +481,7 @@ class Act1EngineeringShakedownStaticTests(unittest.TestCase):
         self.assertIn("engineering_shakedown_undock_watch_run_id = engineering_shakedown_undock_watch_run_id + 1", prepare_body)
         self.assertIn("task_schedule(khovan_engineering_watch_tarsis_undock_for_shakedown", prepare_body)
         self.assertIn("if watch_run_id != engineering_shakedown_undock_watch_run_id:", watch_body)
-        self.assertIn('artemis_object.data_set.get("dock_state", "unknown")', watch_body)
+        self.assertIn('artemis_object.data_set.get("dock_state", 0)', watch_body)
         self.assertIn("undock_dock_base_id == tarsis_station_id", watch_body)
         self.assertIn("await delay_sim(seconds=1)", watch_body)
         self.assertIn("await task_schedule(khovan_act1_engineering_shakedown_start)", watch_body)

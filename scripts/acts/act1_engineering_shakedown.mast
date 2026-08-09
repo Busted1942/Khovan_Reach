@@ -233,7 +233,9 @@ shared navigation_priority_confirmed_text = "Artemis - Comms: Shakedown complete
         engineering_shakedown_undock_observer_status = "waiting_for_artemis_object"
         ->END
 
-    undock_dock_state = artemis_object.data_set.get("dock_state", "unknown")
+    undock_dock_state = artemis_object.data_set.get("dock_state", 0).data_set.get("dock_state", 0)
+    if undock_dock_state is None:
+        undock_dock_state = "unknown"
     undock_dock_base_id = artemis_object.data_set.get("dock_base_id", 0)
     if undock_dock_state == "docked" and undock_dock_base_id == tarsis_station_id:
         engineering_shakedown_undock_observer_status = "waiting_for_tarsis_undock"
@@ -751,8 +753,18 @@ shared navigation_priority_confirmed_text = "Artemis - Comms: Shakedown complete
             # get_inventory_value - a different accessor, and the one already
             # proven in this repo via artemis_object.data_set.get("playerThrottle").
             # The panel's "Idling at 13,5" is exactly these two values.
-            damcon_sample_x = damcon_team.data_set.get("curx", -1)
-            damcon_sample_y = damcon_team.data_set.get("cury", -1)
+            # data_set.get(name, index) - the second argument is an INDEX, not
+            # a default (cookbook 9.1). Passing -1 as a "default" asked for
+            # index -1, returned None, and crashed the next comparison with
+            # "'>=' not supported between instances of 'NoneType' and 'int'"
+            # (live 2026-08-09). Index 0 is the scalar slot; None-check the
+            # result rather than trying to supply a fallback here.
+            damcon_sample_x = damcon_team.data_set.get("curx", 0)
+            damcon_sample_y = damcon_team.data_set.get("cury", 0)
+            if damcon_sample_x is None:
+                damcon_sample_x = -1
+            if damcon_sample_y is None:
+                damcon_sample_y = -1
             # Resolve the room under the team and name it, so the trace says
             # which room rather than just a coordinate. get_objects_at_point
             # returns everything at that cell; intersecting with a role set is

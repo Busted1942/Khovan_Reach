@@ -1309,11 +1309,23 @@ Position uses **`data_set.get()`**, a different accessor from
 `artemis_object.data_set.get("playerThrottle", 0)`):
 
 ```mast
-    damcon_x = damcon_team.data_set.get("curx", -1)
-    damcon_y = damcon_team.data_set.get("cury", -1)
+    damcon_x = damcon_team.data_set.get("curx", 0)
+    damcon_y = damcon_team.data_set.get("cury", 0)
+    if damcon_x is None:
+        damcon_x = -1
+    if damcon_y is None:
+        damcon_y = -1
 ```
 
 These two values are what the Engineering panel renders as "Idling at 13,5".
+
+**The trailing `0` is an index, not a default — and this section shipped with
+that bug.** The first version of this sample passed `-1` as if it were a
+fallback, which asked for index `-1`, returned `None`, and crashed live with
+`'>=' not supported between instances of 'NoneType' and 'int'`. Section 9.1
+documents the rule; it was written the same day and still got violated here,
+because `get(key, fallback)` is what the signature looks like in every other
+language. **`data_set.get()` has no default parameter. None-check the result.**
 
 Resolve the room by intersecting everything at that cell with a role set:
 

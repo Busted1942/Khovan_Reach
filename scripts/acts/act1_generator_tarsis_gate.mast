@@ -956,7 +956,9 @@ distance: 600
     for player_id in role("__player__"):
         observed_player = to_object(player_id)
         if observed_player is not None:
-            observed_dock_state = observed_player.data_set.get("dock_state", "unknown")
+            observed_dock_state = observed_player.data_set.get("dock_state", 0).data_set.get("dock_state", 0)
+            if observed_dock_state is None:
+                observed_dock_state = "unknown"
             observed_dock_base_id = observed_player.data_set.get("dock_base_id", 0)
             observer_snapshot = f"player={player_id} state={observed_dock_state} base={observed_dock_base_id} tarsis={tarsis_station_id}"
             if observer_snapshot != tarsis_docking_observer_last_snapshot:
