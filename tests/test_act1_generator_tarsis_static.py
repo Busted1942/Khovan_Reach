@@ -443,8 +443,8 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             'add_role(kestrel_yards_id, "station")',
             'add_role(kestrel_yards_id, "Station")',
             'add_role(kestrel_yards_id, "kestrel_yards")',
-            'kestrel_comms_options_status = "station_and_Station_and_kestrel_yards_roles_restored_after_docking_helper_pass"',
-            "[KHOVAN ACT1 COMMS 003B] Kestrel station roles restored after docking helper pass for Khovan Comms options",
+            'kestrel_comms_options_status = "stock_station_role_cleared_kestrel_yards_retained_for_khovan_comms"',
+            "[KHOVAN ACT1 COMMS 003B] Kestrel stock station role cleared; kestrel_yards retained for Khovan Comms options",
             'add_role(tarsis_station_id, "station")',
             'remove_role(tarsis_station_id, "Station")',
             'tarsis_comms_options_status = "station_role_restored_after_docking_helper_pass"',
@@ -509,7 +509,7 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
         )
         self.assertLess(
             setup_body.index("await task_schedule(docking_standard_player_station)"),
-            setup_body.index('kestrel_comms_options_status = "station_and_Station_and_kestrel_yards_roles_restored_after_docking_helper_pass"'),
+            setup_body.index('kestrel_comms_options_status = "stock_station_role_cleared_kestrel_yards_retained_for_khovan_comms"'),
         )
 
     def test_tarsis_docking_setup_waits_for_docking_clearance(self) -> None:

@@ -428,17 +428,32 @@ shared tarsis_resupply_text = "Tarsis Control: resupply authorized and the gener
     script.write_khovan_startup_trace("[KHOVAN ACT1 VISUAL 001] Kestrel yard-lock visual setup attempted")
     await task_schedule(docking_standard_player_station)
     if kestrel_yards_id != 0:
+        # ROOT CAUSE, confirmed live 2026-08-09. Kestrel rendered no Khovan Comms
+        # routes in the right-hand panel while Tarsis rendered its four correctly.
+        #
+        # The [KHOVAN ACT1 COMMS 003C-ROLES] trace showed Kestrel finishing setup
+        # holding the stock lowercase 'station' role, while Tarsis finished without
+        # it. A station-roled object gets the stock station Comms panel, which owns
+        # the right-hand list and shows a generic "Options" entry under an
+        # "unknown" sender - exactly what the operator saw. Khovan's own //comms
+        # block was evaluating the whole time ([KHOVAN ACT1 COMMS KESTREL OPTIONS]
+        # fired on every click); its output was simply not what the panel showed.
+        #
+        # Two role facts this proved, both contradicting cookbook 8.2:
+        #   1. Role names are case-insensitive. add_role("Station") immediately
+        #      after add_role("station") is a no-op - the post-restore trace shows
+        #      'station' and never 'Station'.
+        #   2. Therefore remove_role("Station") strips lowercase 'station' too,
+        #      which is precisely how the Tarsis branch below ends up clean.
+        #
+        # Kestrel does not need the stock station role: its departure hold is the
+        # mechanical fallback, not Legendary docking (see DOCK 001K above), so the
+        # stock station panel buys nothing and costs the Khovan routes.
         add_role(kestrel_yards_id, "station")
-        add_role(kestrel_yards_id, "Station")
+        remove_role(kestrel_yards_id, "Station")
         add_role(kestrel_yards_id, "kestrel_yards")
-        kestrel_comms_options_status = "station_and_Station_and_kestrel_yards_roles_restored_after_docking_helper_pass"
-        script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS 003B] Kestrel station roles restored after docking helper pass for Khovan Comms options")
-        # The COMMS 003 trace above fires BEFORE this restore, so it has never shown
-        # Kestrel's final role set. Log the post-restore state so the two can be
-        # compared directly. Cookbook 8.2 claims stock station behavior keys off a
-        # capital "Station"; the COMMS 003 reading does not contain it, which may
-        # mean remove_role("station") also strips "Station" - unconfirmed, and this
-        # trace is what would confirm or kill it.
+        kestrel_comms_options_status = "stock_station_role_cleared_kestrel_yards_retained_for_khovan_comms"
+        script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS 003B] Kestrel stock station role cleared; kestrel_yards retained for Khovan Comms options")
         kestrel_roles_final = to_object(kestrel_yards_id).get_roles()
         script.write_khovan_startup_trace(f"[KHOVAN ACT1 COMMS 003C-ROLES] Kestrel post-restore roles={kestrel_roles_final}")
     if tarsis_station_id != 0:

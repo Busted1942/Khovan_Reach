@@ -538,17 +538,42 @@ Three ways to make a contact known, in order of preference:
 
 Known-good keys in use: `"starbase_command"` / `"behav_station"` for stations, `"tsn_warpster"` / `"behav_npcship"` for a small ship.
 
-## 8.2 The capitalized-Station role workaround
+## 8.2 Stock station role vs custom Comms routes
 
-**[LIVE]** `act1_generator_tarsis_gate.mast:371-374`. Non-obvious and deliberate — stock station behavior keys off capital `Station`:
+**[LIVE — corrected 2026-08-09, previous claim DISCONFIRMED]**
+
+This section previously claimed stock station behavior keys off a **capital**
+`Station` role, and told you not to clean the pattern up. That was wrong, and it
+cost a live session. **Role names are case-insensitive.**
+
+Proof, from `[KHOVAN ACT1 COMMS 003C-ROLES]` on a live 2026-08-09 run: after
+`add_role(id, "station")` followed by `add_role(id, "Station")`, the object's
+role list contains `'station'` and never `'Station'`. The second call is a no-op.
+It follows that `remove_role(id, "Station")` strips lowercase `'station'`.
+
+**What actually matters:** an object holding the stock `station` role gets the
+stock station Comms panel, and that panel owns the right-hand option list. A
+custom `//comms` block on the same object still evaluates and still writes its
+traces, but the player sees the stock panel — a generic `Options` entry under an
+`unknown` sender. That is what makes this look like "my routes are not firing"
+when they are.
+
+**Rule:** if an object needs custom Khovan Comms options, it must not keep the
+stock `station` role.
 
 ```mast
-    add_role(kestrel_yards_id, "Station")
-    remove_role(kestrel_yards_id, "station")
-    add_role(kestrel_yards_id, "kestrel_yards")
+    # Clear the stock station role, keep the custom role the //comms block gates on.
+    add_role(station_id, "station")
+    remove_role(station_id, "Station")   # case-insensitive: this clears 'station'
+    add_role(station_id, "kestrel_yards")
 ```
 
-Do not "clean this up."
+Both Kestrel and Tarsis use this shape. Tarsis has been live-correct since Slice
+04; Kestrel regressed when a fix re-added its stock role and was corrected here.
+
+**Only keep the stock `station` role when the object genuinely needs stock
+docking/resupply behavior**, and accept that custom Comms options will not render
+for it while it does.
 
 ## 8.3 Object conversion helpers
 
