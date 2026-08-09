@@ -51,7 +51,7 @@ shared drone_01_subsystem_hit_fallback_available = False
 shared drone_01_ceasefire_fallback_available = False
 shared drone_01_instruction_sent = False
 shared drone_01_reset_message_sent = False
-shared drone_01_hail_response_text = "Drone 01 confirms receipt of comms."
+shared drone_01_hail_response_text = "Training drone acknowledges. Transponder reads TSN training contact, no weapons free."
 shared drone_01_known_scan_text = "Drone 01: TSN training contact. Transponder active."
 shared drone_01_known_marked = False
 shared drone_01_hull_restore_count = 0
@@ -126,7 +126,7 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
     if drone_target_spike_status == "not_started":
         drone_target_spike_status = "ready"
     script.write_khovan_startup_trace("[KHOVAN ACT1 DRONE 002] Drone 01 production sequence ready after Engineering shakedown")
-    await task_schedule(khovan_set_current_objective, {"objective_id": "drone_01_ready", "objective_body": "Drone 01 training contact ready. Science scan, Comms hail, relay shield frequencies, then establish the controlled firing window.", "objective_step": "Drone 01 controlled disable", "objective_breadcrumb": "[KHOVAN OBJECTIVE 016] objective updated: Drone 01 ready"})
+    await task_schedule(khovan_set_current_objective, {"objective_id": "drone_01_ready", "objective_body": "Training drone standing by. Science, scan the contact; Comms, hail it and relay its weak shield frequency to Weapons; then Helm bring us into the firing window.", "objective_step": "Drone 01 controlled disable", "objective_breadcrumb": "[KHOVAN OBJECTIVE 016] objective updated: Drone 01 ready"})
     await task_schedule(khovan_scenario_control_panel_update_overview)
     ->END
 
@@ -409,7 +409,7 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
     if shakedown_mode == "direct":
         drone_contact_sequence_status = "direct_scenario_drone_drills_bypassed"
         drone_contact_profile_route = "direct_bypass_no_failure_states"
-        await task_schedule(khovan_set_current_objective, {"objective_id": "drone_drills_bypassed", "objective_body": "Direct Scenario selected: Drone drills are marked bypassed with no failure state.", "objective_step": "Act I drills bypassed", "objective_breadcrumb": "[KHOVAN ACT1 DRONE BYPASS] direct scenario"})
+        await task_schedule(khovan_set_current_objective, {"objective_id": "drone_drills_bypassed", "objective_body": "Captain has elected to skip the gunnery drills. Nothing is held against the crew for it. Stand by for orders.", "objective_step": "Act I drills bypassed", "objective_breadcrumb": "[KHOVAN ACT1 DRONE BYPASS] direct scenario"})
         ->END
     if drone_01_active:
         ->END
@@ -472,7 +472,7 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
     drone_contact_last_step = "drone_01_spawn"
     await task_schedule(khovan_drone_01_mark_scan_known)
     script.write_khovan_startup_trace(f"[KHOVAN ACT1 DRONE 01 SPAWN] target_id={drone_01_target_id} offset_m={drone_01_spawn_offset_m} spawn_count={drone_01_spawn_count}")
-    await task_schedule(khovan_set_current_objective, {"objective_id": "drone_01_scan", "objective_body": "Drone 01 deployed. Science scan the contact; Comms hail it and relay its weak shield frequency to Weapons.", "objective_step": "Drone 01 scan and hail", "objective_breadcrumb": "[KHOVAN OBJECTIVE 017] Drone 01 deployed"})
+    await task_schedule(khovan_set_current_objective, {"objective_id": "drone_01_scan", "objective_body": "Drone away. Science, scan the contact. Comms, hail it and relay its weak shield frequency to Weapons.", "objective_step": "Drone 01 scan and hail", "objective_breadcrumb": "[KHOVAN OBJECTIVE 017] Drone 01 deployed"})
     task_schedule(khovan_drone_01_deliver_deploy_prompt_after_delay, {"deploy_prompt_run_id": drone_contact_sequence_run_id})
     ->END
 
@@ -565,7 +565,7 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
         ->END
 
     drone_01_deploy_prompt_sent = True
-    await task_schedule(khovan_reach_send_safe_startup_message, {"startup_sender": "Training Control", "startup_text": drone_01_deploy_prompt_text, "startup_title_color": "cyan", "startup_sender_id": tarsis_station_id, "startup_player_id": artemis_id, "startup_breadcrumb": "[KHOVAN ACT1 DRONE 01 DEPLOY PROMPT] guarded ten-second player message sent", "startup_safe_breadcrumb": "[KHOVAN ACT1 DRONE 01 DEPLOY PROMPT] player message skipped because Tarsis or Artemis context is unavailable"})
+    await task_schedule(khovan_reach_send_safe_startup_message, {"startup_sender": "Dillon", "startup_text": drone_01_deploy_prompt_text, "startup_title_color": "cyan", "startup_sender_id": tarsis_station_id, "startup_player_id": artemis_id, "startup_breadcrumb": "[KHOVAN ACT1 DRONE 01 DEPLOY PROMPT] guarded ten-second player message sent", "startup_safe_breadcrumb": "[KHOVAN ACT1 DRONE 01 DEPLOY PROMPT] player message skipped because Tarsis or Artemis context is unavailable"})
     ->END
 
 === khovan_drone_01_reset ===
@@ -583,9 +583,9 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
     drone_01_spawn_offset_m = drone_01_spawn_offset_m + 5000
     drone_contact_sequence_run_id = drone_contact_sequence_run_id + 1
     if reset_reason == "unauthorized_damage":
-        await task_schedule(khovan_set_current_objective, {"objective_id": "drone_01_reset", "objective_body": "Training Control: unauthorized hit detected. Target reset. Reacquire, reestablish range, and wait for clearance.", "objective_step": "Drone 01 reset", "objective_breadcrumb": "[KHOVAN ACT1 DRONE 01 RESET] unauthorized-hit reset message"})
+        await task_schedule(khovan_set_current_objective, {"objective_id": "drone_01_reset", "objective_body": "Unauthorized fire. The drone has been pulled and reset farther out. Reacquire, re-establish your range, and wait for clearance before firing.", "objective_step": "Drone 01 reset", "objective_breadcrumb": "[KHOVAN ACT1 DRONE 01 RESET] unauthorized-hit reset message"})
     else:
-        await task_schedule(khovan_set_current_objective, {"objective_id": "drone_01_reset", "objective_body": "Training Control: target destroyed. Drill objective was controlled subsystem disable. Target reset for repeat.", "objective_step": "Drone 01 reset", "objective_breadcrumb": "[KHOVAN ACT1 DRONE 01 RESET] premature-destruction reset message"})
+        await task_schedule(khovan_set_current_objective, {"objective_id": "drone_01_reset", "objective_body": "Target destroyed. The drill was a controlled subsystem disable, not a kill. A fresh drone has been reset farther out; run it again.", "objective_step": "Drone 01 reset", "objective_breadcrumb": "[KHOVAN ACT1 DRONE 01 RESET] premature-destruction reset message"})
     task_schedule(khovan_drone_01_reset_respawn, {"reset_run_id": drone_contact_sequence_run_id})
     ->END
 
@@ -671,7 +671,7 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
     # confirmed working. Do not wrap this one in comms_override; that wrapper is the
     # GM-only route workaround and is a separate, still-experimental case.
     comms_receive(drone_01_hail_response_text, title="Drone 01", title_color="green")
-    await task_schedule(khovan_set_current_objective, {"objective_id": "drone_01_relay", "objective_body": "Drone 01 acknowledges training status. Science relay the weak shield frequency to Weapons.", "objective_step": "Drone 01 shield relay", "objective_breadcrumb": "[KHOVAN OBJECTIVE 017A] Drone 01 hail complete"})
+    await task_schedule(khovan_set_current_objective, {"objective_id": "drone_01_relay", "objective_body": "The drone answers your hail and confirms it is a training contact. Science, relay its weak shield frequency to Weapons.", "objective_step": "Drone 01 shield relay", "objective_breadcrumb": "[KHOVAN OBJECTIVE 017A] Drone 01 hail complete"})
     ->END
 
 === khovan_drone_01_watch_stationary_hold ===
@@ -725,7 +725,7 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
         ->END
     drone_01_fire_authorized = True
     drone_01_status = "fire_authorized_weapons_disable_only"
-    await task_schedule(khovan_set_current_objective, {"objective_id": "drone_01_fire_authorized", "objective_body": "Training Control authorizes fire. Weapons use manual targeting on Drone 01 Weapons array only; disable it in three confirmed hits, then cease fire.", "objective_step": "Drone 01 Weapons disable", "objective_breadcrumb": "[KHOVAN OBJECTIVE 019] Drone 01 fire authorized"})
+    await task_schedule(khovan_set_current_objective, {"objective_id": "drone_01_fire_authorized", "objective_body": "You are cleared to fire. Weapons, go to manual targeting and take the drone's weapons array only. Three confirmed hits should disable it. Then cease fire.", "objective_step": "Drone 01 Weapons disable", "objective_breadcrumb": "[KHOVAN OBJECTIVE 019] Drone 01 fire authorized"})
     ->END
 
 //damage/object if has_role(DAMAGE_TARGET_ID, "khovan_drone_01")
@@ -805,7 +805,7 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
         drone_01_weapons_disabled = True
         drone_01_status = "weapons_array_disabled_awaiting_ceasefire"
         drone_01_ceasefire_fallback_available = True
-        await task_schedule(khovan_set_current_objective, {"objective_id": "drone_01_ceasefire", "objective_body": "Drone 01 Weapons array disabled. Captain call ceasefire; Comms confirm it with Training Control.", "objective_step": "Drone 01 ceasefire", "objective_breadcrumb": "[KHOVAN OBJECTIVE 020] Drone 01 Weapons disabled"})
+        await task_schedule(khovan_set_current_objective, {"objective_id": "drone_01_ceasefire", "objective_body": "The drone's weapons array is down. Captain, call ceasefire; Comms, confirm it with Dillon.", "objective_step": "Drone 01 ceasefire", "objective_breadcrumb": "[KHOVAN OBJECTIVE 020] Drone 01 Weapons disabled"})
     ->END
 
 //damage/destroy if has_role(DESTROYED_ID, "khovan_drone_01")
@@ -884,7 +884,7 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
     drone_02_status = "spawned_hostile_free_fire_target_at_10km"
     drone_contact_sequence_status = "drone_02_active"
     script.write_khovan_startup_trace(f"[KHOVAN ACT1 DRONE 02 SPAWN] target_id={drone_02_target_id} offset_m=10000")
-    await task_schedule(khovan_set_current_objective, {"objective_id": "drone_02_live_fire", "objective_body": "Drone 02 live-fire target deployed at ten kilometres. Captain: engage and destroy the target. Coordinate as standard.", "objective_step": "Drone 02 destruction", "objective_breadcrumb": "[KHOVAN OBJECTIVE 021] Drone 02 deployed"})
+    await task_schedule(khovan_set_current_objective, {"objective_id": "drone_02_live_fire", "objective_body": "Live-fire target away at ten kilometres. Captain, engage and destroy it. All stations coordinate as standard.", "objective_step": "Drone 02 destruction", "objective_breadcrumb": "[KHOVAN OBJECTIVE 021] Drone 02 deployed"})
     ->END
 
 === khovan_drone_02_cleanup ===
@@ -923,7 +923,7 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
     if drone_contact_cultural_packet_sent:
         ->END
     drone_contact_cultural_packet_sent = True
-    await task_schedule(khovan_set_current_objective, {"objective_id": "act2_ready", "objective_body": "Training Control note for Comms: hostile contact handling is not only tone control. Different species, fleets, and political groups value different things. Cultural knowledge can help you diffuse a situation, pressure a contact, or detect a false identity. When a contact's claimed culture and actual conduct do not match, report it. Stand by for orders.", "objective_step": "Act II ready", "objective_breadcrumb": "[KHOVAN OBJECTIVE 022] cultural packet sent; Act II ready"})
+    await task_schedule(khovan_set_current_objective, {"objective_id": "act2_ready", "objective_body": "Comms, one more thing before we hand you back. Handling a hostile contact is not just tone control. Different species, fleets, and political groups value different things. Cultural knowledge can help you diffuse a situation, pressure a contact, or detect a false identity. When a contact's claimed culture and actual conduct do not match, report it. Stand by for orders.", "objective_step": "Act II ready", "objective_breadcrumb": "[KHOVAN OBJECTIVE 022] cultural packet sent; Act II ready"})
     ->END
 
 === khovan_drone_01_fallback_scan ===
@@ -955,7 +955,7 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
     drone_01_shield_relay_fallback_available = False
     drone_01_status = "shield_frequency_relay_complete"
     script.write_khovan_startup_trace(f"[KHOVAN ACT1 DRONE 01 SCAN RELAY] confirmed via Tarsis Comms target_id={drone_01_target_id}")
-    await task_schedule(khovan_set_current_objective, {"objective_id": "drone_01_weapons_lock", "objective_body": "Weapons lock beams on Drone 01. Helm establish 1-2 km range and hold stationary for 15 seconds.", "objective_step": "Drone 01 lock and range", "objective_breadcrumb": "[KHOVAN OBJECTIVE 018] shield relay complete"})
+    await task_schedule(khovan_set_current_objective, {"objective_id": "drone_01_weapons_lock", "objective_body": "Weapons, lock beams on the drone. Helm, bring us between 1 and 2 km and hold us stationary for fifteen seconds.", "objective_step": "Drone 01 lock and range", "objective_breadcrumb": "[KHOVAN OBJECTIVE 018] shield relay complete"})
     ->END
 
 === khovan_drone_01_fallback_weapons_lock ===

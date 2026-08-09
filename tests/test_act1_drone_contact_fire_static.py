@@ -71,7 +71,7 @@ class Act1DroneContactFireStaticTests(unittest.TestCase):
             "=== khovan_act1_drone_contact_fire_prepare_after_engineering ===",
             'drone_contact_sequence_status = "drone_01_ready_after_engineering"',
             '"objective_id": "drone_01_ready"',
-            "Drone 01 training contact ready.",
+            "Training drone standing by.",
         ]:
             self.assertIn(phrase, drone)
 
@@ -582,7 +582,7 @@ class Act1DroneContactFireStaticTests(unittest.TestCase):
         # as "unknown" with no Khovan Comms route. The removed <scan> block used to
         # mask this by writing scan text on panel render.
         drone = read(DRONE_PATH)
-        self.assertIn('shared drone_01_hail_response_text = "Drone 01 confirms receipt of comms."', drone)
+        self.assertIn('shared drone_01_hail_response_text = "Training drone acknowledges. Transponder reads TSN training contact, no weapons free."', drone)
 
         known_body = label_body(drone, "khovan_drone_01_mark_scan_known")
         # Guards required by AGENTS.md section 4.

@@ -101,17 +101,17 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             'shared tarsis_docking_observer_last_snapshot = "not_checked"',
             'shared kestrel_yard_lock_visual_text = "Kestrel Yard Control: Artemis is held in yard-lock pending departure clearance. Comms, request departure clearance when the captain is ready."',
             'shared kestrel_homing_reserve_text = "Kestrel Yard Control: Artemis has no homing torpedoes loaded until Comms requests the emergency reserve. The reserve is two homing torpedoes only; Tarsis handles replacement and generator acceptance."',
-            'shared kestrel_homing_reserve_request_text = "Emergency homing torpedo trasfer complete. Use them to speed your journey Artemis."',
-            'shared kestrel_homing_reserve_prompt_text = "Artemis, you may notice you are traveling exceptionally slow.',
-            'shared training_speed_power_reminder_text = "Remember to follow the shakedown mission plan Artemis. Please relay to the captin the station commander\'s wish that he not damage his ship so severly for at least another 10,000 parsets."',
-            'shared tarsis_generator_support_text = "Authorization recieved. Reqquest docking clearnece."',
+            'shared kestrel_homing_reserve_request_text = "Emergency homing transfer complete, Artemis. Two rounds only. Your Weapons officer can convert one to energy if you need the speed."',
+            'shared kestrel_homing_reserve_prompt_text = "Artemis, you are running slower than you should be.',
+            'shared training_speed_power_reminder_text = "Stay on the shakedown plan, Artemis. And pass along to your captain that the yard commander would like this ship kept in one piece for at least another ten thousand parsecs."',
+            'shared tarsis_generator_support_text = "Tarsis Control: generator acceptance authorized. Request docking clearance when you are ready to come alongside."',
             'shared tarsis_hail_text = "Tarsis Station: Artemis, we read you. Generator Acceptance is standing by. Request generator support and docking clearance before approach."',
             'shared tarsis_docking_clearance_text = "Tarsis Docking Control: docking clearance granted. Helm, approach within tolerance and initiate docking."',
             "shared tarsis_resupply_homing_torpedoes = 10",
             "shared tarsis_resupply_nukes = 3",
             "shared tarsis_resupply_emps = 6",
             "shared tarsis_resupply_mines = 6",
-            'shared tarsis_resupply_text = "Normal resupply authorized. Await your next instruction and complete your shakedown cruise."',
+            'shared tarsis_resupply_text = "Tarsis Control: resupply authorized and the generator governor is cleared. Artemis is released to complete her shakedown."',
             "shared tarsis_generator_support_requested = False",
             "shared tarsis_docking_clearance_requested = False",
             "shared tarsis_generator_support_response_sent = False",
@@ -281,7 +281,7 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             'artemis_object.data_set.set("dock_base_id", tarsis_station_id, 0)',
             'artemis_object.data_set.set("dock_state", "docked", 0)',
             '"objective_id": "engineering_shakedown_ready"',
-            "Begin Engineering shakedown with Tarsis Training Control.",
+            "Resupply complete. Stand by for Dillon to begin the Engineering shakedown.",
             "await task_schedule(khovan_scenario_control_panel_update_overview)",
         ]:
             self.assertIn(phrase, body)
@@ -366,7 +366,7 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             (departure_body, "Helm clear the Kestrel launch envelope: move at least 1 km from Kestrel, then Comms confirm exit.", "[KHOVAN OBJECTIVE 003] objective updated: launch envelope (1 km minimum)"),
             (launch_body, "Proceed to Tarsis. Comms request generator support and docking clearance.", "[KHOVAN OBJECTIVE 005] objective updated: Tarsis requests"),
             (clearance_body, "Dock normally with Tarsis. Resupply and governor handoff complete on hard dock.", "[KHOVAN OBJECTIVE 006] objective updated: Tarsis docking/resupply"),
-            (resupply_body, "Begin Engineering shakedown with Tarsis Training Control.", "[KHOVAN OBJECTIVE 007] objective updated: Engineering shakedown ready"),
+            (resupply_body, "Resupply complete. Stand by for Dillon to begin the Engineering shakedown.", "[KHOVAN OBJECTIVE 007] objective updated: Engineering shakedown ready"),
         ]
         for body, text, breadcrumb in expectations:
             self.assertIn(text, body)
@@ -384,19 +384,19 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
         for phrase in [
             "Dillon: Crew of Artemis, this is a qualification cruise. First task: get the ship out of Kestrel cleanly. Comms, request departure clearance. Helm, hold position until Kestrel releases the yard-lock. Captain, coordinate the sequence.",
             "Comms request Kestrel departure clearance.",
-            "Emergency homing torpedo trasfer complete. Use them to speed your journey Artemis.",
+            "Emergency homing transfer complete, Artemis. Two rounds only. Your Weapons officer can convert one to energy if you need the speed.",
             "Kestrel Yard Control: departure clearance granted. Helm, clear the launch envelope by moving at least 1 km from Kestrel. Comms, confirm once Artemis is outside the yard boundary.",
             "Helm clear the Kestrel launch envelope: move at least 1 km from Kestrel, then Comms confirm exit.",
             "Kestrel Yard Control logs Artemis clear of the launch envelope. Proceed to Tarsis Station for the required Comms requests.",
-            "Remember to follow the shakedown mission plan Artemis. Please relay to the captin the station commander's wish that he not damage his ship so severly for at least another 10,000 parsets.",
+            "Stay on the shakedown plan, Artemis. And pass along to your captain that the yard commander would like this ship kept in one piece for at least another ten thousand parsecs.",
             "Proceed to Tarsis. Comms request generator support and docking clearance.",
             "Tarsis Station: Artemis, we read you. Generator Acceptance is standing by. Request generator support and docking clearance before approach.",
-            "Authorization recieved. Reqquest docking clearnece.",
+            "Tarsis Control: generator acceptance authorized. Request docking clearance when you are ready to come alongside.",
             "Tarsis Docking Control: docking clearance granted. Helm, approach within tolerance and initiate docking.",
             "Dock normally with Tarsis. Resupply and governor handoff complete on hard dock.",
             "Tarsis Docking Control: docking clearance not granted. Complete Tarsis Comms traffic before approach.",
-            "Normal resupply authorized. Await your next instruction and complete your shakedown cruise.",
-            "Begin Engineering shakedown with Tarsis Training Control.",
+            "Tarsis Control: resupply authorized and the generator governor is cleared. Artemis is released to complete her shakedown.",
+            "Resupply complete. Stand by for Dillon to begin the Engineering shakedown.",
         ]:
             self.assertIn(phrase, active_copy)
 
@@ -929,15 +929,15 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
         training_body = label_body(act1, "khovan_act1_send_training_speed_power_reminder")
         for phrase in [
             "if training_speed_power_reminder_sent:",
-            "[KHOVAN ACT1 MSG ORDER] duplicate suppressed Training Control speed-power reminder",
+            "[KHOVAN ACT1 MSG ORDER] duplicate suppressed Dillon speed-power reminder",
             "if not launch_envelope_cleared:",
             "training_speed_power_reminder_sent = True",
-            "[KHOVAN ACT1 MSG ORDER] Training Control speed-power reminder sent after launch-envelope clearance",
+            "[KHOVAN ACT1 MSG ORDER] Dillon speed-power reminder sent after launch-envelope clearance",
             "await task_schedule(khovan_reach_send_safe_startup_message",
-            '"startup_sender": "Training Control"',
+            '"startup_sender": "Dillon"',
             '"startup_text": training_speed_power_reminder_text',
             '"startup_sender_id": kestrel_yards_id',
-            "[KHOVAN ACT1 MSG TRAINING 001] Training speed-power reminder sent",
+            "[KHOVAN ACT1 MSG TRAINING 001] Dillon speed-power reminder sent",
         ]:
             self.assertIn(phrase, training_body)
         self.assertNotIn("comms_receive(", training_body)
@@ -1289,9 +1289,13 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             "act i message-ordering and player instruction clarity bug",
             "intended sequence",
             "dillon: crew of artemis, this is a qualification cruise",
+            # Historical: SLICE04_VERIFICATION.md quotes the copy that was live at
+            # the time of that smoke. The live-smoke log is append-only, so this
+            # assertion tracks the record, not the current runtime copy (which was
+            # revised on slice06-dillon-voice-and-prompt-polish).
             "emergency homing torpedo trasfer complete",
             "temporary generator governor",
-            "remember to follow the shakedown mission plan artemis",
+            "remember to follow the shakedown mission plan artemis",  # historical, see note above
             "complete tarsis comms traffic before approach",
             "player instruction clarity checklist",
             "duplicate-suppression",
