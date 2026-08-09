@@ -436,6 +436,56 @@ class Act1DroneContactFireStaticTests(unittest.TestCase):
             self.assertNotIn(forbidden, spike_spawn)
             self.assertNotIn(forbidden, drone_spawn)
 
+    def test_unauthorized_damage_reset_is_duplicate_suppressed(self) -> None:
+        # Live trace 2026-08-09 13:06:54: one beam volley produced three
+        # //damage/object events inside 45 ms, each scheduling its own reset. Every
+        # reset despawns and respawns +5 km, so offset_m ran 15000 -> 30000 -> 45000
+        # and the contact became unreachable - and it read as a one-hit kill from the
+        # bridge, since the ship simply vanished on the first shot.
+        drone = read(DRONE_PATH)
+        damage_start = drone.index('//damage/object if has_role(DAMAGE_TARGET_ID, "khovan_drone_01")')
+        damage_end = drone.index('//damage/destroy if has_role(DESTROYED_ID, "khovan_drone_01")', damage_start)
+        damage_body = code_only(drone[damage_start:damage_end])
+        destroy_body = code_only(drone[damage_end:])
+
+        for body, where in [(damage_body, "damage handler"), (destroy_body, "destroy handler")]:
+            self.assertIn("if drone_01_reset_message_sent:", body, f"{where} needs the reset guard")
+            # The flag must be set synchronously, before the yield - task_schedule
+            # yields, so the reset label cannot guard itself in time.
+            self.assertLess(
+                body.index("drone_01_reset_message_sent = True"),
+                body.index("await task_schedule(khovan_drone_01_reset"),
+                f"{where} must set the guard before scheduling the reset",
+            )
+
+        # Cleared on respawn so the next attempt can reset again.
+        self.assertIn("drone_01_reset_message_sent = False", label_body(drone, "khovan_drone_01_reset_flags"))
+
+    def test_drone_01_fire_authorization_shortcut_is_gm_test_only(self) -> None:
+        # Diagnostic shortcut, not a fallback and not a gameplay path. It must stay
+        # behind the gamemaster + test_mode_enabled route and out of the Tarsis
+        # player Comms menu.
+        drone = read(DRONE_PATH)
+        self.assertIn(
+            '+ "Authorize Drone 01 Fire (test)" khovan_drone_01_test_authorize_fire if drone_01_active and not drone_01_fire_authorized',
+            drone,
+        )
+        gm_panel_start = drone.index("//comms/gamemaster/khovan_drone_contact_fire_spike if has_roles(COMMS_ORIGIN_ID, \"gamemaster\") and test_mode_enabled")
+        tarsis_menu_start = drone.index('//comms if has_roles(COMMS_SELECTED_ID, "tarsis_station")')
+        self.assertLess(gm_panel_start, tarsis_menu_start)
+        tarsis_menu = drone[tarsis_menu_start:drone.index("=== khovan_drone_01_reset_flags ===", tarsis_menu_start)]
+        self.assertNotIn("khovan_drone_01_test_authorize_fire", tarsis_menu)
+
+        body = label_body(drone, "khovan_drone_01_test_authorize_fire")
+        # Must invalidate the running stationary-hold watcher first, or it clears
+        # range/hold flags out from under authorize_fire and the shortcut silently
+        # fails.
+        self.assertLess(
+            body.index("drone_01_stationary_hold_run_id = drone_01_stationary_hold_run_id + 1"),
+            body.index("drone_01_range_band_active = True"),
+        )
+        self.assertIn("await task_schedule(khovan_drone_01_authorize_fire)", body)
+
     def test_the_two_drones_have_opposite_combat_roles(self) -> None:
         # Operator direction 2026-08-09, matching design 10_mast_requirements.md
         # 8.5/8.6: Drone 01 is the practice target for the controlled subsystem

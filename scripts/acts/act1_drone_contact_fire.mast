@@ -96,6 +96,7 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
     + "Select Target Spike" khovan_drone_contact_fire_select_target_spike if drone_target_spike_active
     + "Read Target Spike Status" khovan_drone_contact_fire_report_target_spike
     + "Cleanup Target Spike" khovan_drone_contact_fire_cleanup_target_spike if drone_target_spike_active or drone_target_spike_destroyed_observed
+    + "Authorize Drone 01 Fire (test)" khovan_drone_01_test_authorize_fire if drone_01_active and not drone_01_fire_authorized
     + "Cleanup Drone 02" khovan_drone_02_cleanup if drone_02_active
 
 === khovan_act1_initialize_drone_contact_fire ===
@@ -475,6 +476,37 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
     task_schedule(khovan_drone_01_deliver_deploy_prompt_after_delay, {"deploy_prompt_run_id": drone_contact_sequence_run_id})
     ->END
 
+=== khovan_drone_01_test_authorize_fire ===
+    # GM/test-mode only, added 2026-08-09 so the subsystem-damage mechanic can be
+    # exercised without flying the full seven-gate chain on every iteration. This is
+    # a diagnostic shortcut, NOT a fallback and NOT a gameplay path - it lives behind
+    # the gamemaster + test_mode_enabled route and is deliberately absent from the
+    # Tarsis player Comms menu. Do not treat a pass reached through this route as
+    # evidence that the gate chain itself works; that still needs its own run.
+    if not drone_01_active:
+        ->END
+    # Invalidate any running stationary-hold watcher first. It ticks once a second
+    # and clears range_band_active/stationary_hold_active whenever Artemis is outside
+    # the 1-2 km band, so without this bump it would race the flags set below and
+    # khovan_drone_01_authorize_fire would find a gate already cleared and refuse.
+    drone_01_stationary_hold_run_id = drone_01_stationary_hold_run_id + 1
+    drone_01_scan_complete = True
+    drone_01_hail_complete = True
+    drone_01_shield_frequency_relay_complete = True
+    drone_01_weapons_lock_active = True
+    drone_01_range_band_active = True
+    drone_01_stationary_hold_active = True
+    drone_01_scan_fallback_available = False
+    drone_01_hail_fallback_available = False
+    drone_01_shield_relay_fallback_available = False
+    drone_01_weapons_lock_fallback_available = False
+    drone_01_range_fallback_available = False
+    drone_01_stationary_hold_fallback_available = False
+    script.write_khovan_startup_trace(f"[KHOVAN ACT1 DRONE 01 TEST AUTHORIZE] all gates forced by GM test route target_id={drone_01_target_id}")
+    await task_schedule(khovan_drone_01_authorize_fire)
+    comms_navigate("//comms/gamemaster/khovan_drone_contact_fire_spike")
+    ->END
+
 === khovan_drone_01_mark_scan_known ===
     # Why this exists (2026-08-09, root cause read out of installed sbs_utils v1.3.0):
     # sbs_utils/procedural/comms.py set_buttons() gates the entire Khovan Comms route
@@ -735,6 +767,22 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
         drone_01_hull_restore_count = drone_01_hull_restore_count + 1
         script.write_khovan_startup_trace(f"[KHOVAN ACT1 DRONE 01 HULL HOLD] restore_count={drone_01_hull_restore_count} target_id={DAMAGE_TARGET_ID}")
     if not drone_01_fire_authorized:
+        # Duplicate-suppress the reset (bugfix 2026-08-09, from live trace). A single
+        # beam volley delivers several //damage/object events - the trace shows three
+        # inside 45 ms at 13:06:54 - and each one previously scheduled its own reset.
+        # Every reset despawns Drone 01 and respawns it drone_01_spawn_offset_m + 5000
+        # further out, so one volley moved the contact 15 km, not 5 km: offset_m went
+        # 15000 -> 30000 -> 45000 across two volleys and the drone became unreachable.
+        # It also read to the crew as a one-hit kill, since the ship simply vanished.
+        #
+        # await task_schedule() yields, so the reset label cannot be relied on to set
+        # its own guard before the next damage event lands. The flag must be set
+        # synchronously, here, before the schedule call. drone_01_reset_message_sent
+        # already existed for exactly this purpose and was never wired up;
+        # khovan_drone_01_reset_flags clears it on the respawn.
+        if drone_01_reset_message_sent:
+            ->END
+        drone_01_reset_message_sent = True
         drone_01_status = "unauthorized_damage_reset"
         script.write_khovan_startup_trace(f"[KHOVAN ACT1 DRONE 01 RESET] unauthorized damage target_id={DAMAGE_TARGET_ID}")
         await task_schedule(khovan_drone_01_reset, {"reset_reason": "unauthorized_damage"})
@@ -767,6 +815,12 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
         drone_01_cleanup_in_progress = False
         ->END
     if not drone_01_weapons_disabled:
+        # Same duplicate-suppression as the damage handler above - a destroy can
+        # arrive after a reset has already been scheduled by the damage that caused
+        # it, and two resets means two respawns and a double distance penalty.
+        if drone_01_reset_message_sent:
+            ->END
+        drone_01_reset_message_sent = True
         drone_01_destroyed_in_error = True
         drone_01_destruction_source = "premature_destroyed_reset"
         drone_01_status = "premature_destruction_reset"
