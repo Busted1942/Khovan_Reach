@@ -17,7 +17,7 @@ shared drone_01_active = False
 shared drone_01_target_id = 0
 shared drone_01_navproxy_id = 0
 shared drone_01_spawn_offset_m = 15000
-shared drone_01_deploy_prompt_text = "Science: Scan the unknown target and report your finding to the captain.\nComms: Hail the Drone."
+shared drone_01_deploy_prompt_text = "Artemis - Science: Scan the unknown target and report your finding to the captain.\nArtemis - Comms: Hail the drone."
 shared drone_01_spawn_count = 0
 shared drone_01_reset_count = 0
 shared drone_01_reset_reason = "none"
@@ -291,17 +291,38 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
     target_id = get_inventory_value(DAMAGE_SOURCE_ID, "MANUAL_CRITICAL_HIT")
     spike_target = to_object(DAMAGE_TARGET_ID)
     if spike_target is not None:
-        # Bugfix (2026-08-08, confirmed live): data_set.get(key, default) is a flat key
-        # lookup where the second argument is a fallback DEFAULT VALUE, not a subsystem
-        # selector (proven pattern: artemis_object.data_set.get("playerThrottle", 0),
-        # cookbook section 8). The prior code passed sbs.SHPSYS.WEAPONS/ENGINES as that
-        # default, which is nonsensical for a damage float and was never reached anyway
-        # since "system_damage" is always present. There is no proven per-subsystem
-        # data_set key yet, so weapons/engines damage both read the same generic
-        # "system_damage" total until one is proven live. Do not treat these two fields
-        # as independently reliable per-subsystem values before that is proven.
-        drone_target_spike_weapons_damage_value = spike_target.data_set.get("system_damage", 0)
-        drone_target_spike_engines_damage_value = spike_target.data_set.get("system_damage", 0)
+        # REVERSAL of the 2026-08-08 "bugfix" (corrected 2026-08-09 from source).
+        #
+        # That change claimed data_set.get(key, default) was a flat lookup whose second
+        # argument is a fallback DEFAULT VALUE, and rewrote both reads to index 0. It
+        # was wrong. The signature is:
+        #
+        #     def get(self, name, index=0)          # sbs_utils/mock/sbs.py:570
+        #
+        # The second argument is an INDEX, and a missing key returns None - it is not a
+        # default at all. So the original sbs.SHPSYS.WEAPONS / sbs.SHPSYS.ENGINES form
+        # was correct, and the "fix" made both fields read index 0 (WEAPONS), which is
+        # why they always agreed and looked like one generic total.
+        #
+        # The writer confirms the index basis (sbs_utils/procedural/internal_damage.py:
+        # 305-309): for x in range(SBS.SHPSYS.MAX), blob.set('system_damage', cur, x)
+        # where cur counts damaged grid objects carrying the matching system role, over
+        # ["weapon", "engine", "sensor", "shield"] - i.e. WEAPONS=0, ENGINES=1,
+        # SENSORS=2, SHIELDS=3. These ARE independently reliable per-subsystem counts.
+        #
+        # It went unnoticed because the cited "proven pattern",
+        # data_set.get("playerThrottle", 0), reads index 0 either way.
+        #
+        # None-guard because get() returns None for a key that has never been written -
+        # the destroy handler below compares these with > 0, which would raise on None.
+        spike_weapons_damage = spike_target.data_set.get("system_damage", sbs.SHPSYS.WEAPONS)
+        spike_engines_damage = spike_target.data_set.get("system_damage", sbs.SHPSYS.ENGINES)
+        if spike_weapons_damage is None:
+            spike_weapons_damage = 0
+        if spike_engines_damage is None:
+            spike_engines_damage = 0
+        drone_target_spike_weapons_damage_value = spike_weapons_damage
+        drone_target_spike_engines_damage_value = spike_engines_damage
     # Bugfix (2026-08-08, confirmed live): previously required MANUAL_CRITICAL_HIT to
     # match DAMAGE_TARGET_ID AND MANUAL_SYSTEM to be non-None in the same event before
     # recording a subsystem hit. Live smoke 2026-08-08 showed MANUAL_SYSTEM fired

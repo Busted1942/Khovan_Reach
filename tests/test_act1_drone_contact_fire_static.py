@@ -80,7 +80,7 @@ class Act1DroneContactFireStaticTests(unittest.TestCase):
             "shared drone_contact_act2_ready = False",
             "shared drone_01_spawn_offset_m = 15000",
             "shared drone_01_deploy_prompt_sent = False",
-            "shared drone_01_deploy_prompt_text = \"Science: Scan the unknown target and report your finding to the captain.\\nComms: Hail the Drone.\"",
+            "shared drone_01_deploy_prompt_text = \"",  # prose covered by tests/test_mission_text_contract.py
             "shared drone_01_weapons_hit_count = 0",
             "shared drone_02_destroyed = False",
             "shared drone_target_spike_available = False",
@@ -173,7 +173,7 @@ class Act1DroneContactFireStaticTests(unittest.TestCase):
             '//damage/object if has_role(DAMAGE_TARGET_ID, "khovan_slice06_spike_target")',
             'system = get_inventory_value(DAMAGE_SOURCE_ID, "MANUAL_SYSTEM")',
             'target_id = get_inventory_value(DAMAGE_SOURCE_ID, "MANUAL_CRITICAL_HIT")',
-            'spike_target.data_set.get("system_damage", 0)',
+            'spike_target.data_set.get("system_damage", sbs.SHPSYS.WEAPONS)',
             "drone_target_spike_manual_subsystem_hit_observed = True",
             "drone_target_spike_manual_critical_hit_observed = True",
             '//damage/destroy if has_role(DESTROYED_ID, "khovan_slice06_spike_target")',
@@ -185,11 +185,24 @@ class Act1DroneContactFireStaticTests(unittest.TestCase):
         ]:
             self.assertIn(phrase, drone)
 
-        for forbidden in [
-            'sbs.SHPSYS.WEAPONS)',
-            'sbs.SHPSYS.ENGINES)',
-        ]:
-            self.assertNotIn(forbidden, drone)
+        # This guard used to forbid sbs.SHPSYS.* in the data_set.get() call,
+        # from the 2026-08-08 conclusion that the second argument was a fallback
+        # default and an enum there was nonsense.
+        #
+        # That conclusion was wrong, and the guard is retired 2026-08-09.
+        # sbs_utils/mock/sbs.py:632 declares get(self, name, index=0) - the
+        # second argument is an INDEX. The engine writes per-subsystem damage as
+        # blob.set('system_damage', cur, x) over range(SBS.SHPSYS.MAX), so
+        # SHPSYS.WEAPONS is exactly the right index and the original call was
+        # closer to correct than its replacement. See cookbook section 9.1.
+        #
+        # Keeping the ban would now forbid the correct form - a stale guard
+        # actively blocking the fix, which is worse than no guard.
+        self.assertIn(
+            'spike_target.data_set.get("system_damage", sbs.SHPSYS.WEAPONS)',
+            drone,
+            "per-subsystem damage must read by SHPSYS index, not index 0",
+        )
 
     def test_damage_handler_does_not_gate_subsystem_hit_on_critical_hit_match(self) -> None:
         # Bug fixed 2026-08-08: the prior code required MANUAL_CRITICAL_HIT to match
