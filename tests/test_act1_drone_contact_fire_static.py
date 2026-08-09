@@ -294,6 +294,14 @@ class Act1DroneContactFireStaticTests(unittest.TestCase):
         drone = read(DRONE_PATH)
         spawn_body = label_body(drone, "khovan_drone_01_spawn")
         self.assertIn(
+            'npc_spawn(beacon.pos.x + drone_01_spawn_offset_m, beacon.pos.y, beacon.pos.z, "Drone 01", "kralien, raider, khovan_drone_01", "kralien_cruiser", "behav_npcship")',
+            spawn_body,
+        )
+        self.assertIn(
+            'sim.add_navproxy(drone_01_target_id, "Drone 01", "kralien_cruiser", "#FC3")',
+            spawn_body,
+        )
+        self.assertIn(
             'task_schedule(khovan_drone_01_deliver_deploy_prompt_after_delay, {"deploy_prompt_run_id": drone_contact_sequence_run_id})',
             spawn_body,
         )

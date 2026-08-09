@@ -415,14 +415,14 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
         ->END
     await task_schedule(khovan_drone_01_reset_flags)
     drone_01_spawn_count = drone_01_spawn_count + 1
-    drone_01_target = npc_spawn(beacon.pos.x + drone_01_spawn_offset_m, beacon.pos.y, beacon.pos.z, "Drone 01", "khovan_training, neutral, khovan_drone_01", "tsn_warpster", "behav_npcship")
+    drone_01_target = npc_spawn(beacon.pos.x + drone_01_spawn_offset_m, beacon.pos.y, beacon.pos.z, "Drone 01", "kralien, raider, khovan_drone_01", "kralien_cruiser", "behav_npcship")
     drone_01_target_id = to_id(drone_01_target)
     if drone_01_target_id == 0:
         drone_01_status = "spawn_failed"
         drone_01_range_fallback_available = True
         script.write_khovan_startup_trace("[KHOVAN ACT1 DRONE 01 BLOCKED] npc_spawn returned id 0")
         ->END
-    drone_01_navproxy = sim.add_navproxy(drone_01_target_id, "Drone 01", "tsn_warpster", "#FC3")
+    drone_01_navproxy = sim.add_navproxy(drone_01_target_id, "Drone 01", "kralien_cruiser", "#FC3")
     drone_01_navproxy_id = to_id(drone_01_navproxy)
     drone_01_active = True
     drone_01_status = "spawned_passive_at_training_beacon_offset"
