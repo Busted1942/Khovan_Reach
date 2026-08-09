@@ -357,6 +357,8 @@ failure:
 - [x] Every ship API call on `artemis_id` is guarded against 0 in its label
 - [x] Every delayed task has a run-ID guard
 - [x] Every spawn has an existence check and a cleanup routine
+- [x] No `data_set.get()` passes a string or negative literal as its index
+      (cookbook 9.1 - the failure mode is usually silent, not a crash)
 - [x] `python run_tests.py quick` passes, and the compile preflight actually ran
 - [x] `git diff --check` is clean
 

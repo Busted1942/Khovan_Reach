@@ -102,6 +102,14 @@ OBSERVER_CEILING_RE = re.compile(r"\w*_ticks\s*>=")
 JUMP_RE = re.compile(r"^\s*jump\s+(\w+)", re.MULTILINE)
 NPC_SPAWN_RE = re.compile(r"\bnpc_spawn\(")
 
+# data_set.get(name, index) takes an INDEX, never a fallback (cookbook 9.1).
+# A string literal or a negative number in that slot is always the mistake -
+# the read returns None. Identifiers and enums are legitimate indices
+# (eng_control_value passes slot_index; system_damage passes sbs.SHPSYS.*), so
+# only literals that cannot be an index are flagged.
+DATA_SET_GET_RE = re.compile(r"data_set\.get\(\s*([^,()]+),\s*([^)]+)\)")
+BAD_INDEX_RE = re.compile(r"""^\s*(?:"[^"]*"|'[^']*'|-\s*\d+)\s*$""")
+
 
 # Every rule this gate enforces must be written down somewhere an agent reads,
 # and every rule it *accepts* must be too. On 2026-08-09 the run-ID check was
@@ -124,6 +132,10 @@ RULE_CITATIONS: dict[str, tuple[str, str] | None] = {
     "run-ID guard": (
         "docs/04_implementation_setup/60_mast_api_cookbook.md",
         "## 5.1 Run-ID guard for delayed work",
+    ),
+    "data_set index": (
+        "docs/04_implementation_setup/60_mast_api_cookbook.md",
+        "## 9.1 Reading and writing ship values",
     ),
     "spawn/cleanup": (
         "docs/04_implementation_setup/60_mast_api_cookbook.md",
@@ -523,6 +535,45 @@ def analyze_run_id(
     return failures
 
 
+def analyze_data_set_index(path: str, text: str, scope: set[int]) -> list[str]:
+    """Cookbook 9.1: data_set.get()'s second argument is an index, not a default.
+
+    Added 2026-08-09 after the rule was written that morning and violated three
+    times the same afternoon. Documentation alone could not close this one: of
+    the three instances, only one crashed. The other two passed "unknown" as the
+    index, so the read returned None, the equality test was never true, and two
+    live gates simply never fired - no error, no trace, nothing to investigate,
+    and therefore no moment at which anyone would go looking for the rule.
+
+    That asymmetry is the whole argument for a mechanical check here. A hazard
+    whose failure mode is silence cannot be handled by writing it down.
+    """
+    lines = text.splitlines()
+    failures = []
+    for line_no in sorted(scope):
+        if line_no > len(lines):
+            continue
+        line = lines[line_no - 1]
+        if line.lstrip().startswith("#"):
+            continue
+        for key, arg in DATA_SET_GET_RE.findall(line):
+            if BAD_INDEX_RE.match(arg):
+                failures.append(
+                    f"data_set.get() second argument is an INDEX, not a default: "
+                    f"{path}:{line_no} get({key.strip()}, {arg.strip()}) - "
+                    f"reads that index and returns None. See cookbook 9.1"
+                )
+    return failures
+
+
+def check_data_set_index(paths: list[str], base: str, full: bool) -> list[str]:
+    failures = []
+    for path in mast_files(paths):
+        text = (ROOT / path).read_text(encoding="utf-8", errors="replace")
+        failures.extend(analyze_data_set_index(path, text, scope_lines(path, base, full)))
+    return failures
+
+
 def analyze_spawn(path: str, text: str, scope: set[int]) -> list[str]:
     """AGENTS.md section 4: every spawn has an existence check and a cleanup routine.
 
@@ -656,6 +707,7 @@ def main(argv: list[str]) -> int:
         ("to_object none-check", check_to_object_none_checks(paths, args.base, args.full)),
         ("artemis_id guard", check_artemis_id_guards(paths, args.base, args.full)),
         ("run-ID guard", check_run_id_guards(paths, args.base, args.full)),
+        ("data_set index", check_data_set_index(paths, args.base, args.full)),
         ("spawn/cleanup", check_spawn_existence_and_cleanup(paths, args.base, args.full)),
         ("whitespace", check_git_diff_whitespace()),
         ("quick tests", check_quick_tests()),

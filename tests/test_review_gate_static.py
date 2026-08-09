@@ -431,6 +431,49 @@ class SpawnExistenceAndCleanup(unittest.TestCase):
         self.assertEqual(gate.analyze_spawn("f.mast", text, all_lines(text)), [])
 
 
+class DataSetIndexNotDefault(unittest.TestCase):
+    """cookbook 9.1: data_set.get()'s second argument is an index.
+
+    Both real forms are covered. The crashing one was easy to find; the silent
+    one is why this check exists at all.
+    """
+
+    def test_string_second_argument_is_flagged(self):
+        """The silent form: read returns None, the == test is never true."""
+        text = '    state = artemis_object.data_set.get("dock_state", "unknown")\n'
+        failures = gate.analyze_data_set_index("f.mast", text, all_lines(text))
+        self.assertEqual(len(failures), 1)
+        self.assertIn("dock_state", failures[0])
+
+    def test_negative_number_second_argument_is_flagged(self):
+        """The crashing form: index -1 returns None, next comparison raises."""
+        text = '    x = damcon_team.data_set.get("curx", -1)\n'
+        self.assertEqual(len(gate.analyze_data_set_index("f.mast", text, all_lines(text))), 1)
+
+    def test_index_zero_is_clean(self):
+        text = '    throttle = artemis_object.data_set.get("playerThrottle", 0)\n'
+        self.assertEqual(gate.analyze_data_set_index("f.mast", text, all_lines(text)), [])
+
+    def test_identifier_index_is_clean(self):
+        """eng_control_value legitimately walks slots by index."""
+        text = '    slot = artemis_object.data_set.get("eng_control_value", slot_index)\n'
+        self.assertEqual(gate.analyze_data_set_index("f.mast", text, all_lines(text)), [])
+
+    def test_enum_index_is_clean(self):
+        """Per-subsystem damage indexes by SHPSYS - cookbook 9.1."""
+        text = '    dmg = target.data_set.get("system_damage", sbs.SHPSYS.WEAPONS)\n'
+        self.assertEqual(gate.analyze_data_set_index("f.mast", text, all_lines(text)), [])
+
+    def test_single_argument_is_clean(self):
+        text = '    v = obj.data_set.get("curx")\n'
+        self.assertEqual(gate.analyze_data_set_index("f.mast", text, all_lines(text)), [])
+
+    def test_comment_lines_are_ignored(self):
+        """The cookbook rule is quoted in comments; documenting it must not trip it."""
+        text = '    # BROKEN: data_set.get("dock_state", "unknown") reads index "unknown"\n'
+        self.assertEqual(gate.analyze_data_set_index("f.mast", text, all_lines(text)), [])
+
+
 class BootstrapApis(unittest.TestCase):
     def test_forbidden_api_is_flagged(self):
         text = "    sim_create(1)\n"
