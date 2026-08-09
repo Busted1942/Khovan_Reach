@@ -238,6 +238,26 @@ class Act1EngineeringPowerPresetTests(unittest.TestCase):
             "the anchor must be re-set after the delta is computed, not before",
         )
 
+    def test_no_motion_fallback_is_armed_silently(self) -> None:
+        # Operator direction 2026-08-09: the fallback message fired at 20 seconds
+        # telling the crew the runtime "cannot read your impulse state", which is no
+        # longer true. It also cannot be right at 20s - the gate now requires the
+        # power preset first, and that took ~90 seconds on the live pass.
+        #
+        # The distinction this pins: the ROUTE stays, the NAG goes. AGENTS.md
+        # section 4 wants a fallback present, not advertised.
+        engineering = read(ENGINEERING_PATH)
+        body = code_only(label_body(engineering, "khovan_engineering_watch_no_motion_validation_tick"))
+
+        # Route still armed, so the Tarsis Comms button still appears.
+        self.assertIn("engineering_no_motion_fallback_available = True", body)
+        self.assertIn(
+            '+ "Confirm Speed 0 at Full Impulse" khovan_engineering_confirm_no_motion if engineering_no_motion_fallback_available and not engineering_no_motion_confirmed',
+            engineering,
+        )
+        # No player-facing message from the arming branch.
+        self.assertNotIn("khovan_engineering_send_message", body)
+
     def test_no_motion_observer_keeps_watching_after_arming_its_fallback(self) -> None:
         # Same fix as the power-preset observer. Live 20:30: ticks 1-13 read
         # throttle=0 while the crew were still setting up, then the observer quit at

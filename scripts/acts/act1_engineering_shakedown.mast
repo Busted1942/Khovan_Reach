@@ -557,8 +557,24 @@ shared navigation_priority_confirmed_text = "Artemis - Comms: Shakedown complete
     if engineering_no_motion_observer_ticks >= 20 and not engineering_no_motion_fallback_available:
         engineering_no_motion_observer_status = "fallback_armed_observer_still_watching"
         engineering_no_motion_fallback_available = True
-        script.write_khovan_startup_trace("[KHOVAN ACT1 ENG NO MOTION FALLBACK] Comms fallback armed, automatic observer still watching")
-        await task_schedule(khovan_engineering_send_message, {"engineering_message_text": engineering_no_motion_fallback_text, "engineering_message_color": "yellow", "engineering_message_breadcrumb": "[KHOVAN ACT1 ENG NO MOTION FALLBACK] guarded fallback message sent"})
+        script.write_khovan_startup_trace("[KHOVAN ACT1 ENG NO MOTION FALLBACK] Comms fallback armed silently, automatic observer still watching")
+        # SUPPRESSED 2026-08-09 by operator direction, pending the next live run.
+        # The message fired at 20 seconds and told the crew the runtime "cannot read
+        # your impulse state" - which is no longer true, and was never true at that
+        # moment. It also cannot be right at 20s now: the gate requires
+        # engineering_power_preset_confirmed first, and setting impulse 0 / warp 200
+        # took ~90 seconds on the 2026-08-09 pass, so this always fires long before
+        # the crew could satisfy the gate. Telling them the automation is broken while
+        # it is still waiting for them is worse than saying nothing.
+        #
+        # The FALLBACK ITSELF IS NOT SUPPRESSED. engineering_no_motion_fallback_available
+        # is still set above, so the Tarsis Comms route "Confirm Speed 0 at Full
+        # Impulse" stays available as the manual escape hatch - the crew simply is not
+        # nagged toward it. AGENTS.md section 4 wants a fallback present, not advertised.
+        #
+        # DELETE THIS BLOCK, and the now-unused engineering_no_motion_fallback_text
+        # declaration, once a live run confirms the automatic gate passes cleanly.
+        # await task_schedule(khovan_engineering_send_message, {"engineering_message_text": engineering_no_motion_fallback_text, "engineering_message_color": "yellow", "engineering_message_breadcrumb": "[KHOVAN ACT1 ENG NO MOTION FALLBACK] guarded fallback message sent"})
 
     await delay_sim(seconds=1)
     jump khovan_engineering_watch_no_motion_validation_tick
