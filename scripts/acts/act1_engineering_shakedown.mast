@@ -25,6 +25,8 @@ shared damcon_rest_cycle_confirmed = False
 shared damcon_meal_cycle_detection_mode = "damcon_location_api_unverified_comms_fallback_after_observer_attempt"
 shared damcon_meal_cycle_fallback_available = False
 shared damcon_meal_cycle_confirmed = False
+shared controlled_overload_prompt_run_id = 0
+shared controlled_overload_prompt_sent = False
 shared controlled_overload_started = False
 shared controlled_overload_damage_detection_mode = "automatic_engine_system_damage_observer_with_comms_fallback"
 shared controlled_overload_damage_fallback_available = False
@@ -47,6 +49,7 @@ shared engineering_shakedown_start_text = "Captain: You are cleared for departur
 shared engineering_no_motion_confirmed_text = "Great, everything is checking out so far. Let's test some internal comms systems next.\nEngineering: Click on one of the crew quarters, click set rally point, and then choose one of your DamCon teams. This will set their idle position. Note that you can read their medical status when you click on DamCon teams."
 shared damcon_rest_cycle_text = "Confirmed."
 shared damcon_mess_instruction_text = "Engineering: Note your crew will be able to work most efficiently when they are allowed lesiure time in their quarters, mess, and gym. If injured, they should be ordered to report to sickbay. The are extreamly dedicated, which puts the preassure on you to manage them well. Take care of your crew when the preassure is low and they will take care of you when the preassure is high."
+shared controlled_overload_prompt_text = "Engineering: Now we are going to perform a controlled overload to test our damage control systems. Set Impulse, Warp, and Manuver to 300%. Monitor the systems heat and your DamCon team's response to the failure."
 shared controlled_overload_instruction_text = "Engineering: Now we are going to do a controlled overload exercise. Set Impulse, Warp and Maneyver to 300% and wait for them to overload. Bleed off the excess heat after the overload and monitor your DamCon team progress and then reset them to 100%.\nNote that you get a bonus to your sleep, eat and workout bonuses when your teams are in the appropriate rooms, quarters, mess, or rec/gym."
 shared controlled_damage_logged_text = "Training Control: controlled damage logged. Engineering, assign repair crews and supervise repair. Captain, hold movement until Engineering reports recovery."
 shared repair_complete_text = "Training Control: repair complete. Engineering, set maneuvering to one hundred ninety percent, warp to ten percent, and impulse to one hundred percent. Save or select the navigation-priority preset and report ready."
@@ -85,6 +88,8 @@ shared navigation_priority_confirmed_text = "Training Control: Engineering syste
     damcon_rest_cycle_confirmed = False
     damcon_meal_cycle_fallback_available = False
     damcon_meal_cycle_confirmed = False
+    controlled_overload_prompt_run_id = controlled_overload_prompt_run_id + 1
+    controlled_overload_prompt_sent = False
     controlled_overload_started = False
     controlled_overload_damage_fallback_available = False
     controlled_overload_damage_detected = False
@@ -115,6 +120,8 @@ shared navigation_priority_confirmed_text = "Training Control: Engineering syste
     damcon_rest_cycle_confirmed = False
     damcon_meal_cycle_fallback_available = False
     damcon_meal_cycle_confirmed = False
+    controlled_overload_prompt_run_id = controlled_overload_prompt_run_id + 1
+    controlled_overload_prompt_sent = False
     controlled_overload_started = False
     controlled_overload_damage_fallback_available = False
     controlled_overload_damage_detected = False
@@ -346,7 +353,21 @@ shared navigation_priority_confirmed_text = "Training Control: Engineering syste
     await task_schedule(khovan_set_current_objective, {"objective_id": "controlled_overload_start", "objective_body": "Helm set engines to all stop. Engineering set impulse and warp 300 for controlled overload. Captain hold movement until damage is logged.", "objective_step": "Controlled overload", "objective_breadcrumb": "[KHOVAN OBJECTIVE 011] objective updated: controlled overload"})
     await task_schedule(khovan_scenario_control_panel_update_overview)
     await task_schedule(khovan_engineering_send_message, {"engineering_message_text": f"{damcon_rest_cycle_text}\n{damcon_mess_instruction_text}", "engineering_message_title": "DAMCON Control", "engineering_message_color": "green", "engineering_message_breadcrumb": "[KHOVAN ACT1 ENG 006A] guarded DAMCON message sent"})
+    task_schedule(khovan_engineering_deliver_controlled_overload_prompt_after_delay, {"prompt_run_id": controlled_overload_prompt_run_id})
     yield success
+
+=== khovan_engineering_deliver_controlled_overload_prompt_after_delay ===
+    default prompt_run_id = 0
+    await delay_sim(seconds=10)
+    if prompt_run_id != controlled_overload_prompt_run_id:
+        script.write_khovan_startup_trace("[KHOVAN ACT1 ENG OVERLOAD PROMPT] stale delayed prompt suppressed")
+        ->END
+    if controlled_overload_prompt_sent:
+        ->END
+
+    controlled_overload_prompt_sent = True
+    await task_schedule(khovan_engineering_send_message, {"engineering_message_text": controlled_overload_prompt_text, "engineering_message_breadcrumb": "[KHOVAN ACT1 ENG 006B] guarded delayed controlled-overload prompt sent"})
+    ->END
 
 === khovan_engineering_start_controlled_overload ===
     if not damcon_rest_cycle_confirmed:

@@ -52,6 +52,8 @@ class Act1EngineeringShakedownStaticTests(unittest.TestCase):
             "shared engineering_no_motion_confirmed = False",
             "shared damcon_rest_cycle_confirmed = False",
             "shared damcon_meal_cycle_confirmed = False",
+            "shared controlled_overload_prompt_run_id = 0",
+            "shared controlled_overload_prompt_sent = False",
             "shared controlled_overload_started = False",
             "shared controlled_overload_damage_detected = False",
             "shared controlled_overload_repair_confirmed = False",
@@ -163,6 +165,7 @@ class Act1EngineeringShakedownStaticTests(unittest.TestCase):
             "Great, everything is checking out so far. Let's test some internal comms systems next.\\nEngineering: Click on one of the crew quarters, click set rally point, and then choose one of your DamCon teams. This will set their idle position. Note that you can read their medical status when you click on DamCon teams.",
             "Confirmed.",
             "Engineering: Note your crew will be able to work most efficiently when they are allowed lesiure time in their quarters, mess, and gym. If injured, they should be ordered to report to sickbay. The are extreamly dedicated, which puts the preassure on you to manage them well. Take care of your crew when the preassure is low and they will take care of you when the preassure is high.",
+            "Engineering: Now we are going to perform a controlled overload to test our damage control systems. Set Impulse, Warp, and Manuver to 300%. Monitor the systems heat and your DamCon team's response to the failure.",
             "Engineering: Now we are going to do a controlled overload exercise. Set Impulse, Warp and Maneyver to 300% and wait for them to overload. Bleed off the excess heat after the overload and monitor your DamCon team progress and then reset them to 100%.",
             "Note that you get a bonus to your sleep, eat and workout bonuses when your teams are in the appropriate rooms, quarters, mess, or rec/gym.",
             "controlled damage logged",
@@ -214,6 +217,22 @@ class Act1EngineeringShakedownStaticTests(unittest.TestCase):
             "controlled_overload_damage_fallback_available = True",
         ]:
             self.assertIn(phrase, damage_watch)
+
+        delayed_prompt = label_body(engineering, "khovan_engineering_deliver_controlled_overload_prompt_after_delay")
+        for phrase in [
+            "await delay_sim(seconds=10)",
+            "if prompt_run_id != controlled_overload_prompt_run_id:",
+            "if controlled_overload_prompt_sent:",
+            "controlled_overload_prompt_sent = True",
+            "engineering_message_text\": controlled_overload_prompt_text",
+        ]:
+            self.assertIn(phrase, delayed_prompt)
+
+        damcon_confirmation = label_body(engineering, "khovan_engineering_confirm_damcon_rest_cycle")
+        self.assertIn(
+            'task_schedule(khovan_engineering_deliver_controlled_overload_prompt_after_delay, {"prompt_run_id": controlled_overload_prompt_run_id})',
+            damcon_confirmation,
+        )
 
         for label, required in {
             "khovan_act1_story_jump_seed_engineering_shakedown_complete": [
