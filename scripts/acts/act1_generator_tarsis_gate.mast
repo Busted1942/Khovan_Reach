@@ -454,8 +454,16 @@ shared tarsis_resupply_text = "Tarsis Control: authorization packet closed out. 
         add_role(kestrel_yards_id, "kestrel_yards")
         kestrel_comms_options_status = "stock_station_role_cleared_kestrel_yards_retained_for_khovan_comms"
         script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS 003B] Kestrel stock station role cleared; kestrel_yards retained for Khovan Comms options")
-        kestrel_roles_final = to_object(kestrel_yards_id).get_roles()
-        script.write_khovan_startup_trace(f"[KHOVAN ACT1 COMMS 003C-ROLES] Kestrel post-restore roles={kestrel_roles_final}")
+        # None-check before the chained call. AGENTS.md section 4 requires this on
+        # every to_object(), and the review gate flagged the original one-liner:
+        # a diagnostic that crashes the startup path is worse than no diagnostic,
+        # which is exactly the lesson the set_behavior() crash just taught.
+        kestrel_yards_object_final = to_object(kestrel_yards_id)
+        if kestrel_yards_object_final is None:
+            script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS 003C-ROLES] Kestrel post-restore roles unavailable: to_object returned None")
+        else:
+            kestrel_roles_final = kestrel_yards_object_final.get_roles()
+            script.write_khovan_startup_trace(f"[KHOVAN ACT1 COMMS 003C-ROLES] Kestrel post-restore roles={kestrel_roles_final}")
     if tarsis_station_id != 0:
         add_role(tarsis_station_id, "station")
         remove_role(tarsis_station_id, "Station")
