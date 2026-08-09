@@ -157,7 +157,18 @@ Until final UI exists, all training/instruction/advisory text displays in two pl
 1. **Upper-left lifeform overlay** — temporary visible prompt channel for the whole bridge.
 2. **Comms Officer's console archive** — durable message log so Comms can review prior instructions and advisories.
 
-The lifeform overlay is temporary build scaffolding. In-fiction, these messages are Kestrel Yard Control, Tarsis Control, Training Control, or Dillon procedural packets. Do not treat them as a new NPC.
+The lifeform overlay is temporary build scaffolding. In-fiction, these messages are Kestrel Yard Control, Tarsis Control, or Dillon. Do not treat them as a new NPC.
+
+**Revision note (operator-ratified 2026-08-08) — "Training Control" is retired as a speaker.** Earlier text used "Training Control" as a faceless instructional voice alongside Dillon, and one message was even attributed to "Dillon / Training Control". That split the instructor role across two names for no design gain, and it wasted the character the crew is meant to recognise again in the next mission.
+
+All instructional and drill traffic is now **Dillon**, the instructor embedded aboard Artemis. Kestrel Yard Control and Tarsis Control remain distinct — they are external stations performing real operational functions (yard-lock, generator acceptance, docking clearance, resupply), not instruction.
+
+Delivery convention that follows from this:
+
+- **Comms messages** render a sender name. Dillon speaks in the first person; the body must not repeat "Dillon:" as a prefix, because the title already carries it.
+- **Current Objective panel** broadcasts body text only — no sender is rendered. Objective text is therefore terse in-world instruction with no speaker prefix.
+
+Implemented on `slice06-dillon-voice-and-prompt-polish`. Player-facing copy was also corrected for spelling and for design-language leakage ("no failure state", "fallback confirmation", "damage observer") that was reaching player consoles.
 
 ---
 
