@@ -7,10 +7,53 @@ Purpose: record active/recent Khovan branch roles, evidence, risks, and next act
 
 Current observed branch state:
 
-- Current branch: `docs/review-gate-tooling`
-- `slice06-drone-contact-fire` tip: `b49f216 fix: shorten Kestrel reserve confirmation`
-- `master` remains at `6ff6f68 merge Slice 05 engineering shakedown` as of this entry; Slice 06 work has not merged back yet
-- 36 local+remote branch refs exist as of this entry, most of them merged Slice 04 children already marked deletable below. Branch cleanup is still outstanding (see `docs/04_implementation_setup/70_agent_handoff_protocol.md` section 7).
+- Current branch: `slice06-drone-contact-fire`
+- `master` remains at `6ff6f68 merge Slice 05 engineering shakedown`; Slice 06 has not merged back yet
+- **Branch cleanup COMPLETE (2026-08-08).** Refs reduced from 21 to 5: `master`, `slice06-drone-contact-fire`, and their two `origin/` counterparts plus `origin/HEAD`. See "Branch cleanup record" below.
+
+## Branch cleanup record (2026-08-08)
+
+Performed with operator approval after verifying that **nothing anywhere was
+unmerged**: `git branch -r --no-merged origin/master` returned only
+`origin/slice06-drone-contact-fire`, which is the active branch and was kept.
+
+Deleting a merged branch pointer removes a label, not commits. Verified after the
+fact that `1eb2528` — the Slice 04 integration tip that ten of these branches
+pointed at or descended from — is still an ancestor of `master`.
+
+SHAs recorded so any branch can be recreated with `git branch <name> <sha>` if a
+reason ever appears:
+
+| Branch | SHA at deletion | Scope |
+|---|---|---|
+| `docs/review-gate-tooling` | `afce5b0` | local |
+| `docs/ratify-mast-requirements-s17` | `432955d` | local |
+| `docs/damcon-idle-buff-findings` | `ebab2fa` | local |
+| `docs/future-mission-kernel-planning` | `abb747e` | remote |
+| `slice03-story-jump-preset-framework` | `11187eb` | remote |
+| `slice04-act1-message-ordering` | `88bfab7` | remote |
+| `slice04-current-objective-panel` | `c7ced35` | remote |
+| `slice04-dillon-text-blackbox-fix` | `8f876e0` | remote |
+| `slice04-generator-governor-start` | `1eb2528` | remote |
+| `slice04-homing-reserve-load-route` | `4535778` | remote |
+| `slice04-kestrel-start-docked-debug` | `b466bf8` | remote |
+| `slice04-player-instruction-clarity` | `1eb2528` | remote |
+| `slice04-remove-proof-station-start-state` | `1eb2528` | remote |
+| `slice04-starting-condition-audit` | `87609af` | remote |
+| `slice04-tarsis-docking-clearance-gate` | `58b82bf` | remote |
+| `slice04-zero-energy-docking-compat-spike` | `384405a` | remote |
+
+Three branches share `1eb2528` — they had been fast-forwarded through each other's
+work, which is exactly the confusion the per-branch entries below describe and the
+reason pruning was worth doing.
+
+The per-branch entries below are **retained as history**. They are the record of
+what each branch did; the pointers were the clutter. Their "Next action: delete
+when branch cleanup is approved" lines are now satisfied.
+
+**Convention going forward.** Prune a slice's child branches when that slice merges
+to `master`, rather than letting them accumulate. Slice 04 alone produced ten, and
+ten slices remain.
 
 ## docs/review-gate-tooling
 
