@@ -19,10 +19,18 @@ shared engineering_no_motion_observer_ticks = 0
 shared engineering_no_motion_start_x = 0
 shared engineering_no_motion_start_z = 0
 shared engineering_no_motion_confirmed = False
-shared damcon_rest_cycle_detection_mode = "damcon_location_api_unverified_comms_fallback_after_observer_attempt"
+shared damcon_rest_cycle_detection_mode = "automatic_rested_speed_coeff_buff_observer_with_comms_fallback"
+shared damcon_buff_run_id = 0
+shared damcon_buff_observer_status = "not_started"
+shared damcon_buff_observer_ticks = 0
+shared damcon_team_count = -1
+shared damcon_rested_team_count = 0
+shared damcon_fed_team_count = 0
+shared damcon_rest_cycle_source = "not_observed"
+shared damcon_meal_cycle_source = "not_observed"
 shared damcon_rest_cycle_fallback_available = False
 shared damcon_rest_cycle_confirmed = False
-shared damcon_meal_cycle_detection_mode = "damcon_location_api_unverified_comms_fallback_after_observer_attempt"
+shared damcon_meal_cycle_detection_mode = "automatic_fed_speed_coeff_buff_observer_with_comms_fallback"
 shared damcon_meal_cycle_fallback_available = False
 shared damcon_meal_cycle_confirmed = False
 shared controlled_overload_prompt_run_id = 0
@@ -35,7 +43,13 @@ shared controlled_overload_damage_observer_ticks = 0
 shared controlled_overload_initial_engine_damage = 0
 shared controlled_overload_damage_detected = False
 shared controlled_overload_repair_supervision_started = False
-shared controlled_overload_repair_detection_mode = "engineering_captain_comms_confirmation_fallback_until_repair_completion_api_verified"
+shared controlled_overload_repair_detection_mode = "automatic_undamaged_grid_object_observer_with_comms_fallback"
+shared controlled_overload_repair_run_id = 0
+shared controlled_overload_repair_observer_status = "not_started"
+shared controlled_overload_repair_observer_ticks = 0
+shared controlled_overload_repair_source = "not_observed"
+shared controlled_overload_damaged_grid_count = -1
+shared controlled_overload_peak_damaged_grid_count = 0
 shared controlled_overload_repair_fallback_available = False
 shared controlled_overload_repair_confirmed = False
 shared controlled_overload_repaired = False
@@ -50,7 +64,7 @@ shared navigation_impulse_value = -1
 shared navigation_warp_value = -1
 shared navigation_maneuver_value = -1
 shared engineering_shakedown_complete = False
-shared engineering_shakedown_api_uncertainty = "Engineering slider output is CONFIRMED LIVE 2026-08-09: eng_control_value tracks the console in real time, 1.0 = 100%, observed labels BEAM/TORP/IMPULSE/WARP/MANEUVER/SENSORS/FRONT SHIELD/REAR SHIELD. Still unproven: DAMCON team location, repair completion, and whether a SAVED preset (as opposed to the live sliders) is readable at all."
+shared engineering_shakedown_api_uncertainty = "Engineering slider output is CONFIRMED LIVE 2026-08-09: eng_control_value tracks the console in real time, 1.0 = 100%, observed labels BEAM/TORP/IMPULSE/WARP/MANEUVER/SENSORS/FRONT SHIELD/REAR SHIELD. DAMCON buffs and repair completion now have observers read from sbs_utils source but NOT yet live-verified. Still genuinely unreadable: DAMCON team LOCATION (buff earned is used as the proxy) and whether a SAVED preset slot, as opposed to the live sliders, is readable at all."
 
 # Automatic detection of design 8.4 step 1, "Engineering sets impulse engines to 0
 # and warp engines to 200". Previously this step had no detector at all - only the
@@ -85,7 +99,7 @@ shared navigation_priority_confirmed_text = "Artemis - Comms: Shakedown complete
     + "Confirm Controlled Overload Started" khovan_engineering_start_controlled_overload if damcon_rest_cycle_confirmed and not controlled_overload_started
     + "Fallback Confirm Controlled Damage" khovan_engineering_confirm_controlled_damage if controlled_overload_damage_fallback_available and not controlled_overload_damage_detected
     + "Confirm Repairs Complete" khovan_engineering_confirm_repair_complete if controlled_overload_repair_fallback_available and not controlled_overload_repair_confirmed
-    + "Conform Combat Posture" khovan_engineering_confirm_navigation_priority if navigation_priority_preset_fallback_available and not navigation_priority_preset_set
+    + "Confirm Combat Posture" khovan_engineering_confirm_navigation_priority if navigation_priority_preset_fallback_available and not navigation_priority_preset_set
 
 === khovan_engineering_send_message ===
     default engineering_message_text = ""
@@ -116,6 +130,16 @@ shared navigation_priority_confirmed_text = "Artemis - Comms: Shakedown complete
     engineering_no_motion_confirmed = False
     damcon_rest_cycle_fallback_available = False
     damcon_rest_cycle_confirmed = False
+    damcon_buff_run_id = damcon_buff_run_id + 1
+    damcon_buff_observer_status = "not_started"
+    damcon_buff_observer_ticks = 0
+    damcon_rest_cycle_source = "not_observed"
+    damcon_meal_cycle_source = "not_observed"
+    controlled_overload_repair_run_id = controlled_overload_repair_run_id + 1
+    controlled_overload_repair_observer_status = "not_started"
+    controlled_overload_repair_observer_ticks = 0
+    controlled_overload_repair_source = "not_observed"
+    controlled_overload_peak_damaged_grid_count = 0
     damcon_meal_cycle_fallback_available = False
     damcon_meal_cycle_confirmed = False
     controlled_overload_prompt_run_id = controlled_overload_prompt_run_id + 1
@@ -158,6 +182,16 @@ shared navigation_priority_confirmed_text = "Artemis - Comms: Shakedown complete
     engineering_no_motion_confirmed = False
     damcon_rest_cycle_fallback_available = False
     damcon_rest_cycle_confirmed = False
+    damcon_buff_run_id = damcon_buff_run_id + 1
+    damcon_buff_observer_status = "not_started"
+    damcon_buff_observer_ticks = 0
+    damcon_rest_cycle_source = "not_observed"
+    damcon_meal_cycle_source = "not_observed"
+    controlled_overload_repair_run_id = controlled_overload_repair_run_id + 1
+    controlled_overload_repair_observer_status = "not_started"
+    controlled_overload_repair_observer_ticks = 0
+    controlled_overload_repair_source = "not_observed"
+    controlled_overload_peak_damaged_grid_count = 0
     damcon_meal_cycle_fallback_available = False
     damcon_meal_cycle_confirmed = False
     controlled_overload_prompt_run_id = controlled_overload_prompt_run_id + 1
@@ -519,7 +553,10 @@ shared navigation_priority_confirmed_text = "Artemis - Comms: Shakedown complete
     script.write_khovan_startup_trace(f"[KHOVAN ACT1 ENG 004] no-motion validation confirmed source={completion_source}")
     await task_schedule(khovan_set_current_objective, {"objective_id": "damcon_crew_quarters_standby", "objective_body": "Engineering, stand your DAMCON teams down to crew quarters. Comms, get confirmation from DAMCON Control.", "objective_step": "DAMCON crew quarters standby", "objective_breadcrumb": "[KHOVAN OBJECTIVE 009] objective updated: DAMCON crew quarters standby"})
     await task_schedule(khovan_scenario_control_panel_update_overview)
-    task_schedule(khovan_engineering_watch_damcon_rest_cycle)
+    damcon_buff_run_id = damcon_buff_run_id + 1
+    damcon_buff_observer_ticks = 0
+    damcon_buff_observer_status = "watching_damcon_buffs"
+    task_schedule(khovan_engineering_watch_damcon_rest_cycle, {"damcon_run_id": damcon_buff_run_id})
     await task_schedule(khovan_engineering_send_message, {"engineering_message_text": engineering_no_motion_confirmed_text, "engineering_message_breadcrumb": "[KHOVAN ACT1 ENG 004A] guarded DAMCON instruction sent"})
     ->END
 
@@ -528,17 +565,73 @@ shared navigation_priority_confirmed_text = "Artemis - Comms: Shakedown complete
     yield success
 
 === khovan_engineering_watch_damcon_rest_cycle ===
+    # Automatic detector for design 8.4 steps 4 and 6, DAMCON rest-cycle and
+    # meal-cycle standby. This was Comms-only because DAMCON *location* has no clean
+    # accessor - and it still does not. What is readable is the OUTCOME.
+    #
+    # legendarymissions/ai/grid_ai.py, grid_damcons_handle_idling_boost_finish():
+    # a team that idles in a room for one minute (idle_boost_timer) receives a
+    # per-room inventory buff, each set to 1.25 with a 10-16 minute timer -
+    #   quarters -> rested_speed_coeff   (:141-144)
+    #   mess     -> fed_speed_coeff      (:145-148)
+    #   gym      -> ripped_speed_coeff   (:137-140)
+    # and grid_ai.mast:243-248 resets the value to 1.0 when its timer expires.
+    #
+    # So "a team is rested" is get_inventory_value(team, "rested_speed_coeff", 1.0)
+    # reading above 1.0. This is a BETTER gate than location: earning the buff proves
+    # the team actually parked in quarters for a full minute and took the benefit,
+    # where a location check would pass for a team merely walking through.
+    #
+    # Teams carry role "damcons" (grid_ai.mast //spawn/grid hook).
+    #
+    # [UNPROVEN] as a Khovan gate - read from installed source, not yet exercised
+    # live here. The Comms fallback is still armed on the same 8-second schedule as
+    # before, so this can only add an automatic path, never remove the manual one.
+    default damcon_run_id = damcon_buff_run_id
     if damcon_rest_cycle_confirmed:
         ->END
     if not engineering_no_motion_confirmed:
         ->END
-
-    await delay_sim(seconds=8)
-    if not damcon_rest_cycle_confirmed:
+    if damcon_run_id != damcon_buff_run_id:
+        script.write_khovan_startup_trace("[KHOVAN ACT1 ENG DAMCON] stale observer suppressed after story-jump seed")
+        ->END
+    if artemis_id == 0:
+        damcon_buff_observer_status = "fallback_missing_artemis_id"
         damcon_rest_cycle_fallback_available = True
+        script.write_khovan_startup_trace("[KHOVAN ACT1 ENG DAMCON FALLBACK] missing Artemis id")
+        ->END
+
+    damcon_buff_observer_ticks = damcon_buff_observer_ticks + 1
+    damcon_teams = to_object_list(grid_objects(artemis_id) & role("damcons"))
+    damcon_team_count = len(damcon_teams)
+    damcon_rested_team_count = 0
+    damcon_fed_team_count = 0
+    for damcon_team in damcon_teams:
+        team_rested = get_inventory_value(damcon_team.id, "rested_speed_coeff", 1.0)
+        team_fed = get_inventory_value(damcon_team.id, "fed_speed_coeff", 1.0)
+        if team_rested > 1.0:
+            damcon_rested_team_count = damcon_rested_team_count + 1
+        if team_fed > 1.0:
+            damcon_fed_team_count = damcon_fed_team_count + 1
+    script.write_khovan_startup_trace(f"[KHOVAN ACT1 ENG DAMCON WATCH] tick={damcon_buff_observer_ticks} teams={damcon_team_count} rested={damcon_rested_team_count} fed={damcon_fed_team_count}")
+
+    # Either buff satisfies the step: the player-facing instruction covers quarters
+    # and mess together, and both prove the same lesson - a team was parked long
+    # enough to take a benefit.
+    if damcon_rested_team_count > 0 or damcon_fed_team_count > 0:
+        damcon_buff_observer_status = "buffed_team_observed"
+        await task_schedule(khovan_engineering_complete_damcon_rest_cycle, {"damcon_source": "automatic_damcon_buff_observer"})
+        ->END
+
+    # Arm the Comms fallback on the original 8-second schedule, then KEEP WATCHING.
+    if damcon_buff_observer_ticks >= 4 and not damcon_rest_cycle_fallback_available:
+        damcon_rest_cycle_fallback_available = True
+        damcon_buff_observer_status = "fallback_armed_observer_still_watching"
         engineering_shakedown_status = "damcon_crew_quarters_standby_fallback_available"
-        script.write_khovan_startup_trace("[KHOVAN ACT1 ENG DAMCON REST FALLBACK] DAMCON location API unverified; Comms fallback enabled")
-    ->END
+        script.write_khovan_startup_trace("[KHOVAN ACT1 ENG DAMCON REST FALLBACK] Comms fallback armed, buff observer still watching")
+
+    await delay_sim(seconds=2)
+    jump khovan_engineering_watch_damcon_rest_cycle
 
 === khovan_engineering_confirm_damcon_rest_cycle ===
     if not engineering_no_motion_confirmed:
@@ -546,6 +639,18 @@ shared navigation_priority_confirmed_text = "Artemis - Comms: Shakedown complete
         script.write_khovan_startup_trace("[KHOVAN ACT1 ENG BLOCKED] DAMCON rest-cycle confirmation blocked before no-motion validation")
         yield fail
 
+    await task_schedule(khovan_engineering_complete_damcon_rest_cycle, {"damcon_source": "comms_fallback_confirmation"})
+    yield success
+
+=== khovan_engineering_complete_damcon_rest_cycle ===
+    default damcon_source = "fallback_confirmation"
+    # Duplicate-suppressed: this unlocks the controlled-overload step and schedules
+    # its delayed prompt, so reaching it twice would double-schedule that prompt.
+    if damcon_rest_cycle_confirmed:
+        script.write_khovan_startup_trace("[KHOVAN ACT1 ENG DAMCON] duplicate suppressed")
+        ->END
+    damcon_rest_cycle_source = damcon_source
+    damcon_meal_cycle_source = damcon_source
     damcon_rest_cycle_confirmed = True
     damcon_rest_cycle_fallback_available = False
     damcon_meal_cycle_confirmed = True
@@ -553,13 +658,13 @@ shared navigation_priority_confirmed_text = "Artemis - Comms: Shakedown complete
     engineering_shakedown_status = "controlled_overload_instruction"
     engineering_shakedown_last_step = "damcon_rest_cycle_confirmed"
     current_beat = "damcon_rest_cycle_confirmed"
-    script.write_khovan_startup_trace("[KHOVAN ACT1 ENG 005] DAMCON crew quarters rest-cycle standby confirmed through Comms")
+    script.write_khovan_startup_trace(f"[KHOVAN ACT1 ENG 005] DAMCON crew quarters rest-cycle standby confirmed source={damcon_source} rested={damcon_rested_team_count} fed={damcon_fed_team_count}")
     script.write_khovan_startup_trace("[KHOVAN ACT1 ENG 006] DAMCON meal-cycle confirmation retired; controlled-overload step unlocked")
     await task_schedule(khovan_set_current_objective, {"objective_id": "controlled_overload_start", "objective_body": "Helm, all stop. Engineering, run impulse and warp to 300 and let them overload. Captain, hold us still until the damage is logged.", "objective_step": "Controlled overload", "objective_breadcrumb": "[KHOVAN OBJECTIVE 011] objective updated: controlled overload"})
     await task_schedule(khovan_scenario_control_panel_update_overview)
     await task_schedule(khovan_engineering_send_message, {"engineering_message_text": f"{damcon_rest_cycle_text}\n{damcon_mess_instruction_text}", "engineering_message_title": "DAMCON Control", "engineering_message_color": "green", "engineering_message_breadcrumb": "[KHOVAN ACT1 ENG 006A] guarded DAMCON message sent"})
     task_schedule(khovan_engineering_deliver_controlled_overload_prompt_after_delay, {"prompt_run_id": controlled_overload_prompt_run_id})
-    yield success
+    ->END
 
 === khovan_engineering_deliver_controlled_overload_prompt_after_delay ===
     default prompt_run_id = 0
@@ -666,8 +771,63 @@ shared navigation_priority_confirmed_text = "Artemis - Comms: Shakedown complete
     await task_schedule(khovan_set_current_objective, {"objective_id": "engineering_repair_supervision", "objective_body": "Engineering, put your repair crews on it and supervise. Comms, confirm when the systems are back.", "objective_step": "Repair supervision", "objective_breadcrumb": "[KHOVAN OBJECTIVE 013] objective updated: repair supervision"})
     await task_schedule(khovan_scenario_control_panel_update_overview)
     controlled_overload_repair_fallback_available = True
+    controlled_overload_repair_run_id = controlled_overload_repair_run_id + 1
+    controlled_overload_repair_observer_ticks = 0
+    controlled_overload_peak_damaged_grid_count = 0
+    controlled_overload_repair_observer_status = "watching_damaged_grid_objects"
+    task_schedule(khovan_engineering_watch_repair_completion, {"repair_run_id": controlled_overload_repair_run_id})
     await task_schedule(khovan_engineering_send_message, {"engineering_message_text": controlled_damage_logged_text, "engineering_message_breadcrumb": "[KHOVAN ACT1 ENG 008A] guarded repair instruction sent"})
     ->END
+
+=== khovan_engineering_watch_repair_completion ===
+    # Automatic detector for design 8.4 step 11, "Runtime detects repair completion if
+    # possible". This gate was Comms-only on the belief that no repair-completion API
+    # existed. It does - internal_damage.py tracks it per grid object:
+    #
+    #   grid_damage_grid_object(): add_role(grid_id, "__damaged__")
+    #                              remove_role(grid_id, "__undamaged__")   (:475-476)
+    #   grid_repair_grid_objects(): remove_role(id, "__damaged__")
+    #                               add_role(id, "__undamaged__")          (:742-743)
+    #
+    # So "repairs complete" is simply: no grid object on Artemis still carries
+    # __damaged__.
+    #
+    # Guarded against a false pass. The overload takes a moment to actually damage
+    # anything, so a poll starting the instant the step opens would see zero damaged
+    # objects and declare victory before a single hallway blew. The observer therefore
+    # requires the count to have RISEN above zero at least once
+    # (controlled_overload_peak_damaged_grid_count) before a return to zero counts as
+    # a repair. Without that this gate would pass instantly and mean nothing.
+    #
+    # [UNPROVEN] as a Khovan gate - the role names and the query shape are read from
+    # installed sbs_utils source, not yet exercised live here. The Comms fallback stays
+    # armed from the moment the step opens.
+    default repair_run_id = controlled_overload_repair_run_id
+    if controlled_overload_repair_confirmed:
+        ->END
+    if not controlled_overload_repair_supervision_started:
+        ->END
+    if repair_run_id != controlled_overload_repair_run_id:
+        script.write_khovan_startup_trace("[KHOVAN ACT1 ENG REPAIR] stale observer suppressed after story-jump seed")
+        ->END
+    if artemis_id == 0:
+        controlled_overload_repair_observer_status = "fallback_missing_artemis_id"
+        script.write_khovan_startup_trace("[KHOVAN ACT1 ENG REPAIR FALLBACK] missing Artemis id")
+        ->END
+
+    controlled_overload_repair_observer_ticks = controlled_overload_repair_observer_ticks + 1
+    damaged_grid_objects = grid_objects(artemis_id) & role("__damaged__")
+    controlled_overload_damaged_grid_count = len(damaged_grid_objects)
+    if controlled_overload_damaged_grid_count > controlled_overload_peak_damaged_grid_count:
+        controlled_overload_peak_damaged_grid_count = controlled_overload_damaged_grid_count
+    script.write_khovan_startup_trace(f"[KHOVAN ACT1 ENG REPAIR WATCH] tick={controlled_overload_repair_observer_ticks} damaged={controlled_overload_damaged_grid_count} peak={controlled_overload_peak_damaged_grid_count}")
+
+    if controlled_overload_peak_damaged_grid_count > 0 and controlled_overload_damaged_grid_count == 0:
+        await task_schedule(khovan_engineering_complete_repair, {"repair_source": "automatic_undamaged_grid_object_observer"})
+        ->END
+
+    await delay_sim(seconds=2)
+    jump khovan_engineering_watch_repair_completion
 
 === khovan_engineering_confirm_controlled_damage ===
     await task_schedule(khovan_engineering_complete_controlled_damage, {"completion_source": "comms_fallback_confirmation"})
@@ -679,13 +839,26 @@ shared navigation_priority_confirmed_text = "Artemis - Comms: Shakedown complete
         script.write_khovan_startup_trace("[KHOVAN ACT1 ENG BLOCKED] repair confirmation blocked before controlled damage")
         yield fail
 
+    await task_schedule(khovan_engineering_complete_repair, {"repair_source": "comms_fallback_confirmation"})
+    yield success
+
+=== khovan_engineering_complete_repair ===
+    default repair_source = "fallback_confirmation"
+    # Shared completion for the automatic observer and the Comms route. Duplicate-
+    # suppressed: this opens the navigation-priority step and starts that observer, so
+    # reaching it twice would double-schedule it.
+    if controlled_overload_repair_confirmed:
+        script.write_khovan_startup_trace("[KHOVAN ACT1 ENG REPAIR] duplicate suppressed")
+        ->END
     controlled_overload_repair_confirmed = True
     controlled_overload_repair_fallback_available = False
     controlled_overload_repaired = True
+    controlled_overload_repair_source = repair_source
+    controlled_overload_repair_observer_status = "confirmed"
     engineering_shakedown_status = "navigation_priority_preset"
     engineering_shakedown_last_step = "repair_confirmed"
     current_beat = "controlled_overload_repair_confirmed"
-    script.write_khovan_startup_trace("[KHOVAN ACT1 ENG 009] repair completion confirmed by Comms fallback")
+    script.write_khovan_startup_trace(f"[KHOVAN ACT1 ENG 009] repair completion confirmed source={repair_source} peak_damaged={controlled_overload_peak_damaged_grid_count}")
     await task_schedule(khovan_set_current_objective, {"objective_id": "navigation_priority_preset", "objective_body": "Engineering, set maneuvering 190, warp 10, impulse 100, and save it as a preset. Report ready when it is stored.", "objective_step": "Navigation priority preset", "objective_breadcrumb": "[KHOVAN OBJECTIVE 014] objective updated: navigation priority preset"})
     await task_schedule(khovan_scenario_control_panel_update_overview)
     navigation_priority_preset_fallback_available = True

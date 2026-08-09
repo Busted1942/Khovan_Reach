@@ -158,7 +158,7 @@ class Act1EngineeringPowerPresetTests(unittest.TestCase):
 
         # Fallback is armed when the step opens, not on a timeout, because the
         # saved-preset half of step 12 is not detectable at all.
-        repair_body = label_body(engineering, "khovan_engineering_confirm_repair_complete")
+        repair_body = label_body(engineering, "khovan_engineering_complete_repair")
         self.assertIn("navigation_priority_preset_fallback_available = True", repair_body)
         self.assertIn("task_schedule(khovan_engineering_watch_navigation_priority", repair_body)
 
@@ -311,7 +311,7 @@ class Act1EngineeringShakedownStaticTests(unittest.TestCase):
             '+ "Confirm Controlled Overload Started" khovan_engineering_start_controlled_overload if damcon_rest_cycle_confirmed and not controlled_overload_started',
             '+ "Fallback Confirm Controlled Damage" khovan_engineering_confirm_controlled_damage if controlled_overload_damage_fallback_available and not controlled_overload_damage_detected',
             '+ "Confirm Repairs Complete" khovan_engineering_confirm_repair_complete if controlled_overload_repair_fallback_available and not controlled_overload_repair_confirmed',
-            '+ "Conform Combat Posture" khovan_engineering_confirm_navigation_priority if navigation_priority_preset_fallback_available and not navigation_priority_preset_set',
+            '+ "Confirm Combat Posture" khovan_engineering_confirm_navigation_priority if navigation_priority_preset_fallback_available and not navigation_priority_preset_set',
         ]:
             self.assertIn(phrase, engineering)
         self.assertNotIn('"Khovan: Begin Engineering Shakedown"', engineering)
@@ -386,13 +386,15 @@ class Act1EngineeringShakedownStaticTests(unittest.TestCase):
         for phrase in [
             "automatic_playerThrottle_cur_speed_position_delta_observer",
             "automatic_engine_system_damage_observer_with_comms_fallback",
-            "damcon_location_api_unverified_comms_fallback_after_observer_attempt",
-            "engineering_captain_comms_confirmation_fallback_until_repair_completion_api_verified",
+            "automatic_rested_speed_coeff_buff_observer_with_comms_fallback",
+            "automatic_fed_speed_coeff_buff_observer_with_comms_fallback",
+            "automatic_undamaged_grid_object_observer_with_comms_fallback",
             "automatic_maneuver_190_warp_10_impulse_100_slider_observer_with_comms_fallback",
             # The limit must stay stated: the sliders are readable, saving them to a
             # preset slot is not, so step 12 is only ever half-detected.
             "saving to a preset SLOT is not readable and stays operator-confirmed",
-            "DAMCON location",
+            # Location is still genuinely unreadable - the buff earned is the proxy.
+            "DAMCON team LOCATION",
         ]:
             self.assertIn(phrase, engineering)
 
@@ -446,7 +448,7 @@ class Act1EngineeringShakedownStaticTests(unittest.TestCase):
         ]:
             self.assertIn(phrase, delayed_prompt)
 
-        damcon_confirmation = label_body(engineering, "khovan_engineering_confirm_damcon_rest_cycle")
+        damcon_confirmation = label_body(engineering, "khovan_engineering_complete_damcon_rest_cycle")
         self.assertIn(
             'task_schedule(khovan_engineering_deliver_controlled_overload_prompt_after_delay, {"prompt_run_id": controlled_overload_prompt_run_id})',
             damcon_confirmation,
@@ -464,13 +466,15 @@ class Act1EngineeringShakedownStaticTests(unittest.TestCase):
                 "engineering_shakedown_complete = True",
             ],
             "khovan_engineering_complete_no_motion_validation": ["engineering_no_motion_confirmed = True"],
-            "khovan_engineering_confirm_damcon_rest_cycle": ["damcon_rest_cycle_confirmed = True"],
+            "khovan_engineering_confirm_damcon_rest_cycle": ["khovan_engineering_complete_damcon_rest_cycle"],
+            "khovan_engineering_complete_damcon_rest_cycle": ["damcon_rest_cycle_confirmed = True"],
             "khovan_engineering_start_controlled_overload": ["controlled_overload_started = True"],
             "khovan_engineering_complete_controlled_damage": [
                 "controlled_overload_damage_detected = True",
                 "controlled_overload_repair_supervision_started = True",
             ],
-            "khovan_engineering_confirm_repair_complete": [
+            "khovan_engineering_confirm_repair_complete": ["khovan_engineering_complete_repair"],
+            "khovan_engineering_complete_repair": [
                 "controlled_overload_repair_confirmed = True",
                 "controlled_overload_repaired = True",
             ],
