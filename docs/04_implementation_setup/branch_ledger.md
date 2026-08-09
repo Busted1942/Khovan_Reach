@@ -67,6 +67,32 @@ Files: `tools/review_gate.py` (new), `tests/test_review_gate_static.py` (new), `
 
 Status: complete. Landed directly on `slice06-drone-contact-fire` as `afce5b0`, NOT via the section 7 merge-back path. Recorded here as a deviation rather than corrected — see "Why this was not unwound" below.
 
+### Attribution error in `1e3b6fc` (recorded 2026-08-09, not corrected)
+
+`1e3b6fc "test: assert player copy by convention instead of duplicating the
+prose"` also contains 45 lines of runtime change to
+`scripts/acts/act1_drone_contact_fire.mast` that the committing session did not
+author — the `data_set.get` reversal, which was sitting uncommitted in the
+shared working tree at the time.
+
+Cause: `git add -A` in a directory two agents were editing. It stages whatever
+is in the tree, not what you changed. The content is correct and the reversal is
+right; only the authorship and the commit message are wrong, and the message
+describes copy work while the diff also carries an API correction.
+
+Not rewritten. The commit is pushed, the branch is shared, and rewriting it to
+fix a message would be a worse trade than the record being slightly wrong —
+same reasoning as the deviation below. Follow-up commit `0157b79` noticed the
+same thing independently and placed the finding in cookbook 9.1 and
+`SLICE06_VERIFICATION.md`, so the knowledge is where an agent will look for it
+even though the history is not.
+
+**Practice change:** in a shared working tree, stage explicit paths
+(`git add <path> ...`), never `git add -A`. Verify with `git status --short`
+before committing that every staged path is one you touched. The earlier lesson
+in this ledger was to check `HEAD` before committing; this extends it to
+checking the *contents* as well.
+
 ### Why this was not unwound
 
 The commit was authored on `docs/review-gate-tooling`, but the VS Code/Codex
