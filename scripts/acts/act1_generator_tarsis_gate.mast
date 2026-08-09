@@ -91,6 +91,28 @@ shared tarsis_resupply_text = "Tarsis Control: resupply authorized and the gener
     script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS 005] Kestrel standard station selected")
 
 //comms if has_roles(COMMS_SELECTED_ID, "kestrel_yards")
+    # Diagnostic + suspected fix (2026-08-09, live report: Kestrel showed no Comms
+    # options after a server restart while Tarsis worked in the same session).
+    #
+    # What the trace proved: the //enable/comms route above DID fire on the click
+    # ([KHOVAN ACT1 COMMS 005]), so COMMS_SELECTED_ID was Kestrel and the
+    # kestrel_yards role was present. Roles were also byte-identical to Tarsis,
+    # whose options rendered in that same session. So the failure is not roles
+    # and not selection.
+    #
+    # The one structural difference left: this block consisted only of "+" option
+    # lines with no statement body, while every //comms block in this repo that is
+    # confirmed to render (Tarsis here at :103, engineering_shakedown.mast:58,
+    # act1_drone_contact_fire.mast:361) opens with at least one statement. Adding a
+    # status write and a trace makes this block match the proven shape and, either
+    # way, makes the next click self-diagnosing instead of silent.
+    #
+    # UNPROVEN: whether the empty body was the actual cause. If Kestrel options
+    # still do not render but this trace DOES appear, the block is evaluating and
+    # the fault is downstream in option rendering - escalate as an API uncertainty
+    # rather than guessing again.
+    kestrel_comms_options_status = "rendered_for_selected_kestrel"
+    script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS KESTREL OPTIONS] Kestrel options rendered")
     + "Khovan: Hail Kestrel Yards" khovan_kestrel_hail
     + "Khovan: Request Departure Clearance" khovan_kestrel_request_departure_clearance
     + "Khovan: Request Emergency Homing Reserve" khovan_kestrel_request_emergency_homing_reserve
@@ -411,6 +433,14 @@ shared tarsis_resupply_text = "Tarsis Control: resupply authorized and the gener
         add_role(kestrel_yards_id, "kestrel_yards")
         kestrel_comms_options_status = "station_and_Station_and_kestrel_yards_roles_restored_after_docking_helper_pass"
         script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS 003B] Kestrel station roles restored after docking helper pass for Khovan Comms options")
+        # The COMMS 003 trace above fires BEFORE this restore, so it has never shown
+        # Kestrel's final role set. Log the post-restore state so the two can be
+        # compared directly. Cookbook 8.2 claims stock station behavior keys off a
+        # capital "Station"; the COMMS 003 reading does not contain it, which may
+        # mean remove_role("station") also strips "Station" - unconfirmed, and this
+        # trace is what would confirm or kill it.
+        kestrel_roles_final = to_object(kestrel_yards_id).get_roles()
+        script.write_khovan_startup_trace(f"[KHOVAN ACT1 COMMS 003C-ROLES] Kestrel post-restore roles={kestrel_roles_final}")
     if tarsis_station_id != 0:
         add_role(tarsis_station_id, "station")
         remove_role(tarsis_station_id, "Station")
