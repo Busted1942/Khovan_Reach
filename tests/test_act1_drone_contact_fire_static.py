@@ -99,32 +99,26 @@ class Act1DroneContactFireStaticTests(unittest.TestCase):
         self.assertNotIn("@gui", drone)
         self.assertNotIn("//gui", drone)
 
-    def test_spike_spawn_uses_normal_hostile_npc_target_and_stock_scan_comms_hooks(self) -> None:
+    def test_spike_spawn_uses_bare_stock_kralien_cruiser_baseline(self) -> None:
         drone = read(DRONE_PATH)
         spawn_body = label_body(drone, "khovan_drone_contact_fire_spawn_target_spike")
         for phrase in [
-            'npc_spawn(32000, 0, 12000, "Slice 06 Spike Target", "kralien, khovan_training, khovan_slice06_spike_target, khovan_drone_spike_target", "kralien_cruiser", "behav_npcship")',
-            'sim.add_navproxy(drone_target_spike_target_id, "Slice 06 Spike Target", "kralien_cruiser", "#FC3")',
-            'link(artemis_id, "extra_scan_source", drone_target_spike_target_id)',
-            "set_science_selection(artemis_id, drone_target_spike_target_id)",
-            "set_comms_selection(artemis_id, drone_target_spike_target_id)",
-            'drone_target_spike_status = "spawned_normal_hostile_npc_scan_target"',
+            'npc_spawn(32000, 0, 12000, "Kralien Cruiser", "kralien", "kralien_cruiser", "behav_npcship")',
+            'drone_target_spike_status = "spawned_stock_kralien_cruiser"',
             "[KHOVAN ACT1 DRONE SPIKE SPAWN]",
         ]:
             self.assertIn(phrase, spawn_body)
 
-        for phrase in [
-            '//enable/comms if has_roles(COMMS_SELECTED_ID, "khovan_slice06_spike_target")',
-            '//comms if has_roles(COMMS_SELECTED_ID, "khovan_slice06_spike_target")',
-            '+ "Khovan: Hail Spike Target" khovan_drone_contact_fire_hail_spike_target',
-            'drone_target_spike_hail_observed = True',
-            "Khovan: Hail Spike Target",
+        for forbidden in [
+            "khovan_training",
+            "khovan_slice06_spike_target",
+            "khovan_drone_spike_target",
+            "sim.add_navproxy",
+            'link(artemis_id, "extra_scan_source", drone_target_spike_target_id)',
+            "set_science_selection(artemis_id, drone_target_spike_target_id)",
+            "set_comms_selection(artemis_id, drone_target_spike_target_id)",
         ]:
-            self.assertIn(phrase, drone)
-
-        self.assertNotIn('//enable/science if has_roles(SCIENCE_SELECTED_ID, "khovan_slice06_spike_target")', drone)
-        self.assertNotIn('//science if has_roles(SCIENCE_SELECTED_ID, "khovan_slice06_spike_target")', drone)
-        self.assertIn("This intentionally re-enables normal NPC behavior", spawn_body)
+            self.assertNotIn(forbidden, spawn_body)
 
     def test_gm_comms_receive_calls_use_comms_override_experiment(self) -> None:
         # Experimental fix, 2026-08-08: live smoke confirmed the bare comms_receive()

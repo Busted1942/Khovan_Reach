@@ -152,21 +152,13 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
     drone_contact_sequence_status = "target_spike_spawn_requested"
     drone_contact_last_step = "target_spike_spawn"
     drone_target_spike_status = "spawn_requested"
-    # GM-only scan spike experiment (2026-08-09): use a normal hostile Kralien
-    # NPC so its stock scan return can be compared with a GM-spawned cruiser.
-    # This intentionally re-enables normal NPC behavior; do not carry this
-    # experiment's behavior into production Drone 01 or Drone 02.
-    drone_target_spike_target = npc_spawn(32000, 0, 12000, "Slice 06 Spike Target", "kralien, khovan_training, khovan_slice06_spike_target, khovan_drone_spike_target", "kralien_cruiser", "behav_npcship")
+    # GM-only stock baseline: no Khovan object roles, nav proxy, scan link, or
+    # forced player selection. This is a bare hostile Kralien cruiser so its
+    # Science return can be compared directly with a normal GM-spawned enemy.
+    drone_target_spike_target = npc_spawn(32000, 0, 12000, "Kralien Cruiser", "kralien", "kralien_cruiser", "behav_npcship")
     drone_target_spike_target_id = to_id(drone_target_spike_target)
-    drone_target_spike_navproxy = sim.add_navproxy(drone_target_spike_target_id, "Slice 06 Spike Target", "kralien_cruiser", "#FC3")
-    drone_target_spike_navproxy_id = to_id(drone_target_spike_navproxy)
     drone_target_spike_active = True
-    drone_target_spike_status = "spawned_normal_hostile_npc_scan_target"
-
-    if artemis_id != 0 and drone_target_spike_target_id != 0:
-        link(artemis_id, "extra_scan_source", drone_target_spike_target_id)
-        set_science_selection(artemis_id, drone_target_spike_target_id)
-        set_comms_selection(artemis_id, drone_target_spike_target_id)
+    drone_target_spike_status = "spawned_stock_kralien_cruiser"
 
     script.write_khovan_startup_trace(f"[KHOVAN ACT1 DRONE SPIKE SPAWN] target_id={drone_target_spike_target_id} spawn_count={drone_target_spike_spawn_count}")
     await task_schedule(khovan_set_current_objective, {"objective_id": "slice06_target_spike", "objective_body": "GM target spike active. Science scan, Comms hail, Weapons select, then test subsystem damage/destruction evidence.", "objective_step": "Slice 06 target spike", "objective_breadcrumb": "[KHOVAN OBJECTIVE 016S] objective updated: Slice 06 target spike"})
