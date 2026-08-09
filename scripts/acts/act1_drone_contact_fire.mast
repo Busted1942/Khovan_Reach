@@ -425,7 +425,25 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
         ->END
     await task_schedule(khovan_drone_01_reset_flags)
     drone_01_spawn_count = drone_01_spawn_count + 1
-    drone_01_target = npc_spawn(beacon.pos.x + drone_01_spawn_offset_m, beacon.pos.y, beacon.pos.z, "Drone 01", "kralien, raider, khovan_drone_01", "kralien_cruiser", "behav_npcship")
+    # Behavior key (2026-08-09): behav_do_nothing, NOT behav_npcship. Design
+    # 10_mast_requirements.md 8.5 specifies "non-attacking AI" for Drone 01, and the
+    # drill requires Artemis to hold station stationary at 1-2 km for 15 seconds -
+    # unworkable against a contact that shoots back. behav_npcship was carried over
+    # from the GM Spike Target, which is a scan/damage probe with no such gate.
+    #
+    # The `kralien` role is what makes this contact an enemy side, and enemy side is
+    # what makes the stock Science route match (legendarymissions/science_scans/
+    # science.mast:144, side_are_enemies) and render the shield-frequency panel. Do
+    # not swap it for `neutral` to stop the shooting - that trades away the scan the
+    # whole drill is built on. `raider` is only a targeting tag used by autoplay
+    # selection helpers, not an AI driver, so it is harmless here and left in place.
+    #
+    # UNPROVEN in this repo: behav_do_nothing. Proven usage exists in a shipping
+    # reference mission (HereThereBeMonsters-main/story.mast:304,456,519) for inert
+    # contacts. Watch the live check: the drone must still render the stock Kralien
+    # Science panel. If behav_do_nothing costs the scan, revert to behav_npcship and
+    # raise the non-attacking requirement as a design finding instead.
+    drone_01_target = npc_spawn(beacon.pos.x + drone_01_spawn_offset_m, beacon.pos.y, beacon.pos.z, "Drone 01", "kralien, raider, khovan_drone_01", "kralien_cruiser", "behav_do_nothing")
     drone_01_target_id = to_id(drone_01_target)
     if drone_01_target_id == 0:
         drone_01_status = "spawn_failed"
@@ -441,7 +459,7 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
     # visible loss - restore the two lines removed here only after live smoke
     # proves the stock scan return survives it.
     drone_01_active = True
-    drone_01_status = "spawned_stock_kralien_cruiser_at_training_beacon_offset"
+    drone_01_status = "spawned_non_attacking_kralien_cruiser_at_training_beacon_offset"
     # GM/Comms confirmations are final fallbacks for every automatic production gate.
     drone_01_scan_fallback_available = True
     drone_01_hail_fallback_available = True
@@ -787,15 +805,29 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
     if beacon is None:
         drone_02_status = "blocked_missing_tarsis_training_beacon_object"
         ->END
-    drone_02_target = npc_spawn(beacon.pos.x + 10000, beacon.pos.y, beacon.pos.z, "Drone 02", "khovan_training, neutral, khovan_drone_02", "tsn_warpster", "behav_npcship")
+    # Drone 02 is the free-fire half of the drill: design 10_mast_requirements.md 8.6
+    # says "combat target = true", and completion is destruction. It was spawned as
+    # "khovan_training, neutral" on a tsn_warpster hull - a NEUTRAL contact on a
+    # friendly TSN hull, which is not a combat target. On a neutral side
+    # side_are_enemies() is false, so it draws neither the stock enemy Science route
+    # nor normal hostile Weapons handling, and asking a crew to destroy a friendly-
+    # hulled neutral is the wrong lesson besides.
+    #
+    # Now a hostile Kralien cruiser with live NPC AI - the opposite of Drone 01 by
+    # design. Drone 01 is the controlled subsystem-disable target and does not fight
+    # back; Drone 02 is the one the crew engages at will. 8.6 also asks for "lethal
+    # pressure = low / training-safe", so this stays a single cruiser at 10 km rather
+    # than anything heavier; kralien_cruiser's 2 hull points are a feature here, since
+    # destruction is the completion gate.
+    drone_02_target = npc_spawn(beacon.pos.x + 10000, beacon.pos.y, beacon.pos.z, "Drone 02", "kralien, raider, khovan_drone_02", "kralien_cruiser", "behav_npcship")
     drone_02_target_id = to_id(drone_02_target)
     if drone_02_target_id == 0:
         drone_02_status = "spawn_failed"
         ->END
-    drone_02_navproxy = sim.add_navproxy(drone_02_target_id, "Drone 02", "tsn_warpster", "#F93")
+    drone_02_navproxy = sim.add_navproxy(drone_02_target_id, "Drone 02", "kralien_cruiser", "#F93")
     drone_02_navproxy_id = to_id(drone_02_navproxy)
     drone_02_active = True
-    drone_02_status = "spawned_training_safe_at_10km"
+    drone_02_status = "spawned_hostile_free_fire_target_at_10km"
     drone_contact_sequence_status = "drone_02_active"
     script.write_khovan_startup_trace(f"[KHOVAN ACT1 DRONE 02 SPAWN] target_id={drone_02_target_id} offset_m=10000")
     await task_schedule(khovan_set_current_objective, {"objective_id": "drone_02_live_fire", "objective_body": "Drone 02 live-fire target deployed at ten kilometres. Captain: engage and destroy the target. Coordinate as standard.", "objective_step": "Drone 02 destruction", "objective_breadcrumb": "[KHOVAN OBJECTIVE 021] Drone 02 deployed"})

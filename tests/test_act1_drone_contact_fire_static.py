@@ -305,7 +305,7 @@ class Act1DroneContactFireStaticTests(unittest.TestCase):
         drone = read(DRONE_PATH)
         spawn_body = label_body(drone, "khovan_drone_01_spawn")
         self.assertIn(
-            'npc_spawn(beacon.pos.x + drone_01_spawn_offset_m, beacon.pos.y, beacon.pos.z, "Drone 01", "kralien, raider, khovan_drone_01", "kralien_cruiser", "behav_npcship")',
+            'npc_spawn(beacon.pos.x + drone_01_spawn_offset_m, beacon.pos.y, beacon.pos.z, "Drone 01", "kralien, raider, khovan_drone_01", "kralien_cruiser", "behav_do_nothing")',
             spawn_body,
         )
         self.assertIn(
@@ -406,15 +406,26 @@ class Act1DroneContactFireStaticTests(unittest.TestCase):
         # showed Khovan override text instead of the engine's normal Kralien return,
         # while the GM Spike Target - spawned bare - showed the stock return with
         # shield frequencies. Drone 01 must stay configured the same way the Spike
-        # Target is: identical hull/behavior/stock roles, and none of the extra
-        # plumbing that diverted the Science return.
+        # Target is: same hull and stock roles, and none of the extra plumbing that
+        # diverted the Science return.
+        #
+        # The behavior key is the one deliberate divergence. Design
+        # 10_mast_requirements.md 8.5 requires "non-attacking AI" for Drone 01,
+        # because the drill makes Artemis hold station at 1-2 km for 15 seconds. The
+        # Spike Target is a scan/damage probe with no such gate and keeps live AI.
+        # What must match is the `kralien` role - enemy side is what makes the stock
+        # Science route render the shield-frequency panel.
         drone = read(DRONE_PATH)
         spike_spawn = label_body(drone, "khovan_drone_contact_fire_spawn_target_spike")
         drone_spawn = label_body(drone, "khovan_drone_01_spawn")
 
-        for stock_config in ['"kralien, raider', '"kralien_cruiser", "behav_npcship"']:
+        for stock_config in ['"kralien, raider', '"kralien_cruiser"']:
             self.assertIn(stock_config, spike_spawn)
             self.assertIn(stock_config, drone_spawn)
+
+        self.assertIn('"behav_npcship"', spike_spawn)
+        self.assertIn('"behav_do_nothing"', code_only(drone_spawn))
+        self.assertNotIn('"behav_npcship"', code_only(drone_spawn))
 
         for forbidden in [
             "sim.add_navproxy",
@@ -424,6 +435,34 @@ class Act1DroneContactFireStaticTests(unittest.TestCase):
         ]:
             self.assertNotIn(forbidden, spike_spawn)
             self.assertNotIn(forbidden, drone_spawn)
+
+    def test_the_two_drones_have_opposite_combat_roles(self) -> None:
+        # Operator direction 2026-08-09, matching design 10_mast_requirements.md
+        # 8.5/8.6: Drone 01 is the practice target for the controlled subsystem
+        # disable and must not fight back; Drone 02 is the free-fire target the crew
+        # engages at will - "annoying but not very dangerous".
+        drone = read(DRONE_PATH)
+        drone_01 = code_only(label_body(drone, "khovan_drone_01_spawn"))
+        drone_02 = code_only(label_body(drone, "khovan_drone_02_spawn"))
+
+        # Drone 01: inert.
+        self.assertIn('"behav_do_nothing"', drone_01)
+
+        # Drone 02: live AI, hostile side, and destructible - destruction is its
+        # completion gate, so kralien_cruiser's 2 hull points are wanted here.
+        self.assertIn('"kralien, raider, khovan_drone_02"', drone_02)
+        self.assertIn('"kralien_cruiser", "behav_npcship"', drone_02)
+
+        # The old neutral TSN-hulled configuration is not a combat target:
+        # side_are_enemies() is false on a neutral side, so it draws neither the
+        # stock enemy Science route nor normal hostile Weapons handling.
+        self.assertNotIn("neutral", drone_02)
+        self.assertNotIn("tsn_warpster", drone_02)
+
+        # The hull hold belongs to Drone 01's drill only. Drone 02 must stay killable.
+        self.assertNotIn("hull_hit_counter", drone_02)
+        destroy_02 = drone[drone.index('//damage/destroy if has_role(DESTROYED_ID, "khovan_drone_02")'):]
+        self.assertNotIn("hull_hit_counter", code_only(destroy_02))
 
     def test_drone_01_has_no_khovan_science_route_at_all(self) -> None:
         # Root cause locked in from installed sbs_utils v1.3.0 source, 2026-08-09
