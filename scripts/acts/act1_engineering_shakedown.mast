@@ -677,8 +677,34 @@ shared navigation_priority_confirmed_text = "Artemis - Comms: Shakedown complete
     #       the read
     damcon_sample_id = 0
     damcon_sample_idle_state = "unread"
+    damcon_sample_timer_rested = False
+    damcon_sample_timer_ripped = False
     damcon_sample_name = "unread"
     for damcon_team in damcon_teams:
+        # Read the TIMER, not the inventory value.
+        #
+        # Evidence, 2026-08-09: the inventory read returns the default on a team
+        # the Engineering panel is actively showing as "rested for 14:00", while
+        # get_inventory_value(team, "idle_state") on the same id reads the
+        # engine's own value correctly. So the id and the call both work, and
+        # only these three keys come back empty.
+        #
+        # The engine's own display does not read the inventory value either. It
+        # reads the timer (grid_ai.py:51-63):
+        #     if not is_timer_finished(_go_id, "rested_speed_coeff"):
+        #         rested = f"rested for {format_time_remaining(...)}"
+        # and that display demonstrably works on this ship. So read what the
+        # working code reads rather than what the writing code writes.
+        #
+        # is_timer_finished returns True when a timer was never set
+        # (sbs_utils/procedural/timers.py:36-48), so "not finished" is a safe
+        # test for "buff currently running" - an unbuffed team reads finished.
+        team_rested_active = not is_timer_finished(damcon_team.id, "rested_speed_coeff")
+        team_fed_active = not is_timer_finished(damcon_team.id, "fed_speed_coeff")
+        team_ripped_active = not is_timer_finished(damcon_team.id, "ripped_speed_coeff")
+        # Kept only as a comparison signal in the trace. If these ever start
+        # agreeing with the timers, the inventory path works on that build and
+        # this comment should be revisited.
         team_rested = get_inventory_value(damcon_team.id, "rested_speed_coeff", 1.0)
         team_fed = get_inventory_value(damcon_team.id, "fed_speed_coeff", 1.0)
         team_ripped = get_inventory_value(damcon_team.id, "ripped_speed_coeff", 1.0)
@@ -688,14 +714,18 @@ shared navigation_priority_confirmed_text = "Artemis - Comms: Shakedown complete
             damcon_sample_ripped = team_ripped
             damcon_sample_id = damcon_team.id
             damcon_sample_idle_state = get_inventory_value(damcon_team.id, "idle_state", "none")
+            damcon_sample_timer_rested = team_rested_active
+            damcon_sample_timer_ripped = team_ripped_active
             damcon_sample_name = damcon_team.name
-        if team_rested > 1.0:
+        # Either signal counts. The timer is the one observed working; the
+        # coefficient stays in the test so a build where it works still passes.
+        if team_rested_active or team_rested > 1.0:
             damcon_rested_team_count = damcon_rested_team_count + 1
-        if team_fed > 1.0:
+        if team_fed_active or team_fed > 1.0:
             damcon_fed_team_count = damcon_fed_team_count + 1
-        if team_ripped > 1.0:
+        if team_ripped_active or team_ripped > 1.0:
             damcon_ripped_team_count = damcon_ripped_team_count + 1
-    script.write_khovan_startup_trace(f"[KHOVAN ACT1 ENG DAMCON WATCH] tick={damcon_buff_observer_ticks} teams={damcon_team_count} rested={damcon_rested_team_count} fed={damcon_fed_team_count} ripped={damcon_ripped_team_count} sample_rested={damcon_sample_rested} sample_fed={damcon_sample_fed} sample_ripped={damcon_sample_ripped} sample_id={damcon_sample_id} sample_name={damcon_sample_name} sample_idle_state={damcon_sample_idle_state}")
+    script.write_khovan_startup_trace(f"[KHOVAN ACT1 ENG DAMCON WATCH] tick={damcon_buff_observer_ticks} teams={damcon_team_count} rested={damcon_rested_team_count} fed={damcon_fed_team_count} ripped={damcon_ripped_team_count} sample_rested={damcon_sample_rested} sample_fed={damcon_sample_fed} sample_ripped={damcon_sample_ripped} sample_id={damcon_sample_id} sample_name={damcon_sample_name} sample_idle_state={damcon_sample_idle_state} timer_rested={damcon_sample_timer_rested} timer_ripped={damcon_sample_timer_ripped}")
 
     # Either buff satisfies the step: the player-facing instruction covers quarters
     # and mess together, and both prove the same lesson - a team was parked long
