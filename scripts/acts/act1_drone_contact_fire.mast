@@ -508,32 +508,44 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
     await task_schedule(khovan_drone_01_spawn)
     ->END
 
-//enable/science if has_roles(SCIENCE_SELECTED_ID, "khovan_drone_01")
-
-# Spike parity (2026-08-09): the "Initial Scan" and "scan" entries that used to sit
-# here each carried a <scan> block, which replaced the engine's normal Kralien scan
-# return - the one that lists shield frequencies - with fixed Khovan text. That is
-# the observed live symptom: Drone 01's Science panel showed "Drone 01 is a neutral
-# training contact..." where the GM Spike Target, which has no Khovan //science
-# route at all, shows the stock return. Both scan-overriding entries are removed.
+# Deliberately NO //enable/science and NO //science route for khovan_drone_01.
 #
-# Only the drill-specific relay button remains. It does not shadow a stock button
-# name and carries no <scan> block, so the stock scan should render alongside it.
-# drone_01_scan_complete is set here because Science cannot relay a frequency it has
-# not already read off the scan; the Comms "Khovan: Fallback Scan" route is still
-# armed at spawn as the independent fallback required by AGENTS.md section 4.
+# Root cause, read out of the installed sbs_utils v1.3.0 source (2026-08-09), not
+# guessed - sbs_utils/procedural/science.py:
 #
-# UNPROVEN until live smoke: that a //science route with no <scan> block leaves the
-# stock return intact. If the stock scan is still suppressed, delete this route and
-# //enable/science entirely - the Spike Target proves a bare contact works - and
-# drive both gates from the existing Comms fallbacks.
-//science if has_roles(SCIENCE_SELECTED_ID, "khovan_drone_01")
-    + "Relay Weak Shield Frequency":
-        drone_01_scan_complete = True
-        drone_01_shield_frequency_relay_complete = True
-        drone_01_status = "shield_frequency_relay_complete"
-        script.write_khovan_startup_trace(f"[KHOVAN ACT1 DRONE 01 SCAN RELAY] target_id={SCIENCE_SELECTED_ID}")
-        await task_schedule(khovan_set_current_objective, {"objective_id": "drone_01_weapons_lock", "objective_body": "Weapons lock beams on Drone 01. Helm establish 1-2 km range and hold stationary for 15 seconds.", "objective_step": "Drone 01 lock and range", "objective_breadcrumb": "[KHOVAN OBJECTIVE 018] shield relay complete"})
+#   start_science_selected() collects every //enable/science label in the compiled
+#   mission and runs them. If none of them pass, it calls t.end() and returns, and
+#   sbs_utils never touches the Science panel - the engine's own scan renders, which
+#   is the full Kralien readout with the A-E shield-frequency bars and the
+#   scan/status/intel/bio tabs. That is exactly what the GM Spike Target shows.
+#
+#   If any //enable/science DOES pass, sbs_utils owns the panel and ScanPromise.
+#   show_buttons() runs. Its first branch is decisive:
+#       has_scan = sel_so.data_set.get("scan", origin_so.side)
+#       if has_scan is None:        scan_tabs = "scan"
+#       elif has_scan == "no data": scan_tabs = "scan"
+#       else:                       ...build tabs from the //science buttons...
+#   then unconditionally sel_so.data_set.set("scan_type_list", scan_tabs, 0).
+#
+# So while data_set["scan"] is None or the literal "no data" - which is what a
+# freshly spawned NPC returns - the panel is hard-forced to a single "scan" tab.
+# No custom buttons, no frequency bars. Live 2026-08-09 reproduced this precisely:
+# Drone 01 showed one "scan" tab and "no data" while the Spike Target showed
+# scan/status/intel/bio plus "weak C". The only way out of that branch is to put
+# real text in data_set["scan"] (a <scan> block or science_set_scan_data), and both
+# of those also overwrite scan_type_list - which is the frequency display we want.
+#
+# The trade is therefore either/or and cannot be split: a Khovan //science route on
+# this contact OR the stock shield-frequency panel. The drill needs the frequencies,
+# so the route goes. Science reads the weak frequency off the stock scan and passes
+# it to Weapons verbally; the drill gates are carried by the Tarsis Comms routes
+# khovan_drone_01_fallback_scan and khovan_drone_01_fallback_shield_relay, both
+# armed at spawn. FINDING for the operator: those two are now the primary route for
+# a Science-officer action, not fallbacks, and their button labels still say
+# "Fallback" - renaming them is player-facing content and out of scope here.
+#
+# Do not re-add //enable/science for khovan_drone_01 to "restore the Science
+# buttons" without re-reading the branch above; it silently costs the frequencies.
 
 //enable/comms if has_roles(COMMS_SELECTED_ID, "khovan_drone_01")
 
@@ -730,6 +742,8 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
 === khovan_drone_01_fallback_scan ===
     drone_01_scan_complete = True
     drone_01_scan_fallback_available = False
+    drone_01_status = "science_scan_confirmed"
+    script.write_khovan_startup_trace(f"[KHOVAN ACT1 DRONE 01 SCAN] confirmed via Tarsis Comms target_id={drone_01_target_id}")
     ->END
 
 === khovan_drone_01_fallback_hail ===
@@ -738,8 +752,17 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
     ->END
 
 === khovan_drone_01_fallback_shield_relay ===
+    # Primary route for the relay gate since the Khovan //science route was removed
+    # (see the block above //enable/comms for khovan_drone_01). Science reads the
+    # weak frequency off the stock scan panel and Comms confirms it here, so this
+    # also satisfies the scan gate - the frequency cannot be read without scanning.
+    drone_01_scan_complete = True
+    drone_01_scan_fallback_available = False
     drone_01_shield_frequency_relay_complete = True
     drone_01_shield_relay_fallback_available = False
+    drone_01_status = "shield_frequency_relay_complete"
+    script.write_khovan_startup_trace(f"[KHOVAN ACT1 DRONE 01 SCAN RELAY] confirmed via Tarsis Comms target_id={drone_01_target_id}")
+    await task_schedule(khovan_set_current_objective, {"objective_id": "drone_01_weapons_lock", "objective_body": "Weapons lock beams on Drone 01. Helm establish 1-2 km range and hold stationary for 15 seconds.", "objective_step": "Drone 01 lock and range", "objective_breadcrumb": "[KHOVAN OBJECTIVE 018] shield relay complete"})
     ->END
 
 === khovan_drone_01_fallback_weapons_lock ===

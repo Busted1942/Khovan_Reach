@@ -358,22 +358,47 @@ Do not scatter raw `comms_receive` for player-facing instruction. Route it throu
 
 ## 7.1 Science scan route
 
-**[LIVE]** `scripts/acts/act1_drone_contact_fire.mast:151-172`:
+Note `+ "Label":` with a trailing colon opens an inline block; without a colon it takes a label name.
 
-```mast
-//enable/science if has_roles(SCIENCE_SELECTED_ID, "khovan_slice06_spike_target")
+### The cost of a custom Science route — read this before adding one
 
-//science if has_roles(SCIENCE_SELECTED_ID, "khovan_slice06_spike_target")
-    + "Initial Scan":
-        drone_target_spike_scan_observed = True
-        <scan>
-            % Slice 06 target spike scan observed.
-    + "scan":
-        <scan>
-            % ...
+**[LIVE]**, confirmed 2026-08-09 against both live Cosmos and the installed sbs_utils v1.3.0 source.
+
+**Adding `//enable/science` for an object replaces the engine's entire Science panel for that object.** You lose the stock readout — the A–E shield-frequency bars, the `status`/`intel`/`bio` tabs, the `WEAP/ENGN/SENS/SHLD` percentages — and you cannot get them back while the route exists.
+
+Mechanism, from `sbs_utils/procedural/science.py`:
+
+- `start_science_selected()` collects **every** `//enable/science` label in the compiled mission (`labels_get_type("enable/science")`) and runs them. If none pass, it calls `t.end()` and returns — sbs_utils never touches the panel and the engine renders its own full scan.
+- If any one passes, sbs_utils owns the panel. `ScanPromise.show_buttons()` then runs:
+
+```python
+has_scan = sel_so.data_set.get("scan", origin_so.side)
+if has_scan is None:        scan_tabs = "scan"
+elif has_scan == "no data": scan_tabs = "scan"
+else:                       # only here are //science buttons turned into tabs
+sel_so.data_set.set("scan_type_list", scan_tabs, 0)
 ```
 
-Note `+ "Label":` with a trailing colon opens an inline block; without a colon it takes a label name.
+A freshly spawned NPC has `data_set["scan"]` of `None` or the literal `"no data"`, so the panel is **hard-forced to a single `scan` tab** — your custom buttons do not even render. The only escape is putting real text in `data_set["scan"]` via a `<scan>` block or `science_set_scan_data()`, and both of those also overwrite `scan_type_list`.
+
+**So it is strictly either/or:** a Khovan Science route on a contact, **or** that contact's stock scan display. There is no configuration that yields both.
+
+Live evidence (Slice 06, 2026-08-09): Drone 01 with `//enable/science` showed one `scan` tab and `no data`. The GM Spike Target — identical `kralien, raider` / `kralien_cruiser` / `behav_npcship`, no Science route — showed `scan/status/intel/bio` plus the frequency bars with `weak C`.
+
+### Custom scan text without losing the panel
+
+**[LIVE]** `act1_generator_tarsis_gate.mast:421-425`. If you only need custom scan *text*, write it directly and skip the route entirely:
+
+```mast
+    science_set_scan_data(player_id, tarsis_station_id, "Tarsis Station is the ... contact for Artemis.")
+    link(player_id, "extra_scan_source", tarsis_station_id)
+```
+
+`link(..., "extra_scan_source", ...)` is **always** paired with `science_set_scan_data`. Using the link alone — as Drone 01 did before 2026-08-09 — is half a pattern and diverts the scan source without supplying a replacement.
+
+### Gating a drill without a Science route
+
+When a drill needs a Science-officer gate on a contact whose stock scan must stay visible, carry the gate on a Comms route and have Science report verbally. `khovan_drone_01_fallback_shield_relay` in `act1_drone_contact_fire.mast` is the worked example.
 
 ## 7.2 Weapons selection
 

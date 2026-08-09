@@ -414,34 +414,60 @@ class Act1DroneContactFireStaticTests(unittest.TestCase):
             self.assertNotIn(forbidden, spike_spawn)
             self.assertNotIn(forbidden, drone_spawn)
 
-    def test_drone_01_science_route_does_not_override_the_stock_scan(self) -> None:
-        # The two removed entries were + "Initial Scan": and + "scan":, each with a
-        # <scan> block. A <scan> block replaces the engine's scan return, and the
-        # "scan" label additionally shadows the stock button. Neither may come back
-        # without live evidence that the shield-frequency return survives it.
+    def test_drone_01_has_no_khovan_science_route_at_all(self) -> None:
+        # Root cause locked in from installed sbs_utils v1.3.0 source, 2026-08-09
+        # (sbs_utils/procedural/science.py). start_science_selected() bails out and
+        # leaves the Science panel to the engine only when NO //enable/science label
+        # passes. If one passes, sbs_utils owns the panel and ScanPromise.show_buttons()
+        # hard-forces scan_type_list to a single "scan" tab for as long as
+        # data_set["scan"] is None or "no data" - which is a freshly spawned NPC.
+        # That costs the A-E shield-frequency bars the drill depends on, and the only
+        # escape (a <scan> block or science_set_scan_data) overwrites scan_type_list
+        # too. So the route cannot come back in any form without losing frequencies.
+        #
+        # Live 2026-08-09 confirmed both halves: Drone 01 with //enable/science showed
+        # one "scan" tab and "no data"; the Spike Target with no route showed
+        # scan/status/intel/bio plus the "weak C" bars.
         drone = read(DRONE_PATH)
-        science_start = drone.index('//science if has_roles(SCIENCE_SELECTED_ID, "khovan_drone_01")')
-        science_end = drone.index('//enable/comms if has_roles(COMMS_SELECTED_ID, "khovan_drone_01")', science_start)
-        science_body = drone[science_start:science_end]
-
-        self.assertEqual(science_body.count("<scan>"), 0)
-        self.assertNotIn('+ "scan":', science_body)
-        self.assertNotIn('+ "Initial Scan":', science_body)
-        self.assertNotIn(
+        for forbidden in [
+            '//enable/science if has_roles(SCIENCE_SELECTED_ID, "khovan_drone_01")',
+            '//science if has_roles(SCIENCE_SELECTED_ID, "khovan_drone_01")',
             "Drone 01 is a neutral training contact. Weak shield-frequency relay data is available for Weapons.",
-            science_body,
-        )
+        ]:
+            self.assertNotIn(forbidden, drone)
 
-        # The drill still has to reach fire authorization. The relay button carries
-        # both gates, and the Comms fallback stays armed as the independent route.
-        self.assertIn('+ "Relay Weak Shield Frequency":', science_body)
-        self.assertIn("drone_01_scan_complete = True", science_body)
-        self.assertIn("drone_01_shield_frequency_relay_complete = True", science_body)
-        self.assertIn(
+        # Line-scoped so the explanatory comment above the removal, which names
+        # <scan> in prose, does not trip this.
+        code_lines = [line for line in drone.splitlines() if not line.lstrip().startswith("#")]
+        self.assertNotIn("<scan>", "\n".join(code_lines))
+
+        # The Spike Target is the reference configuration and must stay routeless too.
+        self.assertNotIn('//enable/science if has_roles(SCIENCE_SELECTED_ID, "khovan_slice06', drone)
+
+    def test_drone_01_scan_and_relay_gates_survive_science_route_removal(self) -> None:
+        # With no //science route, the Tarsis Comms routes are the only way to reach
+        # fire authorization. Both must be armed at spawn, and the relay route must
+        # carry the scan gate and the objective advance the science route used to own.
+        drone = read(DRONE_PATH)
+        spawn_body = label_body(drone, "khovan_drone_01_spawn")
+        self.assertIn("drone_01_scan_fallback_available = True", spawn_body)
+        self.assertIn("drone_01_shield_relay_fallback_available = True", spawn_body)
+
+        for route in [
             '+ "Khovan: Fallback Scan" khovan_drone_01_fallback_scan if drone_01_scan_fallback_available',
-            drone,
-        )
-        self.assertIn("drone_01_scan_fallback_available = True", label_body(drone, "khovan_drone_01_spawn"))
+            '+ "Khovan: Fallback Shield Relay" khovan_drone_01_fallback_shield_relay if drone_01_shield_relay_fallback_available',
+        ]:
+            self.assertIn(route, drone)
+
+        relay_body = label_body(drone, "khovan_drone_01_fallback_shield_relay")
+        for phrase in [
+            "drone_01_scan_complete = True",
+            "drone_01_shield_frequency_relay_complete = True",
+            "[KHOVAN OBJECTIVE 018] shield relay complete",
+        ]:
+            self.assertIn(phrase, relay_body)
+
+        self.assertIn("drone_01_scan_complete = True", label_body(drone, "khovan_drone_01_fallback_scan"))
 
 
 if __name__ == "__main__":
