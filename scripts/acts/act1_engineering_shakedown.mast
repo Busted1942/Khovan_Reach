@@ -660,6 +660,24 @@ shared navigation_priority_confirmed_text = "Artemis - Comms: Shakedown complete
     damcon_sample_rested = -1
     damcon_sample_fed = -1
     damcon_sample_ripped = -1
+    # Second-stage diagnostic (2026-08-09). The first stage proved the read
+    # returns the default rather than a stored value: the panel showed DC2
+    # "rested for 14:00" while sample_rested came back 1.0. Everything about the
+    # call is symmetric with the engine's own - grid_ai.mast:286 uses
+    # get_inventory_value(SPAWNED_ID, ...) on the same agent id, to_object()
+    # documents itself as resolving grid objects, and grid_objects() returns
+    # agent ids - so the remaining suspect is that these three agents are not
+    # the three DAMCON teams.
+    #
+    # idle_state is the discriminator. The engine writes it on every DAMCON at
+    # grid_ai.mast:291, so:
+    #   idle_state reads "idling"/"moving" -> the id is right, and the buff keys
+    #       are stored somewhere this call cannot see
+    #   idle_state reads "none" as well     -> wrong agents; fix the query, not
+    #       the read
+    damcon_sample_id = 0
+    damcon_sample_idle_state = "unread"
+    damcon_sample_name = "unread"
     for damcon_team in damcon_teams:
         team_rested = get_inventory_value(damcon_team.id, "rested_speed_coeff", 1.0)
         team_fed = get_inventory_value(damcon_team.id, "fed_speed_coeff", 1.0)
@@ -668,13 +686,16 @@ shared navigation_priority_confirmed_text = "Artemis - Comms: Shakedown complete
             damcon_sample_rested = team_rested
             damcon_sample_fed = team_fed
             damcon_sample_ripped = team_ripped
+            damcon_sample_id = damcon_team.id
+            damcon_sample_idle_state = get_inventory_value(damcon_team.id, "idle_state", "none")
+            damcon_sample_name = damcon_team.name
         if team_rested > 1.0:
             damcon_rested_team_count = damcon_rested_team_count + 1
         if team_fed > 1.0:
             damcon_fed_team_count = damcon_fed_team_count + 1
         if team_ripped > 1.0:
             damcon_ripped_team_count = damcon_ripped_team_count + 1
-    script.write_khovan_startup_trace(f"[KHOVAN ACT1 ENG DAMCON WATCH] tick={damcon_buff_observer_ticks} teams={damcon_team_count} rested={damcon_rested_team_count} fed={damcon_fed_team_count} ripped={damcon_ripped_team_count} sample_rested={damcon_sample_rested} sample_fed={damcon_sample_fed} sample_ripped={damcon_sample_ripped}")
+    script.write_khovan_startup_trace(f"[KHOVAN ACT1 ENG DAMCON WATCH] tick={damcon_buff_observer_ticks} teams={damcon_team_count} rested={damcon_rested_team_count} fed={damcon_fed_team_count} ripped={damcon_ripped_team_count} sample_rested={damcon_sample_rested} sample_fed={damcon_sample_fed} sample_ripped={damcon_sample_ripped} sample_id={damcon_sample_id} sample_name={damcon_sample_name} sample_idle_state={damcon_sample_idle_state}")
 
     # Either buff satisfies the step: the player-facing instruction covers quarters
     # and mess together, and both prove the same lesson - a team was parked long
