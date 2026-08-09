@@ -103,7 +103,7 @@ class Act1DroneContactFireStaticTests(unittest.TestCase):
         drone = read(DRONE_PATH)
         spawn_body = label_body(drone, "khovan_drone_contact_fire_spawn_target_spike")
         for phrase in [
-            'npc_spawn(32000, 0, 12000, "Kralien Cruiser", "kralien", "kralien_cruiser", "behav_npcship")',
+            'npc_spawn(32000, 0, 12000, "Kralien Cruiser", "kralien, raider", "kralien_cruiser", "behav_npcship")',
             'drone_target_spike_status = "spawned_stock_kralien_cruiser"',
             "[KHOVAN ACT1 DRONE SPIKE SPAWN]",
         ]:

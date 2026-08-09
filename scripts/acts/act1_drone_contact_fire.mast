@@ -153,9 +153,9 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
     drone_contact_last_step = "target_spike_spawn"
     drone_target_spike_status = "spawn_requested"
     # GM-only stock baseline: no Khovan object roles, nav proxy, scan link, or
-    # forced player selection. This is a bare hostile Kralien cruiser so its
-    # Science return can be compared directly with a normal GM-spawned enemy.
-    drone_target_spike_target = npc_spawn(32000, 0, 12000, "Kralien Cruiser", "kralien", "kralien_cruiser", "behav_npcship")
+    # forced player selection. Add only the stock raider role observed on a
+    # known-good GM cruiser to expose the engine's normal Kralien Comms route.
+    drone_target_spike_target = npc_spawn(32000, 0, 12000, "Kralien Cruiser", "kralien, raider", "kralien_cruiser", "behav_npcship")
     drone_target_spike_target_id = to_id(drone_target_spike_target)
     drone_target_spike_active = True
     drone_target_spike_status = "spawned_stock_kralien_cruiser"
