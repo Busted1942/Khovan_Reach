@@ -342,7 +342,7 @@ class BootstrapStaticTests(unittest.TestCase):
     def test_dillon_clip_1_is_stubbed(self) -> None:
         audio = read("scripts/systems/audio_runtime.mast")
         self.assertIn("shared dillon_clip_1_stub_text", audio)
-        self.assertIn("Dillon: Crew of Artemis, this is a qualification cruise.", audio)
+        self.assertIn("Crew of Artemis, this is a qualification cruise.", audio)
         self.assertIn("First task: get the ship out of Kestrel cleanly.", audio)
         self.assertIn("Comms, request departure clearance.", audio)
         self.assertIn("Helm, hold position until Kestrel releases the yard-lock.", audio)
@@ -358,7 +358,7 @@ class BootstrapStaticTests(unittest.TestCase):
         self.assertIn('shared dillon_clip_1_delivery_mode = "text_standin_safe_comms_no_lifeform_overlay"', audio)
         self.assertIn("=== khovan_reach_send_safe_startup_message ===", audio)
         self.assertIn("with comms_override(startup_sender_id, startup_player_id, from_name=startup_sender):", audio)
-        self.assertIn("comms_receive(startup_text, title=startup_sender, title_color=startup_title_color)", audio)
+        self.assertIn("comms_receive(startup_text, title=startup_title, title_color=startup_title_color)", audio)
         self.assertIn("[KHOVAN ACT1 UI] black-box overlay source disabled or replaced", audio)
         self.assertIn("[KHOVAN ACT1 UI] lifeform overlay deferred", audio)
         self.assertIn("[KHOVAN ACT1 UI] safe text message path used", audio)

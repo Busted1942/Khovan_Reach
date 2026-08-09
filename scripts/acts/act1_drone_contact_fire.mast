@@ -565,7 +565,7 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
         ->END
 
     drone_01_deploy_prompt_sent = True
-    await task_schedule(khovan_reach_send_safe_startup_message, {"startup_sender": "Dillon", "startup_text": drone_01_deploy_prompt_text, "startup_title_color": "cyan", "startup_sender_id": tarsis_station_id, "startup_player_id": artemis_id, "startup_breadcrumb": "[KHOVAN ACT1 DRONE 01 DEPLOY PROMPT] guarded ten-second player message sent", "startup_safe_breadcrumb": "[KHOVAN ACT1 DRONE 01 DEPLOY PROMPT] player message skipped because Tarsis or Artemis context is unavailable"})
+    await task_schedule(khovan_reach_send_safe_startup_message, {"startup_sender": "Dillon", "startup_title": "Instructor", "startup_text": drone_01_deploy_prompt_text, "startup_title_color": "cyan", "startup_sender_id": tarsis_station_id, "startup_player_id": artemis_id, "startup_breadcrumb": "[KHOVAN ACT1 DRONE 01 DEPLOY PROMPT] guarded ten-second player message sent", "startup_safe_breadcrumb": "[KHOVAN ACT1 DRONE 01 DEPLOY PROMPT] player message skipped because Tarsis or Artemis context is unavailable"})
     ->END
 
 === khovan_drone_01_reset ===

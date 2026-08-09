@@ -381,7 +381,7 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
         )
 
         for phrase in [
-            "Dillon: Crew of Artemis, this is a qualification cruise. First task: get the ship out of Kestrel cleanly. Comms, request departure clearance. Helm, hold position until Kestrel releases the yard-lock. Captain, coordinate the sequence.",
+            "Crew of Artemis, this is a qualification cruise. First task: get the ship out of Kestrel cleanly. Comms, request departure clearance. Helm, hold position until Kestrel releases the yard-lock. Captain, coordinate the sequence.",
             "Comms, request departure clearance from Kestrel Yard Control.",
             "Emergency homing transfer complete, Artemis. Two rounds only, and that is reserve margin under the governor, not a combat load. Dump one into the engines if you need the speed; Tarsis restores the rest when they accept your authorization packet.",
             "Kestrel Yard Control: departure clearance granted. Be advised, Artemis is leaving under a temporary generator governor.",
@@ -1287,7 +1287,7 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             "confirm tarsis options are visible",
             "act i message-ordering and player instruction clarity bug",
             "intended sequence",
-            "dillon: crew of artemis, this is a qualification cruise",
+            "crew of artemis, this is a qualification cruise",
             # Historical: SLICE04_VERIFICATION.md quotes the copy that was live at
             # the time of that smoke. The live-smoke log is append-only, so this
             # assertion tracks the record, not the current runtime copy (which was

@@ -68,7 +68,7 @@ shared navigation_priority_confirmed_text = "Engineering shakedown complete. Com
     default engineering_message_title = "Dillon"
     default engineering_message_color = "cyan"
     default engineering_message_breadcrumb = "[KHOVAN ACT1 ENG MSG] guarded message sent"
-    await task_schedule(khovan_reach_send_safe_startup_message, {"startup_sender": engineering_message_title, "startup_text": engineering_message_text, "startup_title_color": engineering_message_color, "startup_sender_id": tarsis_station_id, "startup_player_id": artemis_id, "startup_breadcrumb": engineering_message_breadcrumb, "startup_safe_breadcrumb": "[KHOVAN ACT1 ENG MSG SAFE] message skipped because Tarsis or Artemis context is unavailable"})
+    await task_schedule(khovan_reach_send_safe_startup_message, {"startup_sender": engineering_message_title, "startup_title": "Instructor", "startup_text": engineering_message_text, "startup_title_color": engineering_message_color, "startup_sender_id": tarsis_station_id, "startup_player_id": artemis_id, "startup_breadcrumb": engineering_message_breadcrumb, "startup_safe_breadcrumb": "[KHOVAN ACT1 ENG MSG SAFE] message skipped because Tarsis or Artemis context is unavailable"})
     ->END
 
 === khovan_act1_initialize_engineering_shakedown ===
@@ -288,7 +288,7 @@ shared navigation_priority_confirmed_text = "Engineering shakedown complete. Com
         engineering_no_motion_observer_status = "fallback_timeout_engineering_slider_keys_unverified"
         engineering_no_motion_fallback_available = True
         script.write_khovan_startup_trace("[KHOVAN ACT1 ENG NO MOTION FALLBACK] automatic observer timed out; Comms fallback enabled")
-        await task_schedule(khovan_engineering_send_message, {"engineering_message_text": "Tarsis Station: We need your comms officer to validate some ship updates. They will have to click on Tarsis station to refresh their comms panel. Report your ships progress through the shakedown cruise.", "engineering_message_color": "yellow", "engineering_message_breadcrumb": "[KHOVAN ACT1 ENG NO MOTION FALLBACK] guarded fallback message sent"})
+        await task_schedule(khovan_engineering_send_message, {"engineering_message_text": "My board is not picking up your impulse state from here, Artemis. Engineering, if your throttle is at full and the ship is holding at zero, that is the result we wanted. Comms, raise Tarsis and confirm it on the record so we can move on.", "engineering_message_color": "yellow", "engineering_message_breadcrumb": "[KHOVAN ACT1 ENG NO MOTION FALLBACK] guarded fallback message sent"})
         ->END
 
     await delay_sim(seconds=1)

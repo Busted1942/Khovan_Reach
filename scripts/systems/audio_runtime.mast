@@ -1,6 +1,6 @@
 # Slice 01 audio wrapper stub. Real playback API needs Cosmos smoke validation.
 
-shared dillon_clip_1_stub_text = "Dillon: Crew of Artemis, this is a qualification cruise. First task: get the ship out of Kestrel cleanly. Comms, request departure clearance. Helm, hold position until Kestrel releases the yard-lock. Captain, coordinate the sequence."
+shared dillon_clip_1_stub_text = "Crew of Artemis, this is a qualification cruise. First task: get the ship out of Kestrel cleanly. Comms, request departure clearance. Helm, hold position until Kestrel releases the yard-lock. Captain, coordinate the sequence."
 shared dillon_clip_1_delivery_mode = "text_standin_safe_comms_no_lifeform_overlay"
 shared dillon_clip_1_comms_echo_status = "not_sent"
 
@@ -13,11 +13,19 @@ shared dillon_clip_1_comms_echo_status = "not_sent"
     default startup_breadcrumb = ""
     default startup_archive_breadcrumb = ""
     default startup_safe_breadcrumb = "[KHOVAN ACT1 MSG SAFE] comms_receive skipped: no valid sender/context"
+    # The client renders these as "from_name: title". Passing the same string to
+    # both produced "Dillon: Dillon" and "Kestrel Yard Control: Kestrel Yard
+    # Control" on a live console. startup_title lets a caller give the speaker a
+    # role line instead. Defaults to startup_sender, so every existing call site
+    # keeps its current behavior unchanged.
+    default startup_title = ""
+    if startup_title == "":
+        startup_title = startup_sender
     script.write_khovan_startup_trace("[KHOVAN ACT1 UI] black-box overlay source disabled or replaced")
     script.write_khovan_startup_trace("[KHOVAN ACT1 UI] lifeform overlay deferred")
     if startup_sender_id != 0 and startup_player_id != 0:
         with comms_override(startup_sender_id, startup_player_id, from_name=startup_sender):
-            comms_receive(startup_text, title=startup_sender, title_color=startup_title_color)
+            comms_receive(startup_text, title=startup_title, title_color=startup_title_color)
         script.write_khovan_startup_trace("[KHOVAN ACT1 UI] safe text message path used")
         if startup_breadcrumb != "":
             script.write_khovan_startup_trace(startup_breadcrumb)
@@ -39,9 +47,9 @@ shared dillon_clip_1_comms_echo_status = "not_sent"
     dillon_clip_1_stub_sent = True
     dillon_clip_1_status = "stubbed"
     dillon_clip_1_comms_echo_status = "requested"
-    dillon_clip_1_stub_text = "Dillon: Crew of Artemis, this is a qualification cruise. First task: get the ship out of Kestrel cleanly. Comms, request departure clearance. Helm, hold position until Kestrel releases the yard-lock. Captain, coordinate the sequence."
+    dillon_clip_1_stub_text = "Crew of Artemis, this is a qualification cruise. First task: get the ship out of Kestrel cleanly. Comms, request departure clearance. Helm, hold position until Kestrel releases the yard-lock. Captain, coordinate the sequence."
     script.write_khovan_startup_trace("[KHOVAN DILLON 001] Clip 1 text stand-in requested")
-    await task_schedule(khovan_reach_send_safe_startup_message, {"startup_sender": "Dillon", "startup_text": dillon_clip_1_stub_text, "startup_title_color": "cyan", "startup_sender_id": kestrel_yards_id, "startup_player_id": artemis_id, "startup_breadcrumb": "[KHOVAN DILLON 002] Clip 1 visible text sent", "startup_archive_breadcrumb": "[KHOVAN DILLON 003] Clip 1 Comms archive echo sent", "startup_safe_breadcrumb": "[KHOVAN DILLON SAFE] Comms echo skipped because sender/context unavailable"})
+    await task_schedule(khovan_reach_send_safe_startup_message, {"startup_sender": "Dillon", "startup_title": "Instructor", "startup_text": dillon_clip_1_stub_text, "startup_title_color": "cyan", "startup_sender_id": kestrel_yards_id, "startup_player_id": artemis_id, "startup_breadcrumb": "[KHOVAN DILLON 002] Clip 1 visible text sent", "startup_archive_breadcrumb": "[KHOVAN DILLON 003] Clip 1 Comms archive echo sent", "startup_safe_breadcrumb": "[KHOVAN DILLON SAFE] Comms echo skipped because sender/context unavailable"})
     if kestrel_yards_id != 0 and artemis_id != 0:
         dillon_clip_1_comms_echo_status = "sent_with_guarded_context"
     else:
