@@ -679,6 +679,7 @@ shared navigation_priority_confirmed_text = "Artemis - Comms: Shakedown complete
     damcon_sample_idle_state = "unread"
     damcon_sample_timer_rested = False
     damcon_sample_timer_ripped = False
+    damcon_sample_mod_keys = []
     damcon_sample_name = "unread"
     for damcon_team in damcon_teams:
         # Read the TIMER, not the inventory value.
@@ -699,9 +700,34 @@ shared navigation_priority_confirmed_text = "Artemis - Comms: Shakedown complete
         # is_timer_finished returns True when a timer was never set
         # (sbs_utils/procedural/timers.py:36-48), so "not finished" is a safe
         # test for "buff currently running" - an unbuffed team reads finished.
-        team_rested_active = not is_timer_finished(damcon_team.id, "rested_speed_coeff")
-        team_fed_active = not is_timer_finished(damcon_team.id, "fed_speed_coeff")
-        team_ripped_active = not is_timer_finished(damcon_team.id, "ripped_speed_coeff")
+        # Read the speed_modifiers dict, which is where the DAMCON AI actually
+        # in use stores these buffs.
+        #
+        # Three earlier attempts read *_speed_coeff inventory keys and their
+        # timers, and all returned empty on a team the panel was showing as
+        # rested. The reason: this ship does not run the AI those keys belong
+        # to. idle_state came back "done", a value written only at
+        # grid_brains.mast:320 - grid_ai.mast never writes it. That file is the
+        # legacy implementation.
+        #
+        # grid_brains.mast:376-378 applies the buff as an upgrade, not a
+        # coefficient:
+        #     upgrade_add(id, upgrade_damcon_speed_idle, {"name": "ripped", ...})
+        # and upgrade_damcon_speed_idle (:51-56) stores it as a named modifier:
+        #     speed_mods = UPGRADE_AGENT.get_inventory_value("speed_modifiers", {})
+        #     mod = speed_mods.get(name)
+        #     yield fail if mod is not None and not mod.expired()
+        #
+        # The room-to-name map is grid_brains.mast:95-115 - gym/ripped,
+        # mess/fed, quarters/rested, each after 60 seconds idle. So this reads
+        # exactly what the AI reads to decide whether a team is already buffed.
+        team_speed_mods = get_inventory_value(damcon_team.id, "speed_modifiers", {})
+        team_rested_mod = team_speed_mods.get("rested")
+        team_fed_mod = team_speed_mods.get("fed")
+        team_ripped_mod = team_speed_mods.get("ripped")
+        team_rested_active = team_rested_mod is not None and not team_rested_mod.expired()
+        team_fed_active = team_fed_mod is not None and not team_fed_mod.expired()
+        team_ripped_active = team_ripped_mod is not None and not team_ripped_mod.expired()
         # Kept only as a comparison signal in the trace. If these ever start
         # agreeing with the timers, the inventory path works on that build and
         # this comment should be revisited.
@@ -716,6 +742,7 @@ shared navigation_priority_confirmed_text = "Artemis - Comms: Shakedown complete
             damcon_sample_idle_state = get_inventory_value(damcon_team.id, "idle_state", "none")
             damcon_sample_timer_rested = team_rested_active
             damcon_sample_timer_ripped = team_ripped_active
+            damcon_sample_mod_keys = list(team_speed_mods.keys())
             damcon_sample_name = damcon_team.name
         # Either signal counts. The timer is the one observed working; the
         # coefficient stays in the test so a build where it works still passes.
@@ -725,7 +752,7 @@ shared navigation_priority_confirmed_text = "Artemis - Comms: Shakedown complete
             damcon_fed_team_count = damcon_fed_team_count + 1
         if team_ripped_active or team_ripped > 1.0:
             damcon_ripped_team_count = damcon_ripped_team_count + 1
-    script.write_khovan_startup_trace(f"[KHOVAN ACT1 ENG DAMCON WATCH] tick={damcon_buff_observer_ticks} teams={damcon_team_count} rested={damcon_rested_team_count} fed={damcon_fed_team_count} ripped={damcon_ripped_team_count} sample_rested={damcon_sample_rested} sample_fed={damcon_sample_fed} sample_ripped={damcon_sample_ripped} sample_id={damcon_sample_id} sample_name={damcon_sample_name} sample_idle_state={damcon_sample_idle_state} timer_rested={damcon_sample_timer_rested} timer_ripped={damcon_sample_timer_ripped}")
+    script.write_khovan_startup_trace(f"[KHOVAN ACT1 ENG DAMCON WATCH] tick={damcon_buff_observer_ticks} teams={damcon_team_count} rested={damcon_rested_team_count} fed={damcon_fed_team_count} ripped={damcon_ripped_team_count} sample_rested={damcon_sample_rested} sample_fed={damcon_sample_fed} sample_ripped={damcon_sample_ripped} sample_id={damcon_sample_id} sample_name={damcon_sample_name} sample_idle_state={damcon_sample_idle_state} timer_rested={damcon_sample_timer_rested} timer_ripped={damcon_sample_timer_ripped} mod_keys={damcon_sample_mod_keys}")
 
     # Either buff satisfies the step: the player-facing instruction covers quarters
     # and mess together, and both prove the same lesson - a team was parked long
