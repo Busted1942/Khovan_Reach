@@ -680,6 +680,9 @@ shared navigation_priority_confirmed_text = "Artemis - Comms: Shakedown complete
     damcon_sample_timer_rested = False
     damcon_sample_timer_ripped = False
     damcon_sample_mod_keys = []
+    damcon_sample_x = -1
+    damcon_sample_y = -1
+    damcon_sample_room = "unread"
     damcon_sample_name = "unread"
     for damcon_team in damcon_teams:
         # Read the TIMER, not the inventory value.
@@ -743,6 +746,30 @@ shared navigation_priority_confirmed_text = "Artemis - Comms: Shakedown complete
             damcon_sample_timer_rested = team_rested_active
             damcon_sample_timer_ripped = team_ripped_active
             damcon_sample_mod_keys = list(team_speed_mods.keys())
+            # Position and room, read the way the live AI reads them
+            # (grid_brains.mast:255-256, :270). Note data_set.get() here, NOT
+            # get_inventory_value - a different accessor, and the one already
+            # proven in this repo via artemis_object.data_set.get("playerThrottle").
+            # The panel's "Idling at 13,5" is exactly these two values.
+            damcon_sample_x = damcon_team.data_set.get("curx", -1)
+            damcon_sample_y = damcon_team.data_set.get("cury", -1)
+            # Resolve the room under the team and name it, so the trace says
+            # which room rather than just a coordinate. get_objects_at_point
+            # returns everything at that cell; intersecting with a role set is
+            # how the AI itself identifies the room type.
+            damcon_hull_map = sbs.get_hull_map(artemis_id)
+            if damcon_hull_map is not None and damcon_sample_x >= 0:
+                damcon_room_ids = set(damcon_hull_map.get_objects_at_point(damcon_sample_x, damcon_sample_y))
+                if len(damcon_room_ids & role("quarters")) > 0:
+                    damcon_sample_room = "quarters"
+                elif len(damcon_room_ids & role("mess")) > 0:
+                    damcon_sample_room = "mess"
+                elif len(damcon_room_ids & role("gym")) > 0:
+                    damcon_sample_room = "gym"
+                elif len(damcon_room_ids & role("sickbay")) > 0:
+                    damcon_sample_room = "sickbay"
+                else:
+                    damcon_sample_room = "other"
             damcon_sample_name = damcon_team.name
         # Either signal counts. The timer is the one observed working; the
         # coefficient stays in the test so a build where it works still passes.
@@ -752,7 +779,7 @@ shared navigation_priority_confirmed_text = "Artemis - Comms: Shakedown complete
             damcon_fed_team_count = damcon_fed_team_count + 1
         if team_ripped_active or team_ripped > 1.0:
             damcon_ripped_team_count = damcon_ripped_team_count + 1
-    script.write_khovan_startup_trace(f"[KHOVAN ACT1 ENG DAMCON WATCH] tick={damcon_buff_observer_ticks} teams={damcon_team_count} rested={damcon_rested_team_count} fed={damcon_fed_team_count} ripped={damcon_ripped_team_count} sample_rested={damcon_sample_rested} sample_fed={damcon_sample_fed} sample_ripped={damcon_sample_ripped} sample_id={damcon_sample_id} sample_name={damcon_sample_name} sample_idle_state={damcon_sample_idle_state} timer_rested={damcon_sample_timer_rested} timer_ripped={damcon_sample_timer_ripped} mod_keys={damcon_sample_mod_keys}")
+    script.write_khovan_startup_trace(f"[KHOVAN ACT1 ENG DAMCON WATCH] tick={damcon_buff_observer_ticks} teams={damcon_team_count} rested={damcon_rested_team_count} fed={damcon_fed_team_count} ripped={damcon_ripped_team_count} sample_rested={damcon_sample_rested} sample_fed={damcon_sample_fed} sample_ripped={damcon_sample_ripped} sample_id={damcon_sample_id} sample_name={damcon_sample_name} sample_idle_state={damcon_sample_idle_state} timer_rested={damcon_sample_timer_rested} timer_ripped={damcon_sample_timer_ripped} mod_keys={damcon_sample_mod_keys} at=({damcon_sample_x},{damcon_sample_y}) room={damcon_sample_room}")
 
     # Either buff satisfies the step: the player-facing instruction covers quarters
     # and mess together, and both prove the same lesson - a team was parked long
