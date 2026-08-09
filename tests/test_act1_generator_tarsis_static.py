@@ -75,7 +75,9 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             "shared kestrel_homing_reserve_prompt_run_id = 0",
             'shared kestrel_homing_reserve_prompt_status = "pending_departure_clearance"',
             "shared kestrel_homing_reserve_prompt_sent = False",
-            'shared kestrel_stock_station_role_status = "active_until_launch_envelope_and_reserve"',
+            'shared kestrel_stock_station_role_status = "active_until_launch_envelope_reserve_and_2km"',
+            "shared kestrel_stock_station_disable_range_m = 2000",
+            "shared kestrel_stock_station_disable_run_id = 0",
             "shared training_speed_power_reminder_sent = False",
             "shared shakedown_prompt_sent = False",
             "shared homing_reserve_count = 2",
@@ -894,11 +896,20 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             'artemis_object = to_object(artemis_id)',
             'kestrel_homing_inventory = artemis_object.data_set.get("Homing_NUM", 0)',
             "if kestrel_homing_inventory < homing_reserve_count:",
-            'remove_role(kestrel_yards_id, "Station")',
-            'kestrel_stock_station_role_status = "removed_after_launch_envelope_and_reserve"',
-            "[KHOVAN ACT1 KESTREL STOCK] Station role removed after launch envelope clearance and two-homing reserve confirmation",
+            "kestrel_stock_station_range = sbs.distance_id(artemis_id, kestrel_yards_id)",
+            "if kestrel_stock_station_range <= kestrel_stock_station_disable_range_m:",
+            "task_schedule(khovan_act1_watch_kestrel_stock_station_disable",
+            'kestrel_yards_object.set_behavior("behav_playership")',
+            'kestrel_stock_station_role_status = "station_behavior_disabled_after_launch_reserve_and_2km"',
+            "Khovan Comms role retained",
         ]:
             self.assertIn(phrase, stock_role_body)
+        self.assertNotIn("remove_role(kestrel_yards_id", stock_role_body)
+
+        stock_watch_body = label_body(act1, "khovan_act1_watch_kestrel_stock_station_disable")
+        self.assertIn("await delay_sim(seconds=1)", stock_watch_body)
+        self.assertIn("if stock_disable_run_id != kestrel_stock_station_disable_run_id:", stock_watch_body)
+        self.assertIn("await task_schedule(khovan_act1_remove_kestrel_stock_station_role_after_reserve_and_launch)", stock_watch_body)
 
     def test_homing_reserve_prompt_waits_ten_seconds_after_departure_and_skips_loaded_reserve(self) -> None:
         act1 = read(ACT1_PATH)

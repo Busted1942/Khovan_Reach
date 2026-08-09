@@ -28,7 +28,9 @@ shared kestrel_generator_advisory_sent = False
 shared kestrel_homing_reserve_prompt_run_id = 0
 shared kestrel_homing_reserve_prompt_status = "pending_departure_clearance"
 shared kestrel_homing_reserve_prompt_sent = False
-shared kestrel_stock_station_role_status = "active_until_launch_envelope_and_reserve"
+shared kestrel_stock_station_role_status = "active_until_launch_envelope_reserve_and_2km"
+shared kestrel_stock_station_disable_range_m = 2000
+shared kestrel_stock_station_disable_run_id = 0
 shared training_speed_power_reminder_sent = False
 shared shakedown_prompt_sent = False
 
@@ -174,7 +176,8 @@ shared tarsis_resupply_text = "Tarsis Control: normal docking resupply and gener
     kestrel_homing_reserve_prompt_run_id = 0
     kestrel_homing_reserve_prompt_status = "pending_departure_clearance"
     kestrel_homing_reserve_prompt_sent = False
-    kestrel_stock_station_role_status = "active_until_launch_envelope_and_reserve"
+    kestrel_stock_station_role_status = "active_until_launch_envelope_reserve_and_2km"
+    kestrel_stock_station_disable_run_id = kestrel_stock_station_disable_run_id + 1
     training_speed_power_reminder_sent = False
     shakedown_prompt_sent = False
     tarsis_gate_status = "waiting_for_kestrel_departure"
@@ -239,7 +242,8 @@ shared tarsis_resupply_text = "Tarsis Control: normal docking resupply and gener
     kestrel_homing_reserve_prompt_run_id = kestrel_homing_reserve_prompt_run_id + 1
     kestrel_homing_reserve_prompt_status = "pending_departure_clearance"
     kestrel_homing_reserve_prompt_sent = False
-    kestrel_stock_station_role_status = "active_until_launch_envelope_and_reserve"
+    kestrel_stock_station_role_status = "active_until_launch_envelope_reserve_and_2km"
+    kestrel_stock_station_disable_run_id = kestrel_stock_station_disable_run_id + 1
     training_speed_power_reminder_sent = False
     shakedown_prompt_sent = False
     tarsis_gate_status = "waiting_for_kestrel_departure"
@@ -706,7 +710,7 @@ distance: 600
     yield success
 
 === khovan_act1_remove_kestrel_stock_station_role_after_reserve_and_launch ===
-    if kestrel_stock_station_role_status == "removed_after_launch_envelope_and_reserve":
+    if kestrel_stock_station_role_status == "station_behavior_disabled_after_launch_reserve_and_2km":
         ->END
     if not launch_envelope_cleared:
         kestrel_stock_station_role_status = "waiting_for_launch_envelope"
@@ -726,9 +730,31 @@ distance: 600
     if kestrel_yards_id == 0:
         kestrel_stock_station_role_status = "waiting_for_kestrel_id"
         ->END
-    remove_role(kestrel_yards_id, "Station")
-    kestrel_stock_station_role_status = "removed_after_launch_envelope_and_reserve"
-    script.write_khovan_startup_trace("[KHOVAN ACT1 KESTREL STOCK] Station role removed after launch envelope clearance and two-homing reserve confirmation")
+    kestrel_stock_station_range = sbs.distance_id(artemis_id, kestrel_yards_id)
+    if kestrel_stock_station_range <= kestrel_stock_station_disable_range_m:
+        kestrel_stock_station_role_status = "waiting_for_2km_kestrel_separation"
+        kestrel_stock_station_disable_run_id = kestrel_stock_station_disable_run_id + 1
+        task_schedule(khovan_act1_watch_kestrel_stock_station_disable, {"stock_disable_run_id": kestrel_stock_station_disable_run_id})
+        script.write_khovan_startup_trace(f"[KHOVAN ACT1 KESTREL STOCK] retaining station behavior until Artemis exceeds {kestrel_stock_station_disable_range_m}m; current_range={kestrel_stock_station_range:.0f}m")
+        ->END
+    kestrel_yards_object = to_object(kestrel_yards_id)
+    if kestrel_yards_object is None:
+        kestrel_stock_station_role_status = "waiting_for_kestrel_object"
+        ->END
+    # API uncertainty (2026-08-09): roles do not control the engine's station
+    # production loop.  Switch the station behavior after the Kestrel handoff;
+    # retain kestrel_yards so the custom Comms route remains addressable.
+    kestrel_yards_object.set_behavior("behav_playership")
+    kestrel_stock_station_role_status = "station_behavior_disabled_after_launch_reserve_and_2km"
+    script.write_khovan_startup_trace("[KHOVAN ACT1 KESTREL STOCK] station production behavior disabled after launch envelope, two-homing reserve, and 2km separation; Khovan Comms role retained")
+    ->END
+
+=== khovan_act1_watch_kestrel_stock_station_disable ===
+    default stock_disable_run_id = kestrel_stock_station_disable_run_id
+    await delay_sim(seconds=1)
+    if stock_disable_run_id != kestrel_stock_station_disable_run_id:
+        ->END
+    await task_schedule(khovan_act1_remove_kestrel_stock_station_role_after_reserve_and_launch)
     ->END
 
 === khovan_act1_send_training_speed_power_reminder ===
