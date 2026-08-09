@@ -823,7 +823,7 @@ Guard it for premature and duplicate signals — both were observed in Slice 04.
 
 ## 9.3 Engineering console values (power sliders)
 
-**[UNPROVEN] in this repo, [LIVE] elsewhere in the install.** This is how a gate can detect what Engineering actually set, instead of inferring it from ship motion or asking Comms to confirm it.
+**[LIVE]** — confirmed in live Cosmos 2026-08-09 20:44, trace in `tests/live_startup_trace.txt`, record in `tests/SLICE05_VERIFICATION.md`. This is how a gate detects what Engineering actually set, instead of inferring it from ship motion or asking Comms to confirm it.
 
 ```mast
     impulse = get_engineering_value(artemis_id, "Impulse", -1)
@@ -833,15 +833,33 @@ Guard it for premature and duplicate signals — both were observed in Slice 04.
 
 `sbs_utils/procedural/space_objects.py:353`. It walks up to 30 `eng_control_label` slots on the ship's data set and returns the matching `eng_control_value`. Matching is case-insensitive (`label.lower() == name.lower()`).
 
-**Label set** — `legendarymissions/gamemaster_comms/gamemaster_comms.mast:50`:
+**Label set — use the observed one, not the LegendaryMissions list.** Dumped live from Artemis (`tsn_light_cruiser`) 2026-08-09:
 
 ```text
-["Beam", "torpedo", "Impulse", "Warp", "Jump", "Maneuver", "front shield", "rear shield"]
+index=0 BEAM    index=1 TORP     index=2 IMPULSE       index=3 WARP
+index=4 MANEUVER index=5 SENSORS index=6 FRONT SHIELD  index=7 REAR SHIELD
 ```
 
-Note `eng_control_label` slot 3 is rewritten to `"JUMP"` or `"WARP"` per ship depending on drive type (`legendarymissions/ai/grid_ai.mast:37-42`), so a ship with a jump drive has no `"Warp"` label at all. Do not assume the whole set exists on every hull.
+`legendarymissions/gamemaster_comms/gamemaster_comms.mast:50` lists `["Beam", "torpedo", "Impulse", "Warp", "Jump", "Maneuver", "front shield", "rear shield"]`. **That list is wrong for this build in two places** — the real label is `TORP`, not `torpedo`, and there is a `SENSORS` slot with no `Jump`. `get_engineering_value(id, "torpedo")` returns the default here and looks exactly like a slider at rest. Matching is case-insensitive, so `"Impulse"` correctly finds `IMPULSE`.
 
-**Scale.** `1.0` means 100% — `legendarymissions/collisions/collision.mast:39-44` reads the value and branches on `if shield_power > 1`. So the design's "warp 200" is `2.0`, and "300%" is `3.0`. Whether some builds report `0-300` instead is not established; `khovan_engineering_watch_power_preset` normalises anything above `10` by dividing by 100 so the gate is correct on either scale.
+Slot 3 is rewritten to `"JUMP"` or `"WARP"` per ship depending on drive type (`legendarymissions/ai/grid_ai.mast:37-42`), so a jump-drive hull has no `"Warp"` label at all. Do not assume the set is the same on every hull — dump it with `khovan_engineering_dump_engineering_slots` rather than assuming.
+
+**Scale — confirmed live.** `1.0` means 100%. A console set to impulse 0 / warp 200 read `impulse_raw=0.0 warp_raw=2.005048990249634`.
+
+**Values are live and they ramp.** This is live slider state, not preset storage — it tracked the operator's console in real time across consecutive ticks:
+
+```text
+tick=31 impulse_raw=1.0 warp_raw=1.0
+tick=32 impulse_raw=0.0 warp_raw=1.0
+tick=33 impulse_raw=0.0 warp_raw=1.85654878616333
+tick=34 impulse_raw=0.0 warp_raw=2.005048990249634
+```
+
+**Always compare with a tolerance band, never equality.** A 200% target settled at `2.005…`, overshooting; `warp == 2.0` would never have matched, and a poll landing on tick 33 would see `1.857`. Use `>= 1.95`-style thresholds.
+
+**A poll must keep watching after arming its fallback.** The confirmation above landed on tick 34, four ticks past the observer's 30-tick timeout. An observer that returns when it arms its Comms fallback throws away the automatic result the crew is seconds away from producing.
+
+**What this cannot see: saved presets.** These are the live sliders. Whether Engineering saved a configuration to a preset slot (the `S`-then-number binding) is not visible here, so "has a preset configured" is not a gateable condition via this key — only "the sliders currently read X".
 
 **Use a negative sentinel as the default**, not `0`. `get_engineering_value` returns the default when the label is not found, and `0` is indistinguishable from a slider genuinely at zero:
 
@@ -851,7 +869,7 @@ Note `eng_control_label` slot 3 is rewritten to `"JUMP"` or `"WARP"` per ship de
         # label absent on this build - arm the fallback now, do not wait out a timeout
 ```
 
-Proven elsewhere: `collisions/collision.mast:39`, `hangar/hangar_comms.mast:19-20,31-32`. First Khovan use is `khovan_engineering_watch_power_preset` in `act1_engineering_shakedown.mast`, which traces raw values every tick precisely so the first live run confirms both the label set and the scale.
+Also used in `collisions/collision.mast:39`, `hangar/hangar_comms.mast:19-20,31-32`. The Khovan reference implementation is `khovan_engineering_watch_power_preset` in `act1_engineering_shakedown.mast`; `khovan_engineering_dump_engineering_slots` in the same file dumps every populated slot and is the tool to reach for when a lookup returns its default.
 
 **Not found:** a separate coolant accessor. Treat coolant as unverified.
 

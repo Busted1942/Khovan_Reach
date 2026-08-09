@@ -5,14 +5,14 @@ shared engineering_shakedown_initialized = False
 shared engineering_shakedown_available = False
 shared engineering_shakedown_started = False
 shared engineering_shakedown_status = "not_initialized"
-shared engineering_shakedown_detection_mode = "automatic_helm_no_motion_and_engine_damage_observers; comms_fallback_for_unverified_engineering_slider_damcon_location_repair_navigation_preset"
+shared engineering_shakedown_detection_mode = "automatic_engineering_slider_power_preset_and_helm_no_motion_and_engine_damage_observers; comms_fallback_for_unverified_damcon_location_repair_navigation_preset"
 shared engineering_shakedown_last_step = "none"
 shared engineering_shakedown_start_response_sent = False
 shared engineering_shakedown_undock_watch_run_id = 0
 shared engineering_shakedown_undock_observer_status = "not_started"
 shared engineering_impulse_zero_warp_200_requested = False
 shared engineering_no_motion_validation_requested = False
-shared engineering_no_motion_detection_mode = "automatic_playerThrottle_cur_speed_position_delta_observer_engineering_slider_keys_unverified"
+shared engineering_no_motion_detection_mode = "automatic_playerThrottle_cur_speed_position_delta_observer; engineering slider keys now confirmed live and read separately by khovan_engineering_watch_power_preset"
 shared engineering_no_motion_fallback_available = False
 shared engineering_no_motion_observer_status = "not_started"
 shared engineering_no_motion_observer_ticks = 0
@@ -43,7 +43,7 @@ shared navigation_priority_preset_set = False
 shared navigation_priority_preset_detection_mode = "maneuver_190_warp_10_impulse_100_preset_api_unverified_comms_fallback_after_operator_action"
 shared navigation_priority_preset_fallback_available = False
 shared engineering_shakedown_complete = False
-shared engineering_shakedown_api_uncertainty = "DAMCON location, repair completion, and navigation preset storage require live Cosmos proof before automatic gates can be claimed. Engineering slider output now has an automatic observer (see khovan_engineering_watch_power_preset); its label set and value scale are pending first live confirmation."
+shared engineering_shakedown_api_uncertainty = "Engineering slider output is CONFIRMED LIVE 2026-08-09: eng_control_value tracks the console in real time, 1.0 = 100%, observed labels BEAM/TORP/IMPULSE/WARP/MANEUVER/SENSORS/FRONT SHIELD/REAR SHIELD. Still unproven: DAMCON team location, repair completion, and whether a SAVED preset (as opposed to the live sliders) is readable at all."
 
 # Automatic detection of design 8.4 step 1, "Engineering sets impulse engines to 0
 # and warp engines to 200". Previously this step had no detector at all - only the

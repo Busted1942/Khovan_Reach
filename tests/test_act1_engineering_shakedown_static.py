@@ -325,17 +325,37 @@ class Act1EngineeringShakedownStaticTests(unittest.TestCase):
             self.assertIn(phrase, engineering)
 
     def test_observers_and_fallbacks_are_explicit_for_mechanical_gates(self) -> None:
+        # Each mechanical gate must declare how it is detected and what it falls back
+        # to, so the evidence class of a "pass" is readable off the file.
         engineering = read(ENGINEERING_PATH)
         for phrase in [
-            "automatic_playerThrottle_cur_speed_position_delta_observer_engineering_slider_keys_unverified",
+            "automatic_playerThrottle_cur_speed_position_delta_observer",
             "automatic_engine_system_damage_observer_with_comms_fallback",
             "damcon_location_api_unverified_comms_fallback_after_observer_attempt",
             "engineering_captain_comms_confirmation_fallback_until_repair_completion_api_verified",
             "maneuver_190_warp_10_impulse_100_preset_api_unverified_comms_fallback_after_operator_action",
             "DAMCON location",
-            "live Cosmos proof before automatic gates can be claimed",
         ]:
             self.assertIn(phrase, engineering)
+
+    def test_engineering_slider_api_is_recorded_as_live_not_unverified(self) -> None:
+        # Confirmed live 2026-08-09 20:44: eng_control_value tracks the console in
+        # real time (impulse_raw 1.0 -> 0.0, warp_raw 1.0 -> 1.857 -> 2.005 across
+        # consecutive ticks) and the gate self-confirmed. The uncertainty note must
+        # not keep claiming otherwise - a stale "unverified" marker is what sends the
+        # next agent to rebuild a detector that already works.
+        engineering = read(ENGINEERING_PATH)
+        self.assertNotIn("engineering_slider_keys_unverified", engineering)
+        self.assertNotIn("comms_fallback_for_unverified_engineering_slider", engineering)
+        uncertainty = engineering[engineering.index("shared engineering_shakedown_api_uncertainty ="):]
+        uncertainty = uncertainty[:uncertainty.index("\n")]
+        self.assertIn("CONFIRMED LIVE", uncertainty)
+        # The observed label set, which differs from the LegendaryMissions list in
+        # two places (TORP not torpedo; SENSORS present, no Jump).
+        self.assertIn("BEAM/TORP/IMPULSE/WARP/MANEUVER/SENSORS/FRONT SHIELD/REAR SHIELD", uncertainty)
+        # Still genuinely open, and must stay recorded as such.
+        for still_open in ["DAMCON", "repair completion", "SAVED preset"]:
+            self.assertIn(still_open, uncertainty)
 
         no_motion_watch = label_body(engineering, "khovan_engineering_watch_no_motion_validation_tick")
         for phrase in [
