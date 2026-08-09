@@ -264,7 +264,7 @@ shared tarsis_resupply_text = "Tarsis Control: resupply authorized and the gener
     script.write_khovan_startup_trace("[KHOVAN JUMP ACT1 START] mission start seed reset Slice 04 generator/Tarsis gate")
     await task_schedule(khovan_act1_apply_source_authorized_start_state)
     await task_schedule(khovan_act1_setup_kestrel_and_tarsis_contacts)
-    await task_schedule(khovan_set_current_objective, {"objective_id": "kestrel_departure_clearance", "objective_body": "Comms request Kestrel departure clearance.", "objective_step": "Kestrel departure clearance", "objective_breadcrumb": "[KHOVAN OBJECTIVE 002] objective updated: Kestrel departure clearance"})
+    await task_schedule(khovan_set_current_objective, {"objective_id": "kestrel_departure_clearance", "objective_body": "Comms, request departure clearance from Kestrel Yard Control.", "objective_step": "Kestrel departure clearance", "objective_breadcrumb": "[KHOVAN OBJECTIVE 002] objective updated: Kestrel departure clearance"})
     await task_schedule(khovan_scenario_control_panel_update_overview)
     log("Khovan admin jump seeded Slice 04 mission start.")
     ->END
@@ -661,7 +661,7 @@ distance: 600
     current_beat = "kestrel_departure_clearance_granted"
     script.write_khovan_startup_trace("[KHOVAN ACT1 004] Kestrel departure clearance granted")
     await task_schedule(khovan_act1_release_kestrel_departure_hold)
-    await task_schedule(khovan_set_current_objective, {"objective_id": "launch_envelope", "objective_body": "Helm clear the Kestrel launch envelope: move at least 1 km from Kestrel, then Comms confirm exit.", "objective_step": "Launch envelope", "objective_breadcrumb": "[KHOVAN OBJECTIVE 003] objective updated: launch envelope (1 km minimum)"})
+    await task_schedule(khovan_set_current_objective, {"objective_id": "launch_envelope", "objective_body": "Helm, clear the launch envelope: take us at least 1 km off Kestrel. Comms, confirm when we are out.", "objective_step": "Launch envelope", "objective_breadcrumb": "[KHOVAN OBJECTIVE 003] objective updated: launch envelope (1 km minimum)"})
     await task_schedule(khovan_act1_record_progression, {"action": "kestrel_departure_clearance", "detail": "departure clearance granted; waiting for launch envelope confirmation; energy remains at source-authorized start value until Tarsis handoff"})
     kestrel_departure_clearance_response_sent = True
     task_schedule(khovan_act1_deliver_homing_reserve_prompt_after_departure_clearance, {"prompt_run_id": kestrel_homing_reserve_prompt_run_id})
@@ -699,7 +699,7 @@ distance: 600
     current_beat = "launch_envelope_cleared_proceed_to_tarsis"
     kestrel_generator_advisory_run_id = kestrel_generator_advisory_run_id + 1
     script.write_khovan_startup_trace("[KHOVAN ACT1 005] launch envelope clear confirmed; Kestrel advisory packet removed by operator")
-    await task_schedule(khovan_set_current_objective, {"objective_id": "tarsis_requests", "objective_body": "Proceed to Tarsis. Comms request generator support and docking clearance.", "objective_step": "Tarsis requests", "objective_breadcrumb": "[KHOVAN OBJECTIVE 005] objective updated: Tarsis requests"})
+    await task_schedule(khovan_set_current_objective, {"objective_id": "tarsis_requests", "objective_body": "Come about for Tarsis. Comms, request generator support and docking clearance before we approach.", "objective_step": "Tarsis requests", "objective_breadcrumb": "[KHOVAN OBJECTIVE 005] objective updated: Tarsis requests"})
     await task_schedule(khovan_act1_record_progression, {"action": "launch_envelope_cleared", "detail": "distance-verified Kestrel launch envelope clear; proceed directly to Tarsis requests"})
     await task_schedule(khovan_act1_remove_kestrel_stock_station_role_after_reserve_and_launch)
     await task_schedule(khovan_act1_send_training_speed_power_reminder)
@@ -822,7 +822,7 @@ distance: 600
     script.write_khovan_startup_trace(f"[KHOVAN ACT1 DOCK 004R] Tarsis requests complete={tarsis_required_requests_complete} status={tarsis_gate_status}")
     script.write_khovan_startup_trace("[KHOVAN ACT1 DOCK 004D] Tarsis docking clearance granted; enabling docking setup")
     await task_schedule(khovan_tarsis_enable_docking_after_clearance)
-    await task_schedule(khovan_set_current_objective, {"objective_id": "tarsis_docking_resupply", "objective_body": "Dock normally with Tarsis. Resupply and governor handoff complete on hard dock.", "objective_step": "Tarsis docking/resupply", "objective_breadcrumb": "[KHOVAN OBJECTIVE 006] objective updated: Tarsis docking/resupply"})
+    await task_schedule(khovan_set_current_objective, {"objective_id": "tarsis_docking_resupply", "objective_body": "Helm, bring us alongside and dock. Resupply and the generator handoff complete once we are hard docked.", "objective_step": "Tarsis docking/resupply", "objective_breadcrumb": "[KHOVAN OBJECTIVE 006] objective updated: Tarsis docking/resupply"})
     await task_schedule(khovan_act1_record_progression, {"action": "tarsis_docking_clearance", "detail": "docking clearance requested/granted after required prior requests"})
     tarsis_docking_clearance_response_sent = True
     comms_receive(tarsis_docking_clearance_text, title="Tarsis Docking Control", title_color="green")

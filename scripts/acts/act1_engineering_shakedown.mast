@@ -225,7 +225,7 @@ shared navigation_priority_confirmed_text = "Engineering shakedown complete. Com
     current_beat = "engineering_shakedown_impulse_zero_warp_200"
     last_checkpoint = "engineering_shakedown_start"
     script.write_khovan_startup_trace("[KHOVAN ACT1 ENG 003] Engineering shakedown started; impulse zero warp 200 instruction sent")
-    await task_schedule(khovan_set_current_objective, {"objective_id": "engineering_impulse_zero_warp_200", "objective_body": "Engineering set impulse 0 and warp 200. Captain order full impulse; Helm hold zero speed while Dillon validates no motion.", "objective_step": "Engineering impulse zero / warp 200", "objective_breadcrumb": "[KHOVAN OBJECTIVE 008] objective updated: Engineering impulse zero warp 200"})
+    await task_schedule(khovan_set_current_objective, {"objective_id": "engineering_impulse_zero_warp_200", "objective_body": "Engineering, set impulse 0 and warp 200. Captain, order full impulse; Helm, hold us at zero while Dillon confirms we have not moved.", "objective_step": "Engineering impulse zero / warp 200", "objective_breadcrumb": "[KHOVAN OBJECTIVE 008] objective updated: Engineering impulse zero warp 200"})
     await task_schedule(khovan_scenario_control_panel_update_overview)
     task_schedule(khovan_engineering_watch_no_motion_validation)
     await task_schedule(khovan_engineering_send_message, {"engineering_message_text": engineering_shakedown_start_text, "engineering_message_breadcrumb": "[KHOVAN ACT1 ENG 003A] guarded shakedown instruction sent"})
@@ -312,7 +312,7 @@ shared navigation_priority_confirmed_text = "Engineering shakedown complete. Com
     engineering_shakedown_last_step = "no_motion_confirmed"
     current_beat = "engineering_no_motion_confirmed"
     script.write_khovan_startup_trace(f"[KHOVAN ACT1 ENG 004] no-motion validation confirmed source={completion_source}")
-    await task_schedule(khovan_set_current_objective, {"objective_id": "damcon_crew_quarters_standby", "objective_body": "Engineering assign DAMCON to crew quarters rest-cycle standby. Comms request DAMCON confirmation.", "objective_step": "DAMCON crew quarters standby", "objective_breadcrumb": "[KHOVAN OBJECTIVE 009] objective updated: DAMCON crew quarters standby"})
+    await task_schedule(khovan_set_current_objective, {"objective_id": "damcon_crew_quarters_standby", "objective_body": "Engineering, stand your DAMCON teams down to crew quarters. Comms, get confirmation from DAMCON Control.", "objective_step": "DAMCON crew quarters standby", "objective_breadcrumb": "[KHOVAN OBJECTIVE 009] objective updated: DAMCON crew quarters standby"})
     await task_schedule(khovan_scenario_control_panel_update_overview)
     task_schedule(khovan_engineering_watch_damcon_rest_cycle)
     await task_schedule(khovan_engineering_send_message, {"engineering_message_text": engineering_no_motion_confirmed_text, "engineering_message_breadcrumb": "[KHOVAN ACT1 ENG 004A] guarded DAMCON instruction sent"})
@@ -350,7 +350,7 @@ shared navigation_priority_confirmed_text = "Engineering shakedown complete. Com
     current_beat = "damcon_rest_cycle_confirmed"
     script.write_khovan_startup_trace("[KHOVAN ACT1 ENG 005] DAMCON crew quarters rest-cycle standby confirmed through Comms")
     script.write_khovan_startup_trace("[KHOVAN ACT1 ENG 006] DAMCON meal-cycle confirmation retired; controlled-overload step unlocked")
-    await task_schedule(khovan_set_current_objective, {"objective_id": "controlled_overload_start", "objective_body": "Helm set engines to all stop. Engineering set impulse and warp 300 for controlled overload. Captain hold movement until damage is logged.", "objective_step": "Controlled overload", "objective_breadcrumb": "[KHOVAN OBJECTIVE 011] objective updated: controlled overload"})
+    await task_schedule(khovan_set_current_objective, {"objective_id": "controlled_overload_start", "objective_body": "Helm, all stop. Engineering, run impulse and warp to 300 and let them overload. Captain, hold us still until the damage is logged.", "objective_step": "Controlled overload", "objective_breadcrumb": "[KHOVAN OBJECTIVE 011] objective updated: controlled overload"})
     await task_schedule(khovan_scenario_control_panel_update_overview)
     await task_schedule(khovan_engineering_send_message, {"engineering_message_text": f"{damcon_rest_cycle_text}\n{damcon_mess_instruction_text}", "engineering_message_title": "DAMCON Control", "engineering_message_color": "green", "engineering_message_breadcrumb": "[KHOVAN ACT1 ENG 006A] guarded DAMCON message sent"})
     task_schedule(khovan_engineering_deliver_controlled_overload_prompt_after_delay, {"prompt_run_id": controlled_overload_prompt_run_id})
@@ -381,7 +381,7 @@ shared navigation_priority_confirmed_text = "Engineering shakedown complete. Com
     engineering_shakedown_last_step = "controlled_overload_started"
     current_beat = "controlled_overload_started"
     script.write_khovan_startup_trace("[KHOVAN ACT1 ENG 007] controlled 300 percent impulse/warp overload confirmed started by Comms fallback")
-    await task_schedule(khovan_set_current_objective, {"objective_id": "controlled_overload_damage", "objective_body": "Hold movement until controlled damage is logged, then Engineering supervise repairs.", "objective_step": "Controlled damage", "objective_breadcrumb": "[KHOVAN OBJECTIVE 012] objective updated: controlled damage"})
+    await task_schedule(khovan_set_current_objective, {"objective_id": "controlled_overload_damage", "objective_body": "Hold us steady until the damage is logged, then Engineering take charge of repairs.", "objective_step": "Controlled damage", "objective_breadcrumb": "[KHOVAN OBJECTIVE 012] objective updated: controlled damage"})
     await task_schedule(khovan_scenario_control_panel_update_overview)
     task_schedule(khovan_engineering_watch_controlled_overload_damage)
     await task_schedule(khovan_engineering_send_message, {"engineering_message_text": "Overload logged. Stand by for damage confirmation.", "engineering_message_breadcrumb": "[KHOVAN ACT1 ENG 007A] guarded overload message sent"})
@@ -458,7 +458,7 @@ shared navigation_priority_confirmed_text = "Engineering shakedown complete. Com
     engineering_shakedown_last_step = "controlled_damage_logged"
     current_beat = "controlled_damage_logged"
     script.write_khovan_startup_trace(f"[KHOVAN ACT1 ENG 008] controlled overload damage confirmed source={completion_source}")
-    await task_schedule(khovan_set_current_objective, {"objective_id": "engineering_repair_supervision", "objective_body": "Engineering assign repair crews and supervise repair. Comms confirm recovery when complete.", "objective_step": "Repair supervision", "objective_breadcrumb": "[KHOVAN OBJECTIVE 013] objective updated: repair supervision"})
+    await task_schedule(khovan_set_current_objective, {"objective_id": "engineering_repair_supervision", "objective_body": "Engineering, put your repair crews on it and supervise. Comms, confirm when the systems are back.", "objective_step": "Repair supervision", "objective_breadcrumb": "[KHOVAN OBJECTIVE 013] objective updated: repair supervision"})
     await task_schedule(khovan_scenario_control_panel_update_overview)
     controlled_overload_repair_fallback_available = True
     await task_schedule(khovan_engineering_send_message, {"engineering_message_text": controlled_damage_logged_text, "engineering_message_breadcrumb": "[KHOVAN ACT1 ENG 008A] guarded repair instruction sent"})
@@ -481,7 +481,7 @@ shared navigation_priority_confirmed_text = "Engineering shakedown complete. Com
     engineering_shakedown_last_step = "repair_confirmed"
     current_beat = "controlled_overload_repair_confirmed"
     script.write_khovan_startup_trace("[KHOVAN ACT1 ENG 009] repair completion confirmed by Comms fallback")
-    await task_schedule(khovan_set_current_objective, {"objective_id": "navigation_priority_preset", "objective_body": "Engineering set maneuvering 190, warp 10, and impulse 100. Save or select navigation-priority preset, then report ready.", "objective_step": "Navigation priority preset", "objective_breadcrumb": "[KHOVAN OBJECTIVE 014] objective updated: navigation priority preset"})
+    await task_schedule(khovan_set_current_objective, {"objective_id": "navigation_priority_preset", "objective_body": "Engineering, set maneuvering 190, warp 10, impulse 100, and save it as a preset. Report ready when it is stored.", "objective_step": "Navigation priority preset", "objective_breadcrumb": "[KHOVAN OBJECTIVE 014] objective updated: navigation priority preset"})
     await task_schedule(khovan_scenario_control_panel_update_overview)
     navigation_priority_preset_fallback_available = True
     await task_schedule(khovan_engineering_send_message, {"engineering_message_text": repair_complete_text, "engineering_message_breadcrumb": "[KHOVAN ACT1 ENG 009A] guarded navigation instruction sent"})

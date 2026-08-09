@@ -238,7 +238,7 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             "await task_schedule(khovan_act1_setup_kestrel_and_tarsis_contacts)",
             "await task_schedule(khovan_set_current_objective",
             '"objective_id": "kestrel_departure_clearance"',
-            "Comms request Kestrel departure clearance.",
+            "Comms, request departure clearance from Kestrel Yard Control.",
             "await task_schedule(khovan_scenario_control_panel_update_overview)",
         ]:
             self.assertIn(phrase, body)
@@ -363,9 +363,9 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
 
         expectations = [
             (setup_body, "khovan_current_objective_init", "await task_schedule(khovan_current_objective_init)"),
-            (departure_body, "Helm clear the Kestrel launch envelope: move at least 1 km from Kestrel, then Comms confirm exit.", "[KHOVAN OBJECTIVE 003] objective updated: launch envelope (1 km minimum)"),
-            (launch_body, "Proceed to Tarsis. Comms request generator support and docking clearance.", "[KHOVAN OBJECTIVE 005] objective updated: Tarsis requests"),
-            (clearance_body, "Dock normally with Tarsis. Resupply and governor handoff complete on hard dock.", "[KHOVAN OBJECTIVE 006] objective updated: Tarsis docking/resupply"),
+            (departure_body, "Helm, clear the launch envelope: take us at least 1 km off Kestrel. Comms, confirm when we are out.", "[KHOVAN OBJECTIVE 003] objective updated: launch envelope (1 km minimum)"),
+            (launch_body, "Come about for Tarsis. Comms, request generator support and docking clearance before we approach.", "[KHOVAN OBJECTIVE 005] objective updated: Tarsis requests"),
+            (clearance_body, "Helm, bring us alongside and dock. Resupply and the generator handoff complete once we are hard docked.", "[KHOVAN OBJECTIVE 006] objective updated: Tarsis docking/resupply"),
             (resupply_body, "Resupply complete. Stand by for Dillon to begin the Engineering shakedown.", "[KHOVAN OBJECTIVE 007] objective updated: Engineering shakedown ready"),
         ]
         for body, text, breadcrumb in expectations:
@@ -383,17 +383,17 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
 
         for phrase in [
             "Dillon: Crew of Artemis, this is a qualification cruise. First task: get the ship out of Kestrel cleanly. Comms, request departure clearance. Helm, hold position until Kestrel releases the yard-lock. Captain, coordinate the sequence.",
-            "Comms request Kestrel departure clearance.",
+            "Comms, request departure clearance from Kestrel Yard Control.",
             "Emergency homing transfer complete, Artemis. Two rounds only. Your Weapons officer can convert one to energy if you need the speed.",
             "Kestrel Yard Control: departure clearance granted. Helm, clear the launch envelope by moving at least 1 km from Kestrel. Comms, confirm once Artemis is outside the yard boundary.",
-            "Helm clear the Kestrel launch envelope: move at least 1 km from Kestrel, then Comms confirm exit.",
+            "Helm, clear the launch envelope: take us at least 1 km off Kestrel. Comms, confirm when we are out.",
             "Kestrel Yard Control logs Artemis clear of the launch envelope. Proceed to Tarsis Station for the required Comms requests.",
             "Stay on the shakedown plan, Artemis. And pass along to your captain that the yard commander would like this ship kept in one piece for at least another ten thousand parsecs.",
-            "Proceed to Tarsis. Comms request generator support and docking clearance.",
+            "Come about for Tarsis. Comms, request generator support and docking clearance before we approach.",
             "Tarsis Station: Artemis, we read you. Generator Acceptance is standing by. Request generator support and docking clearance before approach.",
             "Tarsis Control: generator acceptance authorized. Request docking clearance when you are ready to come alongside.",
             "Tarsis Docking Control: docking clearance granted. Helm, approach within tolerance and initiate docking.",
-            "Dock normally with Tarsis. Resupply and governor handoff complete on hard dock.",
+            "Helm, bring us alongside and dock. Resupply and the generator handoff complete once we are hard docked.",
             "Tarsis Docking Control: docking clearance not granted. Complete Tarsis Comms traffic before approach.",
             "Tarsis Control: resupply authorized and the generator governor is cleared. Artemis is released to complete her shakedown.",
             "Resupply complete. Stand by for Dillon to begin the Engineering shakedown.",

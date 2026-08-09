@@ -23,7 +23,7 @@ shared current_objective_test_marker = "S06"
     current_objective_panel_initialized = True
     current_objective_panel_status = "initialized"
     script.write_khovan_startup_trace("[KHOVAN OBJECTIVE 001] current objective initialized")
-    await task_schedule(khovan_set_current_objective, {"objective_id": "kestrel_departure_clearance", "objective_body": "Comms request Kestrel departure clearance.", "objective_step": "Kestrel departure clearance", "objective_breadcrumb": "[KHOVAN OBJECTIVE 002] objective updated: Kestrel departure clearance"})
+    await task_schedule(khovan_set_current_objective, {"objective_id": "kestrel_departure_clearance", "objective_body": "Comms, request departure clearance from Kestrel Yard Control.", "objective_step": "Kestrel departure clearance", "objective_breadcrumb": "[KHOVAN OBJECTIVE 002] objective updated: Kestrel departure clearance"})
     ->END
 
 === khovan_set_current_objective ===
