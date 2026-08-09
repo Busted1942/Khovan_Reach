@@ -157,8 +157,9 @@ class Act1EngineeringShakedownStaticTests(unittest.TestCase):
         self.assertEqual(label_positions, sorted(label_positions))
 
         for phrase in [
-            "Engineering: Set Impulse to 0% and Warp to 200% and validate you see the heat sinks begin to increase slowly.",
-            "Helm: Go to full impulse and ensure your speed remains at 0. Then to warp 1 and report your speed to the Captain.",
+            "Captain: You are cleared for departure. Bring your ship to at least 2 KM from the station.",
+            "Engineering: On Captin command, set Impulse to 0% and Warp to 200% so we can validate your heat sinks.",
+            "Helm: Validate that Impuse speed reads 0, then go to warp 1, wait for the speed to stabilze and report ship speed to captian.",
             "Great, everything is checking out so far. Now Engineering, let's test the internal comms. Order your DamCon team1 to their quarters and then to sleep. Observe ensure that you can observe their increased productivity through the internal medical system.",
             "Engineering: keep your DamCon teams in good condition, especially in battle. They may mean the difference between life and oblivion.",
             "rest-cycle standby confirmed in crew quarters",
