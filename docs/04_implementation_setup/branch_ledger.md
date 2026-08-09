@@ -114,14 +114,24 @@ Next action: no further work needed on this branch. Delete local branch when bra
 
 Return branch: `slice06-drone-contact-fire`.
 
-### Findings routed to operator (from the first review-gate run, 2026-08-08)
+## Findings routed to operator
+
+Findings live here rather than under a single branch because they outlive the
+branch that surfaced them. Each records what was observed, the evidence class
+behind it, and what the operator decided.
+
+### From the first review-gate run, 2026-08-08 (both RESOLVED)
 
 Both were found by `tools/review_gate.py --base master` against the Slice 06
-diff and then verified by hand. Neither is fixed on this branch: one is a
-design-doc question that section 8 says route rather than decide, and the
-other is runtime MAST, which must not be edited from a docs/governance branch.
+diff and then verified by hand. Neither was fixed on the branch that found
+them: one is a design-doc question that section 8 says route rather than
+decide, and the other is runtime MAST, which must not be edited from a
+docs/governance branch.
 
-**Finding 1 — a design doc was edited during implementation work.**
+**Finding 1 — a design doc was edited during implementation work.** RESOLVED
+2026-08-08: operator ratified. `docs/01_design/10_mast_requirements.md`
+section 17 now carries a dated `operator-ratified` revision note; merged via
+`ebd341b`.
 
 `docs/01_design/10_mast_requirements.md` section 17 changed in the Slice 06
 range: a 16-item build-slice list was deleted and replaced with a pointer to
@@ -138,7 +148,12 @@ Options: (a) ratify the edit and note it in the doc's revision history, or
 (b) revert it and re-land it as its own docs branch. Recommend (a) — the
 change is sound and reverting costs more than it protects.
 
-**Finding 2 — `khovan_drone_01_reset` yields without a run-ID guard.**
+**Finding 2 — `khovan_drone_01_reset` yields without a run-ID guard.** RESOLVED
+2026-08-08: fixed in `7a9ed69`. The delayed half moved to
+`khovan_drone_01_reset_respawn`, which takes the run id as a task parameter
+and compares it after the delay, plus the two other guards cookbook section
+5.1 requires. Regression test and negative control recorded in the commit.
+Original finding text follows.
 
 `scripts/acts/act1_drone_contact_fire.mast`, label `khovan_drone_01_reset`.
 The label increments `drone_contact_sequence_run_id`, then does
@@ -156,6 +171,95 @@ Fix shape is the cookbook section 5.1 pattern already used by
 `khovan_drone_01_watch_stationary_hold` in the same file: capture the run id
 before the delay, compare after it, bail on mismatch. Belongs in a Slice 06
 implementation branch, not here.
+
+### From engine-source reading, 2026-08-08 (both OPEN)
+
+Both came from reading the Cosmos engine's DAMCON crew AI after an operator
+question about the Engineering panel's "ripped / fed / rested" readouts.
+
+**Evidence class.** Engine source is Tier 2 reference material per
+`docs_external/00_tier2_reference_inventory.md` — it establishes what the
+engine does, not what Khovan should do. Neither finding is proven from Khovan's
+own runtime, and neither has had live smoke. Treat the numbers as read from
+source, not as measured behavior.
+
+**Source read.** `LegendaryMissions/ai/grid_ai.py`. The `Cosmos_dev/` and
+installed `data/missions/legendarymissions/` copies were confirmed byte-identical
+by `diff`.
+
+**Caveat on build drift.** The operator's panel screenshot reads
+`ripped for 8:17`, but the source builds that field as `fit for {left}`
+(line 63), and the literal string `ripped for` does not appear anywhere in the
+install. The running build therefore differs from the files read. Confirm the
+coefficients against the live build before treating the numbers below as
+settled.
+
+**Finding 3 — DAMCON idle buffs are permanent, and Act I fork choice silently
+sets DAMCON speed for the rest of the mission.**
+
+The mechanics, from `grid_damcon_speed()` and `grid_damcons_handle_idling_boost()`:
+
+- A DAMCON team that idles ~1 minute in a room with role `gym`, `quarters`, or
+  `mess` gets `ripped_speed_coeff`, `rested_speed_coeff`, or `fed_speed_coeff`
+  set to `1.25`.
+- The coefficients are multiplicative:
+  `speed = hp*0.002 * ripped * rested * fed * work_speed * red_alert`.
+  All three together are `1.25**3` ≈ **1.95x** movement speed.
+- `red_alert_coeff` is `0.75` — DAMCON teams move 25% *slower* during combat.
+- Base speed scales linearly with HP, so a damaged team is proportionally slower.
+  `sickbay` heals 1 HP per 2 minutes and is not a speed buff.
+
+The part that matters for design: **nothing ever sets those coefficients back
+to `1.0`.** Each timer is read in exactly one place (lines 51, 56, 61) and that
+place is the status display. There is no expiry handler. The re-entry gate is
+`if ripped_speed_coeff != 1.0: return`, so once a team is buffed it can never
+re-earn the buff and never loses it. The countdown on the panel is cosmetic.
+
+Consequence for Khovan: play-guide Scene 3A steps 3A.2 (DAMCON to crew quarters)
+and 3A.3 (DAMCON to the mess) are written as teaching beats, but mechanically
+they hand out two permanent +25% multipliers. A Full Shakedown crew reaches Act
+III with DAMCON teams roughly **1.56x faster** than a Direct Scenario crew, for
+the whole mission, from a fork the captain chooses before knowing any of this.
+
+That interacts with Act III, where DAMCON speed is load-bearing: combat repairs
+during the pirate engagement, and any Artemis-side damage control while the
+cascade timer runs.
+
+Design question for the operator, not an implementation question:
+
+- (a) Intended — the shakedown teaches a real advantage and that is the reward.
+- (b) Unintended — the fork should not silently change Act III difficulty;
+  consider seeding the buffs equally across all three profiles, or costing
+  them explicitly in the qualification cards.
+- (c) Out of scope for now — record it and revisit at Slice 09.
+
+No recommendation offered. This is a scenario-balance judgment and
+`AGENTS.md` section 2 keeps that with the operator.
+
+**Finding 4 — the play guide's "DAMCON location may not be mechanically
+visible" assumption looks too pessimistic.**
+
+`docs/01_design/00_scenario_play_guide.md` lines 268 and 274 state that DAMCON
+team location may not be mechanically visible, and therefore prefer a Comms
+confirmation fallback for steps 3A.2 and 3A.3, with a GM mark as last resort.
+
+The engine appears to expose enough for an automatic gate: `rested_speed_coeff`
+and `fed_speed_coeff` are ordinary inventory values on the DAMCON grid object,
+and `grid_damcons_detailed_status()` already renders their state to the
+Engineering panel. A gate could read the coefficient, or the timer state, to
+confirm the team actually reached quarters or the mess rather than asking Comms
+to vouch for it.
+
+What is NOT established: that those helpers are reachable from Khovan's MAST
+context, what the grid-object ids are from a mission script, or whether reading
+them mid-mission is safe. Tagged **[UNPROVEN]** — this is a spike candidate for
+Slice 09, not a change to make on assumption.
+
+If it proves out, the automation gate map in
+`docs/01_design/10_mast_requirements.md` section 8.9 gains two automatic gates
+that are currently specified as Comms-confirmation-preferred, and the fallback
+language in the play guide would need an operator-ratified update. Both are
+design-doc edits and stay routed.
 
 ## slice04-player-instruction-clarity
 
