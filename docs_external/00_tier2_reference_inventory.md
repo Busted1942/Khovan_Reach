@@ -50,6 +50,60 @@ If Slice 01 or later work needs an API not covered by the selected repositories,
 
 ---
 
+## Source review, 2026-08-09
+
+Prompted by an operator question about whether a set of URLs would add value.
+Outcome: **most were already covered, and the gap was consultation, not
+coverage.**
+
+Already cloned locally, so no fetch needed:
+
+| Source | Where it landed |
+|---|---|
+| `artemis-sbs/SecretMeeting` `story.mast` | `reference_missions/_local_clones/SecretMeeting/` |
+| `artemis-sbs.github.io/sbs_utils/api/` | `docs_external/_local_clones/sbs_utils/mkdocs/docs/api/` |
+| `artemis-sbs.github.io/sbs_utils/mast/tutorial/` | same clone, `mkdocs/docs/tutorial/` |
+| `github.com/artemis-sbs` (root) | already listed above |
+| `armidalesoftware.com/.../CosmosBridgeTools.htm` | already listed above |
+| `github.com/astrolamb-gaming` (root) | already listed above |
+
+The published `sbs_utils` docs site is generated from `mkdocs/docs` inside the
+clone we already hold, so the site and the local copy are the same material.
+`LegendaryMissions` and `WalkTheLine` are also cloned.
+
+**Not previously listed, and not fetched:**
+`artemiswiki.pbworks.com/w/page/44188987/Station overviews`. The URL bounces
+between http and https, so it could not be retrieved for assessment. From the
+domain and page name it is the classic-Artemis community wiki, which predates
+Cosmos and documents bridge stations from a player's perspective rather than
+`sbs_utils` scripting. Likely useful for crew-facing language, not for API
+questions. Assess before relying on it, and never treat it as Cosmos API
+authority.
+
+**What the review actually produced.** Two live failures on 2026-08-09 (the
+`set_behavior` crash and the wrong capital-`Station` claim in cookbook 8.2) were
+*not* caused by missing reference material:
+
+- `set_behavior` is documented in the sbs_utils source we already had, and the
+  accessor needed to reach it (`sim.get_space_object`) is in `api/spaceobject.rst`
+  in the docs clone we already had. Recorded in cookbook 12.1.
+- The MAST limitation that a literal `\n` survives only in a `shared` declaration,
+  and breaks the parser inline, is documented **nowhere** in any of these
+  sources. It was found by compile preflight and is now cookbook-recorded.
+
+Practical rule: before raising an API uncertainty, grep the local clones under
+`_khovan_reach_tier2_references/`. The answer to the more expensive of today's
+two failures was sitting in them the whole time.
+
+## Where the clones actually live
+
+They are **outside** the mission directory, at
+`<Cosmos>/_khovan_reach_tier2_references/`, per the runtime-clean warning below.
+The `docs_external/_local_clones/` and `reference_missions/_local_clones/`
+folders inside this repo are intentionally empty.
+
+---
+
 ## Runtime-clean mission-root warning
 
 Git-ignored does not mean Cosmos-ignored.

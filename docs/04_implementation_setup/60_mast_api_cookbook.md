@@ -784,6 +784,36 @@ Recommended spike or next action:
                      Comms addressability, or cleanup.
                      Until then Kestrel keeps its stock production loop after
                      departure. That is cosmetic; the crash was not.
+
+Update 2026-08-09 - candidate answer to (a), from Tier 2 review:
+                     sbs_utils mkdocs `api/spaceobject.rst` shows the accessor
+                     this uncertainty was missing:
+
+                         shipID = sim.make_new_active("behav_station", hull_type)
+                         ship = sim.get_space_object(shipID)
+
+                     Confirmed in source: `sbs_utils/mock/sbs.py:795` declares
+                     `get_space_object(self, arg0: int) -> space_object`, and
+                     `space_object` is the class that defines `set_behavior`
+                     (`proxies/space_object.py:55`). So the shape to try is
+                     `sim.get_space_object(id).set_behavior("playership")`, not
+                     `to_object(id).set_behavior(...)`.
+
+                     Still **[UNPROVEN]**. This is documentation plus a source
+                     signature, not a live result, and it does not answer (b) or
+                     (c). Do not ship it without the spike.
+
+Naming trap worth keeping separate:
+                     Spawn-time and runtime use DIFFERENT behavior-name
+                     conventions.
+                       - `npc_spawn(..., "behav_station")` - prefixed. Confirmed
+                         in the SecretMeeting reference mission
+                         (`story.mast:79`) and used throughout this repo.
+                       - `set_behavior("station")` - bare. Per its own docstring:
+                         "nebula, npcship, asteroid, playership, station".
+                     The crashing line used the spawn-time spelling against the
+                     runtime API, so it was wrong on both the receiver and the
+                     argument.
 ```
 
 ---
