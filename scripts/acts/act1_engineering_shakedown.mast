@@ -316,6 +316,8 @@ shared navigation_priority_confirmed_text = "Artemis - Comms: Shakedown complete
     impulse_raw = get_engineering_value(artemis_id, "Impulse", -1)
     warp_raw = get_engineering_value(artemis_id, "Warp", -1)
     script.write_khovan_startup_trace(f"[KHOVAN ACT1 ENG POWER PRESET WATCH] tick={engineering_power_preset_observer_ticks} impulse_raw={impulse_raw} warp_raw={warp_raw}")
+    if engineering_power_preset_observer_ticks == 1:
+        await task_schedule(khovan_engineering_dump_engineering_slots, {"dump_reason": "power_preset_first_tick"})
 
     if impulse_raw < 0 or warp_raw < 0:
         engineering_power_preset_observer_status = "fallback_engineering_labels_not_found_on_this_build"
@@ -334,14 +336,62 @@ shared navigation_priority_confirmed_text = "Artemis - Comms: Shakedown complete
         await task_schedule(khovan_engineering_complete_power_preset, {"power_preset_source": "automatic_engineering_value_observer"})
         ->END
 
-    if engineering_power_preset_observer_ticks >= 30:
-        engineering_power_preset_observer_status = "fallback_timeout_preset_not_observed"
+    # Arm the fallback, then KEEP WATCHING (fix 2026-08-09, from live trace). The
+    # first version returned here, so automatic detection stopped permanently ~30
+    # seconds in. Live 20:30 showed the cost: the crew was still working the consoles
+    # when the observer quit, so the only remaining route was Comms confirmation even
+    # if they set it correctly a moment later. Arming the fallback should widen the
+    # options, not close the automatic one. The guards at the top of this label end
+    # the loop when the step is confirmed or no longer requested.
+    if engineering_power_preset_observer_ticks >= 30 and not engineering_power_preset_fallback_available:
+        engineering_power_preset_observer_status = "fallback_armed_observer_still_watching"
         engineering_power_preset_fallback_available = True
-        script.write_khovan_startup_trace(f"[KHOVAN ACT1 ENG POWER PRESET FALLBACK] observer timed out impulse={engineering_impulse_value} warp={engineering_warp_value}")
-        ->END
+        script.write_khovan_startup_trace(f"[KHOVAN ACT1 ENG POWER PRESET FALLBACK] Comms fallback armed, automatic observer still watching impulse={engineering_impulse_value} warp={engineering_warp_value}")
+        await task_schedule(khovan_engineering_dump_engineering_slots, {"dump_reason": "power_preset_timeout"})
 
     await delay_sim(seconds=1)
     jump khovan_engineering_watch_power_preset
+
+=== khovan_engineering_dump_engineering_slots ===
+    default dump_reason = "unspecified"
+    # Diagnostic, added 2026-08-09 after the first live run of the power-preset
+    # observer. get_engineering_value resolved both labels - no -1 sentinel - but
+    # returned impulse_raw=1.0 warp_raw=1.0 unchanged across all 30 ticks while the
+    # operator had Engineering set to impulse 0 / warp 200. So the lookup works and
+    # the values are simply not tracking the console.
+    #
+    # Three candidate explanations, and guessing between them costs a live session
+    # each: the label-to-slot mapping differs on this build so we are reading some
+    # other system's value; eng_control_value holds a base/default rather than the
+    # live slider; or console state is not mirrored into this data set server-side.
+    #
+    # This dumps every populated slot so one run distinguishes them. If a slot shows
+    # 0.0 or 2.0 under a name we did not query, the mapping is wrong and the fix is a
+    # name change. If every populated slot reads 1.0 while the console is visibly set
+    # otherwise, eng_control_value is not the live state and this whole detection
+    # approach is dead - fall back to Comms confirmation and record it as an API
+    # finding rather than trying more key names.
+    #
+    # Nothing in the install writes eng_control_value, so it is engine-populated;
+    # there is no in-repo example to copy. `for x in range(N)` in MAST is proven in a
+    # shipping reference mission (HereThereBeMonsters-main/story.mast:726,738,753).
+    # No control-flow escape inside the loop body - only an if-guard - since breaking
+    # out of a MAST for loop is not a proven pattern.
+    if artemis_id == 0:
+        script.write_khovan_startup_trace("[KHOVAN ACT1 ENG SLOT DUMP] skipped, missing Artemis id")
+        ->END
+    artemis_object = to_object(artemis_id)
+    if artemis_object is None:
+        script.write_khovan_startup_trace("[KHOVAN ACT1 ENG SLOT DUMP] skipped, missing Artemis object")
+        ->END
+    script.write_khovan_startup_trace(f"[KHOVAN ACT1 ENG SLOT DUMP] begin reason={dump_reason}")
+    for slot_index in range(30):
+        slot_label = artemis_object.data_set.get("eng_control_label", slot_index)
+        if slot_label is not None and slot_label != "":
+            slot_value = artemis_object.data_set.get("eng_control_value", slot_index)
+            script.write_khovan_startup_trace(f"[KHOVAN ACT1 ENG SLOT DUMP] index={slot_index} label={slot_label} value={slot_value}")
+    script.write_khovan_startup_trace(f"[KHOVAN ACT1 ENG SLOT DUMP] end reason={dump_reason}")
+    ->END
 
 === khovan_engineering_complete_power_preset ===
     default power_preset_source = "fallback_confirmation"
@@ -415,12 +465,21 @@ shared navigation_priority_confirmed_text = "Artemis - Comms: Shakedown complete
         await task_schedule(khovan_engineering_complete_no_motion_validation, {"completion_source": "automatic_throttle_speed_position_observer"})
         ->END
 
-    if engineering_no_motion_observer_ticks >= 20:
-        engineering_no_motion_observer_status = "fallback_timeout_engineering_slider_keys_unverified"
+    # Arm the fallback, then KEEP WATCHING (fix 2026-08-09, from live trace). This
+    # label used to return here, so ~24 seconds after the step began the automatic
+    # detector was gone for good and Comms confirmation was the only route left, even
+    # if Helm produced a clean full-impulse-no-motion result immediately afterwards.
+    # Live 20:30 is exactly that case: ticks 1-13 read throttle=0 while the crew were
+    # still setting up, and the observer quit at tick 20. Arming the fallback should
+    # add an option, not remove the automatic one. The `not ..._fallback_available`
+    # condition keeps the player-facing message duplicate-suppressed per AGENTS.md
+    # section 4; the guards at the top of this label end the loop once the step is
+    # confirmed or no longer requested.
+    if engineering_no_motion_observer_ticks >= 20 and not engineering_no_motion_fallback_available:
+        engineering_no_motion_observer_status = "fallback_armed_observer_still_watching"
         engineering_no_motion_fallback_available = True
-        script.write_khovan_startup_trace("[KHOVAN ACT1 ENG NO MOTION FALLBACK] automatic observer timed out; Comms fallback enabled")
+        script.write_khovan_startup_trace("[KHOVAN ACT1 ENG NO MOTION FALLBACK] Comms fallback armed, automatic observer still watching")
         await task_schedule(khovan_engineering_send_message, {"engineering_message_text": engineering_no_motion_fallback_text, "engineering_message_color": "yellow", "engineering_message_breadcrumb": "[KHOVAN ACT1 ENG NO MOTION FALLBACK] guarded fallback message sent"})
-        ->END
 
     await delay_sim(seconds=1)
     jump khovan_engineering_watch_no_motion_validation_tick

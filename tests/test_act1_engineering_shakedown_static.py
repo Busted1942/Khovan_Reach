@@ -79,7 +79,19 @@ class Act1EngineeringPowerPresetTests(unittest.TestCase):
         )
         watch_body = label_body(engineering, "khovan_engineering_watch_power_preset")
         self.assertIn("engineering_power_preset_fallback_available = True", watch_body)
-        self.assertIn("if engineering_power_preset_observer_ticks >= 30:", watch_body)
+        # Arming the fallback must widen the options, not close the automatic one.
+        # The first version returned on timeout, so automatic detection died ~30s in
+        # and Comms confirmation became the only route even if the crew got it right
+        # a moment later. The guard condition also duplicate-suppresses the arming.
+        self.assertIn(
+            "if engineering_power_preset_observer_ticks >= 30 and not engineering_power_preset_fallback_available:",
+            watch_body,
+        )
+        self.assertGreater(
+            watch_body.index("jump khovan_engineering_watch_power_preset"),
+            watch_body.index("engineering_power_preset_observer_ticks >= 30"),
+            "observer must keep looping after arming the fallback",
+        )
 
         # Both routes land in one completion label that records which one fired.
         complete_body = label_body(engineering, "khovan_engineering_complete_power_preset")
@@ -94,6 +106,43 @@ class Act1EngineeringPowerPresetTests(unittest.TestCase):
             '"power_preset_source": "comms_fallback_confirmation"',
             label_body(engineering, "khovan_engineering_confirm_power_preset"),
         )
+
+    def test_no_motion_observer_keeps_watching_after_arming_its_fallback(self) -> None:
+        # Same fix as the power-preset observer. Live 20:30: ticks 1-13 read
+        # throttle=0 while the crew were still setting up, then the observer quit at
+        # tick 20 and Comms confirmation was the only route left.
+        engineering = read(ENGINEERING_PATH)
+        body = label_body(engineering, "khovan_engineering_watch_no_motion_validation_tick")
+        self.assertIn(
+            "if engineering_no_motion_observer_ticks >= 20 and not engineering_no_motion_fallback_available:",
+            body,
+        )
+        self.assertGreater(
+            body.index("jump khovan_engineering_watch_no_motion_validation_tick"),
+            body.index("engineering_no_motion_observer_ticks >= 20"),
+            "observer must keep looping after arming the fallback",
+        )
+
+    def test_engineering_slot_dump_diagnostic_exists(self) -> None:
+        # Added after the first live run: get_engineering_value resolved both labels
+        # but returned 1.0/1.0 unchanged across 30 ticks while the console was set to
+        # impulse 0 / warp 200. The dump distinguishes a wrong label-to-slot mapping
+        # from eng_control_value simply not tracking the console.
+        engineering = read(ENGINEERING_PATH)
+        body = label_body(engineering, "khovan_engineering_dump_engineering_slots")
+        self.assertIn("for slot_index in range(30):", body)
+        self.assertIn('artemis_object.data_set.get("eng_control_label", slot_index)', body)
+        self.assertIn('artemis_object.data_set.get("eng_control_value", slot_index)', body)
+        self.assertIn("if artemis_id == 0:", body)
+        self.assertIn("if artemis_object is None:", body)
+        # No control-flow escape inside the loop - breaking out of a MAST for loop is
+        # not a proven pattern, so the body uses an if-guard only.
+        loop_start = body.index("for slot_index in range(30):")
+        self.assertNotIn("->END", body[loop_start:body.index("[KHOVAN ACT1 ENG SLOT DUMP] end", loop_start)])
+
+        watch_body = label_body(engineering, "khovan_engineering_watch_power_preset")
+        self.assertIn('"dump_reason": "power_preset_first_tick"', watch_body)
+        self.assertIn('"dump_reason": "power_preset_timeout"', watch_body)
 
     def test_power_preset_observer_is_started_and_reset_with_the_shakedown(self) -> None:
         engineering = read(ENGINEERING_PATH)
