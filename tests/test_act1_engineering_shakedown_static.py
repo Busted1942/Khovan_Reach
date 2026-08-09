@@ -107,6 +107,61 @@ class Act1EngineeringPowerPresetTests(unittest.TestCase):
             label_body(engineering, "khovan_engineering_confirm_power_preset"),
         )
 
+    def test_navigation_priority_has_an_automatic_slider_observer(self) -> None:
+        # Design 8.4 step 12. Target config is in repair_complete_text: impulse 100%,
+        # warp 10%, maneuver 190%. Uses the API confirmed live 2026-08-09.
+        engineering = read(ENGINEERING_PATH)
+        body = label_body(engineering, "khovan_engineering_watch_navigation_priority")
+
+        for call in [
+            'get_engineering_value(artemis_id, "Impulse", -1)',
+            'get_engineering_value(artemis_id, "Warp", -1)',
+            'get_engineering_value(artemis_id, "Maneuver", -1)',
+        ]:
+            self.assertIn(call, body)
+
+        # Guards required by AGENTS.md section 4.
+        self.assertIn("if artemis_id == 0:", body)
+        self.assertIn("if artemis_object is None:", body)
+        self.assertIn("if navigation_run_id != navigation_priority_run_id:", body)
+        self.assertIn("if nav_impulse_raw < 0 or nav_warp_raw < 0 or nav_maneuver_raw < 0:", body)
+
+        # Wide bands, because values ramp and overshoot - a 200% target settled at
+        # 2.005 live, so equality never matches. Width is safe here: no other step in
+        # 8.4 combines warp this low with maneuver this high.
+        self.assertIn(
+            "if navigation_impulse_value >= 0.9 and navigation_impulse_value <= 1.1 and navigation_warp_value <= 0.2 and navigation_maneuver_value >= 1.8:",
+            body,
+        )
+        # Keeps looping - no timeout that abandons automatic detection.
+        self.assertIn("jump khovan_engineering_watch_navigation_priority", body)
+
+    def test_navigation_priority_routes_share_one_completion_label(self) -> None:
+        engineering = read(ENGINEERING_PATH)
+        watch = label_body(engineering, "khovan_engineering_watch_navigation_priority")
+        confirm = label_body(engineering, "khovan_engineering_confirm_navigation_priority")
+        complete = label_body(engineering, "khovan_engineering_complete_navigation_priority")
+
+        self.assertIn('"nav_priority_source": "automatic_engineering_value_observer"', watch)
+        self.assertIn('"nav_priority_source": "comms_fallback_confirmation"', confirm)
+        # The Comms route keeps its precondition rather than delegating it.
+        self.assertIn("if not controlled_overload_repair_confirmed:", confirm)
+
+        # Duplicate-suppressed: this label completes the shakedown and hands off to
+        # Slice 06, so reaching it twice would double-fire that handoff.
+        self.assertIn("if navigation_priority_preset_set:", complete)
+        self.assertIn("await task_schedule(khovan_act1_drone_contact_fire_prepare_after_engineering)", complete)
+
+        # The parameter must not shadow the shared it writes into.
+        self.assertIn("default nav_priority_source", complete)
+        self.assertIn("navigation_priority_source = nav_priority_source", complete)
+
+        # Fallback is armed when the step opens, not on a timeout, because the
+        # saved-preset half of step 12 is not detectable at all.
+        repair_body = label_body(engineering, "khovan_engineering_confirm_repair_complete")
+        self.assertIn("navigation_priority_preset_fallback_available = True", repair_body)
+        self.assertIn("task_schedule(khovan_engineering_watch_navigation_priority", repair_body)
+
     def test_no_motion_observer_keeps_watching_after_arming_its_fallback(self) -> None:
         # Same fix as the power-preset observer. Live 20:30: ticks 1-13 read
         # throttle=0 while the crew were still setting up, then the observer quit at
@@ -333,7 +388,10 @@ class Act1EngineeringShakedownStaticTests(unittest.TestCase):
             "automatic_engine_system_damage_observer_with_comms_fallback",
             "damcon_location_api_unverified_comms_fallback_after_observer_attempt",
             "engineering_captain_comms_confirmation_fallback_until_repair_completion_api_verified",
-            "maneuver_190_warp_10_impulse_100_preset_api_unverified_comms_fallback_after_operator_action",
+            "automatic_maneuver_190_warp_10_impulse_100_slider_observer_with_comms_fallback",
+            # The limit must stay stated: the sliders are readable, saving them to a
+            # preset slot is not, so step 12 is only ever half-detected.
+            "saving to a preset SLOT is not readable and stays operator-confirmed",
             "DAMCON location",
         ]:
             self.assertIn(phrase, engineering)
@@ -416,7 +474,12 @@ class Act1EngineeringShakedownStaticTests(unittest.TestCase):
                 "controlled_overload_repair_confirmed = True",
                 "controlled_overload_repaired = True",
             ],
+            # The Comms route now delegates; the flags live in the shared completion
+            # label the automatic observer also reaches.
             "khovan_engineering_confirm_navigation_priority": [
+                "khovan_engineering_complete_navigation_priority",
+            ],
+            "khovan_engineering_complete_navigation_priority": [
                 "navigation_priority_preset_set = True",
                 "engineering_shakedown_complete = True",
             ],
