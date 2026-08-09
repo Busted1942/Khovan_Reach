@@ -15,6 +15,7 @@ changes, which is a different check than "does the pattern work".
 from __future__ import annotations
 
 import importlib.util
+import re
 import unittest
 from pathlib import Path
 
@@ -44,6 +45,89 @@ class ReviewGateFileExists(unittest.TestCase):
             GATE_PATH.is_file(),
             "tools/review_gate.py is referenced by the handoff protocol section 5.4",
         )
+
+
+class RuleDocumentationBinding(unittest.TestCase):
+    """Bind every gate rule to the prose that governs it.
+
+    The gap this closes: on 2026-08-09 the run-ID check was widened to accept
+    bounded observers and post-delay re-checks, while cookbook 5.1 still
+    described only the run-ID shape. The tool passed patterns the docs did not
+    describe, so a reviewer following the cookbook would have flagged code the
+    gate had already approved. Neither file was wrong on its own; they had
+    drifted apart, and nothing was watching the seam.
+
+    These tests fail in both directions - an uncited check, or a citation whose
+    heading no longer exists.
+    """
+
+    def _citations(self):
+        cites = list(gate.RULE_CITATIONS.values())
+        cites += list(gate.RUN_ID_ALTERNATIVE_CITATIONS.values())
+        return [c for c in cites if c is not None]
+
+    def test_every_check_the_gate_runs_has_a_citation(self):
+        """A rule with no prose behind it is a rule only the tool knows."""
+        source = GATE_PATH.read_text(encoding="utf-8")
+        block = source[source.index("for label, result in ("):]
+        block = block[: block.index("):")]
+        labels = re.findall(r'\(\s*"([^"]+)"\s*,', block)
+
+        self.assertTrue(labels, "could not parse the gate's check list")
+        for label in labels:
+            self.assertIn(
+                label,
+                gate.RULE_CITATIONS,
+                f"check '{label}' runs with no entry in RULE_CITATIONS - "
+                f"document the rule, then cite it here",
+            )
+
+    def test_no_citation_is_left_behind_by_a_removed_check(self):
+        """Keeps the table honest when a check is deleted or renamed."""
+        source = GATE_PATH.read_text(encoding="utf-8")
+        block = source[source.index("for label, result in ("):]
+        block = block[: block.index("):")]
+        labels = set(re.findall(r'\(\s*"([^"]+)"\s*,', block))
+
+        for label in gate.RULE_CITATIONS:
+            self.assertIn(
+                label,
+                labels,
+                f"RULE_CITATIONS cites '{label}' but no such check runs",
+            )
+
+    def test_every_cited_document_exists(self):
+        for doc, _heading in self._citations():
+            self.assertTrue(
+                (ROOT / doc).is_file(),
+                f"cited document does not exist: {doc}",
+            )
+
+    def test_every_cited_heading_exists(self):
+        """Catches a renumbered or renamed section before a reviewer hits it."""
+        for doc, heading in self._citations():
+            text = (ROOT / doc).read_text(encoding="utf-8")
+            self.assertIn(
+                heading,
+                text,
+                f"{doc} no longer contains the cited heading '{heading}' - "
+                f"the gate and the docs have drifted",
+            )
+
+    def test_run_id_alternatives_are_documented_where_5_1_points(self):
+        """5.1 must not read as if the run-ID is the only accepted shape.
+
+        The gate accepts three; a reviewer reading only 5.1 would reject two of
+        them. This asserts 5.1's own section carries the pointer.
+        """
+        cookbook = (
+            ROOT / "docs/04_implementation_setup/60_mast_api_cookbook.md"
+        ).read_text(encoding="utf-8")
+        start = cookbook.index("## 5.1 Run-ID guard for delayed work")
+        section = cookbook[start : cookbook.index("## 5.2", start)]
+        self.assertIn("Two accepted alternatives to a run-ID", section)
+        # The caveat that makes the third shape safe rather than a loophole.
+        self.assertIn("after the final delay", section)
 
 
 class LabelParsing(unittest.TestCase):

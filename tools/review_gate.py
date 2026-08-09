@@ -103,6 +103,50 @@ JUMP_RE = re.compile(r"^\s*jump\s+(\w+)", re.MULTILINE)
 NPC_SPAWN_RE = re.compile(r"\bnpc_spawn\(")
 
 
+# Every rule this gate enforces must be written down somewhere an agent reads,
+# and every rule it *accepts* must be too. On 2026-08-09 the run-ID check was
+# widened to accept two more shapes while cookbook section 5.1 still described
+# only one, so the tool was silently passing patterns the documentation did not
+# describe. That is worse than either gap alone: a reviewer following the
+# cookbook would have flagged code the gate had already waved through.
+#
+# tests/test_review_gate_static.py walks this table and fails if a cited heading
+# is missing, or if a check runs without a citation. Adding a rule therefore
+# forces you to document it.
+#
+# Value None means "git/process hygiene, governed by no prose rule".
+RULE_CITATIONS: dict[str, tuple[str, str] | None] = {
+    "protected docs": ("AGENTS.md", "# 2. Work boundaries"),
+    "parallel filenames": ("AGENTS.md", "# 1. Source authority"),
+    "bootstrap APIs": ("AGENTS.md", "# 2. Work boundaries"),
+    "to_object none-check": ("AGENTS.md", "# 4. Writing MAST"),
+    "artemis_id guard": ("AGENTS.md", "# 4. Writing MAST"),
+    "run-ID guard": (
+        "docs/04_implementation_setup/60_mast_api_cookbook.md",
+        "## 5.1 Run-ID guard for delayed work",
+    ),
+    "spawn/cleanup": (
+        "docs/04_implementation_setup/60_mast_api_cookbook.md",
+        "## 8.1 Idempotent spawn",
+    ),
+    "whitespace": None,
+    "quick tests": ("AGENTS.md", "# 5. Evidence classes"),
+}
+
+# The run-ID check accepts three shapes. Each needs its own citation, because a
+# reviewer who only knows 5.1 would wrongly reject the other two.
+RUN_ID_ALTERNATIVE_CITATIONS: dict[str, tuple[str, str]] = {
+    "bounded observer": (
+        "docs/04_implementation_setup/60_mast_api_cookbook.md",
+        "## 5.2 Bounded polling observer with fallback",
+    ),
+    "recheck after delay": (
+        "docs/04_implementation_setup/60_mast_api_cookbook.md",
+        "### Two accepted alternatives to a run-ID",
+    ),
+}
+
+
 def rel(path: Path) -> str:
     return path.relative_to(ROOT).as_posix()
 

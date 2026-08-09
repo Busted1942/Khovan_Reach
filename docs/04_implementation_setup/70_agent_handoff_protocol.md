@@ -389,6 +389,22 @@ a visible claim inside mission canon that a human can audit — it is not a way
 to pre-authorize an edit, and `AGENTS.md` section 5 already forbids recording
 an approval that did not happen.
 
+**Every gate rule is bound to the prose that governs it.**
+`tools/review_gate.py` carries a `RULE_CITATIONS` table mapping each check to
+the `AGENTS.md` or cookbook section it enforces, and
+`tests/test_review_gate_static.py` fails the build if a check runs without a
+citation, if a citation names a heading that no longer exists, or if a citation
+is left behind by a removed check.
+
+This exists because the two drifted once. On 2026-08-08 the run-ID check was
+widened to accept two further patterns while cookbook 5.1 still described only
+one, so the tool was passing shapes the documentation did not describe — a
+reviewer following the cookbook would have flagged code the gate had already
+approved. Neither file was wrong alone; nothing was watching the seam.
+
+Practical effect: **adding a gate rule now requires documenting it.** Write the
+prose first, cite it in `RULE_CITATIONS`, then implement the check.
+
 **Scoping.** The tool reads added lines, not whole files. `scripts/acts/`
 carries accepted live-proven debt (see `AGENTS.md` section 2 on
 `act1_generator_tarsis_gate.mast`); a whole-repo linter would fail on that
