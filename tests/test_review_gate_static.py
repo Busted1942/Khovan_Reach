@@ -248,6 +248,77 @@ class RunIdGuard(unittest.TestCase):
         index = {"khovan_immediate": self.IMMEDIATE}
         self.assertEqual(gate.analyze_run_id("f.mast", caller, all_lines(caller), index), [])
 
+    BOUNDED_OBSERVER = "\n".join(
+        [
+            "=== khovan_watch_tick ===",
+            "    if engineering_no_motion_confirmed:",
+            "        ->END",
+            "    engineering_no_motion_observer_ticks = engineering_no_motion_observer_ticks + 1",
+            "    if engineering_no_motion_observer_ticks >= 20:",
+            "        engineering_no_motion_fallback_available = True",
+            "        ->END",
+            "    await delay_sim(seconds=1)",
+            "    jump khovan_watch_tick",
+        ]
+    )
+    UNBOUNDED_OBSERVER = "\n".join(
+        [
+            "=== khovan_watch_tick ===",
+            "    engineering_no_motion_observer_ticks = engineering_no_motion_observer_ticks + 1",
+            "    await delay_sim(seconds=1)",
+            "    jump khovan_watch_tick",
+        ]
+    )
+
+    def test_bounded_observer_needs_no_run_id(self):
+        """Cookbook 5.2 observers invalidate on state plus a tick ceiling.
+
+        Flagging these was a real false positive against three live observers in
+        act1_engineering_shakedown.mast.
+        """
+        caller = "    task_schedule(khovan_watch_tick)\n"
+        index = {"khovan_watch_tick": self.BOUNDED_OBSERVER}
+        self.assertEqual(gate.analyze_run_id("f.mast", caller, all_lines(caller), index), [])
+
+    def test_tick_counter_without_a_ceiling_is_still_flagged(self):
+        """A counter with no ceiling is an unbounded loop, not the 5.2 pattern."""
+        caller = "    task_schedule(khovan_watch_tick)\n"
+        index = {"khovan_watch_tick": self.UNBOUNDED_OBSERVER}
+        self.assertTrue(gate.analyze_run_id("f.mast", caller, all_lines(caller), index))
+
+    RECHECKS_AFTER = "\n".join(
+        [
+            "=== khovan_watch_rest ===",
+            "    if damcon_rest_cycle_confirmed:",
+            "        ->END",
+            "    await delay_sim(seconds=8)",
+            "    if not damcon_rest_cycle_confirmed:",
+            "        damcon_rest_cycle_fallback_available = True",
+            "    ->END",
+        ]
+    )
+    GUARDS_ONLY_BEFORE = "\n".join(
+        [
+            "=== khovan_watch_rest ===",
+            "    if damcon_rest_cycle_confirmed:",
+            "        ->END",
+            "    await delay_sim(seconds=8)",
+            "    damcon_rest_cycle_fallback_available = True",
+            "    ->END",
+        ]
+    )
+
+    def test_recheck_after_the_delay_is_accepted(self):
+        caller = "    task_schedule(khovan_watch_rest)\n"
+        index = {"khovan_watch_rest": self.RECHECKS_AFTER}
+        self.assertEqual(gate.analyze_run_id("f.mast", caller, all_lines(caller), index), [])
+
+    def test_guarding_only_before_the_delay_is_still_flagged(self):
+        """The khovan_drone_01_reset bug: guards before the yield prove nothing."""
+        caller = "    task_schedule(khovan_watch_rest)\n"
+        index = {"khovan_watch_rest": self.GUARDS_ONLY_BEFORE}
+        self.assertTrue(gate.analyze_run_id("f.mast", caller, all_lines(caller), index))
+
     def test_unknown_target_is_not_flagged(self):
         caller = "    await task_schedule(khovan_from_another_file)\n"
         self.assertEqual(gate.analyze_run_id("f.mast", caller, all_lines(caller), {}), [])

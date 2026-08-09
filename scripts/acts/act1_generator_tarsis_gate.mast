@@ -70,21 +70,22 @@ shared tarsis_resupply_confirmed = False
 shared tarsis_station_visibility_status = "known_for_slice04_comms_no_hard_science_gate"
 shared tarsis_docking_resupply_status = "blocked_until_docking_clearance"
 shared tarsis_docking_gate_status = "not_initialized"
-shared tarsis_docking_rejection_text = "Tarsis Docking Control: docking clearance not granted. Complete Tarsis Comms traffic before approach."
+shared tarsis_docking_rejection_text = "Artemis - Helm: Clearance not granted. Finish your Comms traffic before you approach."
 shared tarsis_comms_options_status = "not_rendered"
 shared tarsis_generator_support_response_sent = False
 shared tarsis_docking_clearance_response_sent = False
 shared tarsis_governor_clear_response_sent = False
 shared generator_governor_cleared = False
 
-shared kestrel_yard_lock_visual_text = "Kestrel Yard Control: Artemis is held in yard-lock pending departure clearance. Comms, request departure clearance when the captain is ready."
-shared kestrel_homing_reserve_text = "Kestrel Yard Control: Artemis has no homing torpedoes loaded until Comms requests the emergency reserve. The reserve is two rounds only; Tarsis handles full replacement when it accepts the authorization packet."
-shared kestrel_homing_reserve_request_text = "Emergency homing transfer complete, Artemis. Two rounds only, and that is reserve margin under the governor, not a combat load. Dump one into the engines if you need the speed; Tarsis restores the rest when they accept your authorization packet."
+shared kestrel_launch_envelope_objective_text = "Artemis - Helm: Clear the launch envelope, 1 km off Kestrel.\nArtemis - Comms: Confirm when we are out."
+shared kestrel_yard_lock_visual_text = "Artemis - Comms: You are in yard-lock until you request departure clearance. Call when the captain is ready."
+shared kestrel_homing_reserve_text = "Artemis - Comms: No homing loaded until you request the emergency reserve. Two rounds only; Tarsis restores the rest with the authorization packet."
+shared kestrel_homing_reserve_request_text = "Artemis - Weapons: Transfer complete. Two rounds, reserve margin only, not a combat load. Dump one into the engines if the captain wants speed."
 shared kestrel_homing_reserve_prompt_text = "Artemis, you are running slower than you should be. That is the generator governor we warned you about, and it holds until Tarsis accepts your authorization packet. If the captain wants speed before then, Comms request the emergency homing reserve. Engineering and Weapons can dump the charge from a torpedo into the engines for a partial refill."
-shared training_speed_power_reminder_text = "Stay on the shakedown plan, Artemis. And pass along to your captain that the yard commander would like this ship kept in one piece for at least another ten thousand parsecs."
+shared training_speed_power_reminder_text = "Artemis - Captain: Stay on the shakedown plan. The yard commander would like this ship kept in one piece for another ten thousand parsecs."
 shared tarsis_generator_support_text = "Tarsis Control: authorization packet accepted and the generator handoff is logged. We clear the governor and restore your banks once you are docked. Request docking clearance when you are ready to come alongside."
 shared tarsis_hail_text = "Tarsis Station: Artemis, we read you. Kestrel signalled your governor. Submit your authorization packet and we will take the generator handoff, then request docking clearance."
-shared tarsis_docking_clearance_text = "Tarsis Docking Control: docking clearance granted. Helm, approach within tolerance and initiate docking."
+shared tarsis_docking_clearance_text = "Artemis - Helm: Clearance granted. Approach within tolerance and dock."
 shared tarsis_resupply_text = "Tarsis Control: authorization packet closed out. Governor cleared, banks charged, ordnance restored. Artemis is released to complete her shakedown."
 
 //enable/comms if has_roles(COMMS_SELECTED_ID, "kestrel_yards")
@@ -286,7 +287,7 @@ shared tarsis_resupply_text = "Tarsis Control: authorization packet closed out. 
     script.write_khovan_startup_trace("[KHOVAN JUMP ACT1 START] mission start seed reset Slice 04 generator/Tarsis gate")
     await task_schedule(khovan_act1_apply_source_authorized_start_state)
     await task_schedule(khovan_act1_setup_kestrel_and_tarsis_contacts)
-    await task_schedule(khovan_set_current_objective, {"objective_id": "kestrel_departure_clearance", "objective_body": "Comms, request departure clearance from Kestrel Yard Control.", "objective_step": "Kestrel departure clearance", "objective_breadcrumb": "[KHOVAN OBJECTIVE 002] objective updated: Kestrel departure clearance"})
+    await task_schedule(khovan_set_current_objective, {"objective_id": "kestrel_departure_clearance", "objective_body": "Artemis - Comms: Request departure clearance from Kestrel.", "objective_step": "Kestrel departure clearance", "objective_breadcrumb": "[KHOVAN OBJECTIVE 002] objective updated: Kestrel departure clearance"})
     await task_schedule(khovan_scenario_control_panel_update_overview)
     log("Khovan admin jump seeded Slice 04 mission start.")
     ->END
@@ -352,7 +353,7 @@ shared tarsis_resupply_text = "Tarsis Control: authorization packet closed out. 
             script.write_khovan_startup_trace("[KHOVAN JUMP ACT1 POST TARSIS] Artemis positioned at Tarsis with docked state for admin smoke setup")
         script.write_khovan_startup_trace(f"[KHOVAN JUMP ACT1 POST TARSIS] resources seeded energy={tarsis_resupply_energy} homing={tarsis_resupply_homing_torpedoes} nuke={tarsis_resupply_nukes} emp={tarsis_resupply_emps} mine={tarsis_resupply_mines}")
     await task_schedule(khovan_act1_engineering_shakedown_prepare_after_tarsis)
-    await task_schedule(khovan_set_current_objective, {"objective_id": "engineering_shakedown_ready", "objective_body": "Resupply complete. Stand by for Dillon to begin the Engineering shakedown.", "objective_step": "Engineering shakedown ready", "objective_breadcrumb": "[KHOVAN OBJECTIVE 007] objective updated: Engineering shakedown ready"})
+    await task_schedule(khovan_set_current_objective, {"objective_id": "engineering_shakedown_ready", "objective_body": "Artemis - Engineering: Resupply complete. Stand by for the shakedown.", "objective_step": "Engineering shakedown ready", "objective_breadcrumb": "[KHOVAN OBJECTIVE 007] objective updated: Engineering shakedown ready"})
     await task_schedule(khovan_scenario_control_panel_update_overview)
     log("Khovan admin jump seeded Slice 04 post-Tarsis handoff.")
     ->END
@@ -714,7 +715,7 @@ distance: 600
     current_beat = "kestrel_departure_clearance_granted"
     script.write_khovan_startup_trace("[KHOVAN ACT1 004] Kestrel departure clearance granted")
     await task_schedule(khovan_act1_release_kestrel_departure_hold)
-    await task_schedule(khovan_set_current_objective, {"objective_id": "launch_envelope", "objective_body": "Helm, clear the launch envelope: take us at least 1 km off Kestrel. Comms, confirm when we are out.", "objective_step": "Launch envelope", "objective_breadcrumb": "[KHOVAN OBJECTIVE 003] objective updated: launch envelope (1 km minimum)"})
+    await task_schedule(khovan_set_current_objective, {"objective_id": "launch_envelope", "objective_body": kestrel_launch_envelope_objective_text, "objective_step": "Launch envelope", "objective_breadcrumb": "[KHOVAN OBJECTIVE 003] objective updated: launch envelope (1 km minimum)"})
     await task_schedule(khovan_act1_record_progression, {"action": "kestrel_departure_clearance", "detail": "departure clearance granted; waiting for launch envelope confirmation; energy remains at source-authorized start value until Tarsis handoff"})
     kestrel_departure_clearance_response_sent = True
     task_schedule(khovan_act1_deliver_homing_reserve_prompt_after_departure_clearance, {"prompt_run_id": kestrel_homing_reserve_prompt_run_id})
@@ -752,7 +753,7 @@ distance: 600
     current_beat = "launch_envelope_cleared_proceed_to_tarsis"
     kestrel_generator_advisory_run_id = kestrel_generator_advisory_run_id + 1
     script.write_khovan_startup_trace("[KHOVAN ACT1 005] launch envelope clear confirmed; Kestrel advisory packet removed by operator")
-    await task_schedule(khovan_set_current_objective, {"objective_id": "tarsis_requests", "objective_body": "Come about for Tarsis. Comms, request generator support and docking clearance before we approach.", "objective_step": "Tarsis requests", "objective_breadcrumb": "[KHOVAN OBJECTIVE 005] objective updated: Tarsis requests"})
+    await task_schedule(khovan_set_current_objective, {"objective_id": "tarsis_requests", "objective_body": "Artemis - Comms: Submit the authorization packet to Tarsis, then request docking clearance.", "objective_step": "Tarsis requests", "objective_breadcrumb": "[KHOVAN OBJECTIVE 005] objective updated: Tarsis requests"})
     await task_schedule(khovan_act1_record_progression, {"action": "launch_envelope_cleared", "detail": "distance-verified Kestrel launch envelope clear; proceed directly to Tarsis requests"})
     await task_schedule(khovan_act1_remove_kestrel_stock_station_role_after_reserve_and_launch)
     await task_schedule(khovan_act1_send_training_speed_power_reminder)
@@ -896,7 +897,7 @@ distance: 600
     script.write_khovan_startup_trace(f"[KHOVAN ACT1 DOCK 004R] Tarsis requests complete={tarsis_required_requests_complete} status={tarsis_gate_status}")
     script.write_khovan_startup_trace("[KHOVAN ACT1 DOCK 004D] Tarsis docking clearance granted; enabling docking setup")
     await task_schedule(khovan_tarsis_enable_docking_after_clearance)
-    await task_schedule(khovan_set_current_objective, {"objective_id": "tarsis_docking_resupply", "objective_body": "Helm, bring us alongside and dock. Resupply and the generator handoff complete once we are hard docked.", "objective_step": "Tarsis docking/resupply", "objective_breadcrumb": "[KHOVAN OBJECTIVE 006] objective updated: Tarsis docking/resupply"})
+    await task_schedule(khovan_set_current_objective, {"objective_id": "tarsis_docking_resupply", "objective_body": "Artemis - Helm: Bring us alongside and dock. Resupply completes on hard dock.", "objective_step": "Tarsis docking/resupply", "objective_breadcrumb": "[KHOVAN OBJECTIVE 006] objective updated: Tarsis docking/resupply"})
     await task_schedule(khovan_act1_record_progression, {"action": "tarsis_docking_clearance", "detail": "docking clearance requested/granted after required prior requests"})
     tarsis_docking_clearance_response_sent = True
     comms_receive(tarsis_docking_clearance_text, title="Tarsis Docking Control", title_color="green")
@@ -1049,7 +1050,7 @@ distance: 600
     tarsis_governor_clear_response_sent = True
     script.write_khovan_startup_trace("[KHOVAN ACT1 012] Tarsis resupply confirmed; generator governor cleared")
     await task_schedule(khovan_act1_engineering_shakedown_prepare_after_tarsis)
-    await task_schedule(khovan_set_current_objective, {"objective_id": "engineering_shakedown_ready", "objective_body": "Resupply complete. Stand by for Dillon to begin the Engineering shakedown.", "objective_step": "Engineering shakedown ready", "objective_breadcrumb": "[KHOVAN OBJECTIVE 007] objective updated: Engineering shakedown ready"})
+    await task_schedule(khovan_set_current_objective, {"objective_id": "engineering_shakedown_ready", "objective_body": "Artemis - Engineering: Resupply complete. Stand by for the shakedown.", "objective_step": "Engineering shakedown ready", "objective_breadcrumb": "[KHOVAN OBJECTIVE 007] objective updated: Engineering shakedown ready"})
     await task_schedule(khovan_act1_record_progression, {"action": "tarsis_resupply_governor_cleared", "detail": "required Tarsis requests complete; normal Tarsis docking resupply cleared governor and restored full energy/armament"})
     await task_schedule(khovan_reach_send_safe_startup_message, {"startup_sender": "Tarsis Station", "startup_text": tarsis_resupply_text, "startup_title_color": "green", "startup_sender_id": tarsis_station_id, "startup_player_id": ship_id, "startup_breadcrumb": "[KHOVAN ACT1 MSG TARSIS 005] docking/resupply response sent"})
     script.write_khovan_startup_trace("[KHOVAN ACT1 MSG TARSIS 005] docking/resupply response sent")

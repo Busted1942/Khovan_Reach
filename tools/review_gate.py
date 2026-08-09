@@ -93,6 +93,13 @@ RISKY_ARTEMIS_RE = re.compile(
 )
 
 TASK_SCHEDULE_RE = re.compile(r"task_schedule\(\s*(\w+)")
+
+# Cookbook 5.2 bounded observer: a tick counter plus a ceiling that ends the
+# loop. Both must be present - a counter with no ceiling is an unbounded loop,
+# which is its own bug.
+OBSERVER_TICKS_RE = re.compile(r"\w*_ticks\b")
+OBSERVER_CEILING_RE = re.compile(r"\w*_ticks\s*>=")
+JUMP_RE = re.compile(r"^\s*jump\s+(\w+)", re.MULTILINE)
 NPC_SPAWN_RE = re.compile(r"\bnpc_spawn\(")
 
 
@@ -385,6 +392,45 @@ def build_label_index() -> dict[str, str]:
     return index
 
 
+def rechecks_after_delay(body: str) -> bool:
+    """True if the label re-tests state AFTER its last yield.
+
+    The hazard a run-ID prevents is acting on stale intent once execution
+    resumes. A label that re-reads the state it is about to act on, after the
+    delay, has already closed that hole - see
+    khovan_engineering_watch_damcon_rest_cycle, which guards on
+    damcon_rest_cycle_confirmed both before and after its delay.
+
+    Deliberately narrow: the re-check must come after the final delay_sim.
+    Guards that only run before the yield prove nothing, which is exactly the
+    bug found in khovan_drone_01_reset.
+    """
+    marker = "delay_sim"
+    if marker not in body:
+        return False
+    tail = body[body.rfind(marker) :]
+    return re.search(r"^\s*if\s+.+:", tail, re.MULTILINE) is not None
+
+
+def is_bounded_observer(body: str, index: dict[str, str], depth: int = 0) -> bool:
+    """True if this label is (or hands off to) a cookbook 5.2 bounded observer.
+
+    5.2 splits across two labels: an entry label that seeds state, delays, and
+    jumps; and a tick label that carries the counter and the ceiling. The
+    scheduled target is the entry label, so checking only its own body misses
+    the ceiling and produces a false positive. Follow `jump` one hop.
+    """
+    if OBSERVER_TICKS_RE.search(body) and OBSERVER_CEILING_RE.search(body):
+        return True
+    if depth >= 2:
+        return False
+    for target in JUMP_RE.findall(body):
+        nxt = index.get(target)
+        if nxt is not None and is_bounded_observer(nxt, index, depth + 1):
+            return True
+    return False
+
+
 def analyze_run_id(
     path: str, text: str, scope: set[int], index: dict[str, str]
 ) -> list[str]:
@@ -414,6 +460,15 @@ def analyze_run_id(
         if body is None or "delay_sim" not in body:
             continue
         if target in reported:
+            continue
+        # Cookbook 5.2 bounded polling observers are the other proven shape for
+        # delayed work and legitimately carry no run-ID. They invalidate on
+        # shared state instead - an opening `if <state>: ->END` that a story
+        # jump resets - and bound themselves with a tick ceiling. Requiring a
+        # run-ID here flagged act1_engineering_shakedown.mast's three live
+        # observers, which is exactly the false-positive class that trains
+        # reviewers to ignore a gate.
+        if is_bounded_observer(body, index) or rechecks_after_delay(body):
             continue
         if re.search(r"run_id\s*!=", body) is None:
             reported.add(target)

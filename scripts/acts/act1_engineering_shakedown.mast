@@ -45,15 +45,16 @@ shared navigation_priority_preset_fallback_available = False
 shared engineering_shakedown_complete = False
 shared engineering_shakedown_api_uncertainty = "Engineering slider output, DAMCON location, repair completion, and navigation preset storage require live Cosmos proof before automatic gates can be claimed."
 
-shared engineering_shakedown_start_text = "Captain: You are cleared for departure. Take Artemis at least 2 km off the station.\nEngineering: On the captain's order, set Impulse to 0% and Warp to 200% so we can validate your heat sinks.\nHelm: Confirm impulse speed reads zero, then go to warp 1. Let the speed settle and report it to the captain."
-shared engineering_no_motion_confirmed_text = "Good. Everything checks out so far. Let us exercise internal coordination next.\nEngineering: Select a crew quarters, set a rally point there, and assign one of your DAMCON teams to it. That sets where they wait between jobs. Selecting a team also shows you its medical status."
-shared damcon_rest_cycle_text = "Confirmed."
-shared damcon_mess_instruction_text = "Engineering: Your crew works fastest when they get real time in quarters, the mess, and the gym. Injured teams belong in sickbay. They are dedicated enough to run themselves into the ground, which puts the burden on you to manage them well. Take care of your crew when the pressure is low and they will take care of you when the pressure is high."
-shared controlled_overload_prompt_text = "Engineering: We are going to run a controlled overload to exercise damage control. Set Impulse, Warp, and Maneuver to 300%. Watch your system heat and how your DAMCON teams respond to the failure."
-shared controlled_overload_instruction_text = "Engineering: Set Impulse, Warp, and Maneuver to 300% and let them overload. Once they blow, bleed off the excess heat, track your DAMCON teams through the repair, then bring the systems back to 100%.\nRested, fed, and exercised teams move noticeably faster. Quarters, mess, and gym each earn a separate bonus."
-shared controlled_damage_logged_text = "We have the damage on our board. Repairs are yours to supervise. Watch the difference in how quickly a rested team crosses the ship compared to one that has not stood down. Manage your crew well.\nComms: Confirm when Engineering reports repairs complete."
-shared repair_complete_text = "Everything checks out. Engineering: leave Impulse at 100%, set Warp to 10%, and set Maneuver to 190%. Press S at the bottom left of your console, then press 2 to save that as a preset. Call it your close-quarters profile. Think through which systems you will want in a fight, in a transit, and under tow, and build a preset for each."
-shared navigation_priority_confirmed_text = "Engineering shakedown complete. Comms: confirm when the captain is ready and we will put a training drone in the water for you."
+shared engineering_shakedown_start_text = "Artemis - Captain: Cleared for departure. Take her 2 km off the station.\nArtemis - Engineering: On the captain's order, Impulse 0%, Warp 200%. We are validating heat sinks.\nArtemis - Helm: Confirm impulse reads zero, then warp 1. Report speed."
+shared engineering_no_motion_confirmed_text = "Artemis - Engineering: Good. Set a rally point in a crew quarters and assign a DAMCON team to it. That is where they wait between jobs. Selecting a team also shows its medical status."
+shared engineering_no_motion_fallback_text = "Artemis - Engineering: We cannot read your impulse state from here. Full throttle and holding at zero is the result we wanted.\nArtemis - Comms: Raise Tarsis and confirm it on the record."
+shared damcon_rest_cycle_text = "Artemis - Engineering: Confirmed."
+shared damcon_mess_instruction_text = "Artemis - Engineering: Crews work fastest with real time in quarters, mess, and gym. Injured teams go to sickbay. They will run themselves into the ground, so managing them is on you. Look after them when the pressure is low and they will carry you when it is high."
+shared controlled_overload_prompt_text = "Artemis - Engineering: Controlled overload next. Impulse, Warp, and Maneuver to 300%. Watch your heat and how DAMCON responds."
+shared controlled_overload_instruction_text = "Artemis - Engineering: Impulse, Warp, and Maneuver to 300% and let them blow. Bleed the heat, track the repair, then return to 100%. Rested, fed, and exercised teams move faster - quarters, mess, and gym each pay separately."
+shared controlled_damage_logged_text = "Artemis - Engineering: Damage logged. Repairs are yours. Watch how much faster a rested team crosses the ship.\nArtemis - Comms: Confirm when repairs are complete."
+shared repair_complete_text = "Artemis - Engineering: Impulse 100%, Warp 10%, Maneuver 190%. Press S at the bottom left, then 2, to save it as your close-quarters preset. Build one for a fight, a transit, and a tow."
+shared navigation_priority_confirmed_text = "Artemis - Comms: Shakedown complete. Confirm when the captain is ready and we will put a training drone in the water."
 
 //comms if has_roles(COMMS_SELECTED_ID, "tarsis_station") and generator_governor_cleared and not engineering_shakedown_complete
     + "Confirm Speed 0 at Full Impulse" khovan_engineering_confirm_no_motion if engineering_no_motion_fallback_available and not engineering_no_motion_confirmed
@@ -205,7 +206,7 @@ shared navigation_priority_confirmed_text = "Engineering shakedown complete. Com
         engineering_shakedown_status = "blocked_before_tarsis_handoff"
         engineering_shakedown_last_step = "blocked_before_tarsis_handoff"
         script.write_khovan_startup_trace("[KHOVAN ACT1 ENG BLOCKED] Engineering shakedown start blocked before Tarsis handoff")
-        await task_schedule(khovan_engineering_send_message, {"engineering_message_text": "Hold the Engineering shakedown until Tarsis completes resupply and the generator handoff.", "engineering_message_color": "yellow", "engineering_message_breadcrumb": "[KHOVAN ACT1 ENG BLOCKED] guarded hold message sent"})
+        await task_schedule(khovan_engineering_send_message, {"engineering_message_text": "Artemis - Engineering: Hold the shakedown until Tarsis finishes resupply and the generator handoff.", "engineering_message_color": "yellow", "engineering_message_breadcrumb": "[KHOVAN ACT1 ENG BLOCKED] guarded hold message sent"})
         yield fail
 
     if engineering_shakedown_started:
@@ -288,7 +289,7 @@ shared navigation_priority_confirmed_text = "Engineering shakedown complete. Com
         engineering_no_motion_observer_status = "fallback_timeout_engineering_slider_keys_unverified"
         engineering_no_motion_fallback_available = True
         script.write_khovan_startup_trace("[KHOVAN ACT1 ENG NO MOTION FALLBACK] automatic observer timed out; Comms fallback enabled")
-        await task_schedule(khovan_engineering_send_message, {"engineering_message_text": "My board is not picking up your impulse state from here, Artemis. Engineering, if your throttle is at full and the ship is holding at zero, that is the result we wanted. Comms, raise Tarsis and confirm it on the record so we can move on.", "engineering_message_color": "yellow", "engineering_message_breadcrumb": "[KHOVAN ACT1 ENG NO MOTION FALLBACK] guarded fallback message sent"})
+        await task_schedule(khovan_engineering_send_message, {"engineering_message_text": engineering_no_motion_fallback_text, "engineering_message_color": "yellow", "engineering_message_breadcrumb": "[KHOVAN ACT1 ENG NO MOTION FALLBACK] guarded fallback message sent"})
         ->END
 
     await delay_sim(seconds=1)
@@ -384,7 +385,7 @@ shared navigation_priority_confirmed_text = "Engineering shakedown complete. Com
     await task_schedule(khovan_set_current_objective, {"objective_id": "controlled_overload_damage", "objective_body": "Hold us steady until the damage is logged, then Engineering take charge of repairs.", "objective_step": "Controlled damage", "objective_breadcrumb": "[KHOVAN OBJECTIVE 012] objective updated: controlled damage"})
     await task_schedule(khovan_scenario_control_panel_update_overview)
     task_schedule(khovan_engineering_watch_controlled_overload_damage)
-    await task_schedule(khovan_engineering_send_message, {"engineering_message_text": "Overload logged. Stand by for damage confirmation.", "engineering_message_breadcrumb": "[KHOVAN ACT1 ENG 007A] guarded overload message sent"})
+    await task_schedule(khovan_engineering_send_message, {"engineering_message_text": "Artemis - Engineering: Overload logged. Stand by for damage confirmation.", "engineering_message_breadcrumb": "[KHOVAN ACT1 ENG 007A] guarded overload message sent"})
     yield success
 
 === khovan_engineering_watch_controlled_overload_damage ===
@@ -433,7 +434,7 @@ shared navigation_priority_confirmed_text = "Engineering shakedown complete. Com
         controlled_overload_damage_observer_status = "fallback_timeout_no_engine_damage_seen"
         controlled_overload_damage_fallback_available = True
         script.write_khovan_startup_trace("[KHOVAN ACT1 ENG DAMAGE FALLBACK] no engine system damage detected; Comms fallback enabled")
-        await task_schedule(khovan_engineering_send_message, {"engineering_message_text": "We are not reading a damage change from here. Engineering, if you saw the overload on your board, confirm it over Comms and we will log it.", "engineering_message_color": "yellow", "engineering_message_breadcrumb": "[KHOVAN ACT1 ENG DAMAGE FALLBACK] guarded fallback message sent"})
+        await task_schedule(khovan_engineering_send_message, {"engineering_message_text": "Artemis - Engineering: We are not reading the damage from here. If you saw the overload, confirm over Comms and we will log it.", "engineering_message_color": "yellow", "engineering_message_breadcrumb": "[KHOVAN ACT1 ENG DAMAGE FALLBACK] guarded fallback message sent"})
         ->END
 
     await delay_sim(seconds=1)
