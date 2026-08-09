@@ -115,6 +115,42 @@ To assign a shared from inside a label, repeat the `shared` keyword (`scripts/sy
 
 Convention in this repo: each subsystem file owns its own `shared` block at the top; `bootstrap_state.mast` owns only cross-cutting mission state. Do not add Act-specific gates to `bootstrap_state.mast`.
 
+### A literal `\n` survives ONLY in a `shared` declaration
+
+**[LIVE]** — found twice by compile preflight on 2026-08-09, both times costing a
+failed build.
+
+This works:
+
+```mast
+shared engineering_start_text = "Artemis - Captain: Cleared for departure.\nArtemis - Helm: Confirm impulse reads zero."
+```
+
+These do **not** — both fail the parser with
+`Exception: unterminated string literal (detected at line 1)`:
+
+```mast
+    # BROKEN: \n inside an inline comms_receive() argument
+    comms_receive("Artemis - Captain: Cleared.\nArtemis - Helm: Confirm.", title="Dillon")
+
+    # BROKEN: \n inside an inline task_schedule() dict
+    await task_schedule(khovan_set_current_objective, {"objective_body": "Artemis - Helm: Clear the envelope.\nArtemis - Comms: Confirm."})
+```
+
+**Rule: any multi-line player message must live in a `shared` variable and be
+passed by name.** The fix for both breakages was mechanical:
+
+```mast
+shared kestrel_launch_envelope_objective_text = "Artemis - Helm: Clear the launch envelope, 1 km off Kestrel.\nArtemis - Comms: Confirm when we are out."
+
+    await task_schedule(khovan_set_current_objective, {"objective_body": kestrel_launch_envelope_objective_text})
+```
+
+Two related traps when editing these strings:
+
+- **Apostrophes.** A `'` inside the copy has to survive MAST double quotes *and* the single-quoted Python assertions in `tests/` that mirror it. Rewording around the apostrophe is cheaper than escaping in two languages — `"a torpedo's charge"` became `"the charge from a torpedo"` for exactly this reason.
+- **Tooling that writes MAST.** A script emitting `"\n"` from a shell heredoc can produce a *real* newline and split the declaration across two lines, which compiles as garbage. Verify with `grep -n ... | cat -A` after any scripted edit.
+
 ## 4.2 Labels
 
 **[LIVE]** Labels are `=== name ===`, body indented 4 spaces, terminated `->END`:
@@ -212,6 +248,38 @@ Any delayed task that can survive a story jump must carry a generation ID and re
 Note there are three guards, not one: stale generation, precondition still true, and not-already-sent. All three are needed.
 
 A story-jump seed invalidates pending timers by bumping the same counter (`act1_generator_tarsis_gate.mast:237`, `:281`).
+
+### Two accepted alternatives to a run-ID
+
+Added 2026-08-09, after `tools/review_gate.py` flagged three live observers that
+were correct. A run-ID is the default, not the only valid answer. Both of these
+close the same hole and both are recognised by the gate:
+
+**1. The bounded polling observer of section 5.2.** It invalidates on shared
+state rather than a generation counter — an opening `if <state>: ->END` that a
+story jump resets — and bounds itself with a tick ceiling. Note it splits across
+two labels: the scheduled entry label holds the delay, and the ceiling lives in
+the tick label one `jump` away, so checking only the scheduled label misses it.
+
+**2. A one-shot that re-tests its precondition after the yield**
+(`act1_engineering_shakedown.mast`, `khovan_engineering_watch_damcon_rest_cycle`):
+
+```mast
+=== khovan_engineering_watch_damcon_rest_cycle ===
+    if damcon_rest_cycle_confirmed:
+        ->END
+    await delay_sim(seconds=8)
+    if not damcon_rest_cycle_confirmed:
+        damcon_rest_cycle_fallback_available = True
+    ->END
+```
+
+**The re-check must come after the final delay.** A guard that only runs *before*
+the yield proves nothing, because the state it read can change while the task is
+suspended. That is not a theoretical concern — it was the real
+`khovan_drone_01_reset` bug fixed on 2026-08-09: the label incremented
+`drone_contact_sequence_run_id`, yielded, then respawned without ever re-reading
+it. **Incrementing a generation counter is not the same as checking one.**
 
 ## 5.2 Bounded polling observer with fallback
 
@@ -333,6 +401,40 @@ Contrast: the **same bare shape, called from a player-facing route** (`khovan_dr
 ```
 
 Not yet live re-tested (see `act1_drone_contact_fire.mast`). If confirmed live, this becomes the required shape for every GM-only `comms_receive()` call and `scenario_control_panel.mast` / `story_jump_presets.mast` should be updated to match — they currently use the disconfirmed bare shape above and have never been independently confirmed to render for the GM either.
+
+### The client renders the header as `from_name: title`
+
+**[LIVE]** — observed on a player console 2026-08-09.
+
+`comms_override(..., from_name=X)` and `comms_receive(..., title=Y)` are **two
+different fields**, and the client concatenates them. Passing the same string to
+both produces a doubled header: `Dillon: Dillon`, `Kestrel Yard Control: Kestrel
+Yard Control`.
+
+Give them different values — speaker, then role:
+
+```mast
+    with comms_override(sender_id, player_id, from_name="Dillon"):
+        comms_receive(text, title="Instructor", title_color="cyan")
+```
+
+That renders `Dillon: Instructor`. The stock LegendaryMissions docking traffic
+does the same thing, which is why `Tarsis Station (usfp): Tarsis Docking Control`
+reads correctly while a hand-rolled message doubles up.
+
+`scripts/systems/audio_runtime.mast` centralises this: `startup_sender` feeds
+`from_name`, and an optional `startup_title` feeds `title`, defaulting to
+`startup_sender` so existing call sites are unchanged.
+
+**Body text should not repeat the speaker.** Once the header carries it, a
+`"Dillon: ..."` prefix inside the message is duplicated on screen. This repo's
+convention is that the body opens with the *addressee* instead —
+`"Artemis - Engineering: ..."` — with one line per recipient.
+
+Note the split by channel: `comms_receive()` renders a sender header, so the
+body names only the addressee. `comms_broadcast()` below renders **body text
+only** with no sender at all, so an objective line has to carry everything it
+needs on its own.
 
 **[LIVE]** Text-waterfall broadcast — this is how the Current Objective is delivered (`scripts/systems/current_objective_panel.mast:58`):
 
