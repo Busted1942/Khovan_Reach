@@ -17,6 +17,7 @@ shared drone_01_active = False
 shared drone_01_target_id = 0
 shared drone_01_navproxy_id = 0
 shared drone_01_spawn_offset_m = 15000
+shared drone_01_deploy_prompt_text = "Science: Scan the unknown target and report your finding to the captain.\nComms: Hail the Drone."
 shared drone_01_spawn_count = 0
 shared drone_01_reset_count = 0
 shared drone_01_reset_reason = "none"
@@ -29,6 +30,7 @@ shared drone_01_range_band_active = False
 shared drone_01_stationary_hold_active = False
 shared drone_01_stationary_hold_run_id = 0
 shared drone_01_stationary_hold_seconds = 0
+shared drone_01_deploy_prompt_sent = False
 shared drone_01_stationary_last_x = 0
 shared drone_01_stationary_last_z = 0
 shared drone_01_fire_authorized = False
@@ -381,6 +383,7 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
     drone_01_stationary_hold_active = False
     drone_01_stationary_hold_run_id = drone_01_stationary_hold_run_id + 1
     drone_01_stationary_hold_seconds = 0
+    drone_01_deploy_prompt_sent = False
     drone_01_fire_authorized = False
     drone_01_manual_system = "none"
     drone_01_weapons_hit_count = 0
@@ -447,6 +450,20 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
         set_comms_selection(artemis_id, drone_01_target_id)
     script.write_khovan_startup_trace(f"[KHOVAN ACT1 DRONE 01 SPAWN] target_id={drone_01_target_id} offset_m={drone_01_spawn_offset_m} spawn_count={drone_01_spawn_count}")
     await task_schedule(khovan_set_current_objective, {"objective_id": "drone_01_scan", "objective_body": "Drone 01 deployed. Science scan the contact; Comms hail it and relay its weak shield frequency to Weapons.", "objective_step": "Drone 01 scan and hail", "objective_breadcrumb": "[KHOVAN OBJECTIVE 017] Drone 01 deployed"})
+    task_schedule(khovan_drone_01_deliver_deploy_prompt_after_delay, {"deploy_prompt_run_id": drone_contact_sequence_run_id})
+    ->END
+
+=== khovan_drone_01_deliver_deploy_prompt_after_delay ===
+    default deploy_prompt_run_id = 0
+    await delay_sim(seconds=10)
+    if deploy_prompt_run_id != drone_contact_sequence_run_id:
+        script.write_khovan_startup_trace("[KHOVAN ACT1 DRONE 01 DEPLOY PROMPT] stale delayed prompt suppressed")
+        ->END
+    if not drone_01_active or drone_01_deploy_prompt_sent:
+        ->END
+
+    drone_01_deploy_prompt_sent = True
+    await task_schedule(khovan_reach_send_safe_startup_message, {"startup_sender": "Training Control", "startup_text": drone_01_deploy_prompt_text, "startup_title_color": "cyan", "startup_sender_id": tarsis_station_id, "startup_player_id": artemis_id, "startup_breadcrumb": "[KHOVAN ACT1 DRONE 01 DEPLOY PROMPT] guarded ten-second player message sent", "startup_safe_breadcrumb": "[KHOVAN ACT1 DRONE 01 DEPLOY PROMPT] player message skipped because Tarsis or Artemis context is unavailable"})
     ->END
 
 === khovan_drone_01_reset ===

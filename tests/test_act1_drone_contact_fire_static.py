@@ -68,6 +68,8 @@ class Act1DroneContactFireStaticTests(unittest.TestCase):
             "shared drone_contact_sequence_run_id = 0",
             "shared drone_contact_act2_ready = False",
             "shared drone_01_spawn_offset_m = 15000",
+            "shared drone_01_deploy_prompt_sent = False",
+            "shared drone_01_deploy_prompt_text = \"Science: Scan the unknown target and report your finding to the captain.\\nComms: Hail the Drone.\"",
             "shared drone_01_weapons_hit_count = 0",
             "shared drone_02_destroyed = False",
             "shared drone_target_spike_available = False",
@@ -293,6 +295,24 @@ class Act1DroneContactFireStaticTests(unittest.TestCase):
             guard_at,
             "run-ID comparison must happen after the delay, not before it",
         )
+
+    def test_drone_01_deploy_prompt_is_delayed_guarded_and_duplicate_suppressed(self) -> None:
+        drone = read(DRONE_PATH)
+        spawn_body = label_body(drone, "khovan_drone_01_spawn")
+        self.assertIn(
+            'task_schedule(khovan_drone_01_deliver_deploy_prompt_after_delay, {"deploy_prompt_run_id": drone_contact_sequence_run_id})',
+            spawn_body,
+        )
+
+        prompt_body = label_body(drone, "khovan_drone_01_deliver_deploy_prompt_after_delay")
+        for phrase in [
+            "await delay_sim(seconds=10)",
+            "if deploy_prompt_run_id != drone_contact_sequence_run_id:",
+            "if not drone_01_active or drone_01_deploy_prompt_sent:",
+            "drone_01_deploy_prompt_sent = True",
+            '"startup_text": drone_01_deploy_prompt_text',
+        ]:
+            self.assertIn(phrase, prompt_body)
 
     def test_scenario_control_panel_reports_spike_status(self) -> None:
         panel = read("scripts/systems/scenario_control_panel.mast")
