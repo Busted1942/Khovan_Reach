@@ -19,8 +19,7 @@ shared kestrel_start_docking_helper_status = "not_initialized"
 shared kestrel_yard_lock_visual_mode = "mechanical_yard_lock_overlay_fallback"
 shared kestrel_yard_lock_visual_status = "not_initialized"
 shared kestrel_comms_options_status = "not_rendered"
-shared kestrel_comms_post_setup_run_id = 0
-shared kestrel_comms_post_setup_status = "not_scheduled"
+shared kestrel_known_contact_status = "not_seeded"
 shared kestrel_yard_lock_message_sent = False
 shared kestrel_departure_clearance_response_sent = False
 shared kestrel_launch_envelope_response_sent = False
@@ -203,8 +202,7 @@ shared tarsis_resupply_text = "Artemis - Captain: Authorization packet closed ou
     kestrel_homing_reserve_prompt_sent = False
     kestrel_stock_station_role_status = "active_until_launch_envelope_reserve_and_2km"
     kestrel_stock_station_disable_run_id = kestrel_stock_station_disable_run_id + 1
-    kestrel_comms_post_setup_run_id = kestrel_comms_post_setup_run_id + 1
-    kestrel_comms_post_setup_status = "pending_contact_setup"
+    kestrel_known_contact_status = "pending_contact_setup"
     training_speed_power_reminder_sent = False
     shakedown_prompt_sent = False
     tarsis_gate_status = "waiting_for_kestrel_departure"
@@ -271,8 +269,7 @@ shared tarsis_resupply_text = "Artemis - Captain: Authorization packet closed ou
     kestrel_homing_reserve_prompt_sent = False
     kestrel_stock_station_role_status = "active_until_launch_envelope_reserve_and_2km"
     kestrel_stock_station_disable_run_id = kestrel_stock_station_disable_run_id + 1
-    kestrel_comms_post_setup_run_id = kestrel_comms_post_setup_run_id + 1
-    kestrel_comms_post_setup_status = "invalidated_by_mission_start_seed"
+    kestrel_known_contact_status = "invalidated_by_mission_start_seed"
     training_speed_power_reminder_sent = False
     shakedown_prompt_sent = False
     tarsis_gate_status = "waiting_for_kestrel_departure"
@@ -318,8 +315,7 @@ shared tarsis_resupply_text = "Artemis - Captain: Authorization packet closed ou
     kestrel_homing_reserve_prompt_run_id = kestrel_homing_reserve_prompt_run_id + 1
     kestrel_homing_reserve_prompt_status = "not_applicable_post_tarsis"
     kestrel_homing_reserve_prompt_sent = False
-    kestrel_comms_post_setup_run_id = kestrel_comms_post_setup_run_id + 1
-    kestrel_comms_post_setup_status = "invalidated_by_post_tarsis_seed"
+    kestrel_known_contact_status = "invalidated_by_post_tarsis_seed"
     training_speed_power_reminder_sent = True
     shakedown_prompt_sent = False
     homing_reserve_status = "superseded_by_tarsis_resupply"
@@ -437,20 +433,44 @@ shared tarsis_resupply_text = "Artemis - Captain: Authorization packet closed ou
     script.write_khovan_startup_trace("[KHOVAN ACT1 VISUAL 001] Kestrel yard-lock visual setup attempted")
     await task_schedule(docking_standard_player_station)
     if kestrel_yards_id != 0:
-        # The shared helper may restore the stock station role after this task is
-        # scheduled. Defer the cleanup one simulation second so Kestrel's custom
-        # Comms panel owns the final opening state.
-        kestrel_comms_post_setup_status = "scheduled_after_standard_docking_setup"
-        await task_schedule(khovan_act1_finalize_kestrel_opening_comms, {"comms_setup_run_id": kestrel_comms_post_setup_run_id})
+        # The standard docking helper has completed. Kestrel uses a mechanical
+        # departure hold, so it must finish without the stock station role: the
+        # custom Khovan Comms route owns its opening panel.
+        add_role(kestrel_yards_id, "station")
+        remove_role(kestrel_yards_id, "Station")
+        add_role(kestrel_yards_id, "kestrel_yards")
+        kestrel_comms_options_status = "stock_station_role_cleared_kestrel_yards_retained_for_khovan_comms"
+        script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS 003B] Kestrel stock station role cleared; kestrel_yards retained for Khovan Comms options")
+        kestrel_yards_object_final = to_object(kestrel_yards_id)
+        if kestrel_yards_object_final is None:
+            script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS 003C-ROLES] Kestrel post-restore roles unavailable: to_object returned None")
+        else:
+            kestrel_roles_final = kestrel_yards_object_final.get_roles()
+            script.write_khovan_startup_trace(f"[KHOVAN ACT1 COMMS 003C-ROLES] Kestrel post-restore roles={kestrel_roles_final}")
     if tarsis_station_id != 0:
         add_role(tarsis_station_id, "station")
         remove_role(tarsis_station_id, "Station")
         tarsis_comms_options_status = "station_role_restored_after_docking_helper_pass"
         script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS 004D] Tarsis station role restored and stock Station role removed after docking helper pass for Khovan Comms options")
+    # The Comms renderer hard-stops as "unknown" before adding any buttons if
+    # the selected contact has no scan text for the bound Artemis ship's side.
+    # Seed the known state with the concrete ship id, rather than assuming the
+    # role iterator is populated at this point in startup.
+    if artemis_id == 0 or kestrel_yards_id == 0:
+        kestrel_known_contact_status = "failed_missing_artemis_or_kestrel_id"
+        script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS 003K] Kestrel scan seed failed: missing Artemis or Kestrel id")
+    else:
+        kestrel_scan_seed_artemis = to_object(artemis_id)
+        kestrel_scan_seed_object = to_object(kestrel_yards_id)
+        if kestrel_scan_seed_artemis is None or kestrel_scan_seed_object is None:
+            kestrel_known_contact_status = "failed_missing_artemis_or_kestrel_object"
+            script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS 003K] Kestrel scan seed failed: Artemis or Kestrel object missing")
+        else:
+            science_set_scan_data(artemis_id, kestrel_yards_id, "Kestrel Yards is Artemis' launch yard and active departure-control contact.")
+            link(artemis_id, "extra_scan_source", kestrel_yards_id)
+            kestrel_known_contact_status = "seeded_via_bound_artemis"
+            script.write_khovan_startup_trace(f"[KHOVAN ACT1 COMMS 003K] Kestrel scan data seeded for Artemis id={artemis_id} target={kestrel_yards_id} side={kestrel_scan_seed_artemis.side}")
     for player_id in role("__player__"):
-        if kestrel_yards_id != 0:
-            science_set_scan_data(player_id, kestrel_yards_id, "Kestrel Yards is Artemis' launch yard and active departure-control contact.")
-            link(player_id, "extra_scan_source", kestrel_yards_id)
         if tarsis_station_id != 0:
             science_set_scan_data(player_id, tarsis_station_id, "Tarsis Station is the Kestrel generator handoff and resupply contact for Artemis.")
             link(player_id, "extra_scan_source", tarsis_station_id)
@@ -489,39 +509,6 @@ shared tarsis_resupply_text = "Artemis - Captain: Authorization packet closed ou
     script.write_khovan_startup_trace("[KHOVAN ACT1 003C] Kestrel/Tarsis use reference-backed standard station primitives")
     script.write_khovan_startup_trace("[KHOVAN ACT1 003D] Khovan station presentation polish deferred until standard Comms/docking path is proven")
     log(f"Khovan Act I contacts initialized: Kestrel id {kestrel_yards_id}, Tarsis id {tarsis_station_id}.")
-    ->END
-
-=== khovan_act1_finalize_kestrel_opening_comms ===
-    default comms_setup_run_id = kestrel_comms_post_setup_run_id
-    await delay_sim(seconds=1)
-    if comms_setup_run_id != kestrel_comms_post_setup_run_id:
-        kestrel_comms_post_setup_status = "stale_run_ignored"
-        script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS 003D] stale Kestrel post-setup cleanup ignored")
-        ->END
-    if kestrel_yards_id == 0:
-        kestrel_comms_post_setup_status = "failed_missing_kestrel_id"
-        script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS 003D] Kestrel post-setup cleanup failed: missing Kestrel id")
-        ->END
-    kestrel_yards_object_final = to_object(kestrel_yards_id)
-    if kestrel_yards_object_final is None:
-        kestrel_comms_post_setup_status = "failed_missing_kestrel_object"
-        script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS 003D] Kestrel post-setup cleanup failed: to_object returned None")
-        ->END
-
-    # Role names are case-insensitive. Adding then removing station reliably
-    # clears any stock station role restored by the shared docking helper while
-    # retaining the custom role that gates Khovan's opening Comms route.
-    add_role(kestrel_yards_id, "station")
-    remove_role(kestrel_yards_id, "Station")
-    add_role(kestrel_yards_id, "kestrel_yards")
-    kestrel_roles_final = kestrel_yards_object_final.get_roles()
-    if has_role(kestrel_yards_id, "station"):
-        kestrel_comms_post_setup_status = "failed_stock_station_role_retained"
-        script.write_khovan_startup_trace(f"[KHOVAN ACT1 COMMS 003D] Kestrel post-setup cleanup failed: stock station role retained roles={kestrel_roles_final}")
-        ->END
-    kestrel_comms_options_status = "post_setup_stock_station_role_cleared_kestrel_yards_retained"
-    kestrel_comms_post_setup_status = "complete_stock_station_role_cleared"
-    script.write_khovan_startup_trace(f"[KHOVAN ACT1 COMMS 003D] Kestrel post-setup cleanup complete: stock station role cleared roles={kestrel_roles_final}")
     ->END
 
 === khovan_tarsis_docking_rejected_before_clearance ===
