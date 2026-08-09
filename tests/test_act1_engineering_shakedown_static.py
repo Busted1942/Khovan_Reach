@@ -209,6 +209,35 @@ class Act1EngineeringPowerPresetTests(unittest.TestCase):
             body.index("damcon_buff_observer_ticks >= 4"),
         )
 
+    def test_no_motion_gate_cannot_pass_on_a_single_acceleration_sample(self) -> None:
+        # Live false pass 2026-08-09 21:20:15. tick 14 read throttle=0; tick 15 read
+        # throttle=0.966 speed=0.797 distance_sq=13.7 and CONFIRMED - the first tick
+        # of ordinary acceleration, 98 seconds before impulse power was set to zero.
+        # A ship spinning up from rest satisfies "slow and barely moved" for exactly
+        # one sample on its way up.
+        engineering = read(ENGINEERING_PATH)
+        body = label_body(engineering, "khovan_engineering_watch_no_motion_validation_tick")
+
+        # 1. Sustained, not single-sample.
+        self.assertIn("if engineering_no_motion_hold_ticks >= 5:", body)
+        self.assertIn("engineering_no_motion_hold_ticks = engineering_no_motion_hold_ticks + 1", body)
+        self.assertIn("engineering_no_motion_hold_ticks = 0", body)
+
+        # 2. Only meaningful once impulse power is actually zero. Design 8.4 orders
+        # step 1 before step 3, and the power-preset observer is live-confirmed.
+        self.assertIn("engineering_power_preset_confirmed and throttle >= 0.95", body)
+
+        # 3. Rolling anchor. The old code measured from a fixed origin, so once
+        # Artemis moved the distance term could never return under threshold and the
+        # gate became permanently unreachable - the same trace shows distance_sq
+        # pinned at 1.9 million while the ship sat still.
+        self.assertIn("engineering_no_motion_start_x = artemis_object.pos.x", body)
+        self.assertLess(
+            body.index("flat_distance_sq = dx * dx + dz * dz"),
+            body.index("engineering_no_motion_start_x = artemis_object.pos.x"),
+            "the anchor must be re-set after the delta is computed, not before",
+        )
+
     def test_no_motion_observer_keeps_watching_after_arming_its_fallback(self) -> None:
         # Same fix as the power-preset observer. Live 20:30: ticks 1-13 read
         # throttle=0 while the crew were still setting up, then the observer quit at

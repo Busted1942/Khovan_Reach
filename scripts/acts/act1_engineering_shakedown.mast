@@ -16,6 +16,7 @@ shared engineering_no_motion_detection_mode = "automatic_playerThrottle_cur_spee
 shared engineering_no_motion_fallback_available = False
 shared engineering_no_motion_observer_status = "not_started"
 shared engineering_no_motion_observer_ticks = 0
+shared engineering_no_motion_hold_ticks = 0
 shared engineering_no_motion_start_x = 0
 shared engineering_no_motion_start_z = 0
 shared engineering_no_motion_confirmed = False
@@ -128,6 +129,7 @@ shared navigation_priority_confirmed_text = "Artemis - Comms: Shakedown complete
     engineering_no_motion_validation_requested = False
     engineering_no_motion_fallback_available = False
     engineering_no_motion_confirmed = False
+    engineering_no_motion_hold_ticks = 0
     damcon_rest_cycle_fallback_available = False
     damcon_rest_cycle_confirmed = False
     damcon_buff_run_id = damcon_buff_run_id + 1
@@ -180,6 +182,7 @@ shared navigation_priority_confirmed_text = "Artemis - Comms: Shakedown complete
     engineering_no_motion_validation_requested = False
     engineering_no_motion_fallback_available = False
     engineering_no_motion_confirmed = False
+    engineering_no_motion_hold_ticks = 0
     damcon_rest_cycle_fallback_available = False
     damcon_rest_cycle_confirmed = False
     damcon_buff_run_id = damcon_buff_run_id + 1
@@ -483,6 +486,7 @@ shared navigation_priority_confirmed_text = "Artemis - Comms: Shakedown complete
     engineering_no_motion_start_z = artemis_object.pos.z
     engineering_no_motion_observer_status = "watching_for_full_throttle_no_motion"
     engineering_no_motion_observer_ticks = 0
+    engineering_no_motion_hold_ticks = 0
     await delay_sim(seconds=1)
     jump khovan_engineering_watch_no_motion_validation_tick
     ->END
@@ -500,17 +504,43 @@ shared navigation_priority_confirmed_text = "Artemis - Comms: Shakedown complete
         engineering_no_motion_fallback_available = True
         ->END
 
+    # Movement is measured PER TICK against a rolling anchor, not against where the
+    # observer started (bugfix 2026-08-09). The old code compared to a fixed origin,
+    # so once Artemis had moved anywhere the distance term could never come back
+    # under the threshold and the gate became unreachable for the rest of the run -
+    # live trace showed distance_sq stuck at 1.9 million while the ship sat still.
     dx = artemis_object.pos.x - engineering_no_motion_start_x
     dz = artemis_object.pos.z - engineering_no_motion_start_z
     flat_distance_sq = dx * dx + dz * dz
+    engineering_no_motion_start_x = artemis_object.pos.x
+    engineering_no_motion_start_z = artemis_object.pos.z
     throttle = artemis_object.data_set.get("playerThrottle", 0)
     speed = 0
     artemis_engine_object = to_engine_object(artemis_id)
     if artemis_engine_object is not None:
         speed = abs(artemis_engine_object.cur_speed)
 
-    script.write_khovan_startup_trace(f"[KHOVAN ACT1 ENG NO MOTION WATCH] tick={engineering_no_motion_observer_ticks} throttle={throttle} speed={speed} distance_sq={flat_distance_sq}")
-    if throttle >= 0.95 and speed <= 1 and flat_distance_sq <= 25:
+    # The gate is only meaningful once impulse power is actually zero. Design 8.4
+    # runs step 1 (impulse 0 / warp 200) BEFORE step 2 (full impulse) and step 3
+    # (validate no motion) - "no motion at full throttle" proves nothing while
+    # impulse power is normal. This precondition is only affordable now that the
+    # power-preset observer is live-confirmed.
+    engineering_no_motion_qualifies = engineering_power_preset_confirmed and throttle >= 0.95 and speed <= 1 and flat_distance_sq <= 25
+    if engineering_no_motion_qualifies:
+        engineering_no_motion_hold_ticks = engineering_no_motion_hold_ticks + 1
+    else:
+        engineering_no_motion_hold_ticks = 0
+
+    script.write_khovan_startup_trace(f"[KHOVAN ACT1 ENG NO MOTION WATCH] tick={engineering_no_motion_observer_ticks} throttle={throttle} speed={speed} tick_distance_sq={flat_distance_sq} preset={engineering_power_preset_confirmed} hold={engineering_no_motion_hold_ticks}")
+
+    # Sustained, not single-sample (bugfix 2026-08-09). A ship accelerating normally
+    # from rest satisfies speed<=1 and a small distance delta for ONE tick on its way
+    # up, which is exactly how this gate false-passed live: tick 14 read throttle=0,
+    # tick 15 read throttle=0.966 speed=0.797 distance_sq=13.7 and confirmed - the
+    # first tick of ordinary acceleration, 98 seconds before impulse was set to zero.
+    # Holding the condition for several consecutive seconds separates "genuinely
+    # pinned at zero" from "caught mid-spin-up".
+    if engineering_no_motion_hold_ticks >= 5:
         await task_schedule(khovan_engineering_complete_no_motion_validation, {"completion_source": "automatic_throttle_speed_position_observer"})
         ->END
 
