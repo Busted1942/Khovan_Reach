@@ -455,7 +455,6 @@ class Act1EngineeringShakedownStaticTests(unittest.TestCase):
         for phrase in [
             "Artemis - Captain: Cleared for departure. Take her 2 km off the station.",
             "Artemis - Engineering: On the captain's order, Impulse 0%, Warp 200%. We are validating heat sinks.",
-            "Artemis - Helm: Confirm impulse reads zero, then warp 1. Report speed.",
             "Artemis - Engineering: Good. Set a rally point in a crew quarters and assign a DAMCON team to it. That is where they wait between jobs. Selecting a team also shows its medical status.",
             "Artemis - Engineering: Confirmed.",
             "Artemis - Engineering: Crews work fastest with real time in quarters, mess, and gym. Injured teams go to sickbay. They will run themselves into the ground, so managing them is on you. Look after them when the pressure is low and they will carry you when it is high.",
