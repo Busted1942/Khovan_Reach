@@ -362,14 +362,24 @@ Note `+ "Label":` with a trailing colon opens an inline block; without a colon i
 
 ### The cost of a custom Science route — read this before adding one
 
-**[LIVE]**, confirmed 2026-08-09 against both live Cosmos and the installed sbs_utils v1.3.0 source.
+**Rule: [LIVE]**, operator-confirmed 2026-08-09. **Mechanism: partly [UNPROVEN]** — see the correction note below before relying on the explanation.
 
-**Adding `//enable/science` for an object replaces the engine's entire Science panel for that object.** You lose the stock readout — the A–E shield-frequency bars, the `status`/`intel`/`bio` tabs, the `WEAP/ENGN/SENS/SHLD` percentages — and you cannot get them back while the route exists.
+**Adding a Khovan `//enable/science` for a contact costs you that contact's stock Science panel.** You lose the `status`/`intel`/`bio` tabs, the A–E shield-frequency bars, and the `WEAP/ENGN/SENS/SHLD` percentages, and you cannot get them back while the route exists. This part is proven: removing the Khovan route from Drone 01 restored the full panel on a live run.
 
-Mechanism, from `sbs_utils/procedural/science.py`:
+**Correction, 2026-08-09 — do not repeat the original explanation of *why*.** This entry first claimed the stock panel appears because *no* `//enable/science` passes, leaving the engine to render natively. That is wrong. `legendarymissions/science_scans/science.mast:144` carries
 
-- `start_science_selected()` collects **every** `//enable/science` label in the compiled mission (`labels_get_type("enable/science")`) and runs them. If none pass, it calls `t.end()` and returns — sbs_utils never touches the panel and the engine renders its own full scan.
-- If any one passes, sbs_utils owns the panel. `ScanPromise.show_buttons()` then runs:
+```mast
+//enable/science if side_are_enemies(SCIENCE_ORIGIN_ID, SCIENCE_SELECTED_ID)
+//science if side_are_enemies(...) and has_any_role(SCIENCE_SELECTED_ID, "ship,cockpit")
+    + "scan":  + "status":  + "intel":  + "bio":
+```
+
+so an enable passes for **every** enemy contact, sbs_utils owns the panel in both the working and the broken case, and those four tabs are LegendaryMissions' own route — not a native engine render. Adding a second, Khovan route changes the resulting tab set. Exactly how the two routes combine is **not yet pinned down**: the observed panels (Khovan's buttons alone pre-fix, the stock four post-fix) are not fully explained by `show_buttons()` alone, and `has_any_role(SCIENCE_SELECTED_ID, "ship,cockpit")` on the stock route is a live variable no Khovan spawn sets explicitly. Treat the rule as reliable and the mechanism as open.
+
+Mechanism so far, from `sbs_utils/procedural/science.py`:
+
+- `start_science_selected()` collects **every** `//enable/science` label in the compiled mission (`labels_get_type("enable/science")`) and runs them. If none pass it calls `t.end()` and returns. In practice, for an enemy contact, the stock route above always passes.
+- Once any enable passes, sbs_utils owns the panel and `ScanPromise.show_buttons()` runs:
 
 ```python
 has_scan = sel_so.data_set.get("scan", origin_so.side)
@@ -383,7 +393,9 @@ A freshly spawned NPC has `data_set["scan"]` of `None` or the literal `"no data"
 
 **So it is strictly either/or:** a Khovan Science route on a contact, **or** that contact's stock scan display. There is no configuration that yields both.
 
-Live evidence (Slice 06, 2026-08-09): Drone 01 with `//enable/science` showed one `scan` tab and `no data`. The GM Spike Target — identical `kralien, raider` / `kralien_cruiser` / `behav_npcship`, no Science route — showed `scan/status/intel/bio` plus the frequency bars with `weak C`.
+Live evidence (Slice 06, 2026-08-09): Drone 01 with a Khovan `//enable/science` showed one `scan` tab and `no data`. The GM Spike Target — identical `kralien, raider` / `kralien_cruiser` / `behav_npcship`, no Khovan Science route — showed `scan/status/intel/bio` plus the frequency bars with `weak C`. Removing the Khovan route from Drone 01 reproduced the Spike's panel, operator-confirmed.
+
+**Second-order effect — a contact with no scan data is not hailable either.** `comms.py` `set_buttons()` calls `science_is_unknown()` and returns *before* the button loop when it is True, so a never-scanned contact renders as `unknown` with no Comms buttons at all. A `<scan>` block masks this by writing scan text on render; remove the route and the mask goes with it. See section 7.4.
 
 ### Custom scan text without losing the panel
 
@@ -476,6 +488,35 @@ The cleanup handler sets the flag immediately before `sbs.delete_object()`, and 
 ```
 
 Known open questions on this group are listed in `tests/SLICE06_VERIFICATION.md` under Known Risks/API Uncertainties. Read that before touching damage detection.
+
+## 7.4 An unscanned contact has no Comms buttons
+
+**[LIVE]**, confirmed 2026-08-09. A Khovan `//comms` route on a contact renders nothing — the contact shows as `unknown` — until that contact has scan data for the player's side.
+
+From `sbs_utils/procedural/comms.py`, `set_buttons()`:
+
+```python
+unk = science_is_unknown(oo, so)
+if unk:
+    ...send_comms_selection_info(origin_id, "", "white", "unknown")
+    return          # returns BEFORE the button loop
+```
+
+and `science_is_unknown()` is True while `data_set["scan"]` is `None`, `""`, `"no data"`, or `"Default Scan"` — which is exactly a freshly spawned NPC.
+
+This is easy to miss because a `//science` route with a `<scan>` block masks it: the block writes scan text on panel render, so the contact is silently "known" from the moment it is selected. Delete the Science route (section 7.1) and the Comms route stops rendering too. That is what happened to Drone 01 on 2026-08-09.
+
+Three ways to make a contact known, in order of preference:
+
+1. `science_set_scan_data(player_id, target_id, "...")` at setup — **[LIVE]**, how Tarsis and Kestrel are made hailable (`act1_generator_tarsis_gate.mast:421-425`). Fine for stations. It ends with `target_blob.set("scan_type_list", scan_tabs, 0)` where `scan_tabs` is `""` for a plain string, so do not use it where the stock tab strip matters.
+2. `science_update_scan_data(...)` — preserves an existing tab list but writes `scan_type_list` as `"scan"` when it is currently unset. Same hazard, narrower.
+3. Write the scan key alone and leave `scan_type_list` untouched — what `khovan_drone_01_mark_scan_known` does:
+
+```mast
+    drone_object.data_set.set("scan", drone_01_known_scan_text, artemis_object.side)
+```
+
+**[UNPROVEN]** — only `data_set.get()` is proven from MAST (section 9.1); this write is taken from sbs_utils' own internal call. Always pair it with a Comms-side fallback route so the scene survives if it does not take.
 
 ---
 
