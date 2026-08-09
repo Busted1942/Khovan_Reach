@@ -14,6 +14,17 @@ def read(path: str) -> str:
     return (ROOT / path).read_text(encoding="utf-8")
 
 
+def code_only(text: str) -> str:
+    """Strip MAST comment lines.
+
+    Handlers here cite the reference files their APIs were read out of, and some of
+    those paths contain words the assertions below forbid in code (for example
+    legendarymissions/gamemaster_comms/...). Assertions about what the runtime does
+    must look at code lines only, or citing a source would trip the guard.
+    """
+    return "\n".join(line for line in text.splitlines() if not line.lstrip().startswith("#"))
+
+
 def label_body(text: str, label: str) -> str:
     match = re.search(
         rf"^=== {re.escape(label)} ===(?P<body>.*?)(?=^=== |\Z)",
@@ -23,6 +34,89 @@ def label_body(text: str, label: str) -> str:
     if match is None:
         raise AssertionError(f"missing label: {label}")
     return match.group("body")
+
+
+class Act1EngineeringPowerPresetTests(unittest.TestCase):
+    """Design 8.4 step 1 - impulse 0 / warp 200 - detected, not just requested."""
+
+    def test_power_preset_has_an_automatic_observer(self) -> None:
+        engineering = read(ENGINEERING_PATH)
+        body = label_body(engineering, "khovan_engineering_watch_power_preset")
+
+        # Reads the real console values rather than inferring from ship motion.
+        # get_engineering_value is sbs_utils/procedural/space_objects.py:353; the
+        # label set is legendarymissions/gamemaster_comms/gamemaster_comms.mast:50.
+        self.assertIn('get_engineering_value(artemis_id, "Impulse", -1)', body)
+        self.assertIn('get_engineering_value(artemis_id, "Warp", -1)', body)
+
+        # Guards required by AGENTS.md section 4.
+        self.assertIn("if artemis_id == 0:", body)
+        self.assertIn("if artemis_object is None:", body)
+        self.assertIn("if power_preset_run_id != engineering_power_preset_run_id:", body)
+
+        # -1 sentinel separates "label absent on this build" from "slider at zero",
+        # so a wrong label set arms the fallback at once instead of waiting out the
+        # timeout on a lookup that can never succeed.
+        self.assertIn("if impulse_raw < 0 or warp_raw < 0:", body)
+
+        # Scale normalisation: collision.mast treats 1.0 as 100%, so warp 200 is 2.0.
+        # Anything above 10 is assumed to be a 0-300 style percent and divided.
+        self.assertIn("engineering_impulse_value = engineering_impulse_value / 100", body)
+        self.assertIn("engineering_warp_value = engineering_warp_value / 100", body)
+        self.assertIn("if engineering_impulse_value <= 0.05 and engineering_warp_value >= 1.95:", body)
+
+        # Raw values traced every tick - the first live run is also the experiment
+        # that pins down the scale and confirms the label set.
+        self.assertIn("impulse_raw={impulse_raw} warp_raw={warp_raw}", body)
+
+    def test_power_preset_gate_ships_with_a_comms_fallback(self) -> None:
+        # AGENTS.md section 4: every automatic gate ships with a Comms/GM fallback
+        # and a *_fallback_available flag.
+        engineering = read(ENGINEERING_PATH)
+        self.assertIn(
+            '+ "Confirm Impulse 0 / Warp 200" khovan_engineering_confirm_power_preset if engineering_power_preset_fallback_available and not engineering_power_preset_confirmed',
+            engineering,
+        )
+        watch_body = label_body(engineering, "khovan_engineering_watch_power_preset")
+        self.assertIn("engineering_power_preset_fallback_available = True", watch_body)
+        self.assertIn("if engineering_power_preset_observer_ticks >= 30:", watch_body)
+
+        # Both routes land in one completion label that records which one fired.
+        complete_body = label_body(engineering, "khovan_engineering_complete_power_preset")
+        self.assertIn("default power_preset_source", complete_body)
+        self.assertIn("if engineering_power_preset_confirmed:", complete_body)
+        self.assertIn("engineering_power_preset_source = power_preset_source", complete_body)
+        self.assertIn(
+            '"power_preset_source": "automatic_engineering_value_observer"',
+            watch_body,
+        )
+        self.assertIn(
+            '"power_preset_source": "comms_fallback_confirmation"',
+            label_body(engineering, "khovan_engineering_confirm_power_preset"),
+        )
+
+    def test_power_preset_observer_is_started_and_reset_with_the_shakedown(self) -> None:
+        engineering = read(ENGINEERING_PATH)
+        start_body = label_body(engineering, "khovan_act1_engineering_shakedown_start")
+        self.assertIn("engineering_power_preset_run_id = engineering_power_preset_run_id + 1", start_body)
+        self.assertIn(
+            'task_schedule(khovan_engineering_watch_power_preset, {"power_preset_run_id": engineering_power_preset_run_id})',
+            start_body,
+        )
+        # Run ID must be bumped before the schedule call, or the observer captures a
+        # stale generation and suppresses itself immediately.
+        self.assertLess(
+            start_body.index("engineering_power_preset_run_id = engineering_power_preset_run_id + 1"),
+            start_body.index("task_schedule(khovan_engineering_watch_power_preset"),
+        )
+        for label in [
+            "khovan_act1_initialize_engineering_shakedown",
+            "khovan_act1_engineering_shakedown_prepare_after_tarsis",
+        ]:
+            body = label_body(engineering, label)
+            self.assertIn("engineering_power_preset_confirmed = False", body)
+            self.assertIn("engineering_power_preset_fallback_available = False", body)
+            self.assertIn("engineering_power_preset_run_id = engineering_power_preset_run_id + 1", body)
 
 
 class Act1EngineeringShakedownStaticTests(unittest.TestCase):
@@ -130,7 +224,7 @@ class Act1EngineeringShakedownStaticTests(unittest.TestCase):
         self.assertIn("await task_schedule(khovan_act1_engineering_shakedown_start)", watch_body)
         self.assertIn("await task_schedule(khovan_act1_engineering_shakedown_prepare_after_tarsis)", label_body(generator, "khovan_tarsis_complete_mechanical_docking_and_resupply"))
 
-        self.assertNotIn("gamemaster", engineering.lower())
+        self.assertNotIn("gamemaster", code_only(engineering).lower())
         self.assertNotIn("@gui", engineering)
         self.assertNotIn("//gui", engineering)
         self.assertNotIn("proof_station", engineering.lower())

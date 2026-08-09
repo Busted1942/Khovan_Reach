@@ -17,7 +17,7 @@ Pair with:
 
 Meanwhile this repo contains roughly 1,700 lines of MAST that has been through live Cosmos. That is the best local API evidence available, and it was not written down anywhere an agent would find it.
 
-**Rule for agents: prefer a pattern cited in this file over anything you recall about MAST.** If this file does not cover what you need, use the API-uncertainty format in section 11 — do not invent syntax.
+**Rule for agents: prefer a pattern cited in this file over anything you recall about MAST.** If this file does not cover what you need, use the API-uncertainty format in section 12 — do not invent syntax.
 
 Every entry below cites the active file and line where it is used. Verify the citation before relying on it; line numbers drift.
 
@@ -682,6 +682,60 @@ distance: 600
 ```
 
 Guard it for premature and duplicate signals — both were observed in Slice 04.
+
+---
+
+## 9.3 Engineering console values (power sliders)
+
+**[UNPROVEN] in this repo, [LIVE] elsewhere in the install.** This is how a gate can detect what Engineering actually set, instead of inferring it from ship motion or asking Comms to confirm it.
+
+```mast
+    impulse = get_engineering_value(artemis_id, "Impulse", -1)
+    warp = get_engineering_value(artemis_id, "Warp", -1)
+    set_engineering_value(artemis_id, "front shield", 1.0)
+```
+
+`sbs_utils/procedural/space_objects.py:353`. It walks up to 30 `eng_control_label` slots on the ship's data set and returns the matching `eng_control_value`. Matching is case-insensitive (`label.lower() == name.lower()`).
+
+**Label set** — `legendarymissions/gamemaster_comms/gamemaster_comms.mast:50`:
+
+```text
+["Beam", "torpedo", "Impulse", "Warp", "Jump", "Maneuver", "front shield", "rear shield"]
+```
+
+Note `eng_control_label` slot 3 is rewritten to `"JUMP"` or `"WARP"` per ship depending on drive type (`legendarymissions/ai/grid_ai.mast:37-42`), so a ship with a jump drive has no `"Warp"` label at all. Do not assume the whole set exists on every hull.
+
+**Scale.** `1.0` means 100% — `legendarymissions/collisions/collision.mast:39-44` reads the value and branches on `if shield_power > 1`. So the design's "warp 200" is `2.0`, and "300%" is `3.0`. Whether some builds report `0-300` instead is not established; `khovan_engineering_watch_power_preset` normalises anything above `10` by dividing by 100 so the gate is correct on either scale.
+
+**Use a negative sentinel as the default**, not `0`. `get_engineering_value` returns the default when the label is not found, and `0` is indistinguishable from a slider genuinely at zero:
+
+```mast
+    impulse_raw = get_engineering_value(artemis_id, "Impulse", -1)
+    if impulse_raw < 0:
+        # label absent on this build - arm the fallback now, do not wait out a timeout
+```
+
+Proven elsewhere: `collisions/collision.mast:39`, `hangar/hangar_comms.mast:19-20,31-32`. First Khovan use is `khovan_engineering_watch_power_preset` in `act1_engineering_shakedown.mast`, which traces raw values every tick precisely so the first live run confirms both the label set and the scale.
+
+**Not found:** a separate coolant accessor. Treat coolant as unverified.
+
+## 9.4 Buffs and modifiers
+
+**[UNPROVEN]** — not used in this repo yet, listed so gates do not get built on guesses.
+
+`sbs_utils/procedural/modifiers.py` is a full buff/debuff layer over any blob value, with flat/additive/multiplicative stacking and optional durations. Query side:
+
+```python
+    modifier_exists(id, source_or_modifier)
+    modifiers_get_for_object(obj_or_id, key)
+    modifier_get_time_remaining(modifier)
+```
+
+Each modifier carries a `source` identifier and only one per source is active at a time, so "is this buff applied" is `modifier_exists(id, "<source>")`. `sbs_utils/procedural/upgrades.py` is a separate, coarser mechanism (`upgrade_add`, `upgrade_remove_all`).
+
+This only sees buffs applied *through those APIs*. Player-driven Engineering console state is section 9.3, not this.
+
+**DAMCON crew state has no clean accessor.** `internal_damage.py` exposes only `grid_restore_damcons()`; team state lives in grid objects and inventory values (`set_inventory_value(SPAWNED_ID, "idle", True)`, `legendarymissions/ai/grid_ai.mast:52`). Readable, but needs real investigation before a gate depends on it.
 
 ---
 
