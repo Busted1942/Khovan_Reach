@@ -625,8 +625,8 @@ class Act1DroneContactFireStaticTests(unittest.TestCase):
         self.assertIn("drone_01_shield_relay_fallback_available = True", spawn_body)
 
         for route in [
-            '+ "Khovan: Fallback Scan" khovan_drone_01_fallback_scan if drone_01_scan_fallback_available',
-            '+ "Khovan: Fallback Shield Relay" khovan_drone_01_fallback_shield_relay if drone_01_shield_relay_fallback_available',
+            '+ "Fallback Scan" khovan_drone_01_fallback_scan if drone_01_scan_fallback_available',
+            '+ "Fallback Shield Relay" khovan_drone_01_fallback_shield_relay if drone_01_shield_relay_fallback_available',
         ]:
             self.assertIn(route, drone)
 

@@ -113,10 +113,10 @@ shared tarsis_resupply_text = "Tarsis Control: resupply authorized and the gener
     # rather than guessing again.
     kestrel_comms_options_status = "rendered_for_selected_kestrel"
     script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS KESTREL OPTIONS] Kestrel options rendered")
-    + "Khovan: Hail Kestrel Yards" khovan_kestrel_hail
-    + "Khovan: Request Departure Clearance" khovan_kestrel_request_departure_clearance
-    + "Khovan: Request Emergency Homing Reserve" khovan_kestrel_request_emergency_homing_reserve
-    + "Khovan: Confirm Launch-Envelope Exit" khovan_kestrel_report_launch_envelope_clear
+    + "Hail Kestrel Yards" khovan_kestrel_hail
+    + "Request Departure Clearance" khovan_kestrel_request_departure_clearance
+    + "Request Emergency Homing Reserve" khovan_kestrel_request_emergency_homing_reserve
+    + "Confirm Launch-Envelope Exit" khovan_kestrel_report_launch_envelope_clear
 
 //enable/comms if has_roles(COMMS_SELECTED_ID, "tarsis_station")
     script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS 007] Tarsis standard station selected")
@@ -125,10 +125,10 @@ shared tarsis_resupply_text = "Tarsis Control: resupply authorized and the gener
 //comms if has_roles(COMMS_SELECTED_ID, "tarsis_station")
     tarsis_comms_options_status = "rendered_after_known_state"
     script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS TARSIS OPTIONS] Tarsis options rendered")
-    + "Khovan: Hail Tarsis Station" khovan_tarsis_hail
-    + "Khovan: Submit Authorization Packet" khovan_tarsis_request_generator_support if not tarsis_required_requests_complete
-    + "Khovan: Request Docking Clearance" khovan_tarsis_request_docking_clearance if not tarsis_docking_clearance_requested
-    + "Khovan: Report Tarsis Gate Status" khovan_tarsis_report_gate_status
+    + "Hail Tarsis Station" khovan_tarsis_hail
+    + "Submit Authorization Packet" khovan_tarsis_request_generator_support if not tarsis_required_requests_complete
+    + "Request Docking Clearance" khovan_tarsis_request_docking_clearance if not tarsis_docking_clearance_requested
+    + "Report Tarsis Gate Status" khovan_tarsis_report_gate_status
 
 //shared/signal/docked if has_roles(ORIGIN_ID, "__player__") and has_roles(SELECTED_ID, "tarsis_station")
     if not tarsis_docking_clearance_requested:

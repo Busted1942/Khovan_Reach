@@ -62,12 +62,12 @@ class CommsProofStationStaticTests(unittest.TestCase):
         for phrase in [
             '//enable/comms if has_roles(COMMS_SELECTED_ID, "kestrel_yards")',
             '//comms if has_roles(COMMS_SELECTED_ID, "kestrel_yards")',
-            '+ "Khovan: Request Emergency Homing Reserve" khovan_kestrel_request_emergency_homing_reserve',
+            '+ "Request Emergency Homing Reserve" khovan_kestrel_request_emergency_homing_reserve',
             '//enable/comms if has_roles(COMMS_SELECTED_ID, "tarsis_station")',
             '//comms if has_roles(COMMS_SELECTED_ID, "tarsis_station")',
-            '+ "Khovan: Hail Tarsis Station" khovan_tarsis_hail',
-            '+ "Khovan: Submit Authorization Packet" khovan_tarsis_request_generator_support if not tarsis_required_requests_complete',
-            '+ "Khovan: Request Docking Clearance" khovan_tarsis_request_docking_clearance if not tarsis_docking_clearance_requested',
+            '+ "Hail Tarsis Station" khovan_tarsis_hail',
+            '+ "Submit Authorization Packet" khovan_tarsis_request_generator_support if not tarsis_required_requests_complete',
+            '+ "Request Docking Clearance" khovan_tarsis_request_docking_clearance if not tarsis_docking_clearance_requested',
             "[KHOVAN ACT1 COMMS 004C] Tarsis Slice 04 Comms contact available without hard Science-scan gate",
         ]:
             self.assertIn(phrase, act1)

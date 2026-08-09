@@ -802,10 +802,10 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             '//enable/comms if has_roles(COMMS_SELECTED_ID, "kestrel_yards")',
             '[KHOVAN ACT1 COMMS 005] Kestrel standard station selected',
             '//comms if has_roles(COMMS_SELECTED_ID, "kestrel_yards")',
-            '+ "Khovan: Hail Kestrel Yards" khovan_kestrel_hail',
-            '+ "Khovan: Request Departure Clearance" khovan_kestrel_request_departure_clearance',
-            '+ "Khovan: Request Emergency Homing Reserve" khovan_kestrel_request_emergency_homing_reserve',
-            '+ "Khovan: Confirm Launch-Envelope Exit" khovan_kestrel_report_launch_envelope_clear',
+            '+ "Hail Kestrel Yards" khovan_kestrel_hail',
+            '+ "Request Departure Clearance" khovan_kestrel_request_departure_clearance',
+            '+ "Request Emergency Homing Reserve" khovan_kestrel_request_emergency_homing_reserve',
+            '+ "Confirm Launch-Envelope Exit" khovan_kestrel_report_launch_envelope_clear',
             "[KHOVAN ACT1 COMMS 006] Kestrel Hail option selected",
             "[KHOVAN ACT1 COMMS 006A] Kestrel departure-clearance option selected",
             "[KHOVAN ACT1 COMMS 006B] Kestrel launch-envelope option selected",
@@ -961,10 +961,10 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             '//comms if has_roles(COMMS_SELECTED_ID, "tarsis_station")',
             'tarsis_comms_options_status = "rendered_after_known_state"',
             '[KHOVAN ACT1 COMMS TARSIS OPTIONS] Tarsis options rendered',
-            '+ "Khovan: Hail Tarsis Station" khovan_tarsis_hail',
-            '+ "Khovan: Submit Authorization Packet" khovan_tarsis_request_generator_support if not tarsis_required_requests_complete',
-            '+ "Khovan: Request Docking Clearance" khovan_tarsis_request_docking_clearance if not tarsis_docking_clearance_requested',
-            '+ "Khovan: Report Tarsis Gate Status" khovan_tarsis_report_gate_status',
+            '+ "Hail Tarsis Station" khovan_tarsis_hail',
+            '+ "Submit Authorization Packet" khovan_tarsis_request_generator_support if not tarsis_required_requests_complete',
+            '+ "Request Docking Clearance" khovan_tarsis_request_docking_clearance if not tarsis_docking_clearance_requested',
+            '+ "Report Tarsis Gate Status" khovan_tarsis_report_gate_status',
             "[KHOVAN ACT1 COMMS 008] Tarsis Hail option selected",
             "[KHOVAN ACT1 COMMS TARSIS HAIL] Tarsis hail selected",
             "[KHOVAN ACT1 COMMS 008B] Tarsis generator-acceptance option selected",
@@ -984,10 +984,10 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             flags=re.MULTILINE | re.DOTALL,
         )
         self.assertIsNotNone(tarsis_menu)
-        self.assertIn('+ "Khovan: Hail Tarsis Station" khovan_tarsis_hail', tarsis_menu.group("body"))
-        self.assertIn('+ "Khovan: Submit Authorization Packet" khovan_tarsis_request_generator_support if not tarsis_required_requests_complete', tarsis_menu.group("body"))
-        self.assertIn('+ "Khovan: Request Docking Clearance" khovan_tarsis_request_docking_clearance if not tarsis_docking_clearance_requested', tarsis_menu.group("body"))
-        self.assertIn('+ "Khovan: Report Tarsis Gate Status" khovan_tarsis_report_gate_status', tarsis_menu.group("body"))
+        self.assertIn('+ "Hail Tarsis Station" khovan_tarsis_hail', tarsis_menu.group("body"))
+        self.assertIn('+ "Submit Authorization Packet" khovan_tarsis_request_generator_support if not tarsis_required_requests_complete', tarsis_menu.group("body"))
+        self.assertIn('+ "Request Docking Clearance" khovan_tarsis_request_docking_clearance if not tarsis_docking_clearance_requested', tarsis_menu.group("body"))
+        self.assertIn('+ "Report Tarsis Gate Status" khovan_tarsis_report_gate_status', tarsis_menu.group("body"))
         self.assertNotIn("Confirm Docking/Resupply", tarsis_menu.group("body"))
         self.assertNotIn("Homing-Torpedo Priority", tarsis_menu.group("body"))
         self.assertNotIn("khovan_tarsis_request_homing_priority", act1)
