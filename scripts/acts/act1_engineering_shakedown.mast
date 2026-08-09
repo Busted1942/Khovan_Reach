@@ -848,6 +848,22 @@ shared navigation_priority_confirmed_text = "Artemis - Comms: Shakedown complete
 
     controlled_overload_prompt_sent = True
     await task_schedule(khovan_engineering_send_message, {"engineering_message_text": controlled_overload_prompt_text, "engineering_message_breadcrumb": "[KHOVAN ACT1 ENG 006B] guarded delayed controlled-overload prompt sent"})
+    # Start watching as soon as the crew is TOLD to overload.
+    #
+    # Live 2026-08-09: the crew ran the overload and repaired the damage, and
+    # neither was logged. The damage observer was scheduled in exactly one
+    # place - khovan_engineering_start_controlled_overload - which is only
+    # reachable from the "Confirm Controlled Overload Started" Comms button. So
+    # the automatic detector could not run until someone manually confirmed the
+    # thing it exists to detect, and a crew who simply followed the instruction
+    # was never observed at all.
+    #
+    # An automatic gate must not depend on its own fallback. Scheduling here
+    # means the observer is live from the moment the instruction goes out, and
+    # the Comms route stays available for a crew whose damage the observer
+    # misses.
+    controlled_overload_damage_observer_status = "watch_started_at_prompt"
+    task_schedule(khovan_engineering_watch_controlled_overload_damage)
     ->END
 
 === khovan_engineering_start_controlled_overload ===
@@ -871,7 +887,9 @@ shared navigation_priority_confirmed_text = "Artemis - Comms: Shakedown complete
 === khovan_engineering_watch_controlled_overload_damage ===
     if controlled_overload_damage_detected:
         ->END
-    if not controlled_overload_started:
+    # Gate on the prompt, not the manual confirmation - see the scheduling
+    # comment in khovan_engineering_deliver_controlled_overload_prompt_after_delay.
+    if not controlled_overload_prompt_sent:
         ->END
     if artemis_id == 0:
         controlled_overload_damage_observer_status = "fallback_missing_artemis_id"
@@ -894,7 +912,9 @@ shared navigation_priority_confirmed_text = "Artemis - Comms: Shakedown complete
 === khovan_engineering_watch_controlled_overload_damage_tick ===
     if controlled_overload_damage_detected:
         ->END
-    if not controlled_overload_started:
+    # Gate on the prompt, not the manual confirmation - see the scheduling
+    # comment in khovan_engineering_deliver_controlled_overload_prompt_after_delay.
+    if not controlled_overload_prompt_sent:
         ->END
 
     controlled_overload_damage_observer_ticks = controlled_overload_damage_observer_ticks + 1
@@ -926,7 +946,10 @@ shared navigation_priority_confirmed_text = "Artemis - Comms: Shakedown complete
     if controlled_overload_damage_detected:
         ->END
 
-    if not controlled_overload_started:
+    # Same change as the observers: a crew who followed the instruction without
+    # clicking "Confirm Controlled Overload Started" could not use the damage
+    # fallback either, so both routes were shut behind the same manual step.
+    if not controlled_overload_prompt_sent:
         engineering_shakedown_status = "damage_confirmation_blocked_before_overload"
         script.write_khovan_startup_trace("[KHOVAN ACT1 ENG BLOCKED] controlled damage confirmation blocked before overload")
         ->END

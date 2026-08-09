@@ -36,6 +36,59 @@ def label_body(text: str, label: str) -> str:
     return match.group("body")
 
 
+class AutomaticGatesDoNotDependOnTheirFallback(unittest.TestCase):
+    """An automatic gate must not be gated behind its own manual fallback.
+
+    Live 2026-08-09: the crew ran the controlled overload and repaired the
+    damage, and neither was logged. The damage observer was scheduled in exactly
+    one place - khovan_engineering_start_controlled_overload - which is only
+    reachable from the "Confirm Controlled Overload Started" Comms button. The
+    automatic detector could not run until someone manually confirmed the thing
+    it exists to detect.
+
+    This is a class of bug, not one instance: every automatic observer in this
+    file must start from a runtime event, never from the Comms route that exists
+    to cover it failing.
+    """
+
+    def test_overload_damage_observer_starts_at_the_prompt(self) -> None:
+        engineering = read(ENGINEERING_PATH)
+        prompt_body = label_body(
+            engineering, "khovan_engineering_deliver_controlled_overload_prompt_after_delay"
+        )
+        self.assertIn(
+            "task_schedule(khovan_engineering_watch_controlled_overload_damage)",
+            prompt_body,
+            "the damage observer must start when the crew is told to overload, "
+            "not when they confirm they did",
+        )
+
+    def test_overload_observers_gate_on_the_prompt_not_the_confirmation(self) -> None:
+        engineering = code_only(read(ENGINEERING_PATH))
+        for label in [
+            "khovan_engineering_watch_controlled_overload_damage",
+            "khovan_engineering_watch_controlled_overload_damage_tick",
+        ]:
+            body = label_body(engineering, label)
+            self.assertIn("if not controlled_overload_prompt_sent:", body)
+            self.assertNotIn(
+                "if not controlled_overload_started:",
+                body,
+                f"{label} must not require the manual confirmation it replaces",
+            )
+
+    def test_damage_fallback_is_reachable_without_the_started_confirmation(self) -> None:
+        # Both routes were shut behind the same manual step, so a crew who
+        # followed the instruction had neither.
+        engineering = code_only(read(ENGINEERING_PATH))
+        # The precondition lives in the shared completion label, which both the
+        # observer and the Comms route funnel into - not in the Comms route
+        # itself, which only delegates.
+        body = label_body(engineering, "khovan_engineering_complete_controlled_damage")
+        self.assertIn("if not controlled_overload_prompt_sent:", body)
+        self.assertNotIn("if not controlled_overload_started:", body)
+
+
 class Act1EngineeringPowerPresetTests(unittest.TestCase):
     """Design 8.4 step 1 - impulse 0 / warp 200 - detected, not just requested."""
 
