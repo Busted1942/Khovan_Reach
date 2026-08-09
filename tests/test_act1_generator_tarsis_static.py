@@ -111,7 +111,7 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             "shared tarsis_resupply_nukes = 3",
             "shared tarsis_resupply_emps = 6",
             "shared tarsis_resupply_mines = 6",
-            'shared tarsis_resupply_text = "Tarsis Control: normal docking resupply and generator handoff confirmed. Full energy and armament restored; governor clear is recorded. Await the next shakedown instruction."',
+            'shared tarsis_resupply_text = "Normal resupply authorized. Await your next instruction and complete your shakedown cruise."',
             "shared tarsis_generator_support_requested = False",
             "shared tarsis_docking_clearance_requested = False",
             "shared tarsis_generator_support_response_sent = False",
@@ -395,7 +395,7 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             "Tarsis Docking Control: docking clearance granted. Helm, approach within tolerance and initiate docking.",
             "Dock normally with Tarsis. Resupply and governor handoff complete on hard dock.",
             "Tarsis Docking Control: docking clearance not granted. Complete Tarsis Comms traffic before approach.",
-            "Tarsis Control: normal docking resupply and generator handoff confirmed. Full energy and armament restored; governor clear is recorded. Await the next shakedown instruction.",
+            "Normal resupply authorized. Await your next instruction and complete your shakedown cruise.",
             "Begin Engineering shakedown with Tarsis Training Control.",
         ]:
             self.assertIn(phrase, active_copy)

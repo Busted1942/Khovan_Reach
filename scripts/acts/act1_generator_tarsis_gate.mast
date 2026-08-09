@@ -85,7 +85,7 @@ shared training_speed_power_reminder_text = "Remember to follow the shakedown mi
 shared tarsis_generator_support_text = "Authorization recieved. Reqquest docking clearnece."
 shared tarsis_hail_text = "Tarsis Station: Artemis, we read you. Generator Acceptance is standing by. Request generator support and docking clearance before approach."
 shared tarsis_docking_clearance_text = "Tarsis Docking Control: docking clearance granted. Helm, approach within tolerance and initiate docking."
-shared tarsis_resupply_text = "Tarsis Control: normal docking resupply and generator handoff confirmed. Full energy and armament restored; governor clear is recorded. Await the next shakedown instruction."
+shared tarsis_resupply_text = "Normal resupply authorized. Await your next instruction and complete your shakedown cruise."
 
 //enable/comms if has_roles(COMMS_SELECTED_ID, "kestrel_yards")
     script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS 005] Kestrel standard station selected")
