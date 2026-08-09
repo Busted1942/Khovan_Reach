@@ -80,7 +80,7 @@ shared engineering_power_preset_run_id = 0
 shared engineering_power_preset_source = "not_observed"
 shared engineering_impulse_value = -1
 shared engineering_warp_value = -1
-shared engineering_power_preset_confirmed_text = "Artemis - Engineering: Impulse zero, warp two hundred. Heat sinks reading clean."
+shared engineering_power_preset_confirmed_text = "Artemis - Engineering: Impulse zero, warp two hundred. Heat sinks reading clean.\nArtemis - Helm: Now increase impulse power to 100% and ensure your speed stays at 0."
 
 shared engineering_shakedown_start_text = "Artemis - Captain: Cleared for departure. Take her 2 km off the station.\nArtemis - Engineering: On the captain's order, Impulse 0%, Warp 200%. We are validating heat sinks."
 shared engineering_no_motion_confirmed_text = "Artemis - Engineering: Good. Set a rally point in a crew quarters and assign a DAMCON team to it. That is where they wait between jobs. Selecting a team also shows its medical status."
