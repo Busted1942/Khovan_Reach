@@ -113,7 +113,7 @@ class Act1EngineeringShakedownStaticTests(unittest.TestCase):
             '+ "Khovan: Confirm Controlled Overload Started" khovan_engineering_start_controlled_overload if damcon_rest_cycle_confirmed and not controlled_overload_started',
             '+ "Khovan: Fallback Confirm Controlled Damage" khovan_engineering_confirm_controlled_damage if controlled_overload_damage_fallback_available and not controlled_overload_damage_detected',
             '+ "Khovan: Confirm Repairs Complete" khovan_engineering_confirm_repair_complete if controlled_overload_repair_fallback_available and not controlled_overload_repair_confirmed',
-            '+ "Khovan: Fallback Confirm Navigation Priority" khovan_engineering_confirm_navigation_priority if navigation_priority_preset_fallback_available and not navigation_priority_preset_set',
+            '+ "Khovan: Conform Combat Posture" khovan_engineering_confirm_navigation_priority if navigation_priority_preset_fallback_available and not navigation_priority_preset_set',
         ]:
             self.assertIn(phrase, engineering)
         self.assertNotIn('"Khovan: Begin Engineering Shakedown"', engineering)
