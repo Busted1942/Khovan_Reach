@@ -263,6 +263,42 @@ Hand over exactly:
 
 Do not hand over the full docs tree. Context spent on unrelated design docs is context not spent on the packet.
 
+## 5.1.1 Player-facing message channel rule
+
+**Operator ruling, 2026-08-08.** Applies to every slice from 07 onward.
+
+For anything the mission needs to say to players — progress, gate status,
+instructions, advisories — use the current-objective broadcast channel:
+
+```mast
+    await task_schedule(khovan_set_current_objective, {...})
+```
+
+which reaches players via `comms_broadcast()` in `current_objective_panel.mast`.
+That channel is live-confirmed working and renders correctly on player consoles.
+
+**Do not use a GM-only `comms_receive()` route to carry player-facing content.**
+Every GM-only `comms_receive()` call tested in this build executes correctly and
+has never rendered visibly, across 3+ live sessions. Cookbook section 6.2 carries
+the full evidence and has downgraded the bare shape to
+`[UNPROVEN — DISCONFIRMED FOR GM ROUTES]`.
+
+GM status visibility leans on the Scenario Control Panel overview and the trace
+log until the rendering question is resolved.
+
+**Known affected, not yet fixed:** `scripts/systems/scenario_control_panel.mast`
+(5 calls) and `scripts/systems/story_jump_presets.mast` (3 calls) still use the
+disconfirmed bare shape and have never been independently confirmed to render for
+the GM. If the `comms_override` experiment in `act1_drone_contact_fire.mast` is
+confirmed live, both need the identical fix.
+
+**This is deprioritized, not open.** The operator judged further live-smoke cycles
+on GM rendering a poor use of session time relative to building the mission out.
+Do not spend a live-smoke session on it unprompted; diagnose from the trace log if
+it is picked up again. If the `comms_override` experiment also fails, there is no
+third proven shape in the cookbook — escalate as an API uncertainty rather than
+guessing further.
+
 ## 5.2 Implementation agent constraints
 
 An implementation agent working from a packet **must not**:

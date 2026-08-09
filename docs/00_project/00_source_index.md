@@ -90,12 +90,18 @@ Do not expose secret pirate truth in player-facing game resources.
 - `docs/04_implementation_setup/60_mast_api_cookbook.md`
 - `docs/04_implementation_setup/70_agent_handoff_protocol.md`
 - `docs/04_implementation_setup/80_slice_packets_07_16.md`
+- `docs/04_implementation_setup/90_act23_automation_gate_map.md`
+- `docs/04_implementation_setup/95_scripts_lib_extraction_plan.md`
 
 `60_mast_api_cookbook.md` records MAST/sbs_utils syntax already proven in this repo's active runtime code. It is implementation evidence, not design authority, and each pattern is tagged live / compile-only / unproven.
 
 `70_agent_handoff_protocol.md` defines the slice-packet-in / verification-record-out contract used when work is split across planning and implementation agents. It governs process only.
 
 `80_slice_packets_07_16.md` holds the completed slice packets for Slices 07-16, written to the 21-field template in `docs/01_design/50_implementation_slice_plan.md` section 2. It is build-side elaboration, not design authority: where it and the slice plan differ on design, the slice plan wins and the difference is a finding.
+
+`90_act23_automation_gate_map.md` proposes the gate/fallback policy for Acts II/III that `docs/01_design/10_mast_requirements.md` section 8.9 already provides for Act I. Same standing as `80_`: build-side proposal, not design authority. It is written to be ratified into `10_mast_requirements.md` as section 8.10; until then no slice packet may cite it as authority.
+
+`95_scripts_lib_extraction_plan.md` defines the `scripts/lib/` helper-module boundaries and the sequence for creating them. Build-side architecture, deliberately additive — it does not authorize refactoring existing act files.
 
 These are setup and handoff documents for starting or restarting the coding project. They preserve useful prior-build lessons without making old code authoritative.
 

@@ -6,6 +6,49 @@ Goal: build Slice 06 Drone 01 controlled disable and Drone 02 live-fire target, 
 
 implemented-live-unproven — Phase A is accepted live evidence. Phase B production code and static regression coverage are present, but no Phase B crewed Cosmos smoke has run.
 
+## Exit Criteria
+
+Added 2026-08-08. Six live-smoke passes have returned `PARTIAL` and none has
+returned `PASS`, because "done" was never written down. Without a closing
+condition a slice absorbs unlimited sessions. This section defines what closes
+Slice 06 so the next live run has a pass/fail target rather than an open agenda.
+
+**Phase A: CLOSED.** Accepted by operator direction 2026-08-08. Every mechanic
+Phase A existed to prove is live-confirmed. No further Phase A work.
+
+**Phase B closes when all of the following hold:**
+
+1. `tests/SLICE06_PHASE_B_PLAYTEST_WORKSHEET.md` has been run in one crewed
+   session and every check records `PASS` or an explicitly accepted
+   `AMBIGUOUS`. A blank check is not a pass.
+2. ACT1-019 through ACT1-024 each have a recorded result in the worksheet.
+3. Drone 01 completes: scan, hail, shield relay, weapons lock, 1-2 km band,
+   15-second stationary hold, authorized subsystem disable in three confirmed
+   manual hits, ceasefire.
+4. Drone 02 completes on genuine destruction, with `destruction_source`
+   attributing the kill to weapons rather than GM cleanup.
+5. `drone_contact_act2_ready` sets, and Slice 07 can read it as the Act II
+   handoff signal.
+6. A `### LIVE SMOKE` block is appended in the section 4.2 fixed shape with an
+   overall `result:` line that is not `PARTIAL`.
+
+**Explicitly NOT blocking Phase B closure:**
+
+- GM-only `comms_receive()` rendering. Deprioritized by operator direction; see
+  Acceptance Not Covered. Do not hold the slice open for it.
+- Weapons-console damage readout visibility. Low priority; the objective
+  broadcast channel is the preferred path per handoff protocol section 5.1.1.
+- Test-instrumentation text in player-facing Comms/Science output. A confirmed
+  deferred cleanup item. It must land **before this spike's text patterns are
+  reused for Drone 01/02 player-facing content**, which is a Slice 07 gate, not
+  a Slice 06 one.
+
+**If Phase B cannot close in one more session,** the correct response is to
+record what blocked it and stop, not to run a seventh partial pass. Two
+consecutive `PARTIAL` results on the same check mean the check is
+under-specified or the mechanic is not exposed — escalate as an API uncertainty
+per handoff protocol section 8 rather than repeating the session.
+
 ## Source Sections Used
 
 - `AGENTS.md`, branch lifecycle, source authority, and operator test expectations.
