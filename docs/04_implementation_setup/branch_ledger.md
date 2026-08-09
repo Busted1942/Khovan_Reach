@@ -266,6 +266,25 @@ settled.
 **Finding 3 — DAMCON idle buffs are permanent, and Act I fork choice silently
 sets DAMCON speed for the rest of the mission.**
 
+> **SUPERSEDED IN PART, 2026-08-09. Read this first.** Everything below was read
+> from `grid_ai.py`. That is the **legacy** DAMCON AI. This build runs
+> `grid_brains.mast`, proven live by an `idle_state` of `done`, a value only
+> `grid_brains.mast:320` writes — see cookbook section 15.1.
+>
+> The live path applies buffs as named modifiers with
+> `modifier_add(..., duration=time*60)` and a real `expired()` test, so the
+> central claim here — that the buffs never expire because nothing resets the
+> coefficient to `1.0` — is **not evidence about this build**, and they probably
+> do expire as the countdown implies.
+>
+> What survives: the room-to-buff mapping (gym, mess, quarters), the 60-second
+> idle requirement, and the design question. What needs re-answering against
+> `grid_brains` before anyone acts on it: whether the advantage is permanent,
+> and therefore whether the Act I fork silently changes Act III difficulty.
+>
+> Retained rather than rewritten, because the reasoning was sound and the source
+> was wrong — which is the more useful thing to have recorded.
+
 The mechanics, from `grid_damcon_speed()` and `grid_damcons_handle_idling_boost()`:
 
 - A DAMCON team that idles ~1 minute in a room with role `gym`, `quarters`, or

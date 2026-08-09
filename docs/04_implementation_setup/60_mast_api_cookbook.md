@@ -1222,3 +1222,140 @@ Folders not yet mined, mapped to the slices that will want them:
 **Method that worked:** grep the clones for the specific API or behavior in
 question *before* raising an API uncertainty. Both expensive failures on
 2026-08-09 had answers sitting in material this repo already held.
+
+---
+
+# 15. DAMCON teams and the ship grid
+
+Slice 09 is built entirely on this surface, and Slice 05's crew-welfare step
+already is. Everything here came out of four failed attempts at one gate on
+2026-08-09; the failures are recorded because each one was individually
+reasonable.
+
+## 15.1 The engine ships TWO DAMCON AIs. Identify which is running first.
+
+**[LIVE]** — this is the single most expensive thing on this page.
+
+`legendarymissions/ai/` contains both:
+
+| File | Status | Buff storage |
+|---|---|---|
+| `grid_ai.mast` + `grid_ai.py` | **legacy** | `*_speed_coeff` inventory keys + matching timers |
+| `grid_brains.mast` | **live** on this build | named modifiers in a `speed_modifiers` dict |
+
+Nothing in the folder layout says which is active. Both are present, both are
+internally coherent, and `grid_ai.py` is the one that reads like the obvious
+implementation. Three separate fixes were written against it and all three
+failed silently, returning documented defaults on a team the Engineering panel
+was actively showing as buffed.
+
+**Fingerprint the live AI with `idle_state`.** The two write disjoint value
+sets, so one read identifies the implementation:
+
+```mast
+    idle_state = get_inventory_value(damcon_team.id, "idle_state", "none")
+```
+
+| Value | Written by | Meaning |
+|---|---|---|
+| `start`, `moving`, `idling` | `grid_ai.mast` | legacy AI is live |
+| `stopped`, `moving`, `idling`, **`done`** | `grid_brains.mast` | current AI is live |
+
+`done` is the discriminator — `grid_brains.mast:320` writes it and `grid_ai.mast`
+never does.
+
+**General rule, worth more than this instance: two independent reads that both
+return the documented default mean the source you are reading is not the source
+running.** Not a broken API, not a wrong id. Check which implementation is live
+before writing a third fix.
+
+## 15.2 Reading a buff from the live AI
+
+**[UNPROVEN — awaiting live confirmation]** `grid_brains.mast:51-56`, `:376-378`.
+
+The current AI applies a buff as an **upgrade**, which stores a **named modifier
+with an expiry**, not a coefficient:
+
+```mast
+    team_speed_mods = get_inventory_value(damcon_team.id, "speed_modifiers", {})
+    team_rested_mod = team_speed_mods.get("rested")
+    team_rested_active = team_rested_mod is not None and not team_rested_mod.expired()
+```
+
+This is exactly the test the AI itself uses to decide whether a team is already
+buffed, so it is the right question to ask rather than an inference from it.
+
+Room-to-modifier-name map, from `grid_brains.mast:95-115` — **60 seconds idle**
+in each:
+
+| Room role | Modifier name |
+|---|---|
+| `quarters` | `rested` |
+| `mess` | `fed` |
+| `gym` | `ripped` |
+
+`sickbay` heals HP instead and adds no speed modifier.
+
+**Do not use** `get_inventory_value(id, "rested_speed_coeff", 1.0)` or
+`is_timer_finished(id, "rested_speed_coeff")`. Both are legacy, both return
+clean-looking defaults on this build, and both cost a live session.
+
+## 15.3 Reading DAMCON position and room
+
+**[UNPROVEN — awaiting live confirmation]** `grid_brains.mast:255-256`, `:270`.
+
+Position uses **`data_set.get()`**, a different accessor from
+`get_inventory_value` — and one already proven in this repo (section 9.1,
+`artemis_object.data_set.get("playerThrottle", 0)`):
+
+```mast
+    damcon_x = damcon_team.data_set.get("curx", -1)
+    damcon_y = damcon_team.data_set.get("cury", -1)
+```
+
+These two values are what the Engineering panel renders as "Idling at 13,5".
+
+Resolve the room by intersecting everything at that cell with a role set:
+
+```mast
+    damcon_hull_map = sbs.get_hull_map(artemis_id)
+    if damcon_hull_map is not None and damcon_x >= 0:
+        damcon_room_ids = set(damcon_hull_map.get_objects_at_point(damcon_x, damcon_y))
+        if len(damcon_room_ids & role("quarters")) > 0:
+            damcon_room = "quarters"
+```
+
+Guard the hull map for None — a despawned or destroyed ship returns None, and
+`get_objects_at_point` on an empty result is indistinguishable from a team
+standing nowhere.
+
+**This is also an independent fallback.** "A team has been in a `quarters`-roled
+cell for 60 seconds" is the same condition the AI uses to grant the buff, and it
+is computable from these two values without reading engine buff state at all. If
+the modifier read in 15.2 fails, this route does not depend on it.
+
+## 15.4 Enumerating teams
+
+**[LIVE]** — the one part that worked from the first attempt.
+
+```mast
+    damcon_teams = to_object_list(grid_objects(artemis_id) & role("damcons"))
+```
+
+`grid_objects()` returns agent ids (`sbs_utils/procedural/grid.py:12`), `role`
+is the role the engine itself gates on (`grid_ai.mast:51`), and the resulting
+`.id` is the same agent id the engine reads and writes. `damcon_team.name`
+returns the panel label — `DC1`, `DC2`, `DC3` — which is worth tracing, because
+it is what proves you have the real teams rather than three coincidental agents.
+
+## 15.5 Consequences for the DAMCON idle buffs finding
+
+`branch_ledger.md` Finding 3 states the buffs are permanent because nothing
+resets the coefficient to `1.0`. **That was read from `grid_ai.py`, the legacy
+AI**, and is not evidence about this build.
+
+The live path uses `modifier_add(..., duration=time*60)` with a real
+`expired()` test, so buffs on this build probably **do** expire as the
+countdown implies. Finding 3's design question — whether the Act I fork silently
+hands a Full Shakedown crew a permanent DAMCON speed advantage — needs
+re-answering against `grid_brains` before anyone acts on it.
