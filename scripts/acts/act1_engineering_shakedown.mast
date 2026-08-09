@@ -652,19 +652,39 @@ shared navigation_priority_confirmed_text = "Artemis - Comms: Shakedown complete
     damcon_team_count = len(damcon_teams)
     damcon_rested_team_count = 0
     damcon_fed_team_count = 0
+    damcon_ripped_team_count = 0
+    # Raw sample from the first team. teams=3 rested=0 fed=0 held for 270 ticks
+    # on the 2026-08-09 run, which proves the loop ran and found teams but not
+    # whether the read returned 1.0 or nothing at all. Those need different
+    # fixes, so log the value rather than only the derived count.
+    damcon_sample_rested = -1
+    damcon_sample_fed = -1
+    damcon_sample_ripped = -1
     for damcon_team in damcon_teams:
         team_rested = get_inventory_value(damcon_team.id, "rested_speed_coeff", 1.0)
         team_fed = get_inventory_value(damcon_team.id, "fed_speed_coeff", 1.0)
+        team_ripped = get_inventory_value(damcon_team.id, "ripped_speed_coeff", 1.0)
+        if damcon_sample_rested < 0:
+            damcon_sample_rested = team_rested
+            damcon_sample_fed = team_fed
+            damcon_sample_ripped = team_ripped
         if team_rested > 1.0:
             damcon_rested_team_count = damcon_rested_team_count + 1
         if team_fed > 1.0:
             damcon_fed_team_count = damcon_fed_team_count + 1
-    script.write_khovan_startup_trace(f"[KHOVAN ACT1 ENG DAMCON WATCH] tick={damcon_buff_observer_ticks} teams={damcon_team_count} rested={damcon_rested_team_count} fed={damcon_fed_team_count}")
+        if team_ripped > 1.0:
+            damcon_ripped_team_count = damcon_ripped_team_count + 1
+    script.write_khovan_startup_trace(f"[KHOVAN ACT1 ENG DAMCON WATCH] tick={damcon_buff_observer_ticks} teams={damcon_team_count} rested={damcon_rested_team_count} fed={damcon_fed_team_count} ripped={damcon_ripped_team_count} sample_rested={damcon_sample_rested} sample_fed={damcon_sample_fed} sample_ripped={damcon_sample_ripped}")
 
     # Either buff satisfies the step: the player-facing instruction covers quarters
     # and mess together, and both prove the same lesson - a team was parked long
     # enough to take a benefit.
-    if damcon_rested_team_count > 0 or damcon_fed_team_count > 0:
+    # Gym counts too. grid_ai.py treats quarters, mess, and gym identically -
+    # one minute idling in any of them writes that room's 1.25 coefficient - and
+    # the drill's lesson is "a team was parked long enough to take a benefit",
+    # which the gym proves as well as the bunk. Leaving it out meant a crew who
+    # parked in the gym did the exercise correctly and got no credit.
+    if damcon_rested_team_count > 0 or damcon_fed_team_count > 0 or damcon_ripped_team_count > 0:
         damcon_buff_observer_status = "buffed_team_observed"
         await task_schedule(khovan_engineering_complete_damcon_rest_cycle, {"damcon_source": "automatic_damcon_buff_observer"})
         ->END

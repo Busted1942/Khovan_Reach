@@ -199,7 +199,17 @@ class Act1EngineeringPowerPresetTests(unittest.TestCase):
         self.assertIn('to_object_list(grid_objects(artemis_id) & role("damcons"))', body)
         self.assertIn('get_inventory_value(damcon_team.id, "rested_speed_coeff", 1.0)', body)
         self.assertIn('get_inventory_value(damcon_team.id, "fed_speed_coeff", 1.0)', body)
-        self.assertIn("if damcon_rested_team_count > 0 or damcon_fed_team_count > 0:", body)
+        # Gym counts as well as quarters and mess - grid_ai.py writes a 1.25
+        # coefficient for any of the three, and the drill is proving a team was
+        # parked long enough to take a benefit, not which room they picked.
+        self.assertIn(
+            "if damcon_rested_team_count > 0 or damcon_fed_team_count > 0 or damcon_ripped_team_count > 0:",
+            body,
+        )
+        # The raw sample is what makes the next live run diagnostic: it separates
+        # "read returned 1.0" from "read returned nothing", which need different
+        # fixes. The 2026-08-09 run could not tell those apart.
+        self.assertIn("sample_rested={damcon_sample_rested}", body)
 
         # Arms the Comms fallback on the original 8-second schedule (4 ticks x 2s)
         # and keeps watching rather than returning.
