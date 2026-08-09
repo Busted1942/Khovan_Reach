@@ -814,6 +814,15 @@ shared navigation_priority_confirmed_text = "Artemis - Comms: Shakedown complete
         controlled_overload_repair_observer_status = "fallback_missing_artemis_id"
         script.write_khovan_startup_trace("[KHOVAN ACT1 ENG REPAIR FALLBACK] missing Artemis id")
         ->END
+    # This None-check is not boilerplate - it closes a false-pass. grid_objects() on a
+    # missing ship returns an empty set, which reads as zero damaged objects. With the
+    # peak already above zero, that is indistinguishable from "repairs complete", so a
+    # despawned or destroyed Artemis would silently satisfy the gate.
+    artemis_object = to_object(artemis_id)
+    if artemis_object is None:
+        controlled_overload_repair_observer_status = "fallback_missing_artemis_object"
+        script.write_khovan_startup_trace("[KHOVAN ACT1 ENG REPAIR FALLBACK] missing Artemis object")
+        ->END
 
     controlled_overload_repair_observer_ticks = controlled_overload_repair_observer_ticks + 1
     damaged_grid_objects = grid_objects(artemis_id) & role("__damaged__")

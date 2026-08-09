@@ -530,7 +530,7 @@ When a drill needs a Science-officer gate on a contact whose stock scan must sta
 
 **[UNPROVEN]** `act1_drone_contact_fire.mast:213-248`. This is the highest-risk API in the mission — Slice 06's whole spike exists to test it. Do not build Drone 01 on it until live smoke confirms the fixed version below.
 
-**Bugfix history (2026-08-08):** the original code passed `sbs.SHPSYS.WEAPONS`/`sbs.SHPSYS.ENGINES` as the *default-value* argument of `.get(key, default)` instead of using them as subsystem selectors — `.get()` is a flat key lookup (proven pattern: `artemis_object.data_set.get("playerThrottle", 0)`, section 8), so both fields silently read the same generic `"system_damage"` total. Separately, subsystem-hit detection required `MANUAL_CRITICAL_HIT` to match `DAMAGE_TARGET_ID` **and** `MANUAL_SYSTEM` to be non-`None` in the same event; live smoke on 2026-08-08 showed `MANUAL_SYSTEM` fire once as `SHPSYS.WEAPONS` on an event where `MANUAL_CRITICAL_HIT` was `None`, and the AND discarded that real signal. Full account in `tests/SLICE06_VERIFICATION.md` Known Risks and the Live Smoke Log entry dated 2026-08-08 ("operator pass, weapons exercised") plus its correction.
+**Bugfix history (2026-08-08), HALF OF IT SINCE REVERSED (2026-08-09).** The 2026-08-08 pass made two changes to this handler. The first was wrong: it claimed `.get(key, default)` is a flat lookup whose second argument is a default value, and rewrote `sbs.SHPSYS.WEAPONS`/`sbs.SHPSYS.ENGINES` to `0`. The signature is `def get(self, name, index=0)` and the writer indexes by `SHPSYS` — see section 9.1, which settles it. The original form was correct and has been restored; the replacement made both fields read index 0 and agree by construction. The second change was right and stands: subsystem-hit detection required `MANUAL_CRITICAL_HIT` to match `DAMAGE_TARGET_ID` **and** `MANUAL_SYSTEM` to be non-`None` in the same event; live smoke on 2026-08-08 showed `MANUAL_SYSTEM` fire once as `SHPSYS.WEAPONS` on an event where `MANUAL_CRITICAL_HIT` was `None`, and the AND discarded that real signal. Full account in `tests/SLICE06_VERIFICATION.md` Known Risks and the Live Smoke Log entry dated 2026-08-08 ("operator pass, weapons exercised") plus its correction.
 
 ```mast
 //damage/object if has_role(DAMAGE_TARGET_ID, "khovan_slice06_spike_target")
@@ -538,11 +538,15 @@ When a drill needs a Science-officer gate on a contact whose stock scan must sta
     target_id = get_inventory_value(DAMAGE_SOURCE_ID, "MANUAL_CRITICAL_HIT")
     spike_target = to_object(DAMAGE_TARGET_ID)
     if spike_target is not None:
-        # No proven per-subsystem data_set key exists yet - both fields read the
-        # same generic total until one is proven live. Do not treat them as
-        # independently reliable per-subsystem values.
-        drone_target_spike_weapons_damage_value = spike_target.data_set.get("system_damage", 0)
-        drone_target_spike_engines_damage_value = spike_target.data_set.get("system_damage", 0)
+        # system_damage IS per-subsystem, indexed by SHPSYS (section 9.1).
+        # get() returns None for a key never written, so None-guard before any
+        # numeric comparison.
+        spike_weapons_damage = spike_target.data_set.get("system_damage", sbs.SHPSYS.WEAPONS)
+        spike_engines_damage = spike_target.data_set.get("system_damage", sbs.SHPSYS.ENGINES)
+        if spike_weapons_damage is None:
+            spike_weapons_damage = 0
+        if spike_engines_damage is None:
+            spike_engines_damage = 0
     # Track subsystem-lock (MANUAL_SYSTEM) and critical-hit (MANUAL_CRITICAL_HIT)
     # independently - do not require both in the same event until live evidence
     # justifies it (see bugfix history above).
@@ -769,7 +773,26 @@ The indexed form is what makes array-valued keys reachable. From `legendarymissi
 
 `shield_val` is a per-shield array read by index. `shield_count` is scalar, so it takes index 0.
 
-**Consequence for per-subsystem damage.** Slice 06 concluded there is "no proven per-subsystem `data_set` key" after `get("system_damage", sbs.SHPSYS.WEAPONS)` failed. That call may have been closer to correct than the replacement — the enum was in the index slot, which is where a subsystem selector would belong. Slice 06 fixed a *second*, independent bug in the same handler (an `and` that discarded a real `MANUAL_SYSTEM` signal), and that fix alone could explain the recovery. **Still [UNPROVEN]** — nothing here shows `SHPSYS.WEAPONS` is a valid index for `system_damage`. It reopens the question rather than settling it, and it is a cheap thing to test in the Slice 12 combat spike: read `system_damage` at several indices and trace all of them.
+**Consequence for per-subsystem damage — SETTLED 2026-08-09, and the Slice 06 "bugfix" was wrong.** Slice 06 concluded there is "no proven per-subsystem `data_set` key" after `get("system_damage", sbs.SHPSYS.WEAPONS)` was replaced with `get("system_damage", 0)`. Two pieces of source close this:
+
+```python
+def get(self, name, index=0)                       # sbs_utils/mock/sbs.py:570
+```
+
+The second argument is an **index**, never a default — a missing key returns `None`. And the writer indexes by `SHPSYS` (`sbs_utils/procedural/internal_damage.py:305-309`):
+
+```python
+the_roles = ["weapon", "engine", "sensor", "shield"]
+for x in range(SBS.SHPSYS.MAX):
+    cur = len(damaged_grid_objects & role(the_roles[x]))
+    blob.set('system_damage', cur, x)
+```
+
+So `system_damage` **is** per-subsystem — `WEAPONS=0, ENGINES=1, SENSORS=2, SHIELDS=3` — and it counts damaged grid objects carrying that system's role. The original `SHPSYS.WEAPONS`/`SHPSYS.ENGINES` form was correct; the replacement made both fields read index 0 and agree by construction, which is what made them look like one generic total. The recovery Slice 06 saw came from the *other* fix in that handler (the `and` that discarded a real `MANUAL_SYSTEM` signal).
+
+Restored in `act1_drone_contact_fire.mast` on 2026-08-09. Note `.get()` returns `None` for a key never written, so None-guard before any numeric comparison. It went unnoticed for a day because the cited counter-example, `data_set.get("playerThrottle", 0)`, reads index 0 under either interpretation.
+
+No Slice 12 spike needed for this one.
 
 **[LIVE]** Reading (`act1_engineering_shakedown.mast:227-234`):
 

@@ -243,3 +243,38 @@ index=4 MANEUVER index=5 SENSORS index=6 FRONT SHIELD  index=7 REAR SHIELD
 **Not established:** Artemis's `shipData` hull key. LegendaryMissions owns player spawn, and nothing in this repo sets it, so the dump above is recorded as "the player ship as spawned by LegendaryMissions" rather than attributed to a named hull.
 
 **Separate observation, not this gate.** The no-motion gate declined correctly in the same session: the ship moved (`speed` 7 → 16, `distance_sq` to 5.6M). `playerThrottle` read `2.0`, above 1.0, which looks like a warp factor rather than impulse throttle. `engineering_shakedown_start_text` instructs Helm "Confirm impulse reads zero, then warp 1" — going to warp guarantees motion, which is the opposite of what a no-motion test measures. **Raised as a content finding for the operator**, not changed here: that text is `docs/02_content/` territory.
+
+### PENDING LIVE — DAMCON buff and repair-completion observers (added 2026-08-09)
+
+Two gates that were Comms-only "because the API does not exist" now have observers. Both are **[UNPROVEN]**: read from installed sbs_utils source, never exercised live. Both keep their Comms fallback, so a failure degrades to the previous behaviour rather than blocking the shakedown.
+
+**Repair completion — design 8.4 step 11.** `khovan_engineering_watch_repair_completion` polls `grid_objects(artemis_id) & role("__damaged__")` every 2s. `internal_damage.py` flips the roles: `grid_damage_grid_object()` adds `__damaged__`/removes `__undamaged__` (:475-476), `grid_repair_grid_objects()` reverses it (:742-743).
+
+Two false-passes are closed deliberately, and both matter more than the happy path:
+
+1. The overload takes a moment to damage anything, so a poll starting when the step opens would see zero damaged objects and pass instantly. The observer requires the count to have **risen above zero at least once** (`controlled_overload_peak_damaged_grid_count`) before a return to zero counts.
+2. `grid_objects()` on a missing ship returns an empty set — indistinguishable from "all repaired" once the peak is above zero. A `to_object()` None-check runs before the count is read, so a despawned Artemis cannot satisfy the gate.
+
+**DAMCON rest/meal cycle — design 8.4 steps 4 and 6.** Team *location* still has no accessor and this does not claim one. The *outcome* is readable: `grid_ai.py` `grid_damcons_handle_idling_boost_finish()` gives a team that idles one minute in a room a 1.25 buff on a 10-16 minute timer — quarters → `rested_speed_coeff` (:141-144), mess → `fed_speed_coeff` (:145-148), gym → `ripped_speed_coeff` (:137-140) — reset to 1.0 on expiry (`grid_ai.mast:243-248`). Teams carry role `damcons`.
+
+`khovan_engineering_watch_damcon_rest_cycle` polls every 2s and passes when any team shows either buff. **This is a stronger gate than location would have been:** earning the buff proves the team parked in quarters for a full minute and took the benefit, where a location check passes for a team merely walking through.
+
+Operator note, from the same source read: the three buffs **stack multiplicatively** (`grid_ai.py:30`) — all three ≈ 1.95× repair speed — but the same buff does not re-stack with itself (:105-107 returns early if already ≠ 1.0), and `red_alert_coeff = 0.75` multiplies in, so a fully buffed team at red alert is ≈ 1.46×.
+
+**Expected observation.** Trace lines, one per tick:
+
+```text
+[KHOVAN ACT1 ENG DAMCON WATCH] tick=N teams=T rested=R fed=F
+[KHOVAN ACT1 ENG REPAIR WATCH] tick=N damaged=D peak=P
+```
+
+then `[KHOVAN ACT1 ENG 005] ... source=automatic_damcon_buff_observer` and `[KHOVAN ACT1 ENG 009] ... source=automatic_undamaged_grid_object_observer`.
+
+**Failure/ambiguous observation.**
+
+- `teams=0` every tick → the `damcons` role is not what this build uses for teams. The observer is reading an empty set, not an unbuffed crew.
+- `teams=T` but `rested`/`fed` never leave 0 while the operator can see a rested team → the coefficient names or `get_inventory_value` on a grid object are wrong.
+- `damaged=0 peak=0` throughout → the overload is not producing internal grid damage on this hull, so the whole `__damaged__` approach is inapplicable and repair completion goes back to Comms.
+- Either gate passing *instantly* on the first tick → a false pass got through; capture the trace and treat the guard as broken.
+
+**What remains unproven regardless of result:** DAMCON team location, and whether a saved preset slot is readable. Neither is addressed here.

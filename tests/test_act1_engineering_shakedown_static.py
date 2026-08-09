@@ -162,6 +162,53 @@ class Act1EngineeringPowerPresetTests(unittest.TestCase):
         self.assertIn("navigation_priority_preset_fallback_available = True", repair_body)
         self.assertIn("task_schedule(khovan_engineering_watch_navigation_priority", repair_body)
 
+    def test_repair_observer_requires_damage_before_it_can_pass(self) -> None:
+        # Design 8.4 step 11. internal_damage.py flips __damaged__/__undamaged__ per
+        # grid object (:475-476, :742-743), so "repairs complete" is no grid object
+        # still carrying __damaged__.
+        engineering = read(ENGINEERING_PATH)
+        body = label_body(engineering, "khovan_engineering_watch_repair_completion")
+
+        self.assertIn('grid_objects(artemis_id) & role("__damaged__")', body)
+
+        # The overload takes a moment to damage anything. Without the peak guard a
+        # poll starting when the step opens sees zero damaged objects and declares
+        # victory before a single hallway blew.
+        self.assertIn(
+            "if controlled_overload_peak_damaged_grid_count > 0 and controlled_overload_damaged_grid_count == 0:",
+            body,
+        )
+
+        # Second false-pass, closed separately: grid_objects() on a missing ship
+        # returns an empty set, which is indistinguishable from "all repaired" once
+        # the peak is above zero.
+        self.assertIn("if artemis_object is None:", body)
+        self.assertLess(
+            body.index("if artemis_object is None:"),
+            body.index('grid_objects(artemis_id) & role("__damaged__")'),
+            "the missing-object guard must run before the damaged count is read",
+        )
+
+    def test_damcon_gate_reads_the_buff_not_the_location(self) -> None:
+        # Design 8.4 steps 4 and 6. Team location has no accessor; the earned buff
+        # does (grid_ai.py:137-148, reset on expiry at grid_ai.mast:243-248), and it
+        # is the better signal - it proves the team parked long enough to benefit.
+        engineering = read(ENGINEERING_PATH)
+        body = label_body(engineering, "khovan_engineering_watch_damcon_rest_cycle")
+
+        self.assertIn('to_object_list(grid_objects(artemis_id) & role("damcons"))', body)
+        self.assertIn('get_inventory_value(damcon_team.id, "rested_speed_coeff", 1.0)', body)
+        self.assertIn('get_inventory_value(damcon_team.id, "fed_speed_coeff", 1.0)', body)
+        self.assertIn("if damcon_rested_team_count > 0 or damcon_fed_team_count > 0:", body)
+
+        # Arms the Comms fallback on the original 8-second schedule (4 ticks x 2s)
+        # and keeps watching rather than returning.
+        self.assertIn("if damcon_buff_observer_ticks >= 4 and not damcon_rest_cycle_fallback_available:", body)
+        self.assertGreater(
+            body.index("jump khovan_engineering_watch_damcon_rest_cycle"),
+            body.index("damcon_buff_observer_ticks >= 4"),
+        )
+
     def test_no_motion_observer_keeps_watching_after_arming_its_fallback(self) -> None:
         # Same fix as the power-preset observer. Live 20:30: ticks 1-13 read
         # throttle=0 while the crew were still setting up, then the observer quit at
