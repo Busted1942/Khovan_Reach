@@ -1,0 +1,303 @@
+# Khovan Reach Slice 07A Act II pivot.
+# Anderson orders, Act I -> Act II phase transition, distress-signal localization.
+#
+# Scope is the 07A packet only. Halcyon spawn/scan/hail, Engineering/DAMCON
+# deployment, Hessler, the cascade, and any DAMCON timer are Phase B or later
+# and are deliberately absent - see the packet's "Do not implement" list.
+
+shared act2_pivot_initialized = False
+shared act2_pivot_status = "not_initialized"
+shared act2_last_progression_summary = "none"
+shared act2_pivot_run_id = 0
+shared act2_handoff_observer_ticks = 0
+shared act2_handoff_fallback_available = False
+
+shared anderson_orders_delivered = False
+shared anderson_clip_1_stub_sent = False
+shared anderson_orders_ack_status = "pending"
+shared anderson_orders_prompt_run_id = 0
+
+shared distress_signal_detected = False
+shared distress_localized = False
+shared distress_localization_status = "not_started"
+shared distress_science_gate_status = "not_started"
+shared distress_localization_fallback_available = False
+shared distress_localization_source = "none"
+
+shared dillon_clip_8_stub_sent = False
+
+# Player-facing copy. Addressee convention, cookbook 6.2: the body opens with
+# who is being addressed, one line per recipient, and never re-names its own
+# sender because the message header already carries it.
+shared anderson_orders_text = "Artemis - Captain: Admiral Anderson, Command Coordination. Long-range monitoring has picked up a fragmentary distress signal in the Khovan Reach region. TSN-compatible emergency band, too degraded to identify or authenticate. Either a civilian beacon or a TSN vessel in difficulty, and no other asset is in range to answer it.\nArtemis - Helm: Come about for Khovan Reach. Roughly ninety minutes at standard cruise.\nArtemis - Comms: Acknowledge these orders for the record. The qualification framework stays in effect; this is a live operation now."
+shared dillon_clip_8_text = "Artemis - Captain: The framework still applies, but the consequences are real now.\nArtemis - Comms: Report the deviation to Command and keep the cadence up. I will keep observing."
+shared distress_localization_prompt_text = "Artemis - Science: Run a long-range sweep and triangulate the distress source.\nArtemis - Comms: Report the fix to the captain when Science has it."
+shared distress_localized_text = "Artemis - Captain: Source localized. Single vessel, civilian cargo profile, roughly fifteen minutes off the direct route. The beacon pattern reads authentic, not a lure.\nArtemis - Helm: Set course when the captain gives the word."
+
+# Comms route rides Tarsis. Play guide Scene 5 puts Artemis "returning from the
+# training area, en route back toward Tarsis", so Tarsis is the station in
+# contact during the pivot, and its route is the live-proven one in this repo
+# (act1_generator_tarsis_gate.mast). Halcyon does not exist until Phase B, so a
+# scan route on the distress source cannot be the Phase A path - the Acts II/III
+# gate map rates that row against Halcyon, which Phase B spawns.
+//comms if has_roles(COMMS_SELECTED_ID, "tarsis_station") and mission_phase == "act_2"
+    act2_pivot_status = "act2_comms_options_rendered"
+    script.write_khovan_startup_trace("[KHOVAN ACT2 COMMS OPTIONS] Act II options rendered")
+    + "Acknowledge Anderson Orders" khovan_act2_acknowledge_orders if anderson_orders_delivered and anderson_orders_ack_status == "pending"
+    + "Report Distress Localization" khovan_act2_confirm_distress_localization if distress_signal_detected and not distress_localized
+    + "Report Act II Status" khovan_act2_report_status
+
+=== khovan_act2_initialize_pivot ===
+    act2_pivot_initialized = True
+    act2_pivot_status = "initialized_waiting_for_act1_completion"
+    act2_last_progression_summary = "Act II pivot initialized; waiting on Act I completion."
+    act2_pivot_run_id = act2_pivot_run_id + 1
+    act2_handoff_observer_ticks = 0
+    act2_handoff_fallback_available = False
+    anderson_orders_delivered = False
+    anderson_clip_1_stub_sent = False
+    anderson_orders_ack_status = "pending"
+    anderson_orders_prompt_run_id = anderson_orders_prompt_run_id + 1
+    distress_signal_detected = False
+    distress_localized = False
+    distress_localization_status = "not_started"
+    distress_science_gate_status = "not_started"
+    distress_localization_fallback_available = False
+    distress_localization_source = "none"
+    dillon_clip_8_stub_sent = False
+    script.write_khovan_startup_trace("[KHOVAN ACT2 001] Act II pivot state initialized")
+    task_schedule(khovan_act2_watch_act1_handoff, {"handoff_run_id": act2_pivot_run_id})
+    ->END
+
+# Watch for the Act I handoff rather than having Act I call us.
+#
+# The 07A packet's "Do not implement" list forbids any change to Act I files
+# beyond timer invalidation hooks, so the call cannot originate there. Slice 06
+# already publishes drone_contact_act2_ready when Drone 02 is destroyed and when
+# the Direct Scenario route bypasses the drills, which is a clean seam to poll.
+#
+# Bounded observer, cookbook 5.2, at a 5-second period. The ceiling is sized for
+# the longest Act I fork - the Full Shakedown runs 45 minutes or so, and 900
+# ticks is 75 minutes - so a crew taking their time is not cut off. If it does
+# expire, JUMP-011 is the GM route into Act II, so the timeout degrades to a
+# manual entry rather than a dead mission.
+=== khovan_act2_watch_act1_handoff ===
+    default handoff_run_id = 0
+    if mission_phase == "act_2":
+        ->END
+    if handoff_run_id != act2_pivot_run_id:
+        script.write_khovan_startup_trace("[KHOVAN ACT2 MSG ORDER] stale Act I handoff observer suppressed")
+        ->END
+
+    act2_handoff_observer_ticks = act2_handoff_observer_ticks + 1
+    if drone_contact_act2_ready:
+        act2_pivot_status = "act1_handoff_observed"
+        script.write_khovan_startup_trace(f"[KHOVAN ACT2 HANDOFF] Act I handoff observed at tick={act2_handoff_observer_ticks}")
+        await task_schedule(khovan_act2_begin_pivot)
+        ->END
+
+    if act2_handoff_observer_ticks >= 900 and not act2_handoff_fallback_available:
+        act2_handoff_fallback_available = True
+        act2_pivot_status = "act1_handoff_observer_timed_out_use_jump_011"
+        script.write_khovan_startup_trace("[KHOVAN ACT2 HANDOFF FALLBACK] observer ceiling reached; use JUMP-011 to enter Act II")
+        ->END
+
+    await delay_sim(seconds=5)
+    jump khovan_act2_watch_act1_handoff
+    ->END
+
+# Entry point from Act I. Slice 06 sets drone_contact_act2_ready when Drone 02
+# is destroyed, and the Direct Scenario route sets it on bypass. This label owns
+# the phase transition; nothing else writes mission_phase = "act_2".
+=== khovan_act2_begin_pivot ===
+    if mission_phase == "act_2":
+        script.write_khovan_startup_trace("[KHOVAN ACT2 MSG ORDER] duplicate suppressed Act II pivot")
+        ->END
+    if not drone_contact_act2_ready:
+        act2_pivot_status = "blocked_act1_not_complete"
+        script.write_khovan_startup_trace("[KHOVAN ACT2 BLOCKED] pivot blocked before Act I handoff")
+        ->END
+
+    # Invalidate every Act I delayed task before the phase changes. Cookbook 5.1:
+    # a stale Kestrel advisory or Engineering observer firing mid-Act-II is the
+    # documented hazard, and bumping the generation counters is what the guards
+    # compare against.
+    await task_schedule(khovan_act2_invalidate_act1_timers)
+
+    mission_phase = "act_2"
+    current_scene = 5
+    current_beat = "scene_5_new_orders"
+    act2_pivot_run_id = act2_pivot_run_id + 1
+    act2_pivot_status = "act2_entered_awaiting_anderson_orders"
+    act2_last_progression_summary = "Act II entered from Act I handoff; Anderson orders pending."
+    script.write_khovan_startup_trace("[KHOVAN ACT2 002] mission_phase=act_2 current_scene=5")
+    await task_schedule(khovan_scenario_control_panel_update_overview)
+    await task_schedule(khovan_act2_deliver_anderson_orders)
+    ->END
+
+# Bumping every Act I run-ID counter is what makes a pending Act I task bail on
+# resume. Each of these is compared by an existing guard in its own file; adding
+# a new Act I timer means adding it here too.
+=== khovan_act2_invalidate_act1_timers ===
+    kestrel_generator_advisory_run_id = kestrel_generator_advisory_run_id + 1
+    kestrel_homing_reserve_prompt_run_id = kestrel_homing_reserve_prompt_run_id + 1
+    kestrel_stock_station_disable_run_id = kestrel_stock_station_disable_run_id + 1
+    engineering_shakedown_undock_watch_run_id = engineering_shakedown_undock_watch_run_id + 1
+    engineering_power_preset_run_id = engineering_power_preset_run_id + 1
+    controlled_overload_prompt_run_id = controlled_overload_prompt_run_id + 1
+    controlled_overload_repair_run_id = controlled_overload_repair_run_id + 1
+    navigation_priority_run_id = navigation_priority_run_id + 1
+    damcon_buff_run_id = damcon_buff_run_id + 1
+    drone_contact_sequence_run_id = drone_contact_sequence_run_id + 1
+    drone_01_stationary_hold_run_id = drone_01_stationary_hold_run_id + 1
+    script.write_khovan_startup_trace("[KHOVAN ACT2 003] Act I delayed tasks invalidated by generation bump")
+    ->END
+
+=== khovan_act2_deliver_anderson_orders ===
+    if anderson_clip_1_stub_sent:
+        script.write_khovan_startup_trace("[KHOVAN ACT2 MSG ORDER] duplicate suppressed Anderson Clip 1")
+        ->END
+    if mission_phase != "act_2":
+        act2_pivot_status = "anderson_orders_blocked_before_act2"
+        ->END
+
+    anderson_clip_1_stub_sent = True
+    anderson_orders_delivered = True
+    anderson_orders_ack_status = "pending"
+    act2_pivot_status = "anderson_orders_delivered_awaiting_ack"
+    act2_last_progression_summary = "Anderson Clip 1 delivered; captain acknowledgment pending."
+    last_checkpoint = "post_anderson_orders"
+    script.write_khovan_startup_trace("[KHOVAN ACT2 004] Anderson Clip 1 text stand-in sent")
+    script.write_khovan_startup_trace("[KHOVAN ACT2 SAVE] checkpoint post_anderson_orders recorded")
+    await task_schedule(khovan_reach_send_safe_startup_message, {"startup_sender": "Admiral Anderson", "startup_title": "Command Coordination", "startup_text": anderson_orders_text, "startup_title_color": "yellow", "startup_sender_id": tarsis_station_id, "startup_player_id": artemis_id, "startup_breadcrumb": "[KHOVAN ACT2 004A] Anderson orders message sent", "startup_safe_breadcrumb": "[KHOVAN ACT2 SAFE] Anderson orders skipped because sender/context unavailable"})
+    await task_schedule(khovan_set_current_objective, {"objective_id": "act2_anderson_orders", "objective_body": "Artemis - Comms: Acknowledge Admiral Anderson's orders for the record.", "objective_step": "Act II new orders", "objective_breadcrumb": "[KHOVAN OBJECTIVE 023] objective updated: Anderson orders"})
+    await task_schedule(khovan_scenario_control_panel_update_overview)
+    ->END
+
+=== khovan_act2_acknowledge_orders ===
+    if anderson_orders_ack_status == "acknowledged":
+        script.write_khovan_startup_trace("[KHOVAN ACT2 MSG ORDER] duplicate suppressed orders acknowledgment")
+        yield success
+    if not anderson_orders_delivered:
+        act2_pivot_status = "ack_blocked_before_orders"
+        script.write_khovan_startup_trace("[KHOVAN ACT2 BLOCKED] acknowledgment before orders delivered")
+        yield fail
+
+    anderson_orders_ack_status = "acknowledged"
+    current_beat = "scene_5_orders_acknowledged"
+    act2_pivot_status = "orders_acknowledged_awaiting_distress_localization"
+    act2_last_progression_summary = "Captain acknowledged Anderson orders; Dillon pivot note sent."
+    script.write_khovan_startup_trace("[KHOVAN ACT2 005] Anderson orders acknowledged by Comms")
+    await task_schedule(khovan_act2_deliver_dillon_pivot_note)
+    await task_schedule(khovan_act2_open_distress_localization)
+    yield success
+
+=== khovan_act2_deliver_dillon_pivot_note ===
+    if dillon_clip_8_stub_sent:
+        script.write_khovan_startup_trace("[KHOVAN ACT2 MSG ORDER] duplicate suppressed Dillon Clip 8")
+        ->END
+    dillon_clip_8_stub_sent = True
+    script.write_khovan_startup_trace("[KHOVAN ACT2 006] Dillon Clip 8 text stand-in sent")
+    await task_schedule(khovan_engineering_send_message, {"engineering_message_text": dillon_clip_8_text, "engineering_message_breadcrumb": "[KHOVAN ACT2 006A] Dillon pivot note sent"})
+    ->END
+
+# Scene 7. The source is at the edge of sensor range and no object exists for it
+# yet - Halcyon spawns in Phase B - so this is a reported fix rather than a scan
+# gate. 10_mast_requirements.md section 7 classifies Scene 7 as AUTO + GM-SUP,
+# and the localization half is the GM-supervised part.
+=== khovan_act2_open_distress_localization ===
+    if distress_signal_detected:
+        ->END
+    distress_signal_detected = True
+    distress_localization_status = "awaiting_science_report"
+    distress_science_gate_status = "open_no_contact_object_until_phase_b"
+    # No automatic detector exists for a source with no object, so the reported
+    # route is the primary path here, not a degraded one. AGENTS.md section 4
+    # still wants the flag set so the GM overview shows the route is live.
+    distress_localization_fallback_available = True
+    current_scene = 7
+    current_beat = "scene_7_distress_signal_detected"
+    act2_pivot_status = "distress_signal_detected_awaiting_localization"
+    script.write_khovan_startup_trace("[KHOVAN ACT2 007] distress signal detected; localization route open")
+    await task_schedule(khovan_reach_send_safe_startup_message, {"startup_sender": "Dillon", "startup_title": "Instructor", "startup_text": distress_localization_prompt_text, "startup_title_color": "cyan", "startup_sender_id": tarsis_station_id, "startup_player_id": artemis_id, "startup_breadcrumb": "[KHOVAN ACT2 007A] distress localization prompt sent", "startup_safe_breadcrumb": "[KHOVAN ACT2 SAFE] localization prompt skipped because sender/context unavailable"})
+    await task_schedule(khovan_set_current_objective, {"objective_id": "act2_distress_localization", "objective_body": "Artemis - Science: Sweep for the distress source and triangulate a fix.", "objective_step": "Act II distress localization", "objective_breadcrumb": "[KHOVAN OBJECTIVE 024] objective updated: distress localization"})
+    await task_schedule(khovan_scenario_control_panel_update_overview)
+    ->END
+
+=== khovan_act2_confirm_distress_localization ===
+    if distress_localized:
+        script.write_khovan_startup_trace("[KHOVAN ACT2 MSG ORDER] duplicate suppressed distress localization")
+        yield success
+    if not distress_signal_detected:
+        act2_pivot_status = "localization_blocked_before_detection"
+        script.write_khovan_startup_trace("[KHOVAN ACT2 BLOCKED] localization before signal detected")
+        yield fail
+
+    await task_schedule(khovan_act2_complete_distress_localization, {"localization_source": "comms_report_confirmation"})
+    yield success
+
+# Single completion label so both the reported route and any Phase B scan route
+# land in one place and record which one fired - the shape Slice 05 uses for its
+# observer/fallback pairs.
+=== khovan_act2_complete_distress_localization ===
+    default localization_source = "unspecified"
+    if distress_localized:
+        ->END
+    distress_localized = True
+    distress_localization_source = localization_source
+    distress_localization_status = "localized"
+    distress_science_gate_status = "satisfied_by_report"
+    current_beat = "scene_7_distress_localized"
+    act2_pivot_status = "distress_localized_ready_for_phase_b"
+    act2_last_progression_summary = "Distress source localized; Phase B owns Halcyon arrival."
+    script.write_khovan_startup_trace(f"[KHOVAN ACT2 008] distress source localized source={localization_source}")
+    await task_schedule(khovan_reach_send_safe_startup_message, {"startup_sender": "Dillon", "startup_title": "Instructor", "startup_text": distress_localized_text, "startup_title_color": "cyan", "startup_sender_id": tarsis_station_id, "startup_player_id": artemis_id, "startup_breadcrumb": "[KHOVAN ACT2 008A] localization result sent", "startup_safe_breadcrumb": "[KHOVAN ACT2 SAFE] localization result skipped because sender/context unavailable"})
+    await task_schedule(khovan_set_current_objective, {"objective_id": "act2_localized", "objective_body": "Artemis - Helm: Set course for the distress source on the captain's order.", "objective_step": "Act II course to source", "objective_breadcrumb": "[KHOVAN OBJECTIVE 025] objective updated: course to distress source"})
+    await task_schedule(khovan_scenario_control_panel_update_overview)
+    ->END
+
+=== khovan_act2_report_status ===
+    with comms_override(COMMS_ORIGIN_ID, COMMS_ORIGIN_ID, from_name="Khovan Act II"):
+        comms_receive(f"phase={mission_phase} scene={current_scene} orders={anderson_orders_ack_status} detected={distress_signal_detected} localized={distress_localized} source={distress_localization_source}", title="Act II Status", title_color="cyan")
+    script.write_khovan_startup_trace("[KHOVAN ACT2 STATUS] Act II status reported")
+    yield success
+
+# --- Story-jump seeds -------------------------------------------------------
+# JUMP-011 lands just after Anderson's orders; JUMP-012 lands with the source
+# already localized. Both bump Act I generations so a seeded jump cannot leave a
+# stale Act I timer running, which is the hazard the packet names.
+
+=== khovan_act2_story_jump_seed_anderson_orders ===
+    await task_schedule(khovan_act2_invalidate_act1_timers)
+    mission_phase = "act_2"
+    current_scene = 5
+    current_beat = "scene_5_orders_acknowledged"
+    last_checkpoint = "post_anderson_orders"
+    act2_pivot_initialized = True
+    act2_pivot_run_id = act2_pivot_run_id + 1
+    anderson_orders_delivered = True
+    anderson_clip_1_stub_sent = True
+    anderson_orders_ack_status = "acknowledged"
+    dillon_clip_8_stub_sent = True
+    distress_signal_detected = True
+    distress_localized = False
+    distress_localization_status = "awaiting_science_report"
+    distress_science_gate_status = "open_no_contact_object_until_phase_b"
+    distress_localization_fallback_available = True
+    distress_localization_source = "none"
+    act2_pivot_status = "seeded_post_anderson_orders"
+    act2_last_progression_summary = "Seeded to post-Anderson-orders state; localization still open."
+    script.write_khovan_startup_trace("[KHOVAN ACT2 JUMP 011] seeded post-Anderson-orders state")
+    ->END
+
+=== khovan_act2_story_jump_seed_distress_localized ===
+    await task_schedule(khovan_act2_story_jump_seed_anderson_orders)
+    distress_localized = True
+    distress_localization_status = "localized"
+    distress_science_gate_status = "satisfied_by_report"
+    distress_localization_source = "story_jump_seed"
+    current_beat = "scene_7_distress_localized"
+    act2_pivot_status = "seeded_distress_localized"
+    act2_last_progression_summary = "Seeded to localized state; Phase B owns Halcyon arrival."
+    script.write_khovan_startup_trace("[KHOVAN ACT2 JUMP 012] seeded distress-localized state")
+    ->END

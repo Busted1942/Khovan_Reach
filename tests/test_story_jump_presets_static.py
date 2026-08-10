@@ -64,7 +64,7 @@ class StoryJumpPresetStaticTests(unittest.TestCase):
         story_jump = read("scripts/systems/story_jump_presets.mast")
         for phrase in [
             "shared story_jump_registry_initialized = False",
-            'shared story_jump_registry_ids = "mission_start_generator_governor|tarsis_resupply_complete|engineering_shakedown_complete"',
+            'shared story_jump_registry_ids = "mission_start_generator_governor|tarsis_resupply_complete|engineering_shakedown_complete|anderson_orders|distress_localized"',
             "shared story_jump_preset_count = 3",
             "shared story_jump_metadata_required_fields =",
             "shared story_jump_generation_id = 0",
@@ -161,19 +161,36 @@ class StoryJumpPresetStaticTests(unittest.TestCase):
         ]:
             self.assertIn(phrase, body)
 
+    def test_graduated_presets_have_real_seed_helpers(self) -> None:
+        """An id removed from the placeholder guard must have a seed that exists."""
+        story_jump = read("scripts/systems/story_jump_presets.mast")
+        act2 = read("scripts/acts/act2_pivot.mast")
+        for jump_id, seed in [
+            ("anderson_orders", "khovan_act2_story_jump_seed_anderson_orders"),
+            ("distress_localized", "khovan_act2_story_jump_seed_distress_localized"),
+        ]:
+            self.assertIn(f'jump_id == "{jump_id}"', story_jump)
+            self.assertIn(f"task_schedule({seed})", story_jump)
+            self.assertIn(f"=== {seed} ===", act2)
+
     def test_retired_framework_placeholders_are_not_active_jump_options(self) -> None:
         story_jump = read("scripts/systems/story_jump_presets.mast")
+        # This list is the set of preset ids whose GAMEPLAY does not exist yet.
+        # The hazard it guards is a GM seeing a jump option that seeds nothing.
+        #
+        # An id graduates off this list when its slice actually implements the
+        # seed - not when the preset is added. anderson_orders and
+        # distress_localized graduated in Slice 07A, which added
+        # khovan_act2_story_jump_seed_anderson_orders and
+        # khovan_act2_story_jump_seed_distress_localized; the test below asserts
+        # those seeds exist, so the two guards cannot drift apart.
         for forbidden in [
             "drill_2_guided_contact",
             "Drill 2 Guided Contact",
-            "anderson_orders",
-            "Anderson Orders",
             "cascade_decision",
             "Cascade Decision",
             "pirate_arrival_cover_intact",
             "Pirate Arrival Cover Intact",
-            "debrief",
-            "Debrief",
             "framework preset only; gameplay systems not implemented yet.",
         ]:
             self.assertNotIn(forbidden, story_jump)

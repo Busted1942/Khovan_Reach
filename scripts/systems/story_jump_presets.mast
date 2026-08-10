@@ -6,7 +6,7 @@
 # and tests/ADMIN_JUMP_VERIFICATION.md carry the finding).
 
 shared story_jump_registry_initialized = False
-shared story_jump_registry_ids = "mission_start_generator_governor|tarsis_resupply_complete|engineering_shakedown_complete"
+shared story_jump_registry_ids = "mission_start_generator_governor|tarsis_resupply_complete|engineering_shakedown_complete|anderson_orders|distress_localized"
 shared story_jump_preset_count = 3
 shared story_jump_metadata_required_fields = "jump_id|display_name|target_scene|mode_access|mission_phase|required_prior_flags|seeded_state_summary|entities|timers|clips|gm_display|expected_next_event|validation_checks|recovery_notes|skipped_observations"
 shared story_jump_last_id = "none"
@@ -37,6 +37,8 @@ shared story_jump_preset_engineering_shakedown_complete_metadata = "jump_id=engi
     + "JUMP-001 Mission Start" khovan_story_jump_preset_mission_start_generator_governor
     + "JUMP-004 Tarsis Resupply Complete" khovan_story_jump_preset_tarsis_resupply_complete
     + "Engineering Shakedown Complete (no JUMP-nnn match)" khovan_story_jump_preset_engineering_shakedown_complete
+    + "JUMP-011 Anderson Orders" khovan_story_jump_preset_anderson_orders
+    + "JUMP-012 Distress Localized" khovan_story_jump_preset_distress_localized
 
 === khovan_story_jump_initialize_registry ===
     story_jump_registry_initialized = True
@@ -67,6 +69,18 @@ shared story_jump_preset_engineering_shakedown_complete_metadata = "jump_id=engi
 
 === khovan_story_jump_preset_engineering_shakedown_complete ===
     await task_schedule(khovan_story_jump_execute_preset, {"jump_id": "engineering_shakedown_complete"})
+    comms_receive(story_jump_last_summary, title="Khovan Story Jump", title_color="cyan")
+    comms_navigate("//comms/gamemaster/khovan_story_jump_presets")
+    ->END
+
+=== khovan_story_jump_preset_anderson_orders ===
+    await task_schedule(khovan_story_jump_execute_preset, {"jump_id": "anderson_orders"})
+    comms_receive(story_jump_last_summary, title="Khovan Story Jump", title_color="cyan")
+    comms_navigate("//comms/gamemaster/khovan_story_jump_presets")
+    ->END
+
+=== khovan_story_jump_preset_distress_localized ===
+    await task_schedule(khovan_story_jump_execute_preset, {"jump_id": "distress_localized"})
     comms_receive(story_jump_last_summary, title="Khovan Story Jump", title_color="cyan")
     comms_navigate("//comms/gamemaster/khovan_story_jump_presets")
     ->END
@@ -113,6 +127,24 @@ shared story_jump_preset_engineering_shakedown_complete_metadata = "jump_id=engi
         story_jump_seeded_state_summary = "Slice 05 engineering shakedown complete seeded: Tarsis resupply complete, all engineering shakedown gates marked complete, and current objective points to Slice 06 target spike."
         story_jump_skipped_observations = "Manual jump skips proof of engineering no-motion, DAMCON positioning, controlled overload damage, repair, and navigation-priority preset."
         story_jump_gm_display = "Engineering Shakedown Complete preset seeded."
+    elif jump_id == "anderson_orders":
+        await task_schedule(khovan_act2_story_jump_seed_anderson_orders)
+        story_jump_last_display_name = "JUMP-011 Anderson Orders"
+        story_jump_last_target_scene = 5
+        story_jump_last_validation_result = "valid_runtime_seed"
+        story_jump_expected_next_event = "Science reports the distress localization."
+        story_jump_seeded_state_summary = "Act II entered, Anderson orders delivered and acknowledged, Dillon pivot note sent, distress signal detected, localization still open."
+        story_jump_skipped_observations = "Manual jump skips proof of the Act I handoff, the Anderson message surface, and the acknowledgment route."
+        story_jump_gm_display = "JUMP-011 Anderson Orders preset seeded."
+    elif jump_id == "distress_localized":
+        await task_schedule(khovan_act2_story_jump_seed_distress_localized)
+        story_jump_last_display_name = "JUMP-012 Distress Localized"
+        story_jump_last_target_scene = 7
+        story_jump_last_validation_result = "valid_runtime_seed"
+        story_jump_expected_next_event = "Phase B: Halcyon Drift arrival."
+        story_jump_seeded_state_summary = "Act II entered with the distress source already localized; Phase B owns Halcyon spawn, scan, and hail."
+        story_jump_skipped_observations = "Manual jump skips proof of the localization route in addition to everything JUMP-011 skips."
+        story_jump_gm_display = "JUMP-012 Distress Localized preset seeded."
     else:
         story_jump_last_display_name = "Unknown Story Jump"
         story_jump_last_target_scene = 0

@@ -12,6 +12,7 @@ import scripts/systems/story_jump_presets.mast
 import scripts/acts/act1_drone_contact_fire.mast
 import scripts/acts/act1_engineering_shakedown.mast
 import scripts/acts/act1_generator_tarsis_gate.mast
+import scripts/acts/act2_pivot.mast
 
 shared artemis_id = 0
 
@@ -47,6 +48,8 @@ Properties:
     script.write_khovan_startup_trace("[KHOVAN BOOT 003C] Engineering shakedown initialized")
     await task_schedule(khovan_act1_initialize_drone_contact_fire)
     script.write_khovan_startup_trace("[KHOVAN BOOT 003D] Drone contact/fire spike initialized")
+    await task_schedule(khovan_act2_initialize_pivot)
+    script.write_khovan_startup_trace("[KHOVAN BOOT 003E] Act II pivot initialized")
     script.write_khovan_startup_trace("[KHOVAN BOOT 004] before playable_bootstrap")
     await task_schedule(khovan_reach_initialize_playable_bootstrap)
     await task_schedule(khovan_act1_initialize_generator_tarsis_gate)
