@@ -1407,34 +1407,77 @@ lifeform_init(self, name, face, roles, host=None, comms_id=None, path=None,
 A lifeform is a **person on a ship**: a name, a face, roles, a host ship, and
 its own Comms path. The prefab defaults `path: //comms/lifeform`.
 
-## 16.3 The two requirements that make one appear
+## 16.3 lifeform_init does the role wiring for you — CORRECTED
 
-This is why a lifeform can exist and still be invisible.
-`internal_comms/player_internal.mast:30-49`:
+**The first version of this section was wrong.** It said you must add the
+`comms_badge` role and the `onboard` link by hand. You must not: `lifeform_init`
+does both, and doing it manually duplicates engine behavior that could change.
 
-```mast
-    if COMMS_SELECTED_ID == 0:
-        comms_badges = role("comms_badge") & role("ultra_beam")
-    else:
-        comms_badges = role("comms_badge") & linked_to(COMMS_SELECTED_ID, "onboard")
-    yield fail if len(comms_badges)==0
+`sbs_utils/procedural/lifeform.py:29-56` — `lifeform_init` calls two helpers:
 
-    for lifeform_id in comms_badges:
-        lifeform = to_object(lifeform_id)
-        continue if lifeform is None
-        + "{lifeform.name}" {"COMMS_LIFEFORM_ID": lifeform_id}:
-            path = lifeform.get_inventory_value("path")
-            comms_navigate(path, comms_badge=COMMS_LIFEFORM_ID)
+```python
+lifeform_set_path(self.id, path)   # adds `comms_badge` when path is not None
+lifeform_transfer(self.id, host)   # link(host_id, "onboard", lifeform.id)
 ```
 
-A lifeform shows in the internal-comms menu only if it has **both**:
+So **passing a host and a path is sufficient.** Those two are exactly what
+`internal_comms/player_internal.mast:30-49` queries to build its badge menu:
 
-1. the **`comms_badge`** role, and
-2. a **`linked_to(ship, "onboard")`** link to the host ship.
+```mast
+    comms_badges = role("comms_badge") & linked_to(COMMS_SELECTED_ID, "onboard")
+```
 
-Neither is mentioned in the prefab's own metadata, and missing either produces
-a lifeform that exists and never appears. The menu then lists it by name and
-navigates to its stored `path`.
+Two behaviors worth knowing:
+
+- **`path=None` removes the badge.** `lifeform_set_path` calls
+  `remove_role("comms_badge")` first and only re-adds it when a path is given.
+  A lifeform with no path exists and is unreachable by design.
+- **A hostless lifeform gets `ultra_beam`.** If the host is not a space object,
+  `lifeform_transfer` adds that role instead, which is the branch
+  `player_internal.mast` uses when nothing is selected.
+
+## 16.3.1 Creating one, as built in Khovan
+
+`scripts/lib/lifeform_helpers.mast`. **[UNPROVEN]** — compiles, never run live.
+
+```mast
+    lifeform_task = prefab_spawn(prefab_lifeform_generic, {"name": lifeform_name, "role_values": lifeform_roles, "face": lifeform_face, "path": lifeform_path, "host_id": lifeform_host_id, "title_color": "cyan", "message_color": "white"})
+    existing_lifeform = to_object_list(role(lifeform_roles))
+    if len(existing_lifeform) > 0:
+        khovan_lifeform_last_id = existing_lifeform[0].id
+```
+
+The role query after the spawn is not redundant. `prefab_spawn` returns a
+**task**, not an object (`sbs_utils/procedural/prefab.py:42`), so the id has to
+be recovered by querying the role the prefab just applied. That also doubles as
+the success check: no object found means the spawn did not produce an
+addressable lifeform, and the caller falls back.
+
+**Order matters at bootstrap.** Creation must run *after* `artemis_id` is bound
+by `playable_bootstrap`, because the host must be a real space object. In
+`main.mast` it sits between `khovan_reach_initialize_playable_bootstrap` and the
+Act I gate init.
+
+## 16.3.2 Speak through one helper, with a fallback
+
+Because lifeforms are unproven, every character send in Khovan goes through
+`khovan_lifeform_send`, which uses the lifeform when its id is non-zero and
+otherwise falls back to the station-borrowing wrapper.
+
+```mast
+    if send_lifeform_id != 0:
+        send_lifeform_object = to_object(send_lifeform_id)
+        if send_lifeform_object is not None:
+            with comms_override(send_lifeform_id, artemis_id, from_name=send_sender):
+                comms_receive(send_text, title=send_title, title_color=send_title_color)
+            ->END
+    # falls through to khovan_reach_send_safe_startup_message
+```
+
+**This is the pattern to copy when adopting any unproven API that carries
+player-facing content.** A character who cannot speak is a mission-stopping bug;
+a character speaking from the wrong sender id is cosmetic. The fallback makes
+the failure mode the cosmetic one.
 
 ## 16.4 Why this matters for Khovan
 
@@ -1468,3 +1511,108 @@ machinery and a second character justifies proving the pattern once.
 Steps 1-2 are the whole risk. If a lifeform will not render in the menu, the
 current station-borrowing approach stays and this section becomes a
 disconfirmation record rather than a pattern.
+
+---
+
+# 17. Working practices that cost real sessions to learn
+
+Not API syntax. These are the process failures that actually consumed live
+sessions and agent hours in this repo, written down because each one recurred
+after being understood once.
+
+## 17.1 Scripted regex edits damage files. Use line-targeted edits.
+
+**Four separate incidents on 2026-08-09.**
+
+| What happened | Damage |
+|---|---|
+| Trailing comment in a replacement swallowed the next list entry | two test files corrupted |
+| A shell heredoc wrote a real newline where `\n` was intended | MAST declaration split across two lines, would not compile |
+| A malformed replacement produced `data_set.get(...).data_set.get(...)` | **shipped**; compile passed, would fail live |
+| A blanket string replace hit assertions it was not aimed at | unrelated Kestrel/Tarsis tests broken |
+
+The third is the worst: it passed compile preflight *and* every static test,
+because a chained `.get()` is syntactically valid. Another session caught it.
+
+**Rules that follow.** Prefer the Edit tool or line-indexed writes over regex
+replaces. When a scripted edit is genuinely the right tool, replace **whole
+lines** rather than fragments, never append a comment to a replacement inside a
+list, and verify with `grep -n ... | cat -A` afterwards — the invisible-newline
+class is only visible with `cat -A`.
+
+## 17.2 In a shared working tree, stage explicit paths
+
+Two agents on one directory means `git add -A` stages whatever is present, not
+what you changed. That produced a commit whose message described copy work while
+the diff also carried an unrelated API correction.
+
+- `git add <path> ...`, never `-A`
+- `git status --short` before committing; every staged path should be one you touched
+- Verify `git rev-parse --abbrev-ref HEAD` immediately before committing — the
+  other agent may have switched branches under you
+- If the other session's work is sitting uncommitted and blocking you, commit it
+  **separately, with attribution**, rather than absorbing it
+
+## 17.3 Documentation does not close a silent failure mode
+
+The `data_set.get` index rule was written into this cookbook and violated three
+times the same day, because `get(key, fallback)` is what that signature looks
+like in every other language.
+
+What made it worth mechanizing was not the frequency — it was that **two of the
+three instances failed silently**. A string index makes the read return `None`,
+the comparison is simply never true, and the gate quietly never fires. With no
+error there is no investigation, so no one ever reaches the documentation.
+
+**Rule:** document every hazard; *lint* the ones whose failure mode is silence.
+
+## 17.4 An automatic gate must not sit behind its own fallback
+
+The controlled-overload damage observer was scheduled in exactly one place: the
+Comms button labelled "Confirm Controlled Overload Started". A crew who simply
+followed the instruction was never observed at all, and the failure was
+invisible because the manual route still worked.
+
+**Rule:** an observer starts from a runtime event — a prompt, a spawn, a phase
+change — never from the Comms route that exists to cover it failing.
+
+## 17.5 Two reads returning the default means you are reading the wrong source
+
+Three fixes to the DAMCON buff gate failed because they were written against
+`grid_ai.py`. The ship runs `grid_brains.mast`. Both files exist, both are
+internally coherent, and nothing in the folder layout says which is live.
+
+**Rule:** when an independent second read also returns the documented default,
+stop fixing the read and go find out which implementation is actually running.
+Section 15.1 documents the `idle_state` fingerprint for this specific case.
+
+## 17.6 Keep tools and prose bound together
+
+`review_gate.py` was widened to accept two more run-ID shapes while cookbook 5.1
+still described one. The tool passed patterns the docs did not describe, so a
+reviewer following the cookbook would have flagged code the gate had approved.
+Neither file was wrong alone; nothing watched the seam.
+
+`RULE_CITATIONS` in the gate now maps every check to its governing section, and
+`tests/test_review_gate_static.py` fails on an uncited check or a stale heading.
+**Adding a gate rule now requires documenting it first.**
+
+## 17.7 Assert conventions, not prose
+
+Copy assertions used to pin exact wording in two places, so every reword broke
+tests that were not testing wording. One copy pass needed a dozen hand-patches
+across four rounds, and one of those patches corrupted a file.
+
+`tests/mission_text.py` reads copy from the runtime; `test_mission_text_contract.py`
+asserts the *conventions* — addressee opener, no self-naming sender, no design
+vocabulary, no known typos. It found four real violations on its first run.
+
+**Caveat that makes it work:** a test that reads a value and compares it to
+itself asserts nothing. Pair the reader with convention checks, never with an
+equality check against a literal.
+
+## 17.8 Negative controls, always
+
+Every guard added in this repo now gets deliberately broken once to confirm it
+fails, then restored. It has caught a guard that did not guard more than once.
+A test that has never failed is a test you have not tested.
