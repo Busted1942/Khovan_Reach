@@ -581,6 +581,13 @@ def analyze_spawn(path: str, text: str, scope: set[int]) -> list[str]:
     different label from the spawn, so requiring both in one block would be
     wrong. Requiring both somewhere in the owning file matches how
     `act1_drone_contact_fire.mast` is actually written.
+
+    Extended 2026-08-09 for `scripts/lib/`. When cleanup is delegated to the
+    shared helper, the owning file calls it and never names `delete_object` at
+    all - which this check originally read as "no cleanup". The check predates
+    the lib existing. Calling the shared despawn helper now counts, because the
+    helper IS the cleanup routine; a file that spawns and neither deletes nor
+    delegates is still flagged.
     """
     lines = text.splitlines()
     touches_spawn = any(
@@ -597,10 +604,12 @@ def analyze_spawn(path: str, text: str, scope: set[int]) -> list[str]:
             f"npc_spawn() without a spawned-id existence check in file: {path} "
             f"(cookbook section 8.1)"
         )
-    if "delete_object" not in text:
+    delegates_cleanup = "khovan_entity_cleanup_despawn_contact" in text
+    if "delete_object" not in text and not delegates_cleanup:
         failures.append(
             f"npc_spawn() without a cleanup routine in file: {path} "
-            f"(cookbook section 8.5)"
+            f"(cookbook section 8.5) - delete the object, or delegate to "
+            f"khovan_entity_cleanup_despawn_contact"
         )
     return failures
 

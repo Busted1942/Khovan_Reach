@@ -55,6 +55,45 @@ when branch cleanup is approved" lines are now satisfied.
 to `master`, rather than letting them accumulate. Slice 04 alone produced ten, and
 ten slices remain.
 
+## Slices 07A and 07B built ahead of live verification (2026-08-09)
+
+Role: forward build during an operator session with budget but no live-test capacity.
+
+Built on `slice06-drone-contact-fire` rather than opening `slice07a-act2-pivot`
+from `master`, as both packets specify. Two reasons, both recorded rather than
+argued away:
+
+- Slice 06 has not merged to `master`, so the packets' starting branch does not
+  exist in the state they assume.
+- Three `act1_*` files carried another session's uncommitted work throughout.
+  Switching branches drags uncommitted changes along, which is exactly the
+  collision that produced the `afce5b0` attribution error earlier the same day.
+  Staying put and staging explicit paths was the safer trade.
+
+Delivered: `act2_pivot.mast` (07A), `act2_halcyon_arrival.mast` (07B),
+`scripts/lib/entity_cleanup_helpers.mast` (first file in `scripts/lib/`),
+JUMP-011/012/013, two static test files, two verification records, and cookbook
+section 16 on lifeforms.
+
+Evidence: `python run_tests.py quick` PASS at 236 checks; `review_gate` PASS.
+**Nothing has run in Cosmos.** Both verification records list what live smoke
+must answer, and both name a stop condition.
+
+Known risks carried forward:
+
+- 07A's distress localization is a Comms-reported fix, not a Science scan. The
+  packet asks for Science, but Halcyon does not exist until 07B and there is
+  nothing to scan. Routed as a design question.
+- 07B uses `tsn_warpster` as Halcyon's hull because it is the only hull with
+  proven spawn behavior here. Wrong for a Vesperan civilian hauler; routed.
+- Both slices stack on an unverified Slice 06. If Slice 06 Phase B changes the
+  `drone_contact_act2_ready` handoff, 07A's observer needs rechecking.
+
+Next action: operator runs Slice 06 Phase B, then JUMP-011/012/013 in Test Mode.
+Merge-back to `master` still follows the packets once live smoke passes.
+
+Return branch: `slice06-drone-contact-fire`, then `master` with Slice 06.
+
 ## docs/review-gate-tooling
 
 Role: docs/governance + review-tooling branch

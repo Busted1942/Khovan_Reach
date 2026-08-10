@@ -1371,3 +1371,100 @@ The live path uses `modifier_add(..., duration=time*60)` with a real
 countdown implies. Finding 3's design question — whether the Act I fork silently
 hands a Full Shakedown crew a permanent DAMCON speed advantage — needs
 re-answering against `grid_brains` before anyone acts on it.
+
+---
+
+# 16. Lifeforms — NPC people aboard a ship
+
+**[REFERENCE]** — read from `LegendaryMissions` and `sbs_utils`, never run in
+Khovan. Nothing here is proven in this repo.
+
+## 16.1 First: "lifeform" means two unrelated things here
+
+This caused real confusion, so keep them apart.
+
+| Term | What it is | Status in Khovan |
+|---|---|---|
+| **lifeform overlay** | the upper-left UI text panel | **tried and abandoned** — produced a black box; see section 11 |
+| **lifeform** | an NPC person hosted on a ship, with a face and a Comms path | **unused, and worth using** |
+
+The design docs' "upper-left lifeform overlay" language refers only to the
+first. `act1_generator_tarsis_gate.mast` and `audio_runtime.mast` still carry
+`..._no_lifeform_overlay` state names and a `[KHOVAN ACT1 UI] lifeform overlay
+deferred` trace recording that decision. **The overlay failing is not evidence
+about the entity system** — they are unrelated subsystems that share a word.
+
+## 16.2 What a lifeform actually is
+
+`prefabs/lifeform_prefabs.mast:5-19` defines the generic prefab, and
+`sbs_utils/procedural/lifeform.py:29` gives the signature:
+
+```python
+lifeform_init(self, name, face, roles, host=None, comms_id=None, path=None,
+              title_color="green", message_color="white")
+```
+
+A lifeform is a **person on a ship**: a name, a face, roles, a host ship, and
+its own Comms path. The prefab defaults `path: //comms/lifeform`.
+
+## 16.3 The two requirements that make one appear
+
+This is why a lifeform can exist and still be invisible.
+`internal_comms/player_internal.mast:30-49`:
+
+```mast
+    if COMMS_SELECTED_ID == 0:
+        comms_badges = role("comms_badge") & role("ultra_beam")
+    else:
+        comms_badges = role("comms_badge") & linked_to(COMMS_SELECTED_ID, "onboard")
+    yield fail if len(comms_badges)==0
+
+    for lifeform_id in comms_badges:
+        lifeform = to_object(lifeform_id)
+        continue if lifeform is None
+        + "{lifeform.name}" {"COMMS_LIFEFORM_ID": lifeform_id}:
+            path = lifeform.get_inventory_value("path")
+            comms_navigate(path, comms_badge=COMMS_LIFEFORM_ID)
+```
+
+A lifeform shows in the internal-comms menu only if it has **both**:
+
+1. the **`comms_badge`** role, and
+2. a **`linked_to(ship, "onboard")`** link to the host ship.
+
+Neither is mentioned in the prefab's own metadata, and missing either produces
+a lifeform that exists and never appears. The menu then lists it by name and
+navigates to its stored `path`.
+
+## 16.4 Why this matters for Khovan
+
+Three named characters are people aboard ships, and all three are currently
+faked by borrowing a station's object id as the message sender:
+
+| Character | Aboard | Today |
+|---|---|---|
+| **Master Sergeant Dillon** | Artemis | sends via `tarsis_station_id` |
+| **Hessler** | Halcyon Drift | Slice 08, unimplemented |
+| **Reyes** (DAMCON lead) | Halcyon Drift | Slice 09, unimplemented |
+
+Dillon is the clearest case. The play guide has him "embedded as instructor" and
+"standing behind the Captain's chair" — a person on the bridge. Borrowing a
+station id is what forced the `from_name`/`title` workaround in section 6.2, and
+it means Dillon's messages stop working if Tarsis goes out of range.
+
+A lifeform hosted on Artemis is what Dillon *is*.
+
+**Not built.** It would change how every Dillon message is sent, and Act I is
+mid-live-verification. The right moment is Slice 08, when Hessler needs the same
+machinery and a second character justifies proving the pattern once.
+
+## 16.5 If you try it, prove it in this order
+
+1. Spawn one lifeform on Artemis with `comms_badge` and an `onboard` link.
+2. Confirm it appears in internal Comms **by name**.
+3. Confirm its `path` route opens.
+4. Only then convert Dillon.
+
+Steps 1-2 are the whole risk. If a lifeform will not render in the menu, the
+current station-borrowing approach stays and this section becomes a
+disconfirmation record rather than a pattern.

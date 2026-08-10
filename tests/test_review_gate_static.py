@@ -430,6 +430,37 @@ class SpawnExistenceAndCleanup(unittest.TestCase):
         text = "    status = 'idle'\n"
         self.assertEqual(gate.analyze_spawn("f.mast", text, all_lines(text)), [])
 
+    def test_delegating_cleanup_to_the_shared_helper_is_clean(self):
+        """scripts/lib/ moved the delete out of the spawning file.
+
+        The check predated the lib and read "no delete_object in this file" as
+        "no cleanup", which flagged act2_halcyon_arrival.mast on the first run
+        after the helper landed.
+        """
+        text = "\n".join(
+            [
+                "    halcyon = npc_spawn(1, 2, 3, 'H', 'r', 'h', 'b')",
+                "    if halcyon_object_id == 0:",
+                "        ->END",
+                "=== khovan_halcyon_cleanup ===",
+                "    await task_schedule(khovan_entity_cleanup_despawn_contact, {\"cleanup_object_id\": halcyon_object_id})",
+            ]
+        )
+        self.assertEqual(gate.analyze_spawn("f.mast", text, all_lines(text)), [])
+
+    def test_spawn_with_neither_delete_nor_delegation_is_still_flagged(self):
+        """The rule is not weakened - only widened to accept the helper."""
+        text = "\n".join(
+            [
+                "    thing = npc_spawn(1, 2, 3, 'H', 'r', 'h', 'b')",
+                "    if thing_id == 0:",
+                "        ->END",
+            ]
+        )
+        failures = gate.analyze_spawn("f.mast", text, all_lines(text))
+        self.assertEqual(len(failures), 1)
+        self.assertIn("khovan_entity_cleanup_despawn_contact", failures[0])
+
 
 class DataSetIndexNotDefault(unittest.TestCase):
     """cookbook 9.1: data_set.get()'s second argument is an index.
