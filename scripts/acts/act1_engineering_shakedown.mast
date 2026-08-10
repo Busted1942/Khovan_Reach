@@ -90,7 +90,7 @@ shared damcon_mess_instruction_text = "Artemis - Engineering: Crews work fastest
 shared controlled_overload_prompt_text = "Artemis - Engineering: Controlled overload next. Impulse, Warp, and Maneuver to 300%. Watch your heat and how DAMCON responds."
 shared controlled_overload_instruction_text = "Artemis - Engineering: Impulse, Warp, and Maneuver to 300% and let them blow. Bleed the heat, track the repair, then return to 100%. Rested, fed, and exercised teams move faster - quarters, mess, and gym each pay separately."
 shared controlled_damage_logged_text = "Artemis - Engineering: Damage logged. Repairs are yours. Watch how much faster a rested team crosses the ship.\nArtemis - Comms: Confirm when repairs are complete."
-shared repair_complete_text = "Artemis - Engineering: Impulse 100%, Warp 10%, Maneuver 190%. Press S at the bottom left, then 2, to save it as your close-quarters preset. Build one for a fight, a transit, and a tow."
+shared repair_complete_text = "Artemis - Engineering: Plan your station configuration while you have downtime because fiddling with sliders mid-battle may get you spaced.\nArtemis - Engineering: Set Beam to 150, Torp to 50, and set Warp to 10 and Maneuver to 190. Then press S on the bottom row, and then 2, to save it as your suggested close combat configuration.\nArtemis - Engineering: Choose configurations (long distance travel, etc.) and save them as presets if you find some idle time or can gain captain permission to rework the systems."
 shared navigation_priority_confirmed_text = "Artemis - Comms: Shakedown complete. Confirm when the captain is ready and we will put a training drone in the water."
 
 //comms if has_roles(COMMS_SELECTED_ID, "tarsis_station") and generator_governor_cleared and not engineering_shakedown_complete
@@ -233,7 +233,7 @@ shared navigation_priority_confirmed_text = "Artemis - Comms: Shakedown complete
         engineering_shakedown_undock_observer_status = "waiting_for_artemis_object"
         ->END
 
-    undock_dock_state = artemis_object.data_set.get("dock_state", 0).data_set.get("dock_state", 0)
+    undock_dock_state = artemis_object.data_set.get("dock_state", 0)
     if undock_dock_state is None:
         undock_dock_state = "unknown"
     undock_dock_base_id = artemis_object.data_set.get("dock_base_id", 0)

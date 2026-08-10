@@ -679,6 +679,11 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
         self.assertIn("if tarsis_mechanical_dock_observed:", observer_body)
         self.assertIn('for player_id in role("__player__"):', observer_body)
         self.assertIn('observed_dock_state = observed_player.data_set.get("dock_state", 0)', observer_body)
+        self.assertNotIn(
+            '.data_set.get("dock_state", 0).data_set.get("dock_state", 0)',
+            observer_body,
+            "dock_state is already a scalar value; do not dereference it as an object",
+        )
         self.assertIn('observed_dock_base_id = observed_player.data_set.get("dock_base_id", 0)', observer_body)
         self.assertIn('observer_snapshot = f"player={player_id} state={observed_dock_state} base={observed_dock_base_id} tarsis={tarsis_station_id}"', observer_body)
         self.assertIn("if observer_snapshot != tarsis_docking_observer_last_snapshot:", observer_body)

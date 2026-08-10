@@ -447,11 +447,10 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
         ->END
     await task_schedule(khovan_drone_01_reset_flags)
     drone_01_spawn_count = drone_01_spawn_count + 1
-    # Behavior key (2026-08-09): behav_do_nothing, NOT behav_npcship. Design
-    # 10_mast_requirements.md 8.5 specifies "non-attacking AI" for Drone 01, and the
-    # drill requires Artemis to hold station stationary at 1-2 km for 15 seconds -
-    # unworkable against a contact that shoots back. behav_npcship was carried over
-    # from the GM Spike Target, which is a scan/damage probe with no such gate.
+    # Behavior key (2026-08-09): behav_npcship, matching the GM Spike Target.
+    # The production drone keeps its Khovan-specific role only for drill-state
+    # observation and cleanup; its hull, enemy-side roles, and behavior are otherwise
+    # the same stock Kralien cruiser configuration as the Spike.
     #
     # The `kralien` role is what makes this contact an enemy side, and enemy side is
     # what makes the stock Science route match (legendarymissions/science_scans/
@@ -460,12 +459,7 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
     # whole drill is built on. `raider` is only a targeting tag used by autoplay
     # selection helpers, not an AI driver, so it is harmless here and left in place.
     #
-    # UNPROVEN in this repo: behav_do_nothing. Proven usage exists in a shipping
-    # reference mission (HereThereBeMonsters-main/story.mast:304,456,519) for inert
-    # contacts. Watch the live check: the drone must still render the stock Kralien
-    # Science panel. If behav_do_nothing costs the scan, revert to behav_npcship and
-    # raise the non-attacking requirement as a design finding instead.
-    drone_01_target = npc_spawn(beacon.pos.x + drone_01_spawn_offset_m, beacon.pos.y, beacon.pos.z, "Drone 01", "kralien, raider, khovan_drone_01", "kralien_cruiser", "behav_do_nothing")
+    drone_01_target = npc_spawn(beacon.pos.x + drone_01_spawn_offset_m, beacon.pos.y, beacon.pos.z, "Drone 01", "kralien, raider, khovan_drone_01", "kralien_cruiser", "behav_npcship")
     drone_01_target_id = to_id(drone_01_target)
     if drone_01_target_id == 0:
         drone_01_status = "spawn_failed"

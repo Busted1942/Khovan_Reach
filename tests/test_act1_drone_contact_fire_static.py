@@ -318,7 +318,7 @@ class Act1DroneContactFireStaticTests(unittest.TestCase):
         drone = read(DRONE_PATH)
         spawn_body = label_body(drone, "khovan_drone_01_spawn")
         self.assertIn(
-            'npc_spawn(beacon.pos.x + drone_01_spawn_offset_m, beacon.pos.y, beacon.pos.z, "Drone 01", "kralien, raider, khovan_drone_01", "kralien_cruiser", "behav_do_nothing")',
+            'npc_spawn(beacon.pos.x + drone_01_spawn_offset_m, beacon.pos.y, beacon.pos.z, "Drone 01", "kralien, raider, khovan_drone_01", "kralien_cruiser", "behav_npcship")',
             spawn_body,
         )
         self.assertIn(
@@ -422,12 +422,9 @@ class Act1DroneContactFireStaticTests(unittest.TestCase):
         # Target is: same hull and stock roles, and none of the extra plumbing that
         # diverted the Science return.
         #
-        # The behavior key is the one deliberate divergence. Design
-        # 10_mast_requirements.md 8.5 requires "non-attacking AI" for Drone 01,
-        # because the drill makes Artemis hold station at 1-2 km for 15 seconds. The
-        # Spike Target is a scan/damage probe with no such gate and keeps live AI.
-        # What must match is the `kralien` role - enemy side is what makes the stock
-        # Science route render the shield-frequency panel.
+        # Drone 01 keeps its Khovan role for drill-state observation, but its stock
+        # spawn configuration matches the GM Spike Target: enemy Kralien roles, the
+        # same cruiser hull, and live NPC behavior.
         drone = read(DRONE_PATH)
         spike_spawn = label_body(drone, "khovan_drone_contact_fire_spawn_target_spike")
         drone_spawn = label_body(drone, "khovan_drone_01_spawn")
@@ -437,8 +434,7 @@ class Act1DroneContactFireStaticTests(unittest.TestCase):
             self.assertIn(stock_config, drone_spawn)
 
         self.assertIn('"behav_npcship"', spike_spawn)
-        self.assertIn('"behav_do_nothing"', code_only(drone_spawn))
-        self.assertNotIn('"behav_npcship"', code_only(drone_spawn))
+        self.assertIn('"behav_npcship"', code_only(drone_spawn))
 
         for forbidden in [
             "sim.add_navproxy",
@@ -499,17 +495,16 @@ class Act1DroneContactFireStaticTests(unittest.TestCase):
         )
         self.assertIn("await task_schedule(khovan_drone_01_authorize_fire)", body)
 
-    def test_the_two_drones_have_opposite_combat_roles(self) -> None:
-        # Operator direction 2026-08-09, matching design 10_mast_requirements.md
-        # 8.5/8.6: Drone 01 is the practice target for the controlled subsystem
-        # disable and must not fight back; Drone 02 is the free-fire target the crew
-        # engages at will - "annoying but not very dangerous".
+    def test_the_production_drones_use_live_hostile_npc_behavior(self) -> None:
+        # Drone 01 now mirrors the GM Spike's live Kralien cruiser behavior. Drone 02
+        # remains the separate free-fire completion target.
         drone = read(DRONE_PATH)
         drone_01 = code_only(label_body(drone, "khovan_drone_01_spawn"))
         drone_02 = code_only(label_body(drone, "khovan_drone_02_spawn"))
 
-        # Drone 01: inert.
-        self.assertIn('"behav_do_nothing"', drone_01)
+        # Drone 01: same live NPC behavior as the GM Spike Target.
+        self.assertIn('"kralien, raider, khovan_drone_01"', drone_01)
+        self.assertIn('"kralien_cruiser", "behav_npcship"', drone_01)
 
         # Drone 02: live AI, hostile side, and destructible - destruction is its
         # completion gate, so kralien_cruiser's 2 hull points are wanted here.

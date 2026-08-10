@@ -482,6 +482,11 @@ class Act1EngineeringShakedownStaticTests(unittest.TestCase):
         self.assertIn("task_schedule(khovan_engineering_watch_tarsis_undock_for_shakedown", prepare_body)
         self.assertIn("if watch_run_id != engineering_shakedown_undock_watch_run_id:", watch_body)
         self.assertIn('artemis_object.data_set.get("dock_state", 0)', watch_body)
+        self.assertNotIn(
+            '.data_set.get("dock_state", 0).data_set.get("dock_state", 0)',
+            watch_body,
+            "dock_state is already a scalar value; do not dereference it as an object",
+        )
         self.assertIn("undock_dock_base_id == tarsis_station_id", watch_body)
         self.assertIn("await delay_sim(seconds=1)", watch_body)
         self.assertIn("await task_schedule(khovan_act1_engineering_shakedown_start)", watch_body)
@@ -525,7 +530,7 @@ class Act1EngineeringShakedownStaticTests(unittest.TestCase):
             "Artemis - Engineering: Controlled overload next. Impulse, Warp, and Maneuver to 300%. Watch your heat and how DAMCON responds.",
             "Artemis - Engineering: Impulse, Warp, and Maneuver to 300% and let them blow. Bleed the heat, track the repair, then return to 100%. Rested, fed, and exercised teams move faster - quarters, mess, and gym each pay separately.",
             "Artemis - Engineering: Damage logged. Repairs are yours. Watch how much faster a rested team crosses the ship.\\nArtemis - Comms: Confirm when repairs are complete.",
-            "Artemis - Engineering: Impulse 100%, Warp 10%, Maneuver 190%. Press S at the bottom left, then 2, to save it as your close-quarters preset. Build one for a fight, a transit, and a tow.",
+            "Artemis - Engineering: Plan your station configuration while you have downtime because fiddling with sliders mid-battle may get you spaced.\\nArtemis - Engineering: Set Beam to 150, Torp to 50, and set Warp to 10 and Maneuver to 190. Then press S on the bottom row, and then 2, to save it as your suggested close combat configuration.\\nArtemis - Engineering: Choose configurations (long distance travel, etc.) and save them as presets if you find some idle time or can gain captain permission to rework the systems.",
             "Artemis - Comms: Shakedown complete. Confirm when the captain is ready and we will put a training drone in the water.",
             "khovan_act1_drone_contact_fire_prepare_after_engineering",
             '"objective_id": "engineering_impulse_zero_warp_200"',
