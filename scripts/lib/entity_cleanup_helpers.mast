@@ -1,0 +1,89 @@
+# Khovan Reach shared entity cleanup helpers.
+#
+# First file in scripts/lib/. Owns the reusable "remove a spawned contact"
+# routine and the destroy-source attribution guard that goes with it.
+#
+# Why this is shared rather than copied per act, from
+# docs/04_implementation_setup/95_scripts_lib_extraction_plan.md section 3.1:
+# spawn/cleanup is the highest-reuse code in the remaining build. Slice 07B
+# spawns Halcyon, Slice 10 spawns the cache, Slice 11 spawns two pirates, and
+# Slice 12 destroys them. A defect here propagates to all four.
+#
+# OWNS NO STATE. Every flag this touches belongs to the caller and is passed in.
+# A helper with its own `shared` state is a singleton, which breaks the moment
+# two pirates need it at once - extraction plan section 4, rule 2.
+
+# --- The destroy-hook hazard this exists to contain -------------------------
+#
+# Confirmed live 2026-08-09 (tests/SLICE06_VERIFICATION.md): sbs.delete_object()
+# fires the same //damage/destroy hook a genuine Weapons kill fires, and it
+# fires DEFERRED - the calling handler finishes first, and the destroy handler
+# runs afterwards. Trace ordering across four independent cleanup events
+# confirmed it.
+#
+# Two consequences that cost live sessions to learn:
+#
+#   1. A destroy handler cannot tell cleanup from a kill without a flag.
+#   2. The flag must NOT be cleared by the caller after delete_object(), because
+#      the destroy handler has not run yet. It is consumed (read and cleared) by
+#      the destroy handler itself.
+#
+# So the contract here is: the caller sets its own *_cleanup_in_progress flag
+# before calling, this helper deletes, and the caller's //damage/destroy handler
+# reads-and-clears the flag. See khovan_entity_cleanup_note_deferred_destroy for
+# the shape a caller's handler should use.
+
+=== khovan_entity_cleanup_despawn_contact ===
+    # Remove a spawned contact completely: navproxy, selections, then object.
+    #
+    # Params:
+    #   cleanup_object_id   id of the spawned object, 0 if none
+    #   cleanup_navproxy_id id of its navproxy, 0 if none
+    #   cleanup_owner       caller name, for the trace only
+    #
+    # Order matters. The navproxy goes first because it references the object,
+    # and selections are cleared before deletion so no console is left pointing
+    # at an id that is about to stop existing.
+    default cleanup_object_id = 0
+    default cleanup_navproxy_id = 0
+    default cleanup_owner = "unspecified"
+
+    if cleanup_navproxy_id != 0:
+        sim.delete_navproxy_by_id(cleanup_navproxy_id)
+
+    if cleanup_object_id == 0:
+        script.write_khovan_startup_trace(f"[KHOVAN LIB CLEANUP] owner={cleanup_owner} no object to remove")
+        ->END
+
+    # Clear all three selections. A console still selecting a deleted object is
+    # the Slice 04 empty-Comms-panel failure class, and it is cheap to prevent.
+    if artemis_id != 0:
+        set_science_selection(artemis_id, 0)
+        set_comms_selection(artemis_id, 0)
+        set_weapons_selection(artemis_id, 0)
+
+    sbs.delete_object(cleanup_object_id)
+    script.write_khovan_startup_trace(f"[KHOVAN LIB CLEANUP] owner={cleanup_owner} object={cleanup_object_id} navproxy={cleanup_navproxy_id} removed")
+    ->END
+
+=== khovan_entity_cleanup_note_deferred_destroy ===
+    # Documentation label. Callers do not schedule this; it exists so the
+    # required destroy-handler shape lives next to the cleanup routine rather
+    # than only in a verification record.
+    #
+    # A caller's //damage/destroy handler must look like this:
+    #
+    #     //damage/destroy if has_role(DESTROYED_ID, "<your_role>")
+    #         if <your>_cleanup_in_progress:
+    #             <your>_destruction_source = "cleanup"
+    #             <your>_cleanup_in_progress = False
+    #             ->END
+    #         <your>_destruction_source = "genuine_destruction"
+    #
+    # The flag is read and cleared HERE, in the destroy handler - never by the
+    # code that called delete_object(). Clearing it at the call site is the bug
+    # that was found and fixed live on 2026-08-08: the destroy hook had not run
+    # yet, so the guard was already down by the time it did, and two GM cleanups
+    # were both misreported as genuine kills.
+    script.write_khovan_startup_trace("[KHOVAN LIB CLEANUP] deferred-destroy note label is documentation only")
+    ->END

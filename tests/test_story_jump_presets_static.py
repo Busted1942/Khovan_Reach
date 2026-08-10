@@ -64,7 +64,7 @@ class StoryJumpPresetStaticTests(unittest.TestCase):
         story_jump = read("scripts/systems/story_jump_presets.mast")
         for phrase in [
             "shared story_jump_registry_initialized = False",
-            'shared story_jump_registry_ids = "mission_start_generator_governor|tarsis_resupply_complete|engineering_shakedown_complete|anderson_orders|distress_localized"',
+            'shared story_jump_registry_ids = "mission_start_generator_governor|tarsis_resupply_complete|engineering_shakedown_complete|anderson_orders|distress_localized|halcyon_arrival"',
             "shared story_jump_preset_count = 3",
             "shared story_jump_metadata_required_fields =",
             "shared story_jump_generation_id = 0",

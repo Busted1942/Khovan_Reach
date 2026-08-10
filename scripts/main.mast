@@ -2,6 +2,7 @@
 # Slice 04 adds the first Act I generator/Tarsis progression path.
 # Slice 01B lets LegendaryMissions own server/client console lifecycle.
 
+import scripts/lib/entity_cleanup_helpers.mast
 import scripts/systems/bootstrap_state.mast
 import scripts/systems/playable_bootstrap.mast
 import scripts/systems/audio_runtime.mast
@@ -13,6 +14,7 @@ import scripts/acts/act1_drone_contact_fire.mast
 import scripts/acts/act1_engineering_shakedown.mast
 import scripts/acts/act1_generator_tarsis_gate.mast
 import scripts/acts/act2_pivot.mast
+import scripts/acts/act2_halcyon_arrival.mast
 
 shared artemis_id = 0
 
@@ -50,6 +52,8 @@ Properties:
     script.write_khovan_startup_trace("[KHOVAN BOOT 003D] Drone contact/fire spike initialized")
     await task_schedule(khovan_act2_initialize_pivot)
     script.write_khovan_startup_trace("[KHOVAN BOOT 003E] Act II pivot initialized")
+    await task_schedule(khovan_act2_initialize_halcyon_arrival)
+    script.write_khovan_startup_trace("[KHOVAN BOOT 003F] Halcyon arrival initialized")
     script.write_khovan_startup_trace("[KHOVAN BOOT 004] before playable_bootstrap")
     await task_schedule(khovan_reach_initialize_playable_bootstrap)
     await task_schedule(khovan_act1_initialize_generator_tarsis_gate)

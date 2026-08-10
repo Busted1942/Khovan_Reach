@@ -1,0 +1,237 @@
+# Khovan Reach Slice 07B Halcyon Drift arrival.
+# Spawn, scan, hail, and Engineering/DAMCON deployment state.
+#
+# Scope is the 07B packet. Hessler dialogue and the away-mission beats are
+# Slice 08, the cascade is Slice 08, the DAMCON timer is Slice 09, and Halcyon
+# repair is Slice 13 - all deliberately absent.
+
+shared halcyon_arrival_initialized = False
+shared halcyon_spawned = False
+shared halcyon_object_id = 0
+shared halcyon_navproxy_id = 0
+shared halcyon_spawn_count = 0
+shared halcyon_cleanup_count = 0
+shared halcyon_cleanup_in_progress = False
+shared halcyon_destruction_source = "not_observed"
+shared halcyon_scan_observed = False
+shared halcyon_hail_observed = False
+shared halcyon_arrival_status = "not_initialized"
+shared halcyon_contact_fallback_available = False
+
+# Act II deployment tracking. NOT the Slice 05 damcon_rest_*/damcon_meal_* gates
+# and NOT Slice 09's damcon_timer_* group - the packet flags this name space as
+# a collision hazard. engineering_placement is named exactly as the packet
+# specifies because Slice 09 reads it to choose extended vs compressed timer.
+shared engineering_deployed = False
+shared engineering_deploy_status = "aboard_artemis"
+shared engineering_placement = "aboard_artemis"
+shared damcon_deployed = False
+shared damcon_deploy_status = "aboard_artemis"
+
+shared halcyon_hail_response_text = "Artemis - Comms: This is Hessler, master of the Halcyon Drift. Our primary reactor is down, hull is open in two sections, and we are on emergency power.\nArtemis - Captain: Seven aboard, three injured. We need a qualified engineering team, not a tow."
+shared halcyon_scan_report_text = "Artemis - Science: Vesperan cargo hauler, registry Halcyon Drift. Primary reactor offline, hull compromised in two sections, emergency power holding. Six to eight lifeforms aboard. No weapon signatures."
+shared halcyon_deploy_prompt_text = "Artemis - Captain: They have asked for an engineering team. Authorize the deployment when you are ready.\nArtemis - Engineering: Take a DAMCON team across and report what you find."
+
+//enable/science if has_roles(SCIENCE_SELECTED_ID, "khovan_halcyon_drift")
+    script.write_khovan_startup_trace("[KHOVAN ACT2 HALCYON] Halcyon selected on Science")
+
+//science if has_roles(SCIENCE_SELECTED_ID, "khovan_halcyon_drift")
+    halcyon_arrival_status = "science_route_rendered"
+    script.write_khovan_startup_trace("[KHOVAN ACT2 HALCYON SCIENCE] Halcyon Science options rendered")
+    + "Scan Halcyon Drift" khovan_halcyon_scan
+
+//enable/comms if has_roles(COMMS_SELECTED_ID, "khovan_halcyon_drift")
+    script.write_khovan_startup_trace("[KHOVAN ACT2 HALCYON] Halcyon selected on Comms")
+
+//comms if has_roles(COMMS_SELECTED_ID, "khovan_halcyon_drift")
+    halcyon_arrival_status = "comms_route_rendered"
+    script.write_khovan_startup_trace("[KHOVAN ACT2 HALCYON COMMS] Halcyon Comms options rendered")
+    + "Hail Halcyon Drift" khovan_halcyon_hail
+    + "Authorize Engineering Deployment" khovan_halcyon_authorize_deployment if halcyon_hail_observed and not engineering_deployed
+    + "Recall Engineering to Artemis" khovan_halcyon_recall_engineering if engineering_deployed and engineering_placement == "aboard_halcyon"
+    + "Report Halcyon Status" khovan_halcyon_report_status
+
+# Cleanup fires this same hook, so the flag is read and cleared HERE, never at
+# the call site - scripts/lib/entity_cleanup_helpers.mast documents why.
+//damage/destroy if has_role(DESTROYED_ID, "khovan_halcyon_drift")
+    if halcyon_cleanup_in_progress:
+        halcyon_destruction_source = "cleanup"
+        halcyon_cleanup_in_progress = False
+        script.write_khovan_startup_trace("[KHOVAN ACT2 HALCYON DESTROY] attributed to cleanup")
+        ->END
+    halcyon_destruction_source = "genuine_destruction"
+    halcyon_spawned = False
+    halcyon_arrival_status = "halcyon_destroyed_unexpectedly"
+    script.write_khovan_startup_trace(f"[KHOVAN ACT2 HALCYON DESTROY] genuine destruction id={DESTROYED_ID}")
+    ->END
+
+=== khovan_act2_initialize_halcyon_arrival ===
+    halcyon_arrival_initialized = True
+    halcyon_arrival_status = "initialized_waiting_for_localization"
+    halcyon_spawned = False
+    halcyon_object_id = 0
+    halcyon_navproxy_id = 0
+    halcyon_cleanup_in_progress = False
+    halcyon_destruction_source = "not_observed"
+    halcyon_scan_observed = False
+    halcyon_hail_observed = False
+    halcyon_contact_fallback_available = False
+    engineering_deployed = False
+    engineering_deploy_status = "aboard_artemis"
+    engineering_placement = "aboard_artemis"
+    damcon_deployed = False
+    damcon_deploy_status = "aboard_artemis"
+    script.write_khovan_startup_trace("[KHOVAN ACT2 HALCYON 001] Halcyon arrival state initialized")
+    ->END
+
+=== khovan_halcyon_spawn ===
+    # Idempotent, cookbook 8.1. Two guards, because they catch different things:
+    # the flag catches a second call in the same run, and the role query catches
+    # a contact that survived a story-jump seed the flag did not know about.
+    if halcyon_spawned:
+        script.write_khovan_startup_trace("[KHOVAN ACT2 HALCYON] duplicate spawn suppressed by flag")
+        ->END
+    existing_halcyon = to_object_list(role("khovan_halcyon_drift"))
+    if len(existing_halcyon) > 0:
+        halcyon_object_id = existing_halcyon[0].id
+        halcyon_spawned = True
+        halcyon_arrival_status = "reused_existing_contact"
+        script.write_khovan_startup_trace(f"[KHOVAN ACT2 HALCYON] reused existing contact id={halcyon_object_id}")
+        ->END
+    if artemis_id == 0:
+        halcyon_arrival_status = "blocked_missing_artemis_id"
+        halcyon_contact_fallback_available = True
+        script.write_khovan_startup_trace("[KHOVAN ACT2 HALCYON BLOCKED] missing Artemis id")
+        ->END
+    artemis_object = to_object(artemis_id)
+    if artemis_object is None:
+        halcyon_arrival_status = "blocked_missing_artemis_object"
+        halcyon_contact_fallback_available = True
+        script.write_khovan_startup_trace("[KHOVAN ACT2 HALCYON BLOCKED] missing Artemis object")
+        ->END
+
+    halcyon_spawn_count = halcyon_spawn_count + 1
+    halcyon_object = npc_spawn(artemis_object.pos.x + 12000, artemis_object.pos.y, artemis_object.pos.z + 4000, "Halcyon Drift", "vesperan, civilian, khovan_halcyon_drift", "tsn_warpster", "behav_npcship")
+    halcyon_object_id = to_id(halcyon_object)
+    if halcyon_object_id == 0:
+        halcyon_arrival_status = "spawn_failed"
+        halcyon_contact_fallback_available = True
+        script.write_khovan_startup_trace("[KHOVAN ACT2 HALCYON BLOCKED] npc_spawn returned id 0")
+        ->END
+
+    halcyon_navproxy = sim.add_navproxy(halcyon_object_id, "Halcyon Drift", "tsn_warpster", "#FA5")
+    halcyon_navproxy_id = to_id(halcyon_navproxy)
+    halcyon_spawned = True
+    halcyon_arrival_status = "halcyon_contact_active"
+    last_checkpoint = "post_halcyon_arrival"
+    # GM/Comms confirmations back every automatic gate on this contact.
+    halcyon_contact_fallback_available = True
+    script.write_khovan_startup_trace(f"[KHOVAN ACT2 HALCYON 002] Halcyon spawned id={halcyon_object_id} spawn_count={halcyon_spawn_count}")
+    script.write_khovan_startup_trace("[KHOVAN ACT2 SAVE] checkpoint post_halcyon_arrival recorded")
+    await task_schedule(khovan_set_current_objective, {"objective_id": "halcyon_arrival", "objective_body": "Artemis - Science: Scan the contact.\nArtemis - Comms: Hail her and find out what she needs.", "objective_step": "Halcyon Drift arrival", "objective_breadcrumb": "[KHOVAN OBJECTIVE 026] objective updated: Halcyon arrival"})
+    await task_schedule(khovan_scenario_control_panel_update_overview)
+    ->END
+
+=== khovan_halcyon_cleanup ===
+    if not halcyon_spawned and halcyon_object_id == 0:
+        ->END
+    halcyon_cleanup_count = halcyon_cleanup_count + 1
+    # Set before the delete; the destroy handler consumes it. Never cleared here.
+    halcyon_cleanup_in_progress = True
+    await task_schedule(khovan_entity_cleanup_despawn_contact, {"cleanup_object_id": halcyon_object_id, "cleanup_navproxy_id": halcyon_navproxy_id, "cleanup_owner": "halcyon_drift"})
+    halcyon_object_id = 0
+    halcyon_navproxy_id = 0
+    halcyon_spawned = False
+    halcyon_arrival_status = "halcyon_contact_removed"
+    script.write_khovan_startup_trace(f"[KHOVAN ACT2 HALCYON 003] Halcyon cleanup cleanup_count={halcyon_cleanup_count}")
+    ->END
+
+=== khovan_halcyon_scan ===
+    if halcyon_scan_observed:
+        script.write_khovan_startup_trace("[KHOVAN ACT2 HALCYON] duplicate suppressed Halcyon scan")
+        yield success
+    halcyon_scan_observed = True
+    halcyon_arrival_status = "halcyon_scanned"
+    script.write_khovan_startup_trace("[KHOVAN ACT2 HALCYON 004] Halcyon scan observed")
+    await task_schedule(khovan_reach_send_safe_startup_message, {"startup_sender": "Science", "startup_title": "Sensor Report", "startup_text": halcyon_scan_report_text, "startup_title_color": "cyan", "startup_sender_id": halcyon_object_id, "startup_player_id": artemis_id, "startup_breadcrumb": "[KHOVAN ACT2 HALCYON 004A] scan report sent", "startup_safe_breadcrumb": "[KHOVAN ACT2 HALCYON SAFE] scan report skipped because sender/context unavailable"})
+    await task_schedule(khovan_scenario_control_panel_update_overview)
+    yield success
+
+=== khovan_halcyon_hail ===
+    if halcyon_hail_observed:
+        script.write_khovan_startup_trace("[KHOVAN ACT2 HALCYON] duplicate suppressed Halcyon hail")
+        yield success
+    halcyon_hail_observed = True
+    halcyon_arrival_status = "halcyon_hailed"
+    script.write_khovan_startup_trace("[KHOVAN ACT2 HALCYON 005] Halcyon hail observed")
+    await task_schedule(khovan_reach_send_safe_startup_message, {"startup_sender": "Hessler", "startup_title": "Halcyon Drift", "startup_text": halcyon_hail_response_text, "startup_title_color": "green", "startup_sender_id": halcyon_object_id, "startup_player_id": artemis_id, "startup_breadcrumb": "[KHOVAN ACT2 HALCYON 005A] hail response sent", "startup_safe_breadcrumb": "[KHOVAN ACT2 HALCYON SAFE] hail response skipped because sender/context unavailable"})
+    await task_schedule(khovan_reach_send_safe_startup_message, {"startup_sender": "Dillon", "startup_title": "Instructor", "startup_text": halcyon_deploy_prompt_text, "startup_title_color": "cyan", "startup_sender_id": halcyon_object_id, "startup_player_id": artemis_id, "startup_breadcrumb": "[KHOVAN ACT2 HALCYON 005B] deployment prompt sent", "startup_safe_breadcrumb": "[KHOVAN ACT2 HALCYON SAFE] deployment prompt skipped because sender/context unavailable"})
+    await task_schedule(khovan_set_current_objective, {"objective_id": "halcyon_deploy", "objective_body": "Artemis - Captain: Authorize the engineering deployment to Halcyon Drift.", "objective_step": "Engineering deployment", "objective_breadcrumb": "[KHOVAN OBJECTIVE 027] objective updated: engineering deployment"})
+    await task_schedule(khovan_scenario_control_panel_update_overview)
+    yield success
+
+=== khovan_halcyon_authorize_deployment ===
+    if engineering_deployed:
+        script.write_khovan_startup_trace("[KHOVAN ACT2 HALCYON] duplicate suppressed deployment authorization")
+        yield success
+    if not halcyon_hail_observed:
+        halcyon_arrival_status = "deployment_blocked_before_hail"
+        script.write_khovan_startup_trace("[KHOVAN ACT2 HALCYON BLOCKED] deployment authorized before hail")
+        yield fail
+
+    engineering_deployed = True
+    engineering_deploy_status = "deployed_to_halcyon"
+    # Slice 09 reads engineering_placement to choose the extended (30 min) or
+    # compressed (15 min) DAMCON window. The exact strings are the packet's.
+    engineering_placement = "aboard_halcyon"
+    damcon_deployed = True
+    damcon_deploy_status = "deployed_with_engineering"
+    halcyon_arrival_status = "engineering_and_damcon_deployed"
+    current_beat = "scene_8_engineering_deployed"
+    script.write_khovan_startup_trace("[KHOVAN ACT2 HALCYON 006] Engineering and DAMCON deployed; placement=aboard_halcyon")
+    await task_schedule(khovan_set_current_objective, {"objective_id": "halcyon_deployed", "objective_body": "Artemis - Engineering: You are aboard Halcyon Drift with a DAMCON team. Report what you find.", "objective_step": "Away team aboard", "objective_breadcrumb": "[KHOVAN OBJECTIVE 028] objective updated: away team aboard"})
+    await task_schedule(khovan_scenario_control_panel_update_overview)
+    yield success
+
+=== khovan_halcyon_recall_engineering ===
+    if engineering_placement == "returned_to_artemis":
+        script.write_khovan_startup_trace("[KHOVAN ACT2 HALCYON] duplicate suppressed engineering recall")
+        yield success
+    if not engineering_deployed:
+        halcyon_arrival_status = "recall_blocked_before_deployment"
+        yield fail
+
+    engineering_placement = "returned_to_artemis"
+    engineering_deploy_status = "recalled_to_artemis"
+    halcyon_arrival_status = "engineering_recalled"
+    script.write_khovan_startup_trace("[KHOVAN ACT2 HALCYON 007] Engineering recalled; placement=returned_to_artemis")
+    await task_schedule(khovan_scenario_control_panel_update_overview)
+    yield success
+
+=== khovan_halcyon_report_status ===
+    with comms_override(COMMS_ORIGIN_ID, COMMS_ORIGIN_ID, from_name="Khovan Halcyon"):
+        comms_receive(f"spawned={halcyon_spawned} id={halcyon_object_id} scanned={halcyon_scan_observed} hailed={halcyon_hail_observed} placement={engineering_placement} damcon={damcon_deploy_status} status={halcyon_arrival_status}", title="Halcyon Status", title_color="cyan")
+    script.write_khovan_startup_trace("[KHOVAN ACT2 HALCYON STATUS] Halcyon status reported")
+    yield success
+
+# --- Story-jump seed --------------------------------------------------------
+
+=== khovan_act2_story_jump_seed_halcyon_arrival ===
+    # Cleanup first. Re-running JUMP-013 must not stack Halcyon copies, which is
+    # the packet's headline acceptance criterion for this slice.
+    await task_schedule(khovan_halcyon_cleanup)
+    await task_schedule(khovan_act2_story_jump_seed_distress_localized)
+    current_scene = 8
+    current_beat = "scene_8_halcyon_arrival"
+    last_checkpoint = "post_halcyon_arrival"
+    halcyon_scan_observed = False
+    halcyon_hail_observed = False
+    engineering_deployed = False
+    engineering_deploy_status = "aboard_artemis"
+    engineering_placement = "aboard_artemis"
+    damcon_deployed = False
+    damcon_deploy_status = "aboard_artemis"
+    await task_schedule(khovan_halcyon_spawn)
+    halcyon_arrival_status = "seeded_halcyon_arrival"
+    script.write_khovan_startup_trace("[KHOVAN ACT2 JUMP 013] seeded Halcyon arrival state")
+    ->END
