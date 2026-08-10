@@ -332,7 +332,7 @@ class Act1DroneContactFireStaticTests(unittest.TestCase):
             "if deploy_prompt_run_id != drone_contact_sequence_run_id:",
             "if not drone_01_active or drone_01_deploy_prompt_sent:",
             "drone_01_deploy_prompt_sent = True",
-            '"startup_text": drone_01_deploy_prompt_text',
+            '"send_text": drone_01_deploy_prompt_text',
         ]:
             self.assertIn(phrase, prompt_body)
 

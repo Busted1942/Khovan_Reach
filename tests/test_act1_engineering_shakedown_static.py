@@ -501,9 +501,12 @@ class Act1EngineeringShakedownStaticTests(unittest.TestCase):
     def test_engineering_messages_use_the_guarded_sender_context_wrapper(self) -> None:
         engineering = read(ENGINEERING_PATH)
         message_body = label_body(engineering, "khovan_engineering_send_message")
-        self.assertIn("khovan_reach_send_safe_startup_message", message_body)
-        self.assertIn('"startup_sender_id": tarsis_station_id', message_body)
-        self.assertIn('"startup_player_id": artemis_id', message_body)
+        # Dillon now speaks through the lifeform helper, which falls back to the
+        # guarded wrapper when his lifeform is absent - so the guard still holds.
+        self.assertIn("khovan_lifeform_send", message_body)
+        self.assertIn("send_fallback_sender_id", message_body)
+        self.assertIn('"send_fallback_sender_id": tarsis_station_id', message_body)
+        # artemis_id is supplied inside khovan_lifeform_send now, not here.
         self.assertNotIn("comms_receive(", engineering)
 
     def test_engineering_sequence_text_and_objectives_exist_in_order(self) -> None:

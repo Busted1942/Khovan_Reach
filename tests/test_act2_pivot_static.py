@@ -157,6 +157,65 @@ class Slice07AGuards(unittest.TestCase):
         self.assertIn('"startup_safe_breadcrumb"', act2)
 
 
+class DistressProximitySweep(unittest.TestCase):
+    """Operator intent: fly into the region and your sensors pick the signal up.
+
+    Replaces the first version's Comms-reported fix. That was built because no
+    contact object exists in Phase A - which is still true - but a seeded
+    coordinate plus a distance check gives Science a real gate without Phase A
+    owning a spawn it should not have.
+    """
+
+    def test_sweep_measures_distance_to_a_seeded_source(self) -> None:
+        body = label_body(read(ACT2_PATH), "khovan_act2_watch_distress_proximity")
+        self.assertIn("sweep_dx = artemis_object.pos.x - distress_source_x", body)
+        self.assertIn("sweep_dz = artemis_object.pos.z - distress_source_z", body)
+
+    def test_sweep_uses_squared_distance_not_sqrt(self) -> None:
+        """math.* is unproven in MAST here; the squared form needs no module.
+
+        act1_drone_contact_fire.mast's stationary-hold observer already uses
+        this exact shape live.
+        """
+        act2 = code_only(read(ACT2_PATH))
+        self.assertNotIn("math.", act2)
+        body = label_body(act2, "khovan_act2_watch_distress_proximity")
+        self.assertIn("distress_range_sq = sweep_dx * sweep_dx + sweep_dz * sweep_dz", body)
+        self.assertIn("if distress_range_sq <= distress_detection_range_sq:", body)
+
+    def test_sweep_is_bounded_and_run_id_guarded(self) -> None:
+        body = label_body(read(ACT2_PATH), "khovan_act2_watch_distress_proximity")
+        self.assertIn("if sweep_run_id != distress_sweep_run_id:", body)
+        self.assertIn("distress_sweep_observer_ticks >= 600", body)
+        self.assertIn("jump khovan_act2_watch_distress_proximity", body)
+
+    def test_sweep_guards_artemis_before_reading_position(self) -> None:
+        body = label_body(read(ACT2_PATH), "khovan_act2_watch_distress_proximity")
+        self.assertIn("if artemis_id == 0:", body)
+        self.assertIn("if artemis_object is None:", body)
+
+    def test_comms_report_remains_as_the_fallback(self) -> None:
+        """The automatic gate ships with its fallback - AGENTS.md section 4."""
+        act2 = read(ACT2_PATH)
+        self.assertIn("distress_localization_fallback_available = True", act2)
+        self.assertIn('"localization_source": "comms_report_confirmation"', act2)
+        self.assertIn('"localization_source": "automatic_proximity_sweep"', act2)
+
+
+class LifeformRouting(unittest.TestCase):
+    def test_dillon_and_anderson_speak_through_the_lifeform_helper(self) -> None:
+        act2 = code_only(read(ACT2_PATH))
+        self.assertIn("khovan_lifeform_send", act2)
+        self.assertIn("dillon_lifeform_id", act2)
+
+    def test_every_lifeform_send_carries_a_fallback_sender(self) -> None:
+        """A character who cannot speak is mission-stopping; wrong sender id is cosmetic."""
+        act2 = code_only(read(ACT2_PATH))
+        sends = act2.count("task_schedule(khovan_lifeform_send")
+        fallbacks = act2.count("send_fallback_sender_id")
+        self.assertEqual(sends, fallbacks, "every lifeform send needs a fallback sender id")
+
+
 class Slice07AScope(unittest.TestCase):
     """The packet's Do-Not-Implement list, asserted."""
 

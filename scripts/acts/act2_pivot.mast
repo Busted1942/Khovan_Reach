@@ -23,6 +23,13 @@ shared distress_localization_status = "not_started"
 shared distress_science_gate_status = "not_started"
 shared distress_localization_fallback_available = False
 shared distress_localization_source = "none"
+shared distress_source_x = 0
+shared distress_source_z = 0
+shared distress_range_sq = 0
+shared distress_detection_range_sq = 0
+shared distress_detection_range_m = 30000
+shared distress_sweep_run_id = 0
+shared distress_sweep_observer_ticks = 0
 
 shared dillon_clip_8_stub_sent = False
 
@@ -31,6 +38,7 @@ shared dillon_clip_8_stub_sent = False
 # sender because the message header already carries it.
 shared anderson_orders_text = "Artemis - Captain: Admiral Anderson, Command Coordination. Long-range monitoring has picked up a fragmentary distress signal in the Khovan Reach region. TSN-compatible emergency band, too degraded to identify or authenticate. Either a civilian beacon or a TSN vessel in difficulty, and no other asset is in range to answer it.\nArtemis - Helm: Come about for Khovan Reach. Roughly ninety minutes at standard cruise.\nArtemis - Comms: Acknowledge these orders for the record. The qualification framework stays in effect; this is a live operation now."
 shared dillon_clip_8_text = "Artemis - Captain: The framework still applies, but the consequences are real now.\nArtemis - Comms: Report the deviation to Command and keep the cadence up. I will keep observing."
+shared distress_transit_objective_text = "Artemis - Helm: Take us into the Khovan Reach region.\nArtemis - Science: Sweep as we close; the signal should resolve once we are inside sensor range."
 shared distress_localization_prompt_text = "Artemis - Science: Run a long-range sweep and triangulate the distress source.\nArtemis - Comms: Report the fix to the captain when Science has it."
 shared distress_localized_text = "Artemis - Captain: Source localized. Single vessel, civilian cargo profile, roughly fifteen minutes off the direct route. The beacon pattern reads authentic, not a lure.\nArtemis - Helm: Set course when the captain gives the word."
 
@@ -209,19 +217,80 @@ shared distress_localized_text = "Artemis - Captain: Source localized. Single ve
     if distress_signal_detected:
         ->END
     distress_signal_detected = True
-    distress_localization_status = "awaiting_science_report"
-    distress_science_gate_status = "open_no_contact_object_until_phase_b"
-    # No automatic detector exists for a source with no object, so the reported
-    # route is the primary path here, not a degraded one. AGENTS.md section 4
-    # still wants the flag set so the GM overview shows the route is live.
+    distress_localization_status = "closing_on_signal"
+    distress_science_gate_status = "proximity_sweep_running"
     distress_localization_fallback_available = True
-    current_scene = 7
-    current_beat = "scene_7_distress_signal_detected"
-    act2_pivot_status = "distress_signal_detected_awaiting_localization"
-    script.write_khovan_startup_trace("[KHOVAN ACT2 007] distress signal detected; localization route open")
-    await task_schedule(khovan_reach_send_safe_startup_message, {"startup_sender": "Dillon", "startup_title": "Instructor", "startup_text": distress_localization_prompt_text, "startup_title_color": "cyan", "startup_sender_id": tarsis_station_id, "startup_player_id": artemis_id, "startup_breadcrumb": "[KHOVAN ACT2 007A] distress localization prompt sent", "startup_safe_breadcrumb": "[KHOVAN ACT2 SAFE] localization prompt skipped because sender/context unavailable"})
-    await task_schedule(khovan_set_current_objective, {"objective_id": "act2_distress_localization", "objective_body": "Artemis - Science: Sweep for the distress source and triangulate a fix.", "objective_step": "Act II distress localization", "objective_breadcrumb": "[KHOVAN OBJECTIVE 024] objective updated: distress localization"})
+    current_scene = 6
+    current_beat = "scene_6_long_range_transit"
+    act2_pivot_status = "closing_on_distress_source"
+
+    # Park the source ahead of Artemis on her current heading, far enough out
+    # that the crew has to fly there. Scene 6 is a transit; the signal is meant
+    # to resolve as they close, not the moment orders arrive.
+    if artemis_id == 0:
+        distress_science_gate_status = "fallback_missing_artemis_id_at_seed"
+        script.write_khovan_startup_trace("[KHOVAN ACT2 SWEEP] source not seeded: no Artemis id; Comms report is the route")
+        ->END
+    artemis_object = to_object(artemis_id)
+    if artemis_object is None:
+        distress_science_gate_status = "fallback_missing_artemis_object_at_seed"
+        script.write_khovan_startup_trace("[KHOVAN ACT2 SWEEP] source not seeded: no Artemis object; Comms report is the route")
+        ->END
+    distress_source_x = artemis_object.pos.x + 90000
+    distress_source_z = artemis_object.pos.z + 30000
+
+    distress_sweep_run_id = distress_sweep_run_id + 1
+    distress_sweep_observer_ticks = 0
+    script.write_khovan_startup_trace(f"[KHOVAN ACT2 007] distress source seeded at ({distress_source_x},{distress_source_z}); sweep running")
+    task_schedule(khovan_act2_watch_distress_proximity, {"sweep_run_id": distress_sweep_run_id})
+    await task_schedule(khovan_lifeform_send, {"send_lifeform_id": dillon_lifeform_id, "send_sender": "Dillon", "send_title": "Instructor", "send_text": distress_localization_prompt_text, "send_title_color": "cyan", "send_fallback_sender_id": tarsis_station_id, "send_breadcrumb": "[KHOVAN ACT2 007A] distress localization prompt sent"})
+    await task_schedule(khovan_set_current_objective, {"objective_id": "act2_distress_transit", "objective_body": distress_transit_objective_text, "objective_step": "Act II transit to signal", "objective_breadcrumb": "[KHOVAN OBJECTIVE 024] objective updated: transit to distress source"})
     await task_schedule(khovan_scenario_control_panel_update_overview)
+    ->END
+
+# Proximity sweep. This is the beat the operator asked for: fly into the region
+# and the sensors pick the signal up. Cookbook 5.2 bounded observer; the
+# distance maths is the Vec3 pattern from LegendaryMissions
+# (comms/enemy_surrender.mast:139 uses diff.length() the same way).
+#
+# No object exists for the source yet - Halcyon spawns in 07B - so this measures
+# distance to a seeded coordinate rather than to a contact. That keeps Phase A
+# free of a spawn it does not own while still giving Science a real gate.
+=== khovan_act2_watch_distress_proximity ===
+    default sweep_run_id = 0
+    if distress_localized:
+        ->END
+    if sweep_run_id != distress_sweep_run_id:
+        script.write_khovan_startup_trace("[KHOVAN ACT2 MSG ORDER] stale distress sweep suppressed")
+        ->END
+    if artemis_id == 0:
+        distress_science_gate_status = "fallback_missing_artemis_id"
+        ->END
+    artemis_object = to_object(artemis_id)
+    if artemis_object is None:
+        distress_science_gate_status = "fallback_missing_artemis_object"
+        ->END
+
+    distress_sweep_observer_ticks = distress_sweep_observer_ticks + 1
+    sweep_dx = artemis_object.pos.x - distress_source_x
+    sweep_dz = artemis_object.pos.z - distress_source_z
+    # Squared comparison, no sqrt. math.* is not proven available in MAST here,
+    # and the squared form needs no module at all - the same shape already live
+    # in act1_drone_contact_fire.mast's stationary-hold observer (movement_sq).
+    distress_range_sq = sweep_dx * sweep_dx + sweep_dz * sweep_dz
+    distress_detection_range_sq = distress_detection_range_m * distress_detection_range_m
+    if distress_range_sq <= distress_detection_range_sq:
+        script.write_khovan_startup_trace(f"[KHOVAN ACT2 SWEEP] signal resolved range_sq={distress_range_sq} threshold_sq={distress_detection_range_sq} tick={distress_sweep_observer_ticks}")
+        await task_schedule(khovan_act2_complete_distress_localization, {"localization_source": "automatic_proximity_sweep"})
+        ->END
+
+    if distress_sweep_observer_ticks >= 600:
+        distress_science_gate_status = "sweep_ceiling_reached_use_comms_report"
+        script.write_khovan_startup_trace(f"[KHOVAN ACT2 SWEEP FALLBACK] ceiling reached range_sq={distress_range_sq}; Comms report still open")
+        ->END
+
+    await delay_sim(seconds=3)
+    jump khovan_act2_watch_distress_proximity
     ->END
 
 === khovan_act2_confirm_distress_localization ===

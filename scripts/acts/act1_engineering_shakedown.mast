@@ -107,7 +107,10 @@ shared navigation_priority_confirmed_text = "Artemis - Comms: Shakedown complete
     default engineering_message_title = "Dillon"
     default engineering_message_color = "cyan"
     default engineering_message_breadcrumb = "[KHOVAN ACT1 ENG MSG] guarded message sent"
-    await task_schedule(khovan_reach_send_safe_startup_message, {"startup_sender": engineering_message_title, "startup_title": "Instructor", "startup_text": engineering_message_text, "startup_title_color": engineering_message_color, "startup_sender_id": tarsis_station_id, "startup_player_id": artemis_id, "startup_breadcrumb": engineering_message_breadcrumb, "startup_safe_breadcrumb": "[KHOVAN ACT1 ENG MSG SAFE] message skipped because Tarsis or Artemis context is unavailable"})
+    # Routed through the lifeform helper so Dillon speaks as himself when his
+    # lifeform exists, and falls back to borrowing Tarsis when it does not.
+    # This one label carries every Dillon message in the Engineering shakedown.
+    await task_schedule(khovan_lifeform_send, {"send_lifeform_id": dillon_lifeform_id, "send_sender": engineering_message_title, "send_title": "Instructor", "send_text": engineering_message_text, "send_title_color": engineering_message_color, "send_fallback_sender_id": tarsis_station_id, "send_breadcrumb": engineering_message_breadcrumb})
     ->END
 
 === khovan_act1_initialize_engineering_shakedown ===

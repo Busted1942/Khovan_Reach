@@ -1,0 +1,180 @@
+# Khovan Reach lifeform helpers.
+#
+# Creates the mission's named NPC people as engine lifeforms, and routes their
+# messages through the lifeform if one exists or through the previous
+# station-borrowing path if it does not.
+#
+# WHY: Dillon, Anderson, Hessler, and Reyes are people, not stations. Until now
+# every one of their messages borrowed a station's object id as sender
+# (`tarsis_station_id`), which is what forced the from_name/title workaround in
+# cookbook 6.2 and what makes Dillon's traffic depend on Tarsis being in range.
+#
+# EVIDENCE: [UNPROVEN]. lifeform_init and prefab_lifeform_generic are read from
+# sbs_utils and LegendaryMissions; nothing here has run in Khovan. That is
+# exactly why every send goes through khovan_lifeform_send below, which falls
+# back to the proven wrapper when a lifeform id is missing. A failed lifeform
+# spawn degrades message attribution; it does not break Act I.
+
+shared khovan_lifeform_support_status = "not_attempted"
+shared khovan_lifeform_spawn_failures = 0
+shared khovan_lifeform_last_id = 0
+
+shared dillon_lifeform_id = 0
+shared dillon_lifeform_status = "not_created"
+shared anderson_lifeform_id = 0
+shared anderson_lifeform_status = "not_created"
+
+# --- Creation ---------------------------------------------------------------
+#
+# lifeform_init does more than its name suggests, and it is the reason no manual
+# role wiring appears below:
+#
+#   lifeform_set_path(id, path)  -> adds the `comms_badge` role when path is set
+#   lifeform_transfer(id, host)  -> link(host, "onboard", id)
+#
+# Those two are exactly what internal_comms/player_internal.mast:30-49 queries
+# to build its badge menu. Passing a host and a path is sufficient; adding
+# `comms_badge` or the `onboard` link by hand would be redundant and is a bug
+# waiting to happen if the engine changes how it tracks them.
+
+=== khovan_lifeform_create ===
+    # Params:
+    #   lifeform_name    display name shown in the Comms badge menu
+    #   lifeform_roles   comma-separated Khovan roles, e.g. "khovan_dillon"
+    #   lifeform_face    face string, or "" to let the engine pick
+    #   lifeform_path    comms path this character answers on
+    #   lifeform_host_id host ship id; must be a real space object
+    #
+    # Result is written to khovan_lifeform_last_id rather than returned,
+    # because label return values are not a proven pattern in this repo.
+    default lifeform_name = "Unnamed"
+    default lifeform_roles = ""
+    default lifeform_face = ""
+    default lifeform_path = ""
+    default lifeform_host_id = 0
+
+    khovan_lifeform_last_id = 0
+    if lifeform_host_id == 0:
+        khovan_lifeform_support_status = "blocked_missing_host"
+        khovan_lifeform_spawn_failures = khovan_lifeform_spawn_failures + 1
+        script.write_khovan_startup_trace(f"[KHOVAN LIB LIFEFORM] {lifeform_name} not created: no host id")
+        ->END
+
+    host_object = to_object(lifeform_host_id)
+    if host_object is None:
+        khovan_lifeform_support_status = "blocked_missing_host_object"
+        khovan_lifeform_spawn_failures = khovan_lifeform_spawn_failures + 1
+        script.write_khovan_startup_trace(f"[KHOVAN LIB LIFEFORM] {lifeform_name} not created: host object missing")
+        ->END
+
+    lifeform_task = prefab_spawn(prefab_lifeform_generic, {"name": lifeform_name, "role_values": lifeform_roles, "face": lifeform_face, "path": lifeform_path, "host_id": lifeform_host_id, "title_color": "cyan", "message_color": "white"})
+    existing_lifeform = to_object_list(role(lifeform_roles))
+    if len(existing_lifeform) > 0:
+        khovan_lifeform_last_id = existing_lifeform[0].id
+        khovan_lifeform_support_status = "lifeform_created"
+        script.write_khovan_startup_trace(f"[KHOVAN LIB LIFEFORM] {lifeform_name} created id={khovan_lifeform_last_id} roles={lifeform_roles} path={lifeform_path}")
+        ->END
+
+    khovan_lifeform_support_status = "spawn_returned_no_object"
+    khovan_lifeform_spawn_failures = khovan_lifeform_spawn_failures + 1
+    script.write_khovan_startup_trace(f"[KHOVAN LIB LIFEFORM] {lifeform_name} spawn produced no addressable object; station-borrow fallback stays active")
+    ->END
+
+# --- Sending ----------------------------------------------------------------
+
+=== khovan_lifeform_send ===
+    # One send path for every named character.
+    #
+    #   lifeform_id present -> the character speaks as themselves
+    #   lifeform_id == 0    -> falls back to the station-borrowing wrapper
+    #
+    # The fallback is not a courtesy. Lifeforms are unproven in this repo, and a
+    # character who cannot speak is a mission-stopping bug; a character speaking
+    # from the wrong sender id is a cosmetic one.
+    default send_lifeform_id = 0
+    default send_sender = "Khovan Reach"
+    default send_title = ""
+    default send_text = ""
+    default send_title_color = "cyan"
+    default send_fallback_sender_id = 0
+    default send_breadcrumb = ""
+
+    if send_lifeform_id != 0:
+        send_lifeform_object = to_object(send_lifeform_id)
+        if send_lifeform_object is not None:
+            with comms_override(send_lifeform_id, artemis_id, from_name=send_sender):
+                comms_receive(send_text, title=send_title, title_color=send_title_color)
+            if send_breadcrumb != "":
+                script.write_khovan_startup_trace(send_breadcrumb)
+            script.write_khovan_startup_trace(f"[KHOVAN LIB LIFEFORM SEND] {send_sender} spoke as lifeform id={send_lifeform_id}")
+            ->END
+
+    # Fallback: the proven wrapper, borrowing a station id as sender.
+    script.write_khovan_startup_trace(f"[KHOVAN LIB LIFEFORM SEND] {send_sender} fell back to station-borrow path")
+    await task_schedule(khovan_reach_send_safe_startup_message, {"startup_sender": send_sender, "startup_title": send_title, "startup_text": send_text, "startup_title_color": send_title_color, "startup_sender_id": send_fallback_sender_id, "startup_player_id": artemis_id, "startup_breadcrumb": send_breadcrumb, "startup_safe_breadcrumb": "[KHOVAN LIB LIFEFORM SEND] fallback skipped because sender/context unavailable"})
+    ->END
+
+# --- The mission's named characters -----------------------------------------
+#
+# Dillon is aboard Artemis - the play guide has him "embedded as instructor",
+# "standing behind the Captain's chair". Anderson transmits from Command and is
+# NOT aboard, so he is hosted on Artemis only so the crew has someone to answer;
+# his fiction is a remote transmission and his badge reflects that.
+#
+# Ranks are canon: "Master Sergeant Dillon" and "Admiral Anderson" both appear
+# in docs/02_content/30_anderson_clips.md Clip 1.
+
+=== khovan_create_mission_lifeforms ===
+    if artemis_id == 0:
+        khovan_lifeform_support_status = "deferred_no_artemis"
+        script.write_khovan_startup_trace("[KHOVAN LIB LIFEFORM] creation deferred: Artemis not bound yet")
+        ->END
+    if dillon_lifeform_id != 0 and anderson_lifeform_id != 0:
+        script.write_khovan_startup_trace("[KHOVAN LIB LIFEFORM] duplicate suppressed: characters already created")
+        ->END
+
+    if dillon_lifeform_id == 0:
+        await task_schedule(khovan_lifeform_create, {"lifeform_name": "Master Sergeant Dillon", "lifeform_roles": "khovan_dillon", "lifeform_path": "//comms/khovan_dillon", "lifeform_host_id": artemis_id})
+        dillon_lifeform_id = khovan_lifeform_last_id
+        if dillon_lifeform_id != 0:
+            dillon_lifeform_status = "created_aboard_artemis"
+        else:
+            dillon_lifeform_status = "fallback_station_borrow"
+
+    if anderson_lifeform_id == 0:
+        await task_schedule(khovan_lifeform_create, {"lifeform_name": "Admiral Anderson", "lifeform_roles": "khovan_anderson", "lifeform_path": "//comms/khovan_anderson", "lifeform_host_id": artemis_id})
+        anderson_lifeform_id = khovan_lifeform_last_id
+        if anderson_lifeform_id != 0:
+            anderson_lifeform_status = "created_command_channel"
+        else:
+            anderson_lifeform_status = "fallback_station_borrow"
+
+    script.write_khovan_startup_trace(f"[KHOVAN LIB LIFEFORM] characters ready dillon={dillon_lifeform_id} anderson={anderson_lifeform_id} status={khovan_lifeform_support_status}")
+    ->END
+
+# Badge routes. internal_comms navigates here via the path stored on each
+# lifeform, so these must exist or the badge opens nothing.
+
+//comms/khovan_dillon
+    script.write_khovan_startup_trace("[KHOVAN LIB LIFEFORM] Dillon badge route opened")
+    + "Back" //comms
+    + "Request Current Instruction" khovan_dillon_repeat_instruction
+
+//comms/khovan_anderson
+    script.write_khovan_startup_trace("[KHOVAN LIB LIFEFORM] Anderson badge route opened")
+    + "Back" //comms
+    + "Request Orders Repeat" khovan_anderson_repeat_orders
+
+=== khovan_dillon_repeat_instruction ===
+    # Re-reads the live objective rather than storing a second copy of the text,
+    # so this can never drift from what the crew is actually being asked to do.
+    await task_schedule(khovan_lifeform_send, {"send_lifeform_id": dillon_lifeform_id, "send_sender": "Dillon", "send_title": "Instructor", "send_text": current_objective_body, "send_title_color": "cyan", "send_fallback_sender_id": tarsis_station_id, "send_breadcrumb": "[KHOVAN LIB LIFEFORM] Dillon repeated current instruction"})
+    yield success
+
+=== khovan_anderson_repeat_orders ===
+    if not anderson_orders_delivered:
+        with comms_override(COMMS_ORIGIN_ID, COMMS_ORIGIN_ID, from_name="Command Coordination"):
+            comms_receive("Artemis - Comms: Command has no active orders for you beyond your cruise profile.", title="Command Coordination", title_color="yellow")
+        yield success
+    await task_schedule(khovan_lifeform_send, {"send_lifeform_id": anderson_lifeform_id, "send_sender": "Admiral Anderson", "send_title": "Command Coordination", "send_text": anderson_orders_text, "send_title_color": "yellow", "send_fallback_sender_id": tarsis_station_id, "send_breadcrumb": "[KHOVAN LIB LIFEFORM] Anderson repeated orders"})
+    yield success
