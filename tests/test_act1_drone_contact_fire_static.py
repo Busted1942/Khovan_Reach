@@ -999,6 +999,44 @@ class Act1DroneContactFireStaticTests(unittest.TestCase):
         self.assertIn('+ "JUMP-010A Drone 02 Live Fire" khovan_story_jump_preset_drone_02_live_fire', presets)
         self.assertIn('elif jump_id == "drone_02_live_fire":', presets)
 
+    def test_drone_01_gets_a_grid_so_subsystem_damage_reaches_science(self) -> None:
+        # Root cause, live 2026-08-16: Science reported "WEAP 100%" on a drone the
+        # stock console had just announced as "WEAPONS Destroyed". The engine's
+        # subsystem damage model is grid-based - set_damage_coefficients()
+        # (internal_damage.py:410) reads only grid nodes, and with no grid every
+        # coefficient falls through to 1.0. The stock crit writes the system_damage
+        # summary key, which grid_apply_system_damage normally DERIVES from the grid,
+        # so on a gridless NPC nothing reads it back.
+        drone = read(DRONE_PATH)
+        spawn_body = label_body(drone, "khovan_drone_01_spawn")
+        self.assertIn("grid_rebuild_grid_objects(drone_01_target_id)", spawn_body)
+        # Degrades honestly rather than silently: if no grid was built, say so.
+        self.assertIn("if len(drone_01_grid_interior) == 0:", spawn_body)
+        self.assertIn("fallback_no_grid_built_science_will_read_100_percent", spawn_body)
+
+        observer_body = label_body(drone, "khovan_drone_01_watch_weapons_subsystem_damage")
+        self.assertIn(
+            "grid_damage_system(drone_01_target_id, sbs.SHPSYS.WEAPONS)",
+            observer_body,
+            "the stock crit only writes a summary key; grid_damage_system is the "
+            "built-in that damages a real node and updates the damage coefficients",
+        )
+
+        # The baseline must be re-seeded after grid damage. grid_apply_system_damage
+        # rewrites system_damage as a damaged-node COUNT, a different scale from the
+        # stock console's geometric 1.35 series - keeping the old baseline would
+        # silently miss the next hit.
+        self.assertIn("rebased_weapons_damage", observer_body)
+        self.assertIn("drone_01_weapons_damage_baseline = rebased_weapons_damage", observer_body)
+        self.assertIn("if rebased_weapons_damage is None:", observer_body)
+
+        # A grid is the internal damage model, not combat AI. Drone 01 must not pick
+        # up a fleet or brain from this - it stays the passive disable target.
+        self.assertNotIn("brain_add(", spawn_body)
+        self.assertNotIn("fleet_spawn(", spawn_body)
+
+        self.assertIn("drone_01_grid_status = ", label_body(drone, "khovan_drone_01_reset_flags"))
+
     def test_weapons_hit_counting_is_centralized_for_automatic_and_fallback_paths(self) -> None:
         # Both the automatic system_damage observer and the Kestrel Comms
         # "Fallback Weapons Hit" route must land on the same completion label, so

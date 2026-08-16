@@ -57,6 +57,8 @@ shared drone_01_required_weapons_hits = 1
 shared drone_01_weapons_damage_baseline = 0
 shared drone_01_weapons_damage_run_id = 0
 shared drone_01_weapons_damage_observer_status = "not_started"
+shared drone_01_grid_status = "not_started"
+shared drone_01_grid_damage_applied_count = 0
 shared drone_01_science_report_request_sent = False
 shared drone_01_weapons_disabled = False
 shared drone_01_ceasefire_confirmed = False
@@ -471,6 +473,9 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
     drone_01_weapons_damage_run_id = drone_01_weapons_damage_run_id + 1
     drone_01_weapons_damage_baseline = 0
     drone_01_weapons_damage_observer_status = "not_started"
+    # Grid belongs to the object being replaced; the respawn builds its own.
+    drone_01_grid_status = "not_started"
+    drone_01_grid_damage_applied_count = 0
     drone_01_science_report_request_sent = False
     drone_01_weapons_disabled = False
     drone_01_ceasefire_confirmed = False
@@ -544,6 +549,37 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
     # proves the stock scan return survives it.
     drone_01_active = True
     drone_01_status = "spawned_non_attacking_kralien_cruiser_at_training_beacon_offset"
+    # Give Drone 01 a real interior grid. **[UNPROVEN]** - stock only ever builds
+    # grids for player ships (legendarymissions/ai/grid_ai.mast:11 gates on
+    # __player__), so an NPC with a grid is off the stock path.
+    #
+    # Why it is needed (root-caused live 2026-08-16): the engine's subsystem damage
+    # model is grid-based. set_damage_coefficients() (internal_damage.py:410) reads
+    # ONLY grid nodes, and when a ship has no grid the node count is zero and every
+    # coefficient falls through to 1.0 - which is why Science reported "WEAP 100%"
+    # on a drone the stock console had just announced as "WEAPONS Destroyed". The
+    # stock manual crit writes the system_damage blob key directly, but that key is
+    # a DERIVED summary that grid_apply_system_damage() normally computes FROM the
+    # grid; nothing reads it back into the engine. Without a grid there is simply
+    # nothing for the built-in damage model to act on.
+    #
+    # grid_data defaults internally to grid_get_grid_data(), and data/grid_data.json
+    # carries an entry for kralien_cruiser (all 161 hulls have one), so no data
+    # plumbing is needed here. grid_rebuild_grid_objects returns early and harmlessly
+    # if the hull has no grid definition.
+    #
+    # This does NOT make Drone 01 fight back - a grid is the internal damage model,
+    # not combat AI. Returning fire needs a fleet with a behavior-tree brain, which
+    # only Drone 02 gets (see khovan_drone_02_spawn).
+    grid_rebuild_grid_objects(drone_01_target_id)
+    drone_01_grid_interior = grid_objects(drone_01_target_id)
+    drone_01_grid_damage_applied_count = 0
+    if len(drone_01_grid_interior) == 0:
+        drone_01_grid_status = "fallback_no_grid_built_science_will_read_100_percent"
+        script.write_khovan_startup_trace("[KHOVAN ACT1 DRONE 01 GRID] no grid objects built; subsystem damage will not reach Science")
+    else:
+        drone_01_grid_status = "grid_built"
+        script.write_khovan_startup_trace(f"[KHOVAN ACT1 DRONE 01 GRID] interior built node_count={len(drone_01_grid_interior)}")
     # GM/Comms confirmations are final fallbacks for every automatic production gate.
     drone_01_scan_fallback_available = True
     drone_01_hail_fallback_available = True
@@ -981,17 +1017,37 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
     if current_weapons_damage is None:
         current_weapons_damage = 0
     if current_weapons_damage > drone_01_weapons_damage_baseline:
-        drone_01_weapons_damage_baseline = current_weapons_damage
         drone_01_weapons_damage_observer_status = "weapons_subsystem_damage_increase_observed"
-        # Diagnostic (2026-08-16): the operator observed Science reporting
-        # "WEAP 100%" on a contact that had just taken two stock critical hits.
-        # Stock writes system_damage = max(cur,1) * 1.35 per crit
-        # (manual_weapons.mast:216-226), so the first crit lands 1.35. Log the
-        # value against system_max_damage to settle whether Science is showing
-        # a real-but-tiny fraction, or whether the engine's science panel does
-        # not read this key at all. Read-only - do not "fix" the number here.
         weapons_max_damage = drone_object.data_set.get("system_max_damage", sbs.SHPSYS.WEAPONS)
         script.write_khovan_startup_trace(f"[KHOVAN ACT1 DRONE 01 SUBSYSTEM] weapons_damage={current_weapons_damage} weapons_max_damage={weapons_max_damage}")
+        # Turn the stock critical into damage the engine actually models.
+        #
+        # The stock console only writes the system_damage summary key; it never
+        # touches a grid node, so on its own it changes nothing the engine or
+        # Science reads (see the grid comment in khovan_drone_01_spawn).
+        # grid_damage_system() is the built-in that does the real work: it picks an
+        # undamaged node carrying the "weapon" role, marks it __damaged__, and calls
+        # grid_apply_system_damage(), which recomputes system_damage from the grid
+        # AND calls set_damage_coefficients(). That is the whole chain, all stock.
+        #
+        # Returns False when there is no grid or no undamaged weapon node left, in
+        # which case we simply keep the pre-existing behavior and the drill still
+        # advances on the stock crit alone.
+        grid_damage_landed = grid_damage_system(drone_01_target_id, sbs.SHPSYS.WEAPONS)
+        if grid_damage_landed:
+            drone_01_grid_damage_applied_count = drone_01_grid_damage_applied_count + 1
+            drone_01_grid_status = "grid_weapons_node_damaged"
+        else:
+            drone_01_grid_status = "grid_damage_unavailable_stock_crit_only"
+        # Re-seed the baseline from whatever the value is NOW. grid_apply_system_damage
+        # rewrites system_damage as a damaged-node COUNT, which is a different scale
+        # from the stock console's geometric 1.35 series - comparing the next stock
+        # write against the old 1.35 baseline would silently miss the following hit.
+        rebased_weapons_damage = drone_object.data_set.get("system_damage", sbs.SHPSYS.WEAPONS)
+        if rebased_weapons_damage is None:
+            rebased_weapons_damage = current_weapons_damage
+        drone_01_weapons_damage_baseline = rebased_weapons_damage
+        script.write_khovan_startup_trace(f"[KHOVAN ACT1 DRONE 01 GRID] grid_damage_landed={grid_damage_landed} rebased_baseline={rebased_weapons_damage} applied_count={drone_01_grid_damage_applied_count}")
         await task_schedule(khovan_drone_01_register_weapons_hit, {"hit_source": "automatic_weapons_system_damage_observer"})
         ->END
 
