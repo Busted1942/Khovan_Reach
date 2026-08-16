@@ -915,6 +915,26 @@ class Act1DroneContactFireStaticTests(unittest.TestCase):
             "is first told to go to manual targeting",
         )
 
+    def test_ceasefire_explains_the_handoff_to_the_live_fire_drone(self) -> None:
+        # khovan_drone_01_confirm_ceasefire deletes Drone 01 and immediately spawns
+        # Drone 02. Before the ceasefire line said so, the crew saw the contact they
+        # had just disabled vanish and a new one appear unannounced, which the
+        # operator read as "we were supposed to destroy it" (2026-08-16).
+        #
+        # Drone 01 is disable-only by design - killing it early triggers the
+        # unauthorized-destruction reset - so the line has to distinguish the two
+        # targets rather than leave the crew to guess.
+        drone = read(DRONE_PATH)
+        ceasefire_text = drone[drone.index("shared drone_01_ceasefire_confirmed_text = "):]
+        ceasefire_text = ceasefire_text[:ceasefire_text.index("\n")].lower()
+        self.assertIn("not destroyed", ceasefire_text)
+        self.assertIn("second drone", ceasefire_text)
+
+        # And the handler really does hand off, so the message is not a promise the
+        # runtime fails to keep.
+        body = label_body(drone, "khovan_drone_01_confirm_ceasefire")
+        self.assertIn("await task_schedule(khovan_drone_02_spawn)", body)
+
     def test_weapons_hit_counting_is_centralized_for_automatic_and_fallback_paths(self) -> None:
         # Both the automatic system_damage observer and the Kestrel Comms
         # "Fallback Weapons Hit" route must land on the same completion label, so

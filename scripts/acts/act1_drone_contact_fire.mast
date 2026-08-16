@@ -87,8 +87,13 @@ shared drone_01_weapons_lock_confirmed_text = "Artemis - Weapons: Beam lock conf
 shared drone_01_range_confirmed_text = "Artemis - Helm: Range confirmed, one to two kilometres from Drone 01."
 shared drone_01_stationary_hold_confirmed_text = "Artemis - Helm: Stationary hold confirmed."
 shared drone_01_fire_authorized_confirmed_text = "Artemis - Captain: Fire clearance issued for the controlled disable."
-shared drone_01_weapons_disabled_confirmed_text = "Artemis - Weapons: Drone 01's weapons array is disabled."
-shared drone_01_ceasefire_confirmed_text = "Artemis - Weapons: Ceasefire confirmed on Drone 01."
+shared drone_01_weapons_disabled_confirmed_text = "Artemis - Weapons: Drone 01's weapons array is disabled. Stop firing."
+# The ceasefire line is also the handoff to Drone 02. Before this was spelled out,
+# Drone 01 was simply deleted the moment ceasefire was confirmed and a second
+# contact appeared with no explanation - the operator read the vanish as "we were
+# supposed to destroy it." Say plainly that Drone 01 is recovered rather than
+# killed, why that is the lesson, and that the next contact IS a kill.
+shared drone_01_ceasefire_confirmed_text = "Artemis - Weapons: Ceasefire confirmed. Drone 01 is disabled, not destroyed - taking a system instead of a ship is the whole point of that drill.\nArtemis - Comms: Kestrel is pulling Drone 01 off the range now.\nArtemis - Captain: Stand by for a second drone. That one is a live-fire target, and you will destroy it."
 shared drone_02_destroyed_confirmed_text = "Artemis - Weapons: Drone 02 destroyed."
 # Coaching lines. Both describe the STOCK manual-targeting mechanic exactly as
 # legendarymissions/consoles/manual_weapons.mast implements it - do not reword
@@ -105,8 +110,12 @@ shared drone_02_destroyed_confirmed_text = "Artemis - Weapons: Drone 02 destroye
 #   Lines 169-173: pressing a DIFFERENT subsystem button clears the armed
 #   critical and broadcasts "Lost Critical hit, chance". Alternating between
 #   weapons and engines therefore destroys progress rather than doubling it.
-shared drone_01_science_report_request_text = "Artemis - Science: Report the drone's shield status and any subsystem damage now, and after every confirmed hit. Weapons is shooting blind until you call it."
-shared drone_01_weapons_crit_technique_text = "Artemis - Weapons: Manual targeting does not damage a subsystem on every hit. Each press of the subsystem button is its own chance at a critical, so keep pressing the same one. When the critical warning comes up, your next beam hit carries it - switch subsystems before it lands and you throw it away."
+shared drone_01_science_report_request_text = "Artemis - Science: Keep Drone 01 on your scan and call out its shield levels as they come down, and any subsystem damage as it lands.\nArtemis - Science: Weapons needs to hear the moment the shields are down - manual targeting cannot reach a subsystem through an intact shield."
+# Procedure, in the order the crew performs it. The console reports the armed
+# critical itself (the red "Critical hit <name> WEAPONS" and yellow "Potential
+# Critical hit <name>" lines are stock, manual_weapons.mast:190 and :231), so this
+# points at that readout rather than duplicating it in Dillon's voice.
+shared drone_01_weapons_crit_technique_text = "Artemis - Weapons: Select Manual Targeting, then select Drone 01: Weapons. Keep Weapons selected and press its subsystem button until the console reports a critical hit is armed.\nArtemis - Weapons: Then fire one beam without changing subsystems. The drill advances when that beam damages Drone 01's Weapons array.\nArtemis - Captain: Once the array is disabled, order ceasefire. Comms, confirm the ceasefire with Commander Dillon."
 shared drone_01_known_marked = False
 shared drone_01_hull_restore_count = 0
 
