@@ -1218,14 +1218,14 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
     if drone_01_weapons_health_percent > 100:
         drone_01_weapons_health_percent = 100
     drone_01_telemetry_status = "reported"
-    script.write_khovan_startup_trace(f"[KHOVAN ACT1 DRONE 01 TELEMETRY] damage={telemetry_damage} max={telemetry_max} health_percent={drone_01_weapons_health_percent}")
+    script.write_khovan_startup_trace(f"[KHOVAN ACT1 TELEMETRY {telemetry_drone_name}] damage={telemetry_damage} max={telemetry_max} health_percent={drone_01_weapons_health_percent}")
     if drone_01_telemetry_intro_sent:
-        await task_schedule(khovan_drone_contact_fire_send_message, {"drone_message_text": f"Artemis - Science: {telemetry_drone_name}'s weapons array now reading {drone_01_weapons_health_percent} percent.", "drone_message_breadcrumb": "[KHOVAN ACT1 DRONE 01 TELEMETRY] guarded follow-up report sent"})
+        await task_schedule(khovan_drone_contact_fire_send_message, {"drone_message_text": f"Artemis - Science: {telemetry_drone_name}'s weapons array now reading {drone_01_weapons_health_percent} percent.", "drone_message_breadcrumb": f"[KHOVAN ACT1 TELEMETRY {telemetry_drone_name}] guarded follow-up report sent"})
         ->END
     # The fiction is true, which is the point: a training hull really is broadcasting
     # its own internals, and a real warship really will not. Said once.
     drone_01_telemetry_intro_sent = True
-    await task_schedule(khovan_drone_contact_fire_send_message, {"drone_message_text": f"Artemis - Science: {telemetry_drone_name} is a training hull, instrumented to broadcast its own damage telemetry. A live Kralien warship will not do you that courtesy, so read her shields and frequency instead.\nArtemis - Science: Her weapons array is reading {drone_01_weapons_health_percent} percent.", "drone_message_breadcrumb": "[KHOVAN ACT1 DRONE 01 TELEMETRY] guarded first report sent"})
+    await task_schedule(khovan_drone_contact_fire_send_message, {"drone_message_text": f"Artemis - Science: {telemetry_drone_name} is a training hull, instrumented to broadcast its own damage telemetry. A live Kralien warship will not do you that courtesy, so read her shields and frequency instead.\nArtemis - Science: Her weapons array is reading {drone_01_weapons_health_percent} percent.", "drone_message_breadcrumb": f"[KHOVAN ACT1 TELEMETRY {telemetry_drone_name}] guarded first report sent"})
     ->END
 
 === khovan_drone_01_register_weapons_hit ===
@@ -1394,7 +1394,13 @@ brain:
     # pre-flight rule as Drone 01: check the hull data BEFORE building, because
     # grid_rebuild_grid_objects on an empty hull writes system_max_damage = 0 and the
     # Science readout divides by it (cookbook 7.3 and 17.9).
+    # Unconditional entry marker. The 2026-08-16 20:45 run logged no DRONE 02 GRID
+    # line at all while the observer still ran, which means this block was entered
+    # and died, or was never reached. Without a marker before the first call there
+    # is no way to tell those apart from the trace.
+    script.write_khovan_startup_trace(f"[KHOVAN ACT1 DRONE 02 GRID] block entered hull={drone_hull_art}")
     drone_02_grid_weapon_nodes = grid_count_grid_data(drone_hull_art, "weapon")
+    script.write_khovan_startup_trace(f"[KHOVAN ACT1 DRONE 02 GRID] preflight returned {drone_02_grid_weapon_nodes}")
     if drone_02_grid_weapon_nodes == 0:
         drone_02_grid_status = "hull_has_no_interior_science_reads_100_percent"
         script.write_khovan_startup_trace(f"[KHOVAN ACT1 DRONE 02 GRID] {drone_hull_art} has no interior; grid build skipped")
@@ -1407,6 +1413,7 @@ brain:
     drone_02_weapons_damage_baseline = 0
     drone_02_weapons_damage_run_id = drone_02_weapons_damage_run_id + 1
     task_schedule(khovan_drone_02_watch_weapons_subsystem_damage, {"damage_run_id": drone_02_weapons_damage_run_id})
+    script.write_khovan_startup_trace(f"[KHOVAN ACT1 DRONE 02 GRID] observer started run_id={drone_02_weapons_damage_run_id} grid_status={drone_02_grid_status}")
     ->END
 
 === khovan_act1_story_jump_seed_drone_02_live_fire ===
