@@ -115,7 +115,7 @@ shared drone_01_weapons_lock_next_step_text = "Artemis - Weapons: Lock beams on 
 # ASCII only, and " - " rather than an em dash: every player-facing string in
 # scripts/ is pure ASCII, and nothing proves the game client renders a non-ASCII
 # character correctly in a comms message.
-shared drone_01_weapons_lock_confirmed_text = "Artemis - Weapons: Beam lock confirmed on Drone 01.\nArtemis - Weapons: Press Manual, lower left. Inside 2 km her weapons, engine and sensor buttons appear. Press the same one until the console flashes \"Potential Critical hit\" in yellow. Your next beam carries it straight through her shields.\nArtemis - Weapons: Never switch subsystems while one is armed. A faster beam rate delivers more critical hits per minute.\nArtemis - Science: Pass Weapons the weak shield frequency. While the critical hit punches through on its own, switching standard beam hits to the enemy's weakest shield frequency can take down their shields much quicker."
+shared drone_01_weapons_lock_confirmed_text = "Artemis - Weapons: Beam lock confirmed on Drone 01.\nArtemis - Weapons: Press Manual, lower left. Inside 2 km her weapons, engine and sensor buttons appear. Press the same one until the console flashes \"Potential Critical hit\" in yellow. Your next beam carries it straight through her shields.\nArtemis - Weapons: Never switch subsystems while one is armed or your critical hit will reset. Also note that a faster (4X vs. 1X) beam rate delivers more critical hits per minute.\nArtemis - Science: Pass Weapons the weak shield frequency. While the critical hit punches through on its own, switching standard beam hits to the enemy's weakest shield frequency can take down their shields much quicker."
 shared drone_01_range_confirmed_text = "Artemis - Helm: Range confirmed, one to two kilometres from Drone 01."
 shared drone_01_stationary_hold_confirmed_text = "Artemis - Helm: Stationary hold confirmed."
 shared drone_01_fire_authorized_confirmed_text = "Artemis - Captain: Fire clearance issued for the controlled disable."
@@ -600,23 +600,47 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
     # grid; nothing reads it back into the engine. Without a grid there is simply
     # nothing for the built-in damage model to act on.
     #
-    # grid_data defaults internally to grid_get_grid_data(), and data/grid_data.json
-    # carries an entry for kralien_cruiser (all 161 hulls have one), so no data
-    # plumbing is needed here. grid_rebuild_grid_objects returns early and harmlessly
-    # if the hull has no grid definition.
+    # MUST pre-flight the hull. **Calling grid_rebuild_grid_objects on a hull with no
+    # interior actively breaks the Science panel** - live regression 2026-08-16.
+    #
+    # data/grid_data.json has an entry for all 161 hulls, but only 40 of them contain
+    # any grid_objects. The rest are empty placeholders, and EVERY Kralien warship
+    # hull is one of them (only starbase_kralien has an interior). Checking that the
+    # key exists proves nothing; the node list has to be non-empty.
+    #
+    # The failure is not a harmless no-op. grid_rebuild_grid_objects counts nodes per
+    # role and then unconditionally writes what it counted
+    # (internal_damage.py:139-142), so an empty hull writes system_max_damage = 0 for
+    # all four systems. The Science readout divides by that, and the divide-by-zero
+    # casts to INT32_MIN - the operator saw "WEAP -2147483648" wrapped across two
+    # lines where it used to read "WEAP 100%". Leaving the key unset renders 100%;
+    # setting it to zero renders garbage. A post-call length check cannot save this,
+    # because the zeros are already written by the time it runs.
+    #
+    # grid_count_grid_data() reads the JSON without building anything, so it is the
+    # safe way to ask the question first.
     #
     # This does NOT make Drone 01 fight back - a grid is the internal damage model,
     # not combat AI. Returning fire needs a fleet with a behavior-tree brain, which
     # only Drone 02 gets (see khovan_drone_02_spawn).
-    grid_rebuild_grid_objects(drone_01_target_id)
-    drone_01_grid_interior = grid_objects(drone_01_target_id)
     drone_01_grid_damage_applied_count = 0
-    if len(drone_01_grid_interior) == 0:
-        drone_01_grid_status = "fallback_no_grid_built_science_will_read_100_percent"
-        script.write_khovan_startup_trace("[KHOVAN ACT1 DRONE 01 GRID] no grid objects built; subsystem damage will not reach Science")
+    drone_01_grid_weapon_nodes = grid_count_grid_data("kralien_cruiser", "weapon")
+    if drone_01_grid_weapon_nodes == 0:
+        # Correct and deliberate for kralien_cruiser. Science reads 100% for the
+        # whole drill because the engine has no interior to model damage against.
+        # That is a stock limitation of enemy hulls, not a bug to code around, and
+        # the drill still completes on the stock critical alone.
+        drone_01_grid_status = "hull_has_no_interior_science_reads_100_percent"
+        script.write_khovan_startup_trace("[KHOVAN ACT1 DRONE 01 GRID] kralien_cruiser has no interior; grid build skipped so system_max_damage stays unset")
     else:
-        drone_01_grid_status = "grid_built"
-        script.write_khovan_startup_trace(f"[KHOVAN ACT1 DRONE 01 GRID] interior built node_count={len(drone_01_grid_interior)}")
+        grid_rebuild_grid_objects(drone_01_target_id)
+        drone_01_grid_interior = grid_objects(drone_01_target_id)
+        if len(drone_01_grid_interior) == 0:
+            drone_01_grid_status = "fallback_grid_build_produced_no_nodes"
+            script.write_khovan_startup_trace("[KHOVAN ACT1 DRONE 01 GRID] build produced no nodes despite non-zero grid data")
+        else:
+            drone_01_grid_status = "grid_built"
+            script.write_khovan_startup_trace(f"[KHOVAN ACT1 DRONE 01 GRID] interior built node_count={len(drone_01_grid_interior)} weapon_nodes={drone_01_grid_weapon_nodes}")
     # GM/Comms confirmations are final fallbacks for every automatic production gate.
     drone_01_scan_fallback_available = True
     drone_01_hail_fallback_available = True

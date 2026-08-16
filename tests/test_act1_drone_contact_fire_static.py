@@ -999,6 +999,34 @@ class Act1DroneContactFireStaticTests(unittest.TestCase):
         self.assertIn('+ "JUMP-010A Drone 02 Live Fire" khovan_story_jump_preset_drone_02_live_fire', presets)
         self.assertIn('elif jump_id == "drone_02_live_fire":', presets)
 
+    def test_grid_build_is_preflighted_against_the_hull_data(self) -> None:
+        # Live regression 2026-08-16: calling grid_rebuild_grid_objects on a hull with
+        # no interior broke the Science panel outright. data/grid_data.json has an
+        # entry for all 161 hulls but only 40 hold any grid_objects, and every Kralien
+        # warship hull is an empty placeholder.
+        #
+        # grid_rebuild_grid_objects counts nodes per role and unconditionally writes
+        # the result (internal_damage.py:139-142), so an empty hull writes
+        # system_max_damage = 0 for all four systems. Science divides by it and the
+        # divide-by-zero casts to INT32_MIN: "WEAP -2147483648" where "WEAP 100%" used
+        # to be. An unset key renders 100%; a zero renders garbage.
+        drone = read(DRONE_PATH)
+        body = code_only(label_body(drone, "khovan_drone_01_spawn"))
+
+        self.assertIn('grid_count_grid_data("kralien_cruiser", "weapon")', body)
+
+        # Ordering is the entire fix. A post-call length check cannot help, because
+        # the zeros are already written by the time it runs.
+        preflight = body.index("grid_count_grid_data(")
+        build = body.index("grid_rebuild_grid_objects(")
+        self.assertLess(
+            preflight,
+            build,
+            "the hull must be checked BEFORE the grid is built; checking after is what "
+            "broke the Science panel, since the zeroed system_max_damage is already written",
+        )
+        self.assertIn("if drone_01_grid_weapon_nodes == 0:", body)
+
     def test_drone_01_gets_a_grid_so_subsystem_damage_reaches_science(self) -> None:
         # Root cause, live 2026-08-16: Science reported "WEAP 100%" on a drone the
         # stock console had just announced as "WEAPONS Destroyed". The engine's
@@ -1010,9 +1038,11 @@ class Act1DroneContactFireStaticTests(unittest.TestCase):
         drone = read(DRONE_PATH)
         spawn_body = label_body(drone, "khovan_drone_01_spawn")
         self.assertIn("grid_rebuild_grid_objects(drone_01_target_id)", spawn_body)
-        # Degrades honestly rather than silently: if no grid was built, say so.
+        # Degrades honestly rather than silently, and names which case it is in.
+        # kralien_cruiser has no interior, so this is the branch that actually runs
+        # today; the build path is kept for a hull that does have one.
+        self.assertIn("hull_has_no_interior_science_reads_100_percent", spawn_body)
         self.assertIn("if len(drone_01_grid_interior) == 0:", spawn_body)
-        self.assertIn("fallback_no_grid_built_science_will_read_100_percent", spawn_body)
 
         observer_body = label_body(drone, "khovan_drone_01_watch_weapons_subsystem_damage")
         self.assertIn(

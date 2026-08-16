@@ -653,6 +653,32 @@ Do **not** restore shields (`shield_val`) alongside the hull. Not because subsys
 
 Stop restoring the hull the moment the drill's gate is satisfied, or the target becomes unkillable for the cleanup phase that follows. And watch the restore count: a hold that fires constantly means the crew is effectively shooting an invincible target, which is its own bad lesson. Treat a high count as a signal to re-examine the drill's length, not as proof the hold is working.
 
+### Why Science reads 100% on a damaged NPC, and why "fixing" it can break the panel
+
+**[LIVE]** Operator-observed 2026-08-16, both the cause and the failed fix.
+
+Science shows `WEAP 100%` on an NPC even after the stock console announces `WEAPONS Destroyed`. The engine's subsystem damage model is **grid-based**: `set_damage_coefficients()` (`internal_damage.py:410`) reads only grid nodes, and with no grid the node count is zero and every coefficient falls through to `1.0`. Meanwhile the stock manual crit writes `system_damage` directly, but that key is a *derived summary* that `grid_apply_system_damage()` normally computes **from** the grid. Nothing reads it back. On a gridless NPC the stock critical is effectively cosmetic: real messages, no modelled damage.
+
+The obvious fix is to give the NPC an interior with `grid_rebuild_grid_objects()`. **On most enemy hulls this makes things worse, not better.**
+
+```mast
+    # WRONG - breaks the Science panel on any hull without an interior
+    grid_rebuild_grid_objects(target_id)
+
+    # RIGHT - ask the JSON first, it builds nothing
+    weapon_nodes = grid_count_grid_data("kralien_cruiser", "weapon")
+    if weapon_nodes != 0:
+        grid_rebuild_grid_objects(target_id)
+```
+
+`data/grid_data.json` has an entry for all 161 hulls, but **only 40 contain any `grid_objects`** — TSN, Xim, Arvonian, civilian hulls, and four starbases. Every Kralien *warship* hull is an empty placeholder; only `starbase_kralien` has an interior. Testing `hull in grid_data` proves nothing, because the hollow entries are present too. That exact mistake is what produced this bug.
+
+The failure mode is not a harmless no-op. `grid_rebuild_grid_objects` counts nodes per role and then writes what it counted unconditionally (`internal_damage.py:139-142`), so an empty hull writes `system_max_damage = 0` for all four systems. The Science readout divides by that value, and the divide-by-zero casts to `INT32_MIN` — the panel rendered `WEAP -2147483648`, wrapped across two lines, where it had previously read `WEAP 100%`.
+
+> **Leaving `system_max_damage` unset renders 100%. Setting it to zero renders garbage.** A post-call `len(grid_objects(id)) == 0` check cannot rescue this, because the zeros are already written by the time it runs. The check has to happen *before* the build.
+
+Practical consequence for mission design: **you cannot show subsystem damage on a Kralien hull.** If a drill needs Science to see a subsystem degrade, either pick a hull with a real interior from the 40, or accept the stock console's own `Critical hit` / `Destroyed` broadcasts as the crew's feedback and design the drill around those instead.
+
 ### GM-only diagnostic: reading the raw inventory signal
 
 **[UNPROVEN]** `act1_drone_contact_fire.mast` spike handler. This is the one place the inventory pair is still read, and it is deliberate — observing that raw signal is the entire purpose of the GM spike. **It is not a production pattern.** A spike route reading these values is fine because nothing depends on the engine also applying the damage; a production drill is not, per the ownership rule above.
@@ -1125,6 +1151,8 @@ Every one of these came from a real Slice 01–05 failure.
 Guarded by `tests/test_mast_compile_or_preflight.py`:
 
 - `artemis_ship_name` as an identifier in startup files — known bad.
+- `grid_rebuild_grid_objects()` on a hull without pre-checking `grid_count_grid_data()` — an empty hull writes `system_max_damage = 0`, and the Science panel's divide-by-zero renders `INT32_MIN` instead of a percentage (7.3). Only 40 of 161 hulls have interiors; no Kralien warship does. Guarded by `test_grid_build_is_preflighted_against_the_hull_data`.
+- Testing `hull in grid_data` as proof a hull has an interior — every hull has an entry; most are empty placeholders. Count the `grid_objects`, not the key.
 - `sim_create()`, `player_spawn(`, `assign_client_to_ship` in `playable_bootstrap.mast` — LegendaryMissions owns the server/client console and player-spawn lifecycle. Khovan only binds state to the reference-created Artemis (`playable_bootstrap.mast:13-36`).
 - Lifeform / upper-left overlay as a text destination — produced a black box. Text currently routes through guarded Comms instead (`audio_runtime.mast:17-18`).
 - Temporary Comms proof stations in production startup — removed in Slice 04, `ba794f3`.
