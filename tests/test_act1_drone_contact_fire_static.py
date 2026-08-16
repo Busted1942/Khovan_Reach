@@ -794,6 +794,49 @@ class Act1DroneContactFireStaticTests(unittest.TestCase):
         )
         self.assertIn('"objective_id": "drone_01_weapons_lock"', body)
 
+    def test_science_report_request_fires_on_the_first_confirmed_hit_only(self) -> None:
+        # The crew can watch the drone's shields deplete on the stock scan, and
+        # subsystem damage only lands once they are down, so Science is pulled in
+        # at hit 1. Guarded to hit 1 exactly - repeating it every hit would bury
+        # the "Hit N of 3" counter it is meant to accompany.
+        drone = read(DRONE_PATH)
+        body = label_body(drone, "khovan_drone_01_register_weapons_hit")
+        self.assertIn("if drone_01_weapons_hit_count == 1:", body)
+        self.assertIn(
+            'await task_schedule(khovan_drone_contact_fire_send_message, {"drone_message_text": drone_01_science_report_request_text',
+            body,
+        )
+        self.assertIn("shared drone_01_science_report_request_text = ", drone)
+
+    def test_manual_targeting_coaching_matches_the_stock_crit_mechanic(self) -> None:
+        # Accuracy guard on player-facing training text. The stock console
+        # (legendarymissions/consoles/manual_weapons.mast:163-193) rolls
+        # random.randint(1,20) == 20 once per PRESS of a subsystem button, not
+        # per beam hit, and clears an armed critical when the player switches to
+        # a different subsystem. A previous draft of this note taught the
+        # intuitive-but-wrong "higher beam rate means more critical chances".
+        # This is a training mission - the coaching has to match the engine.
+        drone = read(DRONE_PATH)
+        self.assertIn("shared drone_01_weapons_crit_technique_text = ", drone)
+        technique = drone[drone.index("shared drone_01_weapons_crit_technique_text = "):]
+        technique = technique[:technique.index("\n")].lower()
+        self.assertIn("press", technique)
+        for wrong in ["beam rate", "fire rate", "rate of fire"]:
+            self.assertNotIn(
+                wrong,
+                technique,
+                "beam/fire rate does not affect the critical-hit roll; the roll is "
+                "per subsystem-button press (manual_weapons.mast:187)",
+            )
+
+        authorize_body = label_body(drone, "khovan_drone_01_authorize_fire")
+        self.assertIn(
+            'await task_schedule(khovan_drone_contact_fire_send_message, {"drone_message_text": drone_01_weapons_crit_technique_text',
+            authorize_body,
+            "the technique note must arrive with the fire clearance, when the crew "
+            "is first told to go to manual targeting",
+        )
+
     def test_weapons_hit_counting_is_centralized_for_automatic_and_fallback_paths(self) -> None:
         # Both the automatic //damage/object observer and the Kestrel Comms
         # "Fallback Weapons Hit" route must land on the same completion label, so

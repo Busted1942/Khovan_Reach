@@ -68,6 +68,23 @@ shared drone_01_fire_authorized_confirmed_text = "Artemis - Captain: Fire cleara
 shared drone_01_weapons_disabled_confirmed_text = "Artemis - Weapons: Drone 01's weapons array is disabled."
 shared drone_01_ceasefire_confirmed_text = "Artemis - Weapons: Ceasefire confirmed on Drone 01."
 shared drone_02_destroyed_confirmed_text = "Artemis - Weapons: Drone 02 destroyed."
+# Coaching lines. Both describe the STOCK manual-targeting mechanic exactly as
+# legendarymissions/consoles/manual_weapons.mast implements it - do not reword
+# these into "more beam hits means more critical chance", which is the intuitive
+# reading and is wrong for this engine:
+#
+#   manual_weapons_shoot (manual_weapons.mast:163-193) runs once per PRESS of a
+#   subsystem button on the Manual Weapons console, and rolls
+#   random.randint(1,20) == 20. Only on that 1-in-20 does it arm MANUAL_SYSTEM +
+#   MANUAL_CRITICAL_HIT and broadcast "Potential Critical hit" in yellow. Beam
+#   rate does not enter the roll at all - it only decides how fast an already
+#   armed critical gets consumed by the next hit.
+#
+#   Lines 169-173: pressing a DIFFERENT subsystem button clears the armed
+#   critical and broadcasts "Lost Critical hit, chance". Alternating between
+#   weapons and engines therefore destroys progress rather than doubling it.
+shared drone_01_science_report_request_text = "Artemis - Science: Report the drone's shield status and any subsystem damage now, and after every confirmed hit. Weapons is shooting blind until you call it."
+shared drone_01_weapons_crit_technique_text = "Artemis - Weapons: Manual targeting does not damage a subsystem on every hit. Each press of the subsystem button is its own chance at a critical, so keep pressing the same one. When the critical warning comes up, your next beam hit carries it - switch subsystems before it lands and you throw it away."
 shared drone_01_known_marked = False
 shared drone_01_hull_restore_count = 0
 
@@ -791,6 +808,10 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
     drone_01_fire_authorized = True
     drone_01_status = "fire_authorized_weapons_disable_only"
     await task_schedule(khovan_drone_contact_fire_send_message, {"drone_message_text": drone_01_fire_authorized_confirmed_text, "drone_message_breadcrumb": "[KHOVAN ACT1 DRONE 01 FIRE AUTHORIZED] guarded confirmation sent"})
+    # Technique coaching lands with the fire clearance, which is the moment the
+    # crew is first told to go to manual targeting - explaining the critical-hit
+    # roll after they have already burned twenty presses is too late to help.
+    await task_schedule(khovan_drone_contact_fire_send_message, {"drone_message_text": drone_01_weapons_crit_technique_text, "drone_message_breadcrumb": "[KHOVAN ACT1 DRONE 01 FIRE AUTHORIZED] guarded manual-targeting technique note sent"})
     await task_schedule(khovan_set_current_objective, {"objective_id": "drone_01_fire_authorized", "objective_body": "You are cleared to fire. Weapons, go to manual targeting and take the drone's weapons array only. Three confirmed hits should disable it. Then cease fire.", "objective_step": "Drone 01 Weapons disable", "objective_breadcrumb": "[KHOVAN OBJECTIVE 019] Drone 01 fire authorized"})
     ->END
 
@@ -880,6 +901,13 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
     drone_01_status = "weapons_subsystem_hit_confirmed"
     script.write_khovan_startup_trace(f"[KHOVAN ACT1 DRONE 01 HIT] count={drone_01_weapons_hit_count} source={hit_source}")
     await task_schedule(khovan_drone_contact_fire_send_message, {"drone_message_text": f"Artemis - Weapons: Hit {drone_01_weapons_hit_count} of 3 confirmed on Drone 01's weapons array.", "drone_message_breadcrumb": "[KHOVAN ACT1 DRONE 01 HIT] guarded confirmation sent"})
+    # First confirmed hit is where Science gets pulled in: the crew can watch the
+    # drone's shields deplete on the stock scan, and subsystem damage only starts
+    # landing once they are down, so this is the moment the readout is worth
+    # calling. Sent once, on hit 1 only - repeating it on every hit would bury the
+    # hit counter itself.
+    if drone_01_weapons_hit_count == 1:
+        await task_schedule(khovan_drone_contact_fire_send_message, {"drone_message_text": drone_01_science_report_request_text, "drone_message_breadcrumb": "[KHOVAN ACT1 DRONE 01 HIT] guarded Science report request sent"})
     if drone_01_weapons_hit_count >= 3:
         drone_01_weapons_disabled = True
         drone_01_status = "weapons_array_disabled_awaiting_ceasefire"
