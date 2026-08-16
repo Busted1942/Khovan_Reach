@@ -531,6 +531,10 @@ Fresh mission load reaches playable Scene 1 with no manual recovery, or the exac
 
 # 9A. Act I v2.2 tests
 
+**Revision note (operator-ratified 2026-08-16) — ACT1-022 is one confirmed critical hit, not three.** Tracks the gate 9 change ratified in `docs/01_design/10_mast_requirements.md` section 8.5. The stock manual-targeting critical is a `random.randint(1,20) == 20` roll fired once per press of a subsystem button (`legendarymissions/consoles/manual_weapons.mast:187`), and switching subsystem clears an armed critical (lines 169-173), so the old three-hit expectation made this test case roughly sixty button presses and failed against correct runtime behavior.
+
+Operator expectation for ACT1-022: with fire clearance issued and manual targeting on, keep pressing the **same** subsystem button. Expected observation — a yellow "Potential Critical hit" broadcast, then on the next beam hit a Comms confirmation that the Weapons array is disabled and the objective advances to ceasefire. Failure/ambiguous observation — a hit confirmation in Comms with the drone's Weapons array showing no damage means the mission code is racing the stock console for `MANUAL_SYSTEM` again; capture `tests/live_startup_trace.txt` and stop.
+
 ```text
 ACT1-001: mission starts with generator_governor_active = true
 ACT1-002: Artemis starts with 0 homing torpedoes, and Kestrel reserve release loads exactly 2 homing torpedoes only while Artemis is within 600 m of Kestrel
@@ -553,7 +557,7 @@ ACT1-018: repair completion is detected or confirmable
 ACT1-019: Drone 01 early fire triggers reset 5 km farther from beacon
 ACT1-020: Drone 01 destruction triggers reset 5 km farther from beacon
 ACT1-021: Drone 01 requires 1-2 km range band plus 15-second stationary hold
-ACT1-022: Drone 01 Weapons array disables after three confirmed hits
+ACT1-022: Drone 01 Weapons array disables after one confirmed critical hit
 ACT1-023: Drone 02 destruction advances to Act II transition
 ACT1-024: cultural Comms packet appears and archives
 ```

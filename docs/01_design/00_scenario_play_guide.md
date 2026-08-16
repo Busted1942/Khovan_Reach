@@ -310,6 +310,10 @@ Training Control instructs Engineering:
 
 ##### Scene 4A: Stationary Drone Controlled Disable (~12-15 min)
 
+**Revision note (operator-ratified 2026-08-16) — the disable is one confirmed critical hit, and beam rate does not affect critical chance.** Step 12 previously read "three confirmed manual subsystem hits"; it is now one. Tracks the gate 9 change in `docs/01_design/10_mast_requirements.md` section 8.5.
+
+This also corrects how the **Weapons reminder** below should be read. The stock critical is a `random.randint(1,20) == 20` roll fired **once per press of a subsystem button** on the Manual Weapons console (`legendarymissions/consoles/manual_weapons.mast:187`) — beam rate is not an input to that roll, and pressing a *different* subsystem button clears an armed critical (lines 169-173). The reminder's "beam rate and beam intensity are directly correlated" is accurate on its own terms and its "precision over brute force" lesson stands, but it must not be taught as "a higher beam rate earns more critical chances." It does not. The technique is: keep pressing the same subsystem button, and do not switch subsystems while a critical is armed.
+
 **Objective:** Teach identification, hailing, shield-frequency relay, beam lock, range discipline, manual subsystem targeting, authorization, and ceasefire.
 
 **Target:** Drone 01. Normal enemy ship object, non-attacking AI. It should not fire on Artemis.
@@ -327,7 +331,7 @@ Training Control instructs Engineering:
 9. Weapons is locked on.
 10. Runtime clears Weapons to disable the Weapons array only.
 11. Weapons switches to manual targeting and targets Drone 01 Weapons array.
-12. Weapons disables the Weapons array in three confirmed manual subsystem hits.
+12. Weapons disables the Weapons array in one confirmed manual subsystem critical hit.
 13. Captain calls ceasefire.
 
 **Weapons reminder — overlay and Comms archive:**
