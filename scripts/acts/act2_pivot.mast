@@ -177,7 +177,11 @@ shared distress_localized_text = "Artemis - Captain: Source localized. Single ve
     last_checkpoint = "post_anderson_orders"
     script.write_khovan_startup_trace("[KHOVAN ACT2 004] Anderson Clip 1 text stand-in sent")
     script.write_khovan_startup_trace("[KHOVAN ACT2 SAVE] checkpoint post_anderson_orders recorded")
-    await task_schedule(khovan_reach_send_safe_startup_message, {"startup_sender": "Admiral Anderson", "startup_title": "Command Coordination", "startup_text": anderson_orders_text, "startup_title_color": "yellow", "startup_sender_id": tarsis_station_id, "startup_player_id": artemis_id, "startup_breadcrumb": "[KHOVAN ACT2 004A] Anderson orders message sent", "startup_safe_breadcrumb": "[KHOVAN ACT2 SAFE] Anderson orders skipped because sender/context unavailable"})
+    # Anderson transmits from Command, off-map: no on-map object is a
+    # fictionally correct sender for him, so the lifeform is the only clean
+    # path and the station borrow is strictly a degraded fallback. Cookbook
+    # 16.3.2.
+    await task_schedule(khovan_lifeform_send, {"send_lifeform_id": anderson_lifeform_id, "send_sender": "Admiral Anderson", "send_title": "Command Coordination", "send_text": anderson_orders_text, "send_title_color": "yellow", "send_fallback_sender_id": tarsis_station_id, "send_breadcrumb": "[KHOVAN ACT2 004A] Anderson orders message sent"})
     await task_schedule(khovan_set_current_objective, {"objective_id": "act2_anderson_orders", "objective_body": "Artemis - Comms: Acknowledge Admiral Anderson's orders for the record.", "objective_step": "Act II new orders", "objective_breadcrumb": "[KHOVAN OBJECTIVE 023] objective updated: Anderson orders"})
     await task_schedule(khovan_scenario_control_panel_update_overview)
     ->END
@@ -243,7 +247,7 @@ shared distress_localized_text = "Artemis - Captain: Source localized. Single ve
     distress_sweep_observer_ticks = 0
     script.write_khovan_startup_trace(f"[KHOVAN ACT2 007] distress source seeded at ({distress_source_x},{distress_source_z}); sweep running")
     task_schedule(khovan_act2_watch_distress_proximity, {"sweep_run_id": distress_sweep_run_id})
-    await task_schedule(khovan_lifeform_send, {"send_lifeform_id": dillon_lifeform_id, "send_sender": "Dillon", "send_title": "Instructor", "send_text": distress_localization_prompt_text, "send_title_color": "cyan", "send_fallback_sender_id": tarsis_station_id, "send_breadcrumb": "[KHOVAN ACT2 007A] distress localization prompt sent"})
+    await task_schedule(khovan_lifeform_send, {"send_lifeform_id": dillon_lifeform_id, "send_sender": "Dillon", "send_title": "Instructor", "send_text": distress_localization_prompt_text, "send_title_color": "cyan", "send_fallback_sender_id": kestrel_yards_id, "send_breadcrumb": "[KHOVAN ACT2 007A] distress localization prompt sent"})
     await task_schedule(khovan_set_current_objective, {"objective_id": "act2_distress_transit", "objective_body": distress_transit_objective_text, "objective_step": "Act II transit to signal", "objective_breadcrumb": "[KHOVAN OBJECTIVE 024] objective updated: transit to distress source"})
     await task_schedule(khovan_scenario_control_panel_update_overview)
     ->END
@@ -320,7 +324,7 @@ shared distress_localized_text = "Artemis - Captain: Source localized. Single ve
     act2_pivot_status = "distress_localized_ready_for_phase_b"
     act2_last_progression_summary = "Distress source localized; Phase B owns Halcyon arrival."
     script.write_khovan_startup_trace(f"[KHOVAN ACT2 008] distress source localized source={localization_source}")
-    await task_schedule(khovan_reach_send_safe_startup_message, {"startup_sender": "Dillon", "startup_title": "Instructor", "startup_text": distress_localized_text, "startup_title_color": "cyan", "startup_sender_id": tarsis_station_id, "startup_player_id": artemis_id, "startup_breadcrumb": "[KHOVAN ACT2 008A] localization result sent", "startup_safe_breadcrumb": "[KHOVAN ACT2 SAFE] localization result skipped because sender/context unavailable"})
+    await task_schedule(khovan_lifeform_send, {"send_lifeform_id": dillon_lifeform_id, "send_sender": "Dillon", "send_title": "Instructor", "send_text": distress_localized_text, "send_title_color": "cyan", "send_fallback_sender_id": kestrel_yards_id, "send_breadcrumb": "[KHOVAN ACT2 008A] localization result sent"})
     await task_schedule(khovan_set_current_objective, {"objective_id": "act2_localized", "objective_body": "Artemis - Helm: Set course for the distress source on the captain's order.", "objective_step": "Act II course to source", "objective_breadcrumb": "[KHOVAN OBJECTIVE 025] objective updated: course to distress source"})
     await task_schedule(khovan_scenario_control_panel_update_overview)
     ->END

@@ -580,7 +580,7 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
         ->END
 
     drone_01_deploy_prompt_sent = True
-    await task_schedule(khovan_lifeform_send, {"send_lifeform_id": dillon_lifeform_id, "send_sender": "Dillon", "send_title": "Instructor", "send_text": drone_01_deploy_prompt_text, "send_title_color": "cyan", "send_fallback_sender_id": tarsis_station_id, "send_breadcrumb": "[KHOVAN ACT1 DRONE 01 DEPLOY PROMPT] guarded ten-second player message sent"})
+    await task_schedule(khovan_lifeform_send, {"send_lifeform_id": dillon_lifeform_id, "send_sender": "Dillon", "send_title": "Instructor", "send_text": drone_01_deploy_prompt_text, "send_title_color": "cyan", "send_fallback_sender_id": kestrel_yards_id, "send_breadcrumb": "[KHOVAN ACT1 DRONE 01 DEPLOY PROMPT] guarded ten-second player message sent"})
     ->END
 
 === khovan_drone_01_reset ===

@@ -151,10 +151,40 @@ class Slice07AGuards(unittest.TestCase):
 
     def test_messages_use_the_guarded_safe_wrapper(self) -> None:
         """Anderson is a new speaker; the packet names the Slice 04 black-box
-        failure as precedent for message-surface problems."""
+        failure as precedent for message-surface problems.
+
+        Updated 2026-08-16: every character send in this file now goes through
+        khovan_lifeform_send, which itself falls back to
+        khovan_reach_send_safe_startup_message when the lifeform is absent - so
+        the guard still holds, one layer down. Anderson transmits from Command
+        and Dillon from Kestrel Yards; neither is aboard, and neither may go out
+        through a bare comms_receive.
+        """
         act2 = code_only(read(ACT2_PATH))
-        self.assertIn("khovan_reach_send_safe_startup_message", act2)
-        self.assertIn('"startup_safe_breadcrumb"', act2)
+        self.assertIn("khovan_lifeform_send", act2)
+        self.assertIn('"send_breadcrumb"', act2)
+        # No character send may bypass the helper. comms_receive is still
+        # allowed for the GM-only status readout, which has no NPC speaker.
+        self.assertNotIn("khovan_reach_send_safe_startup_message", act2)
+
+        # Each speaker must borrow the station they are actually at. Dillon is
+        # at Kestrel Yards, Anderson transmits from Command and has no on-map
+        # station, so he keeps the Tarsis borrow as a degraded fallback only.
+        # Asserted per-send rather than file-wide: a file-wide check passes even
+        # if one send is wired to the wrong station, which a negative control on
+        # 2026-08-16 confirmed.
+        for label in (
+            "khovan_act2_open_distress_localization",
+            "khovan_act2_complete_distress_localization",
+        ):
+            body = label_body(read(ACT2_PATH), label)
+            self.assertIn('"send_sender": "Dillon"', body)
+            self.assertIn('"send_fallback_sender_id": kestrel_yards_id', body)
+            self.assertNotIn("tarsis_station_id", body)
+
+        anderson = label_body(read(ACT2_PATH), "khovan_act2_deliver_anderson_orders")
+        self.assertIn('"send_sender": "Admiral Anderson"', anderson)
+        self.assertIn('"send_fallback_sender_id": tarsis_station_id', anderson)
 
 
 class DistressProximitySweep(unittest.TestCase):

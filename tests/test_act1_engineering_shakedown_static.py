@@ -505,7 +505,11 @@ class Act1EngineeringShakedownStaticTests(unittest.TestCase):
         # guarded wrapper when his lifeform is absent - so the guard still holds.
         self.assertIn("khovan_lifeform_send", message_body)
         self.assertIn("send_fallback_sender_id", message_body)
-        self.assertIn('"send_fallback_sender_id": tarsis_station_id', message_body)
+        # Kestrel, not Tarsis: Dillon is stationed at Kestrel Yards (design
+        # canon corrected 2026-08-16). The borrowed-sender fallback must name
+        # the station he is actually at.
+        self.assertIn('"send_fallback_sender_id": kestrel_yards_id', message_body)
+        self.assertNotIn("tarsis_station_id", message_body)
         # artemis_id is supplied inside khovan_lifeform_send now, not here.
         self.assertNotIn("comms_receive(", engineering)
 

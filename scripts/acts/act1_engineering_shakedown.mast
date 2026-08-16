@@ -108,9 +108,11 @@ shared navigation_priority_confirmed_text = "Artemis - Comms: Shakedown complete
     default engineering_message_color = "cyan"
     default engineering_message_breadcrumb = "[KHOVAN ACT1 ENG MSG] guarded message sent"
     # Routed through the lifeform helper so Dillon speaks as himself when his
-    # lifeform exists, and falls back to borrowing Tarsis when it does not.
+    # lifeform exists, and falls back to borrowing Kestrel when it does not.
+    # Kestrel, not Tarsis: Dillon is stationed at Kestrel Yards (design canon
+    # corrected 2026-08-16, see docs/01_design/00_scenario_play_guide.md).
     # This one label carries every Dillon message in the Engineering shakedown.
-    await task_schedule(khovan_lifeform_send, {"send_lifeform_id": dillon_lifeform_id, "send_sender": engineering_message_title, "send_title": "Instructor", "send_text": engineering_message_text, "send_title_color": engineering_message_color, "send_fallback_sender_id": tarsis_station_id, "send_breadcrumb": engineering_message_breadcrumb})
+    await task_schedule(khovan_lifeform_send, {"send_lifeform_id": dillon_lifeform_id, "send_sender": engineering_message_title, "send_title": "Instructor", "send_text": engineering_message_text, "send_title_color": engineering_message_color, "send_fallback_sender_id": kestrel_yards_id, "send_breadcrumb": engineering_message_breadcrumb})
     ->END
 
 === khovan_act1_initialize_engineering_shakedown ===

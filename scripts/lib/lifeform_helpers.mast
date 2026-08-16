@@ -24,6 +24,8 @@ shared dillon_lifeform_status = "not_created"
 shared anderson_lifeform_id = 0
 shared anderson_lifeform_status = "not_created"
 
+shared anderson_no_orders_text = "Artemis - Comms: Command has no active orders for you beyond your cruise profile."
+
 # --- Creation ---------------------------------------------------------------
 #
 # lifeform_init does more than its name suggests, and it is the reason no manual
@@ -168,13 +170,19 @@ shared anderson_lifeform_status = "not_created"
 === khovan_dillon_repeat_instruction ===
     # Re-reads the live objective rather than storing a second copy of the text,
     # so this can never drift from what the crew is actually being asked to do.
-    await task_schedule(khovan_lifeform_send, {"send_lifeform_id": dillon_lifeform_id, "send_sender": "Dillon", "send_title": "Instructor", "send_text": current_objective_body, "send_title_color": "cyan", "send_fallback_sender_id": tarsis_station_id, "send_breadcrumb": "[KHOVAN LIB LIFEFORM] Dillon repeated current instruction"})
+    await task_schedule(khovan_lifeform_send, {"send_lifeform_id": dillon_lifeform_id, "send_sender": "Dillon", "send_title": "Instructor", "send_text": current_objective_body, "send_title_color": "cyan", "send_fallback_sender_id": kestrel_yards_id, "send_breadcrumb": "[KHOVAN LIB LIFEFORM] Dillon repeated current instruction"})
     yield success
 
 === khovan_anderson_repeat_orders ===
     if not anderson_orders_delivered:
-        with comms_override(COMMS_ORIGIN_ID, COMMS_ORIGIN_ID, from_name="Command Coordination"):
-            comms_receive("Artemis - Comms: Command has no active orders for you beyond your cruise profile.", title="Command Coordination", title_color="yellow")
+        # Was comms_override(COMMS_ORIGIN_ID, COMMS_ORIGIN_ID, ...) — the GM-only
+        # shape from cookbook 6.2, which is tagged DISCONFIRMED FOR GM ROUTES and
+        # was being used here on a route a *player* reaches from Anderson's badge.
+        # It also passed "Command Coordination" as both from_name and title, which
+        # renders the doubled header "Command Coordination: Command Coordination"
+        # (cookbook 6.2, observed live 2026-08-09). Same helper as every other
+        # character send now.
+        await task_schedule(khovan_lifeform_send, {"send_lifeform_id": anderson_lifeform_id, "send_sender": "Admiral Anderson", "send_title": "Command Coordination", "send_text": anderson_no_orders_text, "send_title_color": "yellow", "send_fallback_sender_id": tarsis_station_id, "send_breadcrumb": "[KHOVAN LIB LIFEFORM] Anderson no-orders reply sent"})
         yield success
     await task_schedule(khovan_lifeform_send, {"send_lifeform_id": anderson_lifeform_id, "send_sender": "Admiral Anderson", "send_title": "Command Coordination", "send_text": anderson_orders_text, "send_title_color": "yellow", "send_fallback_sender_id": tarsis_station_id, "send_breadcrumb": "[KHOVAN LIB LIFEFORM] Anderson repeated orders"})
     yield success
