@@ -402,6 +402,15 @@ Contrast: the **same bare shape, called from a player-facing route** (`khovan_dr
 
 Not yet live re-tested (see `act1_drone_contact_fire.mast`). If confirmed live, this becomes the required shape for every GM-only `comms_receive()` call and `scenario_control_panel.mast` / `story_jump_presets.mast` should be updated to match — they currently use the disconfirmed bare shape above and have never been independently confirmed to render for the GM either.
 
+**This shape is for GM routes only, and it leaked once.** Found 2026-08-16 in
+`lifeform_helpers.mast`: Anderson's "no active orders" reply used the
+`COMMS_ORIGIN_ID`-as-both-ids shape on a route a **player** reaches from
+Anderson's Comms badge. The same line also passed `"Command Coordination"` as
+both `from_name` and `title`, which renders the doubled header described in the
+next subsection. Both fixed by routing it through `khovan_lifeform_send` like
+every other character send. If you are writing a message a player will see,
+this is not the shape you want — use the NPC shape above it.
+
 ### The client renders the header as `from_name: title`
 
 **[LIVE]** — observed on a player console 2026-08-09.
@@ -1388,8 +1397,21 @@ re-answering against `grid_brains` before anyone acts on it.
 
 # 16. Lifeforms — NPC people aboard a ship
 
-**[REFERENCE]** — read from `LegendaryMissions` and `sbs_utils`, never run in
-Khovan. Nothing here is proven in this repo.
+**[PARTLY LIVE] — updated 2026-08-16.** This section was tagged `[REFERENCE]`
+("never run in Khovan, nothing here is proven"). That is no longer true:
+Dillon and Anderson were converted in `c8a97c2`, and a live run on 2026-08-16
+confirmed **creation works** — both returned real, non-zero ids.
+
+Read the split carefully, because it is the easy thing to get wrong here:
+
+| Part | Evidence |
+|---|---|
+| Creation (16.3.1) | **[LIVE]** — `tests/LIFEFORM_VERIFICATION.md`, 2026-08-16 |
+| Badge render in internal Comms (16.3) | **[UNPROVEN]** — never observed |
+| Path routes opening (16.3) | **[UNPROVEN]** — never observed |
+| The send path (16.3.2) | **[UNPROVEN]** — has never once executed |
+
+"The objects exist" is not "the feature works." Only the first is proven.
 
 ## 16.1 First: "lifeform" means two unrelated things here
 
@@ -1398,7 +1420,7 @@ This caused real confusion, so keep them apart.
 | Term | What it is | Status in Khovan |
 |---|---|---|
 | **lifeform overlay** | the upper-left UI text panel | **tried and abandoned** — produced a black box; see section 11 |
-| **lifeform** | an NPC person hosted on a ship, with a face and a Comms path | **unused, and worth using** |
+| **lifeform** | an NPC person hosted on a ship, with a face and a Comms path | **in use since `c8a97c2`** — Dillon and Anderson; creation live-confirmed 2026-08-16 |
 
 The design docs' "upper-left lifeform overlay" language refers only to the
 first. `act1_generator_tarsis_gate.mast` and `audio_runtime.mast` still carry
@@ -1450,7 +1472,9 @@ Two behaviors worth knowing:
 
 ## 16.3.1 Creating one, as built in Khovan
 
-`scripts/lib/lifeform_helpers.mast`. **[UNPROVEN]** — compiles, never run live.
+`scripts/lib/lifeform_helpers.mast`. **[LIVE]** — confirmed in Cosmos
+2026-08-16; both characters returned non-zero ids. Record:
+`tests/LIFEFORM_VERIFICATION.md`.
 
 ```mast
     lifeform_task = prefab_spawn(prefab_lifeform_generic, {"name": lifeform_name, "role_values": lifeform_roles, "face": lifeform_face, "path": lifeform_path, "host_id": lifeform_host_id, "title_color": "cyan", "message_color": "white"})
@@ -1505,9 +1529,16 @@ borrowing a station's object id as the message sender:
 
 | Character | Where | Today |
 |---|---|---|
-| **Master Sergeant Dillon** | Kestrel Yards | sends via `tarsis_station_id` / `kestrel_yards_id` |
+| **Master Sergeant Dillon** | Kestrel Yards | lifeform; falls back to `kestrel_yards_id` |
+| **Admiral Anderson** | Command, off-map | lifeform; falls back to `tarsis_station_id` — no on-map object is correct for him, so the borrow is a degraded fallback, not a fiction claim |
 | **Hessler** | Halcyon Drift | Slice 08, unimplemented |
 | **Reyes** (DAMCON lead) | Halcyon Drift | Slice 09, unimplemented |
+
+All nine Dillon sends and all three Anderson sends route through
+`khovan_lifeform_send` as of 2026-08-16. The one exception is Dillon's Clip 1
+opening briefing in `audio_runtime.mast`, which still calls
+`khovan_reach_send_safe_startup_message` directly — deliberately left alone, as
+it is the most live-proven message in the repo.
 
 Borrowing a station id is still what forced the `from_name`/`title` workaround
 in section 6.2, and it still means Dillon's messages depend on the borrowed
@@ -1555,7 +1586,9 @@ whether the Dillon message renders. Trace line to watch:
 by whether the text actually appears on a console. Record the result here and
 retag this section.
 
-## 16.5 If you try it, prove it in this order
+## 16.5 The prove-first order — and the fact that it was not followed
+
+The order this section has always prescribed:
 
 1. Spawn one lifeform on Artemis with `comms_badge` and an `onboard` link.
 2. Confirm it appears in internal Comms **by name**.
@@ -1563,8 +1596,24 @@ retag this section.
 4. Only then convert Dillon.
 
 Steps 1-2 are the whole risk. If a lifeform will not render in the menu, the
-current station-borrowing approach stays and this section becomes a
-disconfirmation record rather than a pattern.
+station-borrowing approach stays and this section becomes a disconfirmation
+record rather than a pattern.
+
+**What actually happened, recorded 2026-08-16:** `c8a97c2` converted Dillon and
+Anderson together, going straight to step 4 without ever running steps 2 and 3.
+Creation was later confirmed live, so step 1 is retroactively satisfied — but
+**steps 2 and 3 have still never been observed**, which is precisely the risk
+this ordering existed to retire.
+
+The conversion is therefore defended by the fallback in `khovan_lifeform_send`
+rather than by evidence. That is a real fallback and Act I cannot break because
+of it, so this is not an emergency — but it is a weaker position than this
+section asks for, and the outstanding check is ten seconds of operator time:
+select **Artemis herself** on a Comms console and look for the two badges.
+(Selecting a station instead shows nothing, by design — see the badge query in
+16.3. That detail has already caused one false alarm.)
+
+Full record and next actions: `tests/LIFEFORM_VERIFICATION.md`.
 
 ---
 
