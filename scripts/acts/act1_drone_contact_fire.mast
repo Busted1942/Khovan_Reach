@@ -98,11 +98,24 @@ shared drone_01_weapons_lock_next_step_text = "Artemis - Weapons: Lock beams on 
 #   - "the console flashes it in yellow" - line 190, stock output, not ours.
 #   - "your next beam hit delivers it" - the //damage/object route at line 196
 #     consumes the armed critical; it cannot land without a beam actually hitting.
-#   - "a faster beam rate lands them more often" - THROUGHPUT, not odds. Fire rate
-#     is not a term in the roll, but delivery requires a landed hit, so once a crew
-#     is mashing fast enough to stay armed between shots, crits-per-minute tracks
+#   - "more critical hits per minute" - THROUGHPUT, not odds. Fire rate is not a
+#     term in the roll, but delivery requires a landed hit, so once a crew is
+#     mashing fast enough to stay armed between shots, crits-per-minute tracks
 #     hits-per-minute. Do not reword this into "more chances at a critical".
-shared drone_01_weapons_lock_confirmed_text = "Artemis - Weapons: Beam lock confirmed on Drone 01.\nArtemis - Weapons: Once you are cleared, keep pressing the same subsystem button until the console flashes a critical in yellow. Your next beam hit delivers it.\nArtemis - Weapons: A faster beam rate lands them more often. Switching subsystems throws an armed critical away."
+#   - "straight through her shields" - operator-validated live 2026-08-16. A
+#     critical bypasses shields and lands on the named subsystem directly; the crew
+#     does NOT have to strip shields first. This overturned three comments in this
+#     file that asserted the opposite - see the hull-hold note below.
+#   - "weapons, engine and sensor" - those are the only three buttons the console
+#     builds (manual_weapons.mast:136-144). There is deliberately no shields button,
+#     so do not write "all her subsystems" and send the crew hunting for one.
+#   - "inside 2 km" - manual_weapons.mast:108, `jump manual_weapons_minimize if
+#     dist > 2000`. Conveniently the same band Helm is already holding for the drill.
+#
+# ASCII only, and " - " rather than an em dash: every player-facing string in
+# scripts/ is pure ASCII, and nothing proves the game client renders a non-ASCII
+# character correctly in a comms message.
+shared drone_01_weapons_lock_confirmed_text = "Artemis - Weapons: Beam lock confirmed on Drone 01.\nArtemis - Weapons: Press Manual, lower left. Inside 2 km her weapons, engine and sensor buttons appear. Press the same one until the console flashes \"Potential Critical hit\" in yellow. Your next beam carries it straight through her shields.\nArtemis - Weapons: Never switch subsystems while one is armed. A faster beam rate delivers more critical hits per minute.\nArtemis - Science: Pass Weapons the weak shield frequency. While the critical hit punches through on its own, switching standard beam hits to the enemy's weakest shield frequency can take down their shields much quicker."
 shared drone_01_range_confirmed_text = "Artemis - Helm: Range confirmed, one to two kilometres from Drone 01."
 shared drone_01_stationary_hold_confirmed_text = "Artemis - Helm: Stationary hold confirmed."
 shared drone_01_fire_authorized_confirmed_text = "Artemis - Captain: Fire clearance issued for the controlled disable."
@@ -112,17 +125,24 @@ shared drone_01_weapons_disabled_confirmed_text = "Artemis - Weapons: Drone 01's
 # contact appeared with no explanation - the operator read the vanish as "we were
 # supposed to destroy it." Say plainly that Drone 01 is recovered rather than
 # killed, why that is the lesson, and that the next contact IS a kill.
-shared drone_01_ceasefire_confirmed_text = "Artemis - Weapons: Ceasefire confirmed. Drone 01 is disabled, not destroyed - taking a system instead of a ship is the whole point of that drill.\nArtemis - Comms: Kestrel is pulling Drone 01 off the range now.\nArtemis - Captain: Stand by for a second drone. That one is a live-fire target, and you will destroy it."
+shared drone_01_ceasefire_confirmed_text = "Artemis - Weapons: Ceasefire confirmed. Drone 01 is disabled, not destroyed. Taking a system instead of a ship is the whole point of that drill.\nArtemis - Comms: Kestrel is pulling Drone 01 off the range now.\nArtemis - Captain: Stand by for a second drone. That one is a live-fire target, and you will destroy it."
 shared drone_02_destroyed_confirmed_text = "Artemis - Weapons: Drone 02 destroyed."
 # Drone 02 fights back, unlike Drone 01. Warn the crew before it opens fire - the
 # whole point is pressure, not ambush, and this is the first time in the mission
 # anything shoots at them.
-shared drone_02_hostile_warning_text = "Artemis - Captain: Weapons free on Drone 02. Be aware this one is not passive - it will manoeuvre and return fire.\nArtemis - Engineering: Shields up and keep an eye on your damage. This is where the DAMCON work from the shakedown earns its keep."
-# Science tells the crew when subsystem damage becomes possible. The Captain's
-# fire-clearance message stays deliberately concise: it states the disable-only
-# order and names the report-back gate instead of narrating the stock console's
-# critical-hit implementation.
-shared drone_01_science_report_request_text = "Artemis - Science: Keep Drone 01 on your scan and call out its shield levels as they come down, and any subsystem damage as it lands.\nArtemis - Science: Weapons needs to hear the moment the shields are down - manual targeting cannot reach a subsystem through an intact shield."
+shared drone_02_hostile_warning_text = "Artemis - Captain: Weapons free on Drone 02. Be aware this one is not passive, it will manoeuvre and return fire.\nArtemis - Engineering: Shields up and keep an eye on your damage. This is where the DAMCON work from the shakedown earns its keep."
+# Science keeps the tactical picture live. The Captain's fire-clearance message
+# stays deliberately concise: it states the disable-only order and names the
+# report-back gate instead of narrating the stock console's critical-hit
+# implementation.
+#
+# CORRECTED 2026-08-16 (operator-validated live): this line previously ended
+# "manual targeting cannot reach a subsystem through an intact shield", which is
+# false - a critical bypasses shields entirely. That wording told the crew to wait
+# for something they never needed to wait for. Shield levels are still worth
+# calling because ordinary beam damage does go through the shields first, and
+# because frequency matching is what brings them down, but they gate nothing.
+shared drone_01_science_report_request_text = "Artemis - Science: Keep Drone 01 on your scan and call out its shield levels as they come down, and any subsystem damage as it lands.\nArtemis - Science: A critical hit reaches the subsystem whether her shields are up or not, so do not hold Weapons back waiting on them."
 shared drone_01_weapons_crit_technique_text = "Artemis - Captain: Order your ship into battle and disable, but do not destroy, the drone. After success, report back to Commander Dillon at Kestrel Yards."
 shared drone_01_known_marked = False
 shared drone_01_hull_restore_count = 0
@@ -936,20 +956,39 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
     # cannot race the stock console, and it makes a counted hit provably a real
     # subsystem hit rather than a proxy signal.
     #
-    # Drill survivability (2026-08-09). Design 10_mast_requirements.md section 8.5
-    # gate 9 requires "Drone 01 Weapons array disabled in three confirmed hits", but
-    # shipData.yaml gives kralien_cruiser "hullpoints": 2 (kralien_battleship 3,
-    # kralien_dreadnought 4 - no Kralien warship hull reaches a safe margin). Manual
-    # subsystem targeting also requires the target's shields to be down first, so by
-    # the time subsystem hits can land at all the hull is the only thing left. Three
-    # hits into a two-point hull is not survivable: the operator saw Drone 01
-    # destroyed on the first hit. This is a design-vs-engine conflict, recorded as a
-    # FINDING - the build side does not get to quietly reduce the three-hit gate.
+    # Drill survivability (2026-08-09, reasoning corrected 2026-08-16).
     #
-    # Build-side fix: hold the hull at zero accumulated hits for as long as the drill
-    # is live, so the drone can absorb the three subsystem hits the gate asks for.
-    # Shields are deliberately NOT restored - they have to stay down or manual
-    # subsystem targeting cannot reach the Weapons array at all.
+    # shipData.yaml gives kralien_cruiser "hullpoints": 2 (kralien_battleship 3,
+    # kralien_dreadnought 4 - no Kralien warship hull reaches a safe margin), and the
+    # operator saw Drone 01 destroyed on the first hit. Holding the hull at zero
+    # accumulated hits for as long as the drill is live is what keeps the target
+    # alive long enough to be disabled rather than killed.
+    #
+    # THE ORIGINAL JUSTIFICATION WAS WRONG, and the correction matters for anyone
+    # reusing this pattern. This comment used to argue that manual subsystem
+    # targeting "requires the target's shields to be down first, so by the time
+    # subsystem hits can land at all the hull is the only thing left." Operator live
+    # validation on 2026-08-16 disproved that: a critical bypasses shields and lands
+    # on the named subsystem directly. Shields never have to come down at all.
+    #
+    # The hold is still doing real work, just for a different reason. The crew is
+    # firing ordinary beams continuously while they mash the subsystem button to arm
+    # a critical, and those ordinary beams DO chew shields and then hull in the
+    # normal way. The 2026-08-16 trace logged 87 hull restores in a single drill,
+    # which is the hold catching exactly that incidental damage - not damage from the
+    # criticals themselves.
+    #
+    # Open question for the next live run, deliberately not acted on here: now that
+    # the gate is one critical rather than three, the drill may end before incidental
+    # beam damage can accumulate. Watch drone_01_hull_restore_count. If it stays low,
+    # this hold is a safety net rather than a necessity and could be reconsidered -
+    # an invincible target teaches its own bad lesson. Do not remove it on this
+    # reasoning alone; get the number first.
+    #
+    # Shields are deliberately NOT restored. Not because subsystem targeting needs
+    # them down - it does not - but because silently regenerating a target's shields
+    # under a crew that is actively shooting them is the kind of hidden intervention
+    # this mission is supposed to avoid.
     #
     # Restoration stops the moment drone_01_weapons_disabled goes True, so the drone
     # is normally destructible again for the ceasefire/cleanup phase and Drone 02.

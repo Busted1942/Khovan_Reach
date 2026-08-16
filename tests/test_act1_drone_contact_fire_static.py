@@ -1037,6 +1037,57 @@ class Act1DroneContactFireStaticTests(unittest.TestCase):
 
         self.assertIn("drone_01_grid_status = ", label_body(drone, "khovan_drone_01_reset_flags"))
 
+    def test_player_facing_text_is_ascii_and_uses_no_dash_punctuation(self) -> None:
+        # Operator preference 2026-08-16: player-facing lines use commas and full
+        # stops, never a dash as punctuation. Two separate rules, both enforced here
+        # because both are invisible until a crew is staring at the console.
+        #
+        # ASCII: every player-facing string in scripts/ is ASCII today, and nothing
+        # proves the game client renders an em dash correctly in a comms message.
+        #
+        # The "Artemis - Station:" speaker prefix is structural, not punctuation, and
+        # is stripped before the dash check.
+        drone = read(DRONE_PATH)
+        offenders = []
+        for match in re.finditer(r'^shared (\w*text) = "(.*)"$', drone, re.MULTILINE):
+            name, body = match.group(1), match.group(2)
+            try:
+                body.encode("ascii")
+            except UnicodeEncodeError:
+                offenders.append(f"{name}: non-ASCII character")
+            spoken = re.sub(r"Artemis - \w+:", "", body)
+            if " - " in spoken:
+                offenders.append(f"{name}: ' - ' used as punctuation, use a comma or a full stop")
+            for dash in ["—", "–"]:
+                if dash in spoken:
+                    offenders.append(f"{name}: em/en dash, use a comma or a full stop")
+        self.assertEqual([], offenders, "\n".join(offenders))
+
+    def test_critical_hits_are_never_described_as_needing_shields_down(self) -> None:
+        # Operator-validated live 2026-08-16: a critical bypasses shields and lands on
+        # the named subsystem directly. Three comments and one player-facing Science
+        # line in this file previously asserted the opposite, and the Science line
+        # actively told crews to wait for something they never needed to wait for.
+        #
+        # AGENTS.md section 5: live wins over prior reasoning.
+        #
+        # code_only() per this module's helper docstring: the correction notes in the
+        # file quote the false wording in order to record that it was wrong, and a
+        # raw text search would flag the documentation of the fix as the fix's own
+        # violation. Player-facing strings are code lines, so they are still covered.
+        drone = read(DRONE_PATH)
+        runtime = code_only(drone)
+        for phrase in [
+            "cannot reach a subsystem through an intact shield",
+            "requires the target's shields to be down",
+            "they have to stay down or manual",
+        ]:
+            self.assertNotIn(phrase, runtime, f"disproven shields-down claim reintroduced: {phrase}")
+
+        science = drone[drone.index("shared drone_01_science_report_request_text = "):]
+        science = science[:science.index("\n")]
+        self.assertIn("whether her shields are up or not", science)
+
     def test_weapons_hit_counting_is_centralized_for_automatic_and_fallback_paths(self) -> None:
         # Both the automatic system_damage observer and the Kestrel Comms
         # "Fallback Weapons Hit" route must land on the same completion label, so

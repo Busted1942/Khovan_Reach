@@ -643,9 +643,15 @@ Why this is the better shape regardless of the race: it measures **engine truth*
         set_data_set_value(DAMAGE_TARGET_ID, "hull_hit_counter", 0, 0)
 ```
 
-`hull_hit_counter` is the key the stock DMX helper reads as hull damage (`data/missions/common/dmx.py:59`). This matters because manual subsystem targeting only reaches a subsystem once shields are **down**, and at that point the hull is the only thing left absorbing beams — `kralien_cruiser` has `hullpoints: 2`, so an unheld target dies long before a multi-hit drill finishes.
+`hull_hit_counter` is the key the stock DMX helper reads as hull damage (`data/missions/common/dmx.py:59`). Enemy hulls are thin — `kralien_cruiser` has `hullpoints: 2`, and no Kralien warship reaches 5 — so a target a crew is actively shooting dies well before a multi-step disable drill finishes.
 
-Do **not** also restore shields (`shield_val`). Shields back up means subsystem targeting cannot reach the subsystem at all, which defeats the drill. Stop restoring the hull the moment the drill's gate is satisfied, or the target becomes unkillable for the cleanup phase that follows.
+The damage the hold is catching is **incidental beam fire**, not the subsystem hits themselves. A crew arming a critical is firing ordinary beams the whole time, and those chew shields and then hull normally.
+
+> **Corrected 2026-08-16 — a critical bypasses shields.** This section previously claimed manual subsystem targeting "only reaches a subsystem once shields are down," and used that to argue the hull is necessarily exposed by the time subsystem hits land. Operator live validation disproved it: a critical lands on the named subsystem with shields fully up. Shields never have to come down for the mechanic to work. The same false premise had propagated into three comments in `act1_drone_contact_fire.mast` and one player-facing Science line that told crews to wait for something they never needed to wait for. If you are reusing this pattern, do not gate a subsystem drill on stripping shields.
+
+Do **not** restore shields (`shield_val`) alongside the hull. Not because subsystem targeting needs them down, but because silently regenerating a target's shields under a crew that is actively shooting them is exactly the kind of hidden intervention that makes a training mission teach the wrong model of its own engine.
+
+Stop restoring the hull the moment the drill's gate is satisfied, or the target becomes unkillable for the cleanup phase that follows. And watch the restore count: a hold that fires constantly means the crew is effectively shooting an invincible target, which is its own bad lesson. Treat a high count as a signal to re-examine the drill's length, not as proof the hold is working.
 
 ### GM-only diagnostic: reading the raw inventory signal
 
