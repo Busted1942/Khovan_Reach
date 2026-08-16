@@ -323,7 +323,7 @@ class Act1DroneContactFireStaticTests(unittest.TestCase):
         drone = read(DRONE_PATH)
         spawn_body = label_body(drone, "khovan_drone_01_spawn")
         self.assertIn(
-            'npc_spawn(beacon.pos.x + drone_01_spawn_offset_m, beacon.pos.y, beacon.pos.z, "Drone 01", "kralien, raider, khovan_drone_01", "kralien_cruiser", "behav_npcship")',
+            'npc_spawn(beacon.pos.x + drone_01_spawn_offset_m, beacon.pos.y, beacon.pos.z, "Drone 01", "kralien, raider, khovan_drone_01", drone_hull_art, "behav_npcship")',
             spawn_body,
         )
         self.assertIn(
@@ -434,9 +434,20 @@ class Act1DroneContactFireStaticTests(unittest.TestCase):
         spike_spawn = label_body(drone, "khovan_drone_contact_fire_spawn_target_spike")
         drone_spawn = label_body(drone, "khovan_drone_01_spawn")
 
-        for stock_config in ['"kralien, raider', '"kralien_cruiser"']:
-            self.assertIn(stock_config, spike_spawn)
-            self.assertIn(stock_config, drone_spawn)
+        # Roles and behavior must still match the proven spike baseline: those are
+        # what drive side relationships, the stock enemy Science route, and hostile
+        # Weapons handling.
+        self.assertIn('"kralien, raider', spike_spawn)
+        self.assertIn('"kralien, raider', drone_spawn)
+
+        # The HULL deliberately diverges as of 2026-08-16. The spike keeps
+        # kralien_cruiser as a bare stock control; the production drones moved to
+        # drone_hull_art (xim_light_cruiser) because Kralien warship hulls have no
+        # grid interior, which pins Science at 100% for subsystem damage. Roles are
+        # unchanged, so nothing about hostility or stock routing depends on this.
+        self.assertIn('"kralien_cruiser"', spike_spawn)
+        self.assertIn("drone_hull_art", drone_spawn)
+        self.assertNotIn('"kralien_cruiser"', code_only(drone_spawn))
 
         self.assertIn('"behav_npcship"', spike_spawn)
         self.assertIn('"behav_npcship"', code_only(drone_spawn))
@@ -510,12 +521,12 @@ class Act1DroneContactFireStaticTests(unittest.TestCase):
 
         # Drone 01: same live NPC behavior as the GM Spike Target.
         self.assertIn('"kralien, raider, khovan_drone_01"', drone_01)
-        self.assertIn('"kralien_cruiser", "behav_npcship"', drone_01)
+        self.assertIn('drone_hull_art, "behav_npcship"', drone_01)
 
         # Drone 02: live AI, hostile side, and destructible - destruction is its
-        # completion gate, so kralien_cruiser's 2 hull points are wanted here.
+        # completion gate, so a low-hull-point hull is wanted here.
         self.assertIn('"kralien, raider, khovan_drone_02"', drone_02)
-        self.assertIn('"kralien_cruiser", "behav_npcship"', drone_02)
+        self.assertIn('drone_hull_art, "behav_npcship"', drone_02)
 
         # The old neutral TSN-hulled configuration is not a combat target:
         # side_are_enemies() is false on a neutral side, so it draws neither the
@@ -1065,7 +1076,13 @@ class Act1DroneContactFireStaticTests(unittest.TestCase):
         drone = read(DRONE_PATH)
         body = code_only(label_body(drone, "khovan_drone_01_spawn"))
 
-        self.assertIn('grid_count_grid_data("kralien_cruiser", "weapon")', body)
+        self.assertIn('grid_count_grid_data(drone_hull_art, "weapon")', body)
+
+        # The pre-flight key and the spawn hull MUST be the same constant. If they
+        # drift apart the guard checks a hull that is not the one being spawned, and
+        # its answer is worthless - which is precisely the class of mistake that
+        # caused this bug (a check that looked right and proved nothing).
+        self.assertIn("drone_hull_art, \"behav_npcship\"", body)
 
         # Ordering is the entire fix. A post-call length check cannot help, because
         # the zeros are already written by the time it runs.
@@ -1091,8 +1108,9 @@ class Act1DroneContactFireStaticTests(unittest.TestCase):
         spawn_body = label_body(drone, "khovan_drone_01_spawn")
         self.assertIn("grid_rebuild_grid_objects(drone_01_target_id)", spawn_body)
         # Degrades honestly rather than silently, and names which case it is in.
-        # kralien_cruiser has no interior, so this is the branch that actually runs
-        # today; the build path is kept for a hull that does have one.
+        # With drone_hull_art = xim_light_cruiser the BUILD branch is the one that
+        # runs; the skip branch is kept for any hull without an interior, which is
+        # every Kralien warship.
         self.assertIn("hull_has_no_interior_science_reads_100_percent", spawn_body)
         self.assertIn("if len(drone_01_grid_interior) == 0:", spawn_body)
 

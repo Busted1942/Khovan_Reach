@@ -13,6 +13,21 @@ shared drone_contact_act2_ready = False
 shared drone_contact_act2_handoff_status = "not_ready"
 shared drone_contact_cultural_packet_sent = False
 
+# Both training drones share one hull constant. The spawn art and the
+# grid_count_grid_data() pre-flight key MUST be the same string: if they drift, the
+# guard checks a different hull than the one that exists and its answer is
+# meaningless. That is the failure that put INT32_MIN on Science on 2026-08-16.
+#
+# xim_light_cruiser chosen 2026-08-16 (operator-ratified) over kralien_cruiser.
+# Kralien warship hulls are empty placeholders in data/grid_data.json - zero grid
+# objects - so the engine has no interior to model subsystem damage against and
+# Science is pinned at 100%. xim_light_cruiser carries 75 nodes including 5 weapon
+# nodes, and 3 hull points against the Kralien's 2.
+#
+# Only the hull art changes. Roles stay "kralien, raider, ..." so side relationships,
+# the Drone 02 fleet brain, and the stock critical route (which gates on the "raider"
+# role, not the hull) all behave exactly as before.
+shared drone_hull_art = "xim_light_cruiser"
 shared drone_01_active = False
 shared drone_01_target_id = 0
 shared drone_01_navproxy_id = 0
@@ -171,6 +186,7 @@ shared drone_02_hostile_status = "not_started"
 shared drone_02_weapons_damage_baseline = 0
 shared drone_02_weapons_damage_run_id = 0
 shared drone_02_weapons_damage_observer_status = "not_started"
+shared drone_02_grid_status = "not_started"
 shared drone_02_status = "not_started"
 shared drone_02_destroyed = False
 shared drone_02_cleanup_in_progress = False
@@ -590,7 +606,7 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
     # whole drill is built on. `raider` is only a targeting tag used by autoplay
     # selection helpers, not an AI driver, so it is harmless here and left in place.
     #
-    drone_01_target = npc_spawn(beacon.pos.x + drone_01_spawn_offset_m, beacon.pos.y, beacon.pos.z, "Drone 01", "kralien, raider, khovan_drone_01", "kralien_cruiser", "behav_npcship")
+    drone_01_target = npc_spawn(beacon.pos.x + drone_01_spawn_offset_m, beacon.pos.y, beacon.pos.z, "Drone 01", "kralien, raider, khovan_drone_01", drone_hull_art, "behav_npcship")
     drone_01_target_id = to_id(drone_01_target)
     if drone_01_target_id == 0:
         drone_01_status = "spawn_failed"
@@ -606,7 +622,7 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
     # visible loss - restore the two lines removed here only after live smoke
     # proves the stock scan return survives it.
     drone_01_active = True
-    drone_01_status = "spawned_non_attacking_kralien_cruiser_at_training_beacon_offset"
+    drone_01_status = "spawned_non_attacking_training_drone_at_training_beacon_offset"
     # Give Drone 01 a real interior grid. **[UNPROVEN]** - stock only ever builds
     # grids for player ships (legendarymissions/ai/grid_ai.mast:11 gates on
     # __player__), so an NPC with a grid is off the stock path.
@@ -645,14 +661,14 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
     # not combat AI. Returning fire needs a fleet with a behavior-tree brain, which
     # only Drone 02 gets (see khovan_drone_02_spawn).
     drone_01_grid_damage_applied_count = 0
-    drone_01_grid_weapon_nodes = grid_count_grid_data("kralien_cruiser", "weapon")
+    drone_01_grid_weapon_nodes = grid_count_grid_data(drone_hull_art, "weapon")
     if drone_01_grid_weapon_nodes == 0:
-        # Correct and deliberate for kralien_cruiser. Science reads 100% for the
-        # whole drill because the engine has no interior to model damage against.
-        # That is a stock limitation of enemy hulls, not a bug to code around, and
-        # the drill still completes on the stock critical alone.
+        # Reached only if the hull constant is changed to one without an interior.
+        # Science then reads 100% for the whole drill because the engine has no
+        # interior to model damage against, and the drill completes on the stock
+        # critical alone. Every Kralien warship hull lands here.
         drone_01_grid_status = "hull_has_no_interior_science_reads_100_percent"
-        script.write_khovan_startup_trace("[KHOVAN ACT1 DRONE 01 GRID] kralien_cruiser has no interior; grid build skipped so system_max_damage stays unset")
+        script.write_khovan_startup_trace(f"[KHOVAN ACT1 DRONE 01 GRID] {drone_hull_art} has no interior; grid build skipped so system_max_damage stays unset")
     else:
         grid_rebuild_grid_objects(drone_01_target_id)
         drone_01_grid_interior = grid_objects(drone_01_target_id)
@@ -1003,9 +1019,9 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
     #
     # Drill survivability (2026-08-09, reasoning corrected 2026-08-16).
     #
-    # shipData.yaml gives kralien_cruiser "hullpoints": 2 (kralien_battleship 3,
-    # kralien_dreadnought 4 - no Kralien warship hull reaches a safe margin), and the
-    # operator saw Drone 01 destroyed on the first hit. Holding the hull at zero
+    # Hull points are thin: the drone hull carries 3 (the previous kralien_cruiser
+    # carried 2), and the operator saw Drone 01 destroyed on the first hit back when
+    # it had 2. Holding the hull at zero
     # accumulated hits for as long as the drill is live is what keeps the target
     # alive long enough to be disabled rather than killed.
     #
@@ -1327,14 +1343,14 @@ brain:
     # design. Drone 01 is the controlled subsystem-disable target and does not fight
     # back; Drone 02 is the one the crew engages at will. 8.6 also asks for "lethal
     # pressure = low / training-safe", so this stays a single cruiser at 10 km rather
-    # than anything heavier; kralien_cruiser's 2 hull points are a feature here, since
-    # destruction is the completion gate.
-    drone_02_target = npc_spawn(beacon.pos.x + 10000, beacon.pos.y, beacon.pos.z, "Drone 02", "kralien, raider, khovan_drone_02", "kralien_cruiser", "behav_npcship")
+    # than anything heavier; the drone hull's low hull points are a feature here,
+    # since destruction is the completion gate.
+    drone_02_target = npc_spawn(beacon.pos.x + 10000, beacon.pos.y, beacon.pos.z, "Drone 02", "kralien, raider, khovan_drone_02", drone_hull_art, "behav_npcship")
     drone_02_target_id = to_id(drone_02_target)
     if drone_02_target_id == 0:
         drone_02_status = "spawn_failed"
         ->END
-    drone_02_navproxy = sim.add_navproxy(drone_02_target_id, "Drone 02", "kralien_cruiser", "#F93")
+    drone_02_navproxy = sim.add_navproxy(drone_02_target_id, "Drone 02", drone_hull_art, "#F93")
     drone_02_navproxy_id = to_id(drone_02_navproxy)
     # Make Drone 02 actually fight back. **[UNPROVEN]** - no fleet/brain API is used
     # anywhere else in this mission, and the cookbook has no section on it yet.
@@ -1374,6 +1390,18 @@ brain:
     script.write_khovan_startup_trace(f"[KHOVAN ACT1 DRONE 02 SPAWN] target_id={drone_02_target_id} offset_m=10000")
     await task_schedule(khovan_set_current_objective, {"objective_id": "drone_02_live_fire", "objective_body": "Live-fire target away at ten kilometres, and this one shoots back. Captain, engage and destroy it. Shields up, Engineering watch your damage, DAMCON stand ready. All stations coordinate as standard.", "objective_step": "Drone 02 destruction", "objective_breadcrumb": "[KHOVAN OBJECTIVE 021] Drone 02 deployed"})
     await task_schedule(khovan_drone_contact_fire_send_message, {"drone_message_text": drone_02_hostile_warning_text, "drone_message_breadcrumb": "[KHOVAN ACT1 DRONE 02 SPAWN] guarded hostile warning sent"})
+    # Build Drone 02's interior so subsystem damage has something to act on, same
+    # pre-flight rule as Drone 01: check the hull data BEFORE building, because
+    # grid_rebuild_grid_objects on an empty hull writes system_max_damage = 0 and the
+    # Science readout divides by it (cookbook 7.3 and 17.9).
+    drone_02_grid_weapon_nodes = grid_count_grid_data(drone_hull_art, "weapon")
+    if drone_02_grid_weapon_nodes == 0:
+        drone_02_grid_status = "hull_has_no_interior_science_reads_100_percent"
+        script.write_khovan_startup_trace(f"[KHOVAN ACT1 DRONE 02 GRID] {drone_hull_art} has no interior; grid build skipped")
+    else:
+        grid_rebuild_grid_objects(drone_02_target_id)
+        drone_02_grid_status = "grid_built"
+        script.write_khovan_startup_trace(f"[KHOVAN ACT1 DRONE 02 GRID] interior built weapon_nodes={drone_02_grid_weapon_nodes}")
     # Subsystem feedback for the live-fire target. Baseline seeded from the fresh
     # spawn so a value carried over from Drone 01's drill cannot read as a hit.
     drone_02_weapons_damage_baseline = 0
@@ -1449,9 +1477,9 @@ brain:
     # to Drone 01. The stock critical route fires on Drone 02 already, since it gates
     # on has_role(DAMAGE_TARGET_ID, "raider") and Drone 02 carries that role.
     #
-    # No grid_damage_system() call here, unlike Drone 01's observer. kralien_cruiser
-    # has no interior, so that call cannot land; Drone 01 keeps it only for a future
-    # hull that does have one.
+    # Applies real grid damage like Drone 01's observer, now that the shared hull has
+    # an interior. Guarded: grid_damage_system returns False if no grid or no
+    # undamaged weapon node remains, and the report still goes out either way.
     default damage_run_id = drone_02_weapons_damage_run_id
     if damage_run_id != drone_02_weapons_damage_run_id:
         ->END
@@ -1468,9 +1496,22 @@ brain:
     if current_drone_02_weapons_damage is None:
         current_drone_02_weapons_damage = 0
     if current_drone_02_weapons_damage > drone_02_weapons_damage_baseline:
-        drone_02_weapons_damage_baseline = current_drone_02_weapons_damage
         drone_02_weapons_damage_observer_status = "weapons_subsystem_damage_increase_observed"
         script.write_khovan_startup_trace(f"[KHOVAN ACT1 DRONE 02 SUBSYSTEM] weapons_damage={current_drone_02_weapons_damage}")
+        drone_02_grid_damage_landed = grid_damage_system(drone_02_target_id, sbs.SHPSYS.WEAPONS)
+        if drone_02_grid_damage_landed:
+            drone_02_grid_status = "grid_weapons_node_damaged"
+        else:
+            drone_02_grid_status = "grid_damage_unavailable_stock_crit_only"
+        # Re-seed from the post-grid value. grid_apply_system_damage rewrites
+        # system_damage as a damaged-node COUNT, a different scale from the stock
+        # console's geometric 1.35 series, so keeping the old baseline would miss the
+        # next hit. Same reasoning as Drone 01's observer.
+        rebased_drone_02_damage = drone_02_object.data_set.get("system_damage", sbs.SHPSYS.WEAPONS)
+        if rebased_drone_02_damage is None:
+            rebased_drone_02_damage = current_drone_02_weapons_damage
+        drone_02_weapons_damage_baseline = rebased_drone_02_damage
+        script.write_khovan_startup_trace(f"[KHOVAN ACT1 DRONE 02 GRID] grid_damage_landed={drone_02_grid_damage_landed} rebased_baseline={rebased_drone_02_damage}")
         await task_schedule(khovan_drone_report_weapons_telemetry, {"telemetry_target_id": drone_02_target_id, "telemetry_drone_name": "Drone 02"})
     await delay_sim(seconds=1)
     jump khovan_drone_02_watch_weapons_subsystem_damage
@@ -1492,6 +1533,7 @@ brain:
     drone_02_weapons_damage_run_id = drone_02_weapons_damage_run_id + 1
     drone_02_weapons_damage_baseline = 0
     drone_02_weapons_damage_observer_status = "not_started"
+    drone_02_grid_status = "not_started"
     drone_02_active = False
     drone_02_target_id = 0
     drone_02_status = "cleaned_up_not_a_completion"
