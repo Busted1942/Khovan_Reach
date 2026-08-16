@@ -646,7 +646,8 @@ Known-good keys in use: `"starbase_command"` / `"behav_station"` for stations, `
 
 ## 8.2 Stock station role vs custom Comms routes
 
-**[LIVE — corrected 2026-08-09, previous claim DISCONFIRMED]**
+**[LIVE — corrected 2026-08-09; Kestrel fix reconfirmed 2026-08-16,
+previous claim DISCONFIRMED]**
 
 This section previously claimed stock station behavior keys off a **capital**
 `Station` role, and told you not to clean the pattern up. That was wrong, and it
@@ -669,13 +670,23 @@ stock `station` role.
 
 ```mast
     # Clear the stock station role, keep the custom role the //comms block gates on.
-    add_role(station_id, "station")
-    remove_role(station_id, "Station")   # case-insensitive: this clears 'station'
+    remove_role(station_id, "station")
+    remove_role(station_id, "Station")   # redundant by design: roles are case-insensitive
     add_role(station_id, "kestrel_yards")
 ```
 
-Both Kestrel and Tarsis use this shape. Tarsis has been live-correct since Slice
-04; Kestrel regressed when a fix re-added its stock role and was corrected here.
+This is the preferred custom-Comms cleanup shape. Kestrel applies it both before
+and after the one-shot docking-helper pass. The two removals are intentionally
+redundant: either spelling clears the case-insensitive role, while writing both
+makes the route-ownership requirement explicit and prevents a future apparent
+case distinction from reintroducing the stock panel.
+
+Tarsis still temporarily uses `add_role(id, "station")` followed by
+`remove_role(id, "Station")` around its docking setup. That is functionally the
+same case-insensitive cleanup, but Tarsis genuinely needs stock docking behavior
+at specific points. Kestrel uses a mechanical departure hold and must finish
+without either generic station spelling. The operator confirmed on 2026-08-16
+that Kestrel's four custom Comms options render after this cleanup.
 
 **Only keep the stock `station` role when the object genuinely needs stock
 docking/resupply behavior**, and accept that custom Comms options will not render
@@ -1168,7 +1179,8 @@ on. Slice 12 needs exactly this to know when pirates have turned hostile, and
 
 ## 14.5 Why stock routes win, and the rule that follows
 
-**[LIVE]** in this repo (the Kestrel Comms failure, 2026-08-09), corroborated by
+**[LIVE]** in this repo (the Kestrel Comms failure, 2026-08-09; corrected route
+ownership confirmed by the operator 2026-08-16), corroborated by
 `comms/enemy_stations.mast:3-5` and `comms/enemy_taunt.mast:27`.
 
 Stock Comms and Science routes gate on the generic roles:
