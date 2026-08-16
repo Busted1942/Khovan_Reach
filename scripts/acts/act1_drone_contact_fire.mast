@@ -85,7 +85,24 @@ shared drone_01_known_scan_text = "Drone 01: TSN training contact. Transponder a
 shared drone_01_scan_confirmed_text = "Artemis - Science: Scan confirmed. Drone 01 reads as a TSN training contact."
 shared drone_01_shield_relay_confirmed_text = "Artemis - Science: Weak shield frequency relayed to Weapons."
 shared drone_01_weapons_lock_next_step_text = "Artemis - Weapons: Lock beams on Drone 01.\nArtemis - Helm: Bring us between 1 and 2 kilometres and hold stationary for fifteen seconds."
-shared drone_01_weapons_lock_confirmed_text = "Artemis - Weapons: Beam lock confirmed on Drone 01."
+# Beam lock is where the manual-targeting technique gets taught: Weapons is already
+# on the console, and the crew still has range and stationary hold to fly before
+# clearance, so there is time to read it. Deliberately NOT in the fire-clearance
+# message - that one stays a short Captain's order (see the note above
+# drone_01_weapons_crit_technique_text).
+#
+# Every claim here is checked against legendarymissions/consoles/manual_weapons.mast:
+#   - "keep pressing the same subsystem button" - the 1-in-20 roll is per PRESS
+#     (line 187), with no cooldown, and `yield idle if critical` (line 180) makes
+#     presses after a success no-ops rather than re-rolls.
+#   - "the console flashes it in yellow" - line 190, stock output, not ours.
+#   - "your next beam hit delivers it" - the //damage/object route at line 196
+#     consumes the armed critical; it cannot land without a beam actually hitting.
+#   - "a faster beam rate lands them more often" - THROUGHPUT, not odds. Fire rate
+#     is not a term in the roll, but delivery requires a landed hit, so once a crew
+#     is mashing fast enough to stay armed between shots, crits-per-minute tracks
+#     hits-per-minute. Do not reword this into "more chances at a critical".
+shared drone_01_weapons_lock_confirmed_text = "Artemis - Weapons: Beam lock confirmed on Drone 01.\nArtemis - Weapons: Once you are cleared, keep pressing the same subsystem button until the console flashes a critical in yellow. Your next beam hit delivers it.\nArtemis - Weapons: A faster beam rate lands them more often. Switching subsystems throws an armed critical away."
 shared drone_01_range_confirmed_text = "Artemis - Helm: Range confirmed, one to two kilometres from Drone 01."
 shared drone_01_stationary_hold_confirmed_text = "Artemis - Helm: Stationary hold confirmed."
 shared drone_01_fire_authorized_confirmed_text = "Artemis - Captain: Fire clearance issued for the controlled disable."

@@ -598,7 +598,10 @@ The live signature of this bug is unmistakable and was reported exactly this way
 Consequences, all of which affect scenario design and not just code:
 
 - The roll fires **once per press of a subsystem button** on the Manual Weapons console. It is **not** per beam hit.
-- **Beam rate is not an input to the roll.** A higher beam rate does not earn more critical chances; it only decides how fast an already-armed critical gets consumed, and how fast shields drop. Do not write player-facing training text that says otherwise.
+- **Beam rate is not an input to the roll — but it does drive crits per minute.** Keep these two separate or the coaching comes out wrong:
+  - *Odds per press* are fixed at 1-in-20 regardless of beam rate. Pressing faster does not improve them, and the button has no cooldown tying it to the firing cycle.
+  - *Crits actually landed per minute* is gated by **delivery**, which requires a beam to hit (the `//damage/object` route at line 196 is what consumes an armed critical). A crew mashing fast enough to stay armed between shots is bottlenecked purely on landed hits, so at that point crits-per-minute tracks hits-per-minute — and a 4X beam rate really does land roughly four times as many.
+  - So "4X gives more critical chances" is wrong, and "beam rate doesn't matter" is also wrong. The accurate framing is *arming is free and fire-rate-independent; delivery rides on your beam fire.* This distinction was got wrong in this repo first in one direction and then the other (2026-08-16).
 - Expect **~20 presses per critical**. A design gate asking for N confirmed subsystem hits is asking for roughly 20N button presses.
 - **Switching subsystem throws away an armed critical** (the `_manual_system != latest_target` branch). A crew alternating between Weapons and Engines destroys its own progress and sees `"Lost Critical hit, chance"`.
 - Once armed, the critical waits for the next beam hit on that target to be consumed.
@@ -1120,7 +1123,7 @@ Guarded by `tests/test_mast_compile_or_preflight.py`:
 - Lifeform / upper-left overlay as a text destination — produced a black box. Text currently routes through guarded Comms instead (`audio_runtime.mast:17-18`).
 - Temporary Comms proof stations in production startup — removed in Slice 04, `ba794f3`.
 - `get_inventory_value` / `set_inventory_value` on `MANUAL_SYSTEM` or `MANUAL_CRITICAL_HIT` in a **production** handler — the stock Manual Weapons console owns both and races you for them; stealing the value suppresses the engine's own subsystem damage. Guarded by `test_damage_handler_never_touches_the_stock_manual_targeting_inventory`. The GM spike handler is the deliberate exception. See 7.3.
-- Player-facing text claiming beam rate raises critical-hit chance — it does not (7.3). Guarded by `test_manual_targeting_coaching_matches_the_stock_crit_mechanic`.
+- Player-facing text claiming beam rate raises the critical-hit **roll odds** — it does not; the roll is per subsystem-button press (7.3). Note the converse is also wrong: beam rate *does* raise crits landed per minute, because delivery requires a landed hit. State it as throughput, never as odds.
 - Any runtime reference to `_local_clones`, `archive/old_build_reference`, or `old_mast`. Git-ignored is not runtime-ignored.
 
 ---
