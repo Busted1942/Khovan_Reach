@@ -980,6 +980,15 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
     if current_weapons_damage > drone_01_weapons_damage_baseline:
         drone_01_weapons_damage_baseline = current_weapons_damage
         drone_01_weapons_damage_observer_status = "weapons_subsystem_damage_increase_observed"
+        # Diagnostic (2026-08-16): the operator observed Science reporting
+        # "WEAP 100%" on a contact that had just taken two stock critical hits.
+        # Stock writes system_damage = max(cur,1) * 1.35 per crit
+        # (manual_weapons.mast:216-226), so the first crit lands 1.35. Log the
+        # value against system_max_damage to settle whether Science is showing
+        # a real-but-tiny fraction, or whether the engine's science panel does
+        # not read this key at all. Read-only - do not "fix" the number here.
+        weapons_max_damage = drone_object.data_set.get("system_max_damage", sbs.SHPSYS.WEAPONS)
+        script.write_khovan_startup_trace(f"[KHOVAN ACT1 DRONE 01 SUBSYSTEM] weapons_damage={current_weapons_damage} weapons_max_damage={weapons_max_damage}")
         await task_schedule(khovan_drone_01_register_weapons_hit, {"hit_source": "automatic_weapons_system_damage_observer"})
         ->END
 
