@@ -935,6 +935,80 @@ class Act1DroneContactFireStaticTests(unittest.TestCase):
         body = label_body(drone, "khovan_drone_01_confirm_ceasefire")
         self.assertIn("await task_schedule(khovan_drone_02_spawn)", body)
 
+    def test_drone_02_gets_a_hostile_fleet_brain_and_drone_01_does_not(self) -> None:
+        # Drone 02 is the pressure beat: it manoeuvres and returns fire. Hostility
+        # does NOT come from the behavior key - every ship in LegendaryMissions
+        # spawns "behav_npcship", friendly and hostile alike. It comes from a fleet
+        # carrying a behavior-tree brain (prefabs/basic_enemy.mast:57-85).
+        drone = read(DRONE_PATH)
+        body = label_body(drone, "khovan_drone_02_spawn")
+
+        self.assertIn("side_set_ship_allies_and_enemies(drone_02_object)", body)
+        self.assertIn("fleet_spawn(", body)
+        self.assertIn('set_inventory_value(drone_02_target_id, "my_fleet_id", drone_02_fleet_id)', body)
+        self.assertIn('link(drone_02_fleet_id, "ship_list", drone_02_target_id)', body)
+
+        # The brain attaches to the FLEET id, never the ship id - attaching to the
+        # ship is the most likely way to get this subtly wrong.
+        self.assertIn("brain_add(drone_02_fleet_id, brain, None, 0, None)", body)
+        self.assertNotIn("brain_add(drone_02_target_id", body)
+
+        # Degrades to the previous passive target rather than blocking the drill.
+        self.assertIn("if drone_02_object is None:", body)
+        self.assertIn("if drone_02_fleet_id == 0:", body)
+        self.assertIn("passive_target", body)
+
+        # Station-chasing branches must stay out of the brain: the only stations in
+        # range are Tarsis and Kestrel, and a training drone that ignores Artemis to
+        # go shoot the friendly yard is not the drill.
+        brain_block = drone[drone.index("=== khovan_drone_02_spawn ==="):]
+        brain_block = brain_block[:brain_block.index("```", brain_block.index("brain:"))]
+        self.assertIn("__player__", brain_block)
+        self.assertNotIn("test_roles: station", brain_block)
+
+        # Drone 01 stays passive - it is the controlled-disable target.
+        drone_01_body = label_body(drone, "khovan_drone_01_spawn")
+        self.assertNotIn("brain_add(", drone_01_body)
+        self.assertNotIn("fleet_spawn(", drone_01_body)
+
+        # The fleet is a separate object and must be cleaned up, or a repeat GM jump
+        # leaves an orphaned fleet whose brain is still ticking.
+        cleanup_body = label_body(drone, "khovan_drone_02_cleanup")
+        self.assertIn("sbs.delete_object(drone_02_fleet_id)", cleanup_body)
+        self.assertIn("drone_02_fleet_id = 0", cleanup_body)
+
+    def test_drone_02_story_jump_seed_is_repeat_safe(self) -> None:
+        # GM jump straight to the live-fire beat. It must clean up before it spawns,
+        # invalidate the Drone 01 observers, and reach Drone 02 through the real
+        # spawn path so the fleet/brain attach is what actually gets exercised.
+        drone = read(DRONE_PATH)
+        body = label_body(drone, "khovan_act1_story_jump_seed_drone_02_live_fire")
+
+        self.assertIn("await task_schedule(khovan_drone_02_cleanup)", body)
+        self.assertIn("await task_schedule(khovan_drone_02_spawn)", body)
+        self.assertLess(
+            body.index("await task_schedule(khovan_drone_02_cleanup)"),
+            body.index("await task_schedule(khovan_drone_02_spawn)"),
+            "cleanup must run before the spawn or repeat jumps stack contacts and fleets",
+        )
+
+        for run_id in [
+            "drone_01_stationary_hold_run_id = drone_01_stationary_hold_run_id + 1",
+            "drone_01_weapons_damage_run_id = drone_01_weapons_damage_run_id + 1",
+            "drone_contact_sequence_run_id = drone_contact_sequence_run_id + 1",
+        ]:
+            self.assertIn(run_id, body, "a jump taken mid-drill must retire Drone 01's live observers")
+
+        # Act II handoff state must be reset, or a jump taken after a completed run
+        # leaves the mission already believing Act II is ready.
+        self.assertIn("drone_contact_act2_ready = False", body)
+        self.assertIn("drone_02_destroyed = False", body)
+
+        # Registered as a real GM preset rather than a loose label.
+        presets = read("scripts/systems/story_jump_presets.mast")
+        self.assertIn('+ "JUMP-010A Drone 02 Live Fire" khovan_story_jump_preset_drone_02_live_fire', presets)
+        self.assertIn('elif jump_id == "drone_02_live_fire":', presets)
+
     def test_weapons_hit_counting_is_centralized_for_automatic_and_fallback_paths(self) -> None:
         # Both the automatic system_damage observer and the Kestrel Comms
         # "Fallback Weapons Hit" route must land on the same completion label, so

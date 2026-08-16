@@ -95,6 +95,10 @@ shared drone_01_weapons_disabled_confirmed_text = "Artemis - Weapons: Drone 01's
 # killed, why that is the lesson, and that the next contact IS a kill.
 shared drone_01_ceasefire_confirmed_text = "Artemis - Weapons: Ceasefire confirmed. Drone 01 is disabled, not destroyed - taking a system instead of a ship is the whole point of that drill.\nArtemis - Comms: Kestrel is pulling Drone 01 off the range now.\nArtemis - Captain: Stand by for a second drone. That one is a live-fire target, and you will destroy it."
 shared drone_02_destroyed_confirmed_text = "Artemis - Weapons: Drone 02 destroyed."
+# Drone 02 fights back, unlike Drone 01. Warn the crew before it opens fire - the
+# whole point is pressure, not ambush, and this is the first time in the mission
+# anything shoots at them.
+shared drone_02_hostile_warning_text = "Artemis - Captain: Weapons free on Drone 02. Be aware this one is not passive - it will manoeuvre and return fire.\nArtemis - Engineering: Shields up and keep an eye on your damage. This is where the DAMCON work from the shakedown earns its keep."
 # Coaching lines. Both describe the STOCK manual-targeting mechanic exactly as
 # legendarymissions/consoles/manual_weapons.mast implements it - do not reword
 # these into "more beam hits means more critical chance", which is the intuitive
@@ -122,6 +126,11 @@ shared drone_01_hull_restore_count = 0
 shared drone_02_active = False
 shared drone_02_target_id = 0
 shared drone_02_navproxy_id = 0
+# Fleet that carries Drone 02's hostile behavior-tree brain. Tracked as its own id
+# because the fleet is a separate object from the ship and has to be cleaned up
+# separately - a repeat GM jump that leaves fleets behind stacks brains.
+shared drone_02_fleet_id = 0
+shared drone_02_hostile_status = "not_started"
 shared drone_02_status = "not_started"
 shared drone_02_destroyed = False
 shared drone_02_cleanup_in_progress = False
@@ -1075,6 +1084,28 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
     ->END
 
 === khovan_drone_02_spawn ===
+metadata: ``` yaml
+brain:
+  SEQ:
+    - ai_fleet_init_blackboard
+    - SEL:
+        - ai_fleet_chase_best_anger
+        - label: ai_fleet_chase_roles
+          data:
+            test_roles: __player__
+        - label: ai_fleet_chase_roles
+          data:
+            use_arena: false
+            test_roles: __player__
+    - ai_fleet_calc_forward_vector
+    - ai_fleet_scatter_formation
+```
+    # Brain block above is copied from the stock hostile-ship prefab
+    # (legendarymissions/prefabs/basic_enemy.mast:10-37) with the station-chasing
+    # branches deliberately REMOVED. The stock tree prefers stations over players,
+    # and the only stations in range are Tarsis and Kestrel - a training drone that
+    # ignores Artemis and flies off to shoot the friendly yard is not the drill.
+    # What remains chases the player and nothing else.
     if shakedown_mode == "direct":
         ->END
     if tarsis_station_id == 0:
@@ -1105,11 +1136,102 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
         ->END
     drone_02_navproxy = sim.add_navproxy(drone_02_target_id, "Drone 02", "kralien_cruiser", "#F93")
     drone_02_navproxy_id = to_id(drone_02_navproxy)
+    # Make Drone 02 actually fight back. **[UNPROVEN]** - no fleet/brain API is used
+    # anywhere else in this mission, and the cookbook has no section on it yet.
+    #
+    # The behavior key is NOT what makes an NPC hostile. Every ship in
+    # LegendaryMissions spawns "behav_npcship", friendly and hostile alike - the
+    # engaging AI comes from a FLEET carrying a behavior-tree brain, per
+    # prefabs/basic_enemy.mast:57-85. Three things are required and all three are
+    # done here in the same order the prefab does them:
+    #   1. side_set_ship_allies_and_enemies() to populate the ally/hostile lists
+    #   2. a fleet, linked both ways (my_fleet_id on the ship, ship_list on the fleet)
+    #   3. brain_add() on the FLEET id, not the ship id
+    #
+    # Guarded so a failure here degrades to the previous passive target rather than
+    # blocking the drill: if any step fails Drone 02 still spawns, is still
+    # destructible, and the completion gate is unchanged.
+    drone_02_object = to_object(drone_02_target_id)
+    if drone_02_object is None:
+        drone_02_hostile_status = "fallback_missing_drone_02_object_passive_target"
+        script.write_khovan_startup_trace("[KHOVAN ACT1 DRONE 02 AI] no object; Drone 02 stays passive")
+    else:
+        side_set_ship_allies_and_enemies(drone_02_object)
+        drone_02_fleet = fleet_spawn(Vec3(beacon.pos.x + 10000, beacon.pos.y, beacon.pos.z), "khovan_drone_02_fleet")
+        drone_02_fleet_id = to_id(drone_02_fleet)
+        if drone_02_fleet_id == 0:
+            drone_02_hostile_status = "fallback_fleet_spawn_failed_passive_target"
+            script.write_khovan_startup_trace("[KHOVAN ACT1 DRONE 02 AI] fleet_spawn returned 0; Drone 02 stays passive")
+        else:
+            set_inventory_value(drone_02_target_id, "my_fleet_id", drone_02_fleet_id)
+            link(drone_02_fleet_id, "ship_list", drone_02_target_id)
+            brain_add(drone_02_fleet_id, brain, None, 0, None)
+            drone_02_hostile_status = "hostile_fleet_brain_attached"
+            script.write_khovan_startup_trace(f"[KHOVAN ACT1 DRONE 02 AI] hostile brain attached fleet_id={drone_02_fleet_id} target_id={drone_02_target_id}")
     drone_02_active = True
     drone_02_status = "spawned_hostile_free_fire_target_at_10km"
     drone_contact_sequence_status = "drone_02_active"
     script.write_khovan_startup_trace(f"[KHOVAN ACT1 DRONE 02 SPAWN] target_id={drone_02_target_id} offset_m=10000")
-    await task_schedule(khovan_set_current_objective, {"objective_id": "drone_02_live_fire", "objective_body": "Live-fire target away at ten kilometres. Captain, engage and destroy it. All stations coordinate as standard.", "objective_step": "Drone 02 destruction", "objective_breadcrumb": "[KHOVAN OBJECTIVE 021] Drone 02 deployed"})
+    await task_schedule(khovan_set_current_objective, {"objective_id": "drone_02_live_fire", "objective_body": "Live-fire target away at ten kilometres, and this one shoots back. Captain, engage and destroy it. Shields up, Engineering watch your damage, DAMCON stand ready. All stations coordinate as standard.", "objective_step": "Drone 02 destruction", "objective_breadcrumb": "[KHOVAN OBJECTIVE 021] Drone 02 deployed"})
+    await task_schedule(khovan_drone_contact_fire_send_message, {"drone_message_text": drone_02_hostile_warning_text, "drone_message_breadcrumb": "[KHOVAN ACT1 DRONE 02 SPAWN] guarded hostile warning sent"})
+    ->END
+
+=== khovan_act1_story_jump_seed_drone_02_live_fire ===
+    # GM jump straight to the Drone 02 live-fire beat, added 2026-08-16 so the
+    # hostile-brain work can be exercised without flying the whole Drone 01 disable
+    # drill first. Seeds the state Drone 01 completion would have left behind, then
+    # spawns Drone 02 through the normal path so the fleet/brain attach is the real
+    # one and not a shortcut around it.
+    await task_schedule(khovan_act1_story_jump_seed_engineering_shakedown_complete)
+    # Retire anything Drone 01 left running before seeding its completion. Without
+    # this a live stationary-hold watcher or subsystem observer from the pre-jump
+    # scene keeps ticking against a drone that no longer exists.
+    drone_01_stationary_hold_run_id = drone_01_stationary_hold_run_id + 1
+    drone_01_weapons_damage_run_id = drone_01_weapons_damage_run_id + 1
+    drone_contact_sequence_run_id = drone_contact_sequence_run_id + 1
+    # Clear Drone 01 off the range if the jump was taken mid-drill.
+    if drone_01_navproxy_id != 0:
+        sim.delete_navproxy_by_id(drone_01_navproxy_id)
+        drone_01_navproxy_id = 0
+    if drone_01_target_id != 0:
+        drone_01_cleanup_in_progress = True
+        sbs.delete_object(drone_01_target_id)
+    drone_01_active = False
+    drone_01_target_id = 0
+    # Drone 01's drill recorded as complete.
+    drone_01_scan_complete = True
+    drone_01_hail_complete = True
+    drone_01_shield_frequency_relay_complete = True
+    drone_01_weapons_lock_active = True
+    drone_01_range_band_active = True
+    drone_01_stationary_hold_active = True
+    drone_01_fire_authorized = True
+    drone_01_weapons_hit_count = drone_01_required_weapons_hits
+    drone_01_weapons_disabled = True
+    drone_01_ceasefire_confirmed = True
+    drone_01_status = "story_jump_seeded_controlled_disable_complete"
+    drone_01_scan_fallback_available = False
+    drone_01_hail_fallback_available = False
+    drone_01_shield_relay_fallback_available = False
+    drone_01_weapons_lock_fallback_available = False
+    drone_01_range_fallback_available = False
+    drone_01_stationary_hold_fallback_available = False
+    drone_01_subsystem_hit_fallback_available = False
+    drone_01_ceasefire_fallback_available = False
+    # Repeat-jump safety: drop any Drone 02 (and its fleet) from a previous jump
+    # before spawning a fresh one, or contacts and brains stack.
+    await task_schedule(khovan_drone_02_cleanup)
+    drone_02_destroyed = False
+    drone_02_destruction_source = "not_observed"
+    drone_contact_act2_ready = False
+    drone_contact_act2_handoff_status = "not_ready"
+    drone_contact_cultural_packet_sent = False
+    drone_contact_production_available = True
+    current_scene = 4
+    current_beat = "drone_02_live_fire"
+    last_checkpoint = "drone_02_live_fire"
+    script.write_khovan_startup_trace("[KHOVAN ACT1 DRONE 02 JUMP] seeded Drone 01 complete; spawning live-fire Drone 02")
+    await task_schedule(khovan_drone_02_spawn)
     ->END
 
 === khovan_drone_02_cleanup ===
@@ -1119,6 +1241,12 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
     if drone_02_target_id != 0:
         drone_02_cleanup_in_progress = True
         sbs.delete_object(drone_02_target_id)
+    # The fleet is a separate object from the ship and outlives it. Delete it too,
+    # or a GM re-jump leaves an orphaned fleet whose brain is still ticking.
+    if drone_02_fleet_id != 0:
+        sbs.delete_object(drone_02_fleet_id)
+        drone_02_fleet_id = 0
+    drone_02_hostile_status = "not_started"
     drone_02_active = False
     drone_02_target_id = 0
     drone_02_status = "cleaned_up_not_a_completion"

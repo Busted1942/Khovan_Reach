@@ -5,8 +5,8 @@
 # label distinguishes the completed shakedown seed from JUMP-008, which starts it.
 
 shared story_jump_registry_initialized = False
-shared story_jump_registry_ids = "mission_start_generator_governor|tarsis_resupply_complete|engineering_shakedown_complete|anderson_orders|distress_localized|halcyon_arrival"
-shared story_jump_preset_count = 3
+shared story_jump_registry_ids = "mission_start_generator_governor|tarsis_resupply_complete|engineering_shakedown_complete|drone_02_live_fire|anderson_orders|distress_localized|halcyon_arrival"
+shared story_jump_preset_count = 4
 shared story_jump_metadata_required_fields = "jump_id|display_name|target_scene|mode_access|mission_phase|required_prior_flags|seeded_state_summary|entities|timers|clips|gm_display|expected_next_event|validation_checks|recovery_notes|skipped_observations"
 shared story_jump_last_id = "none"
 shared story_jump_last_display_name = "none"
@@ -30,12 +30,14 @@ shared story_jump_recovery_notes = "none"
 shared story_jump_preset_mission_start_generator_governor_metadata = "jump_id=mission_start_generator_governor; jump_number=JUMP-001; display_name=Mission Start; target_scene=1; mode_access=test_mode; mission_phase=act_1; required_prior_flags=none; seeded_state_summary=Slice 04 source-authorized mission start reset; entities=reuse Artemis, Kestrel Yards, and Tarsis Station without proof stations; timers=stale Kestrel advisory timer invalidated; clips=Dillon Clip 1 stub may replay; gm_display=Mission Start preset ready; expected_next_event=Comms requests Kestrel departure clearance; validation_checks=mission_phase,current_scene,current_beat,last_checkpoint,zero_energy,zero_ordnance; recovery_notes=use for fresh start validation; skipped_observations=none"
 shared story_jump_preset_tarsis_resupply_complete_metadata = "jump_id=tarsis_resupply_complete; jump_number=JUMP-004; display_name=Post-Tarsis / Engineering Ready; target_scene=2; mode_access=test_mode; mission_phase=act_1; required_prior_flags=none; seeded_state_summary=Slice 04 post-resupply governor-cleared state; entities=reuse Artemis, Kestrel Yards, and Tarsis Station without proof stations; timers=stale Kestrel advisory timer invalidated; clips=none; gm_display=Post-Tarsis handoff preset ready; expected_next_event=Resupply complete; Dillon begins the Engineering shakedown; validation_checks=mission_phase,current_scene,current_beat,last_checkpoint,full_energy,full_armament; recovery_notes=use to test the Slice 05 entry point after Slice 04 handoff; skipped_observations=manual jump skips live proof of Kestrel/Tarsis Comms sequence and mechanical docking"
 shared story_jump_preset_engineering_shakedown_complete_metadata = "jump_id=engineering_shakedown_complete; jump_number=JUMP-008A; display_name=Engineering Shakedown Complete; target_scene=2; mode_access=test_mode; mission_phase=act_1; required_prior_flags=none; seeded_state_summary=Slice 05 engineering shakedown complete state after Tarsis resupply; entities=reuse Artemis, Kestrel Yards, and Tarsis Station without proof stations; timers=stale Kestrel advisory and Slice 05 observer fallbacks invalidated; clips=none; gm_display=Engineering shakedown complete preset ready; expected_next_event=Slice 06 target spike ready; validation_checks=mission_phase,current_scene,current_beat,last_checkpoint,full_energy,full_armament,engineering_shakedown_complete; recovery_notes=use to test content immediately after Slice 05; skipped_observations=manual jump skips live proof of engineering shakedown gates, DAMCON positioning, overload damage, repair, and nav preset. NOTE: JUMP-008 remains engineering_shakedown_START (engineering_shakedown_complete=false); the operator designated JUMP-008A for this completed-state seed between JUMP-008 and JUMP-009."
+shared story_jump_preset_drone_02_live_fire_metadata = "jump_id=drone_02_live_fire; jump_number=JUMP-010A; display_name=Drone 02 Live Fire; target_scene=4; mode_access=test_mode; mission_phase=act_1; required_prior_flags=none; seeded_state_summary=Drone 01 controlled disable recorded complete and cleared off the range, then Drone 02 spawned hostile through the normal spawn path so the fleet/brain attach is exercised for real rather than shortcut; entities=reuse Artemis, Kestrel Yards, and Tarsis Station; adds a hostile Drone 02 and the behavior-tree fleet that drives it; timers=Drone 01 stationary-hold and Weapons subsystem-damage observers invalidated by run-ID bump; clips=none; gm_display=Drone 02 Live Fire preset ready; expected_next_event=Drone 02 manoeuvres and returns fire; Captain engages and destroys it; validation_checks=mission_phase,current_scene,current_beat,last_checkpoint,drone_01_ceasefire_confirmed,drone_02_active,drone_02_hostile_status; recovery_notes=use to exercise the Drone 02 hostile brain without flying the Drone 01 disable drill; repeat jumps clean up the previous Drone 02 and its fleet first; skipped_observations=manual jump skips live proof of every Drone 01 gate - scan, hail, shield relay, beam lock, range band, stationary hold, fire authorization, and the subsystem critical itself"
 
 //comms/gamemaster/khovan_story_jump_presets if has_roles(COMMS_ORIGIN_ID, "gamemaster") and test_mode_enabled
     + "Back" //comms/gamemaster/khovan_scenario_control_panel
     + "JUMP-001 Mission Start" khovan_story_jump_preset_mission_start_generator_governor
     + "JUMP-004 Tarsis Resupply Complete" khovan_story_jump_preset_tarsis_resupply_complete
     + "JUMP-008A Engineering Shakedown Complete" khovan_story_jump_preset_engineering_shakedown_complete
+    + "JUMP-010A Drone 02 Live Fire" khovan_story_jump_preset_drone_02_live_fire
     + "JUMP-011 Anderson Orders" khovan_story_jump_preset_anderson_orders
     + "JUMP-012 Distress Localized" khovan_story_jump_preset_distress_localized
     + "JUMP-013 Halcyon Arrival" khovan_story_jump_preset_halcyon_arrival
@@ -69,6 +71,12 @@ shared story_jump_preset_engineering_shakedown_complete_metadata = "jump_id=engi
 
 === khovan_story_jump_preset_engineering_shakedown_complete ===
     await task_schedule(khovan_story_jump_execute_preset, {"jump_id": "engineering_shakedown_complete"})
+    comms_receive(story_jump_last_summary, title="Khovan Story Jump", title_color="cyan")
+    comms_navigate("//comms/gamemaster/khovan_story_jump_presets")
+    ->END
+
+=== khovan_story_jump_preset_drone_02_live_fire ===
+    await task_schedule(khovan_story_jump_execute_preset, {"jump_id": "drone_02_live_fire"})
     comms_receive(story_jump_last_summary, title="Khovan Story Jump", title_color="cyan")
     comms_navigate("//comms/gamemaster/khovan_story_jump_presets")
     ->END
@@ -133,6 +141,17 @@ shared story_jump_preset_engineering_shakedown_complete_metadata = "jump_id=engi
         story_jump_seeded_state_summary = "Slice 05 engineering shakedown complete seeded: Tarsis resupply complete, all engineering shakedown gates marked complete, and current objective points to Slice 06 target spike."
         story_jump_skipped_observations = "Manual jump skips proof of engineering no-motion, DAMCON positioning, controlled overload damage, repair, and navigation-priority preset."
         story_jump_gm_display = "Engineering Shakedown Complete preset seeded."
+    elif jump_id == "drone_02_live_fire":
+        await task_schedule(khovan_act1_story_jump_seed_drone_02_live_fire)
+        story_jump_last_display_name = "JUMP-010A Drone 02 Live Fire"
+        story_jump_last_target_scene = 4
+        story_jump_last_validation_result = "valid_runtime_seed"
+        story_jump_expected_next_event = "Drone 02 is on the range at ten kilometres and will manoeuvre and return fire. Captain, engage and destroy it."
+        story_jump_seeded_state_summary = "Drone 01 controlled disable recorded complete and cleared off the range; Drone 02 spawned hostile through the normal path so the fleet/brain attach is exercised for real."
+        story_jump_entities = "Artemis, Kestrel Yards, Tarsis Station, plus a hostile Drone 02 and its behavior-tree fleet. Any previous Drone 02 and fleet are cleaned up first so repeat jumps do not stack contacts or brains."
+        story_jump_timers = "Drone 01 stationary-hold and subsystem-damage observers invalidated by generation bump."
+        story_jump_skipped_observations = "Manual jump skips live proof of every Drone 01 gate - scan, hail, shield relay, beam lock, range band, stationary hold, fire authorization, and the subsystem critical itself."
+        story_jump_gm_display = "JUMP-010A Drone 02 Live Fire preset seeded."
     elif jump_id == "anderson_orders":
         await task_schedule(khovan_act2_story_jump_seed_anderson_orders)
         story_jump_last_display_name = "JUMP-011 Anderson Orders"
