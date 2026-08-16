@@ -57,7 +57,7 @@ class AutomaticGatesDoNotDependOnTheirFallback(unittest.TestCase):
             engineering, "khovan_engineering_deliver_controlled_overload_prompt_after_delay"
         )
         self.assertIn(
-            "task_schedule(khovan_engineering_watch_controlled_overload_damage)",
+            'task_schedule(khovan_engineering_watch_controlled_overload_damage, {"damage_prompt_run_id": controlled_overload_prompt_run_id})',
             prompt_body,
             "the damage observer must start when the crew is told to overload, "
             "not when they confirm they did",
@@ -87,6 +87,96 @@ class AutomaticGatesDoNotDependOnTheirFallback(unittest.TestCase):
         body = label_body(engineering, "khovan_engineering_complete_controlled_damage")
         self.assertIn("if not controlled_overload_prompt_sent:", body)
         self.assertNotIn("if not controlled_overload_started:", body)
+
+
+class ControlledDamageFallbackRepairSeedTests(unittest.TestCase):
+    """GM fallback confirmation must recover when DAMCON repaired before its click.
+
+    Live 2026-08-16: the damage observer missed an overload, the crew repaired
+    it, then Comms confirmed the damage. The completion handler reset the repair
+    peak to zero and scheduled a watcher that could only pass after seeing new
+    damage; on an already repaired ship that can never happen. The automatic
+    observer's real-time path must keep its original zero-seeded behavior.
+    """
+
+    def test_automatic_observer_keeps_the_zero_seed_and_watcher(self) -> None:
+        body = label_body(
+            code_only(read(ENGINEERING_PATH)),
+            "khovan_engineering_complete_controlled_damage",
+        )
+        automatic_body = body.split(
+            'if completion_source == "automatic_engine_system_damage_observer":', 1
+        )[1].split("    else:", 1)[0]
+        self.assertIn("controlled_overload_peak_damaged_grid_count = 0", automatic_body)
+        self.assertIn(
+            'task_schedule(khovan_engineering_watch_repair_completion, {"repair_run_id": controlled_overload_repair_run_id})',
+            automatic_body,
+        )
+
+    def test_fallback_reads_current_damage_and_seeds_the_existing_watcher(self) -> None:
+        body = label_body(
+            code_only(read(ENGINEERING_PATH)),
+            "khovan_engineering_complete_controlled_damage",
+        )
+        fallback_body = body.split("    else:", 1)[1]
+        self.assertIn("if artemis_id == 0:", fallback_body)
+        self.assertIn("artemis_object = to_object(artemis_id)", fallback_body)
+        self.assertIn("if artemis_object is None:", fallback_body)
+        self.assertIn('damaged_grid_objects = grid_objects(artemis_id) & role("__damaged__")', fallback_body)
+        self.assertIn("controlled_overload_damaged_grid_count = len(damaged_grid_objects)", fallback_body)
+        self.assertIn(
+            "controlled_overload_peak_damaged_grid_count = controlled_overload_damaged_grid_count",
+            fallback_body,
+        )
+
+    def test_already_repaired_fallback_completes_without_scheduling_watcher(self) -> None:
+        body = label_body(
+            code_only(read(ENGINEERING_PATH)),
+            "khovan_engineering_complete_controlled_damage",
+        )
+        already_repaired_body = body.split(
+            "if controlled_overload_damaged_grid_count == 0:", 1
+        )[1].split(
+            "controlled_overload_peak_damaged_grid_count = controlled_overload_damaged_grid_count",
+            1,
+        )[0]
+        self.assertIn(
+            'await task_schedule(khovan_engineering_complete_repair, {"repair_source": "damage_fallback_confirmation_already_repaired"})',
+            already_repaired_body,
+        )
+        self.assertIn("->END", already_repaired_body)
+        self.assertNotIn(
+            "task_schedule(khovan_engineering_watch_repair_completion",
+            already_repaired_body,
+        )
+
+    def test_damage_observer_has_no_timeout_or_player_comms_confirmation(self) -> None:
+        engineering = code_only(read(ENGINEERING_PATH))
+        body = label_body(
+            engineering,
+            "khovan_engineering_watch_controlled_overload_damage_tick",
+        )
+        self.assertIn("default damage_prompt_run_id = controlled_overload_prompt_run_id", body)
+        self.assertIn("if damage_prompt_run_id != controlled_overload_prompt_run_id:", body)
+        self.assertIn("await delay_sim(seconds=1)", body)
+        self.assertIn("jump khovan_engineering_watch_controlled_overload_damage_tick", body)
+        self.assertNotIn("controlled_overload_damage_observer_ticks", engineering)
+        self.assertNotIn("automatic_damage_observer_timeout", engineering)
+        self.assertNotIn("DAMAGE TIMEOUT", engineering)
+        self.assertNotIn("confirm over Comms", body)
+
+        generator = read(GENERATOR_PATH)
+        self.assertNotIn('"Fallback Confirm Controlled Damage"', generator)
+
+        panel = read("scripts/systems/scenario_control_panel.mast")
+        self.assertIn(
+            '+ "Recover Controlled Damage Gate" khovan_engineering_confirm_controlled_damage if controlled_overload_prompt_sent and not controlled_overload_damage_detected',
+            panel,
+        )
+        self.assertIn(
+            '{"completion_source": "gm_fallback_confirmation"}',
+            label_body(engineering, "khovan_engineering_confirm_controlled_damage"),
+        )
 
 
 class Act1EngineeringPowerPresetTests(unittest.TestCase):
@@ -126,9 +216,10 @@ class Act1EngineeringPowerPresetTests(unittest.TestCase):
         # AGENTS.md section 4: every automatic gate ships with a Comms/GM fallback
         # and a *_fallback_available flag.
         engineering = read(ENGINEERING_PATH)
+        generator = read(GENERATOR_PATH)
         self.assertIn(
             '+ "Confirm Impulse 0 / Warp 200" khovan_engineering_confirm_power_preset if engineering_power_preset_fallback_available and not engineering_power_preset_confirmed',
-            engineering,
+            generator,
         )
         watch_body = label_body(engineering, "khovan_engineering_watch_power_preset")
         self.assertIn("engineering_power_preset_fallback_available = True", watch_body)
@@ -312,11 +403,11 @@ class Act1EngineeringPowerPresetTests(unittest.TestCase):
         engineering = read(ENGINEERING_PATH)
         body = code_only(label_body(engineering, "khovan_engineering_watch_no_motion_validation_tick"))
 
-        # Route still armed, so the Tarsis Comms button still appears.
+        # Route still armed, so the Kestrel Comms button still appears.
         self.assertIn("engineering_no_motion_fallback_available = True", body)
         self.assertIn(
             '+ "Confirm Speed 0 at Full Impulse" khovan_engineering_confirm_no_motion if engineering_no_motion_fallback_available and not engineering_no_motion_confirmed',
-            engineering,
+            read(GENERATOR_PATH),
         )
         # No player-facing message from the arming branch.
         self.assertNotIn("khovan_engineering_send_message", body)
@@ -457,22 +548,26 @@ class Act1EngineeringShakedownStaticTests(unittest.TestCase):
         self.assertIn('last_checkpoint = "engineering_shakedown_complete"', complete_seed_body)
         self.assertIn("await task_schedule(khovan_act1_drone_contact_fire_prepare_after_engineering)", complete_seed_body)
 
-    def test_player_comms_fallback_route_is_tarsis_gated_and_start_is_undock_triggered(self) -> None:
+    def test_player_comms_fallback_route_is_kestrel_owned_and_start_is_undock_triggered(self) -> None:
         engineering = read(ENGINEERING_PATH)
         generator = read(GENERATOR_PATH)
         self.assertIn(
-            '//comms if has_roles(COMMS_SELECTED_ID, "tarsis_station") and generator_governor_cleared and not engineering_shakedown_complete',
-            engineering,
+            '//comms if has_roles(COMMS_SELECTED_ID, "kestrel_yards")',
+            generator,
         )
+        self.assertNotIn('//comms if has_roles(COMMS_SELECTED_ID, "tarsis_station")', engineering)
         for phrase in [
+            '+ "Confirm Impulse 0 / Warp 200" khovan_engineering_confirm_power_preset if engineering_power_preset_fallback_available and not engineering_power_preset_confirmed',
             '+ "Confirm Speed 0 at Full Impulse" khovan_engineering_confirm_no_motion if engineering_no_motion_fallback_available and not engineering_no_motion_confirmed',
             '+ "DamCon Team in Crew Quarters and Rested" khovan_engineering_confirm_damcon_rest_cycle if damcon_rest_cycle_fallback_available and not damcon_rest_cycle_confirmed',
             '+ "Confirm Controlled Overload Started" khovan_engineering_start_controlled_overload if damcon_rest_cycle_confirmed and not controlled_overload_started',
-            '+ "Fallback Confirm Controlled Damage" khovan_engineering_confirm_controlled_damage if controlled_overload_damage_fallback_available and not controlled_overload_damage_detected',
             '+ "Confirm Repairs Complete" khovan_engineering_confirm_repair_complete if controlled_overload_repair_fallback_available and not controlled_overload_repair_confirmed',
             '+ "Confirm Combat Posture" khovan_engineering_confirm_navigation_priority if navigation_priority_preset_fallback_available and not navigation_priority_preset_set',
         ]:
-            self.assertIn(phrase, engineering)
+            self.assertIn(phrase, generator)
+        self.assertNotIn('"Fallback Confirm Controlled Damage"', generator)
+        self.assertIn("Raise Kestrel and confirm it on the record.", engineering)
+        self.assertNotIn("Raise Tarsis and confirm it on the record.", engineering)
         self.assertNotIn('"Khovan: Begin Engineering Shakedown"', engineering)
         self.assertNotIn('"Khovan: Fallback DAMCON Mess Standby"', engineering)
         self.assertNotIn("khovan_engineering_confirm_damcon_meal_cycle", engineering)
@@ -538,7 +633,7 @@ class Act1EngineeringShakedownStaticTests(unittest.TestCase):
             "Artemis - Engineering: Impulse, Warp, and Maneuver to 300% and let them blow. Bleed the heat, track the repair, then return to 100%. Rested, fed, and exercised teams move faster - quarters, mess, and gym each pay separately.",
             "Artemis - Engineering: Damage logged. Repairs are yours. Watch how much faster a rested team crosses the ship.\\nArtemis - Comms: Confirm when repairs are complete.",
             "Artemis - Engineering: Plan your station configuration while you have downtime because fiddling with sliders mid-battle may get you spaced.\\nArtemis - Engineering: Set Beam to 150, Torp to 50, and set Warp to 10 and Maneuver to 190. Then press S on the bottom row, and then 2, to save it as your suggested close combat configuration.\\nArtemis - Engineering: Choose configurations (long distance travel, etc.) and save them as presets if you find some idle time or can gain captain permission to rework the systems.",
-            "Artemis - Comms: Shakedown complete. Confirm when the captain is ready and we will put a training drone in the water.",
+            "Artemis - Comms: Shakedown complete. We have placed a training drone at approximately heading 90.",
             "khovan_act1_drone_contact_fire_prepare_after_engineering",
             '"objective_id": "engineering_impulse_zero_warp_200"',
             '"objective_id": "damcon_crew_quarters_standby"',
@@ -556,7 +651,7 @@ class Act1EngineeringShakedownStaticTests(unittest.TestCase):
         engineering = read(ENGINEERING_PATH)
         for phrase in [
             "automatic_playerThrottle_cur_speed_position_delta_observer",
-            "automatic_engine_system_damage_observer_with_comms_fallback",
+            "automatic_engine_system_damage_observer_with_gm_recovery",
             "automatic_rested_speed_coeff_buff_observer_with_comms_fallback",
             "automatic_fed_speed_coeff_buff_observer_with_comms_fallback",
             "automatic_undamaged_grid_object_observer_with_comms_fallback",

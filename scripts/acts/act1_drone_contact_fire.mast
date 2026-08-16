@@ -17,7 +17,7 @@ shared drone_01_active = False
 shared drone_01_target_id = 0
 shared drone_01_navproxy_id = 0
 shared drone_01_spawn_offset_m = 15000
-shared drone_01_deploy_prompt_text = "Artemis - Science: Scan the unknown target and report your finding to the captain.\nArtemis - Comms: Hail the drone."
+shared drone_01_deploy_prompt_text = "Artemis - Science: Scan the unknown target and report the ship's status to the captain.\nArtemis - Comms: Hail the drone."
 shared drone_01_spawn_count = 0
 shared drone_01_reset_count = 0
 shared drone_01_reset_reason = "none"
@@ -51,8 +51,23 @@ shared drone_01_subsystem_hit_fallback_available = False
 shared drone_01_ceasefire_fallback_available = False
 shared drone_01_instruction_sent = False
 shared drone_01_reset_message_sent = False
-shared drone_01_hail_response_text = "Training drone acknowledges. Transponder reads TSN training contact, no weapons free."
+shared drone_01_hail_response_text = "Training drone acknowledges. Transponder reads TSN training contact. Stand by for further instructions."
 shared drone_01_known_scan_text = "Drone 01: TSN training contact. Transponder active."
+# Comms-channel acknowledgements for every drone drill gate, automatic or
+# fallback. Design principle (source_index.md section 8): every microachievement
+# gets a Comms confirmation, not just the current-objective (blue text) update -
+# see the proven pattern in act1_generator_tarsis_gate.mast's Kestrel/Tarsis
+# handlers, every one of which pairs a comms_receive with any objective change.
+shared drone_01_scan_confirmed_text = "Artemis - Science: Scan confirmed. Drone 01 reads as a TSN training contact."
+shared drone_01_shield_relay_confirmed_text = "Artemis - Science: Weak shield frequency relayed to Weapons."
+shared drone_01_weapons_lock_next_step_text = "Artemis - Weapons: Lock beams on Drone 01.\nArtemis - Helm: Bring us between 1 and 2 kilometres and hold stationary for fifteen seconds."
+shared drone_01_weapons_lock_confirmed_text = "Artemis - Weapons: Beam lock confirmed on Drone 01."
+shared drone_01_range_confirmed_text = "Artemis - Helm: Range confirmed, one to two kilometres from Drone 01."
+shared drone_01_stationary_hold_confirmed_text = "Artemis - Helm: Stationary hold confirmed."
+shared drone_01_fire_authorized_confirmed_text = "Artemis - Captain: Fire clearance issued for the controlled disable."
+shared drone_01_weapons_disabled_confirmed_text = "Artemis - Weapons: Drone 01's weapons array is disabled."
+shared drone_01_ceasefire_confirmed_text = "Artemis - Weapons: Ceasefire confirmed on Drone 01."
+shared drone_02_destroyed_confirmed_text = "Artemis - Weapons: Drone 02 destroyed."
 shared drone_01_known_marked = False
 shared drone_01_hull_restore_count = 0
 
@@ -126,7 +141,7 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
     if drone_target_spike_status == "not_started":
         drone_target_spike_status = "ready"
     script.write_khovan_startup_trace("[KHOVAN ACT1 DRONE 002] Drone 01 production sequence ready after Engineering shakedown")
-    await task_schedule(khovan_set_current_objective, {"objective_id": "drone_01_ready", "objective_body": "Training drone standing by. Science, scan the contact; Comms, hail it and relay its weak shield frequency to Weapons; then Helm bring us into the firing window.", "objective_step": "Drone 01 controlled disable", "objective_breadcrumb": "[KHOVAN OBJECTIVE 016] objective updated: Drone 01 ready"})
+    await task_schedule(khovan_drone_01_spawn)
     await task_schedule(khovan_scenario_control_panel_update_overview)
     ->END
 
@@ -276,11 +291,16 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
             script.write_khovan_startup_trace(f"[KHOVAN ACT1 DRONE SPIKE WEAPONS SELECT] origin={WEAPONS_ORIGIN_ID} target_id={selected_weapons_target_id}")
     if drone_01_active and drone_01_target_id != 0:
         selected_weapons_target_id = get_weapons_selection(WEAPONS_ORIGIN_ID)
-        if selected_weapons_target_id == drone_01_target_id:
+        # Duplicate-suppress: every re-confirmation of the same weapons selection
+        # fires this hook again, and an unguarded body would re-announce the lock
+        # and restart the stationary-hold watcher on every one of them.
+        if selected_weapons_target_id == drone_01_target_id and not drone_01_weapons_lock_active:
             drone_01_weapons_lock_active = True
+            drone_01_weapons_lock_fallback_available = False
             drone_01_status = "weapons_lock_active"
             script.write_khovan_startup_trace(f"[KHOVAN ACT1 DRONE 01 WEAPONS LOCK] origin={WEAPONS_ORIGIN_ID} target_id={selected_weapons_target_id}")
             task_schedule(khovan_drone_01_watch_stationary_hold, {"hold_run_id": drone_01_stationary_hold_run_id})
+            await task_schedule(khovan_drone_contact_fire_send_message, {"drone_message_text": drone_01_weapons_lock_confirmed_text, "drone_message_breadcrumb": "[KHOVAN ACT1 DRONE 01 WEAPONS LOCK] guarded confirmation sent"})
     ->END
 
 //damage/object if has_role(DAMAGE_TARGET_ID, "khovan_slice06_spike_target")
@@ -377,19 +397,18 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
     script.write_khovan_startup_trace(f"[KHOVAN ACT1 DRONE SPIKE DESTROY] destroyed_id={DESTROYED_ID} destruction_source={drone_target_spike_destruction_source}")
     ->END
 
-# Phase B production controls. Their player-facing acknowledgement is always the
-# current-objective broadcast; GM-only comms_receive rendering is deliberately not used.
-//comms if has_roles(COMMS_SELECTED_ID, "tarsis_station") and drone_contact_production_available
-    + "Deploy Drone 01" khovan_drone_01_spawn if not drone_01_active and not drone_01_weapons_disabled and not drone_contact_act2_ready
-    + "Confirm Drone 01 Ceasefire" khovan_drone_01_confirm_ceasefire if drone_01_weapons_disabled and not drone_01_ceasefire_confirmed
-    + "Fallback Scan" khovan_drone_01_fallback_scan if drone_01_scan_fallback_available
-    + "Fallback Hail" khovan_drone_01_fallback_hail if drone_01_hail_fallback_available
-    + "Fallback Shield Relay" khovan_drone_01_fallback_shield_relay if drone_01_shield_relay_fallback_available
-    + "Fallback Weapons Lock" khovan_drone_01_fallback_weapons_lock if drone_01_weapons_lock_fallback_available
-    + "Fallback Range" khovan_drone_01_fallback_range if drone_01_range_fallback_available
-    + "Fallback Stationary Hold" khovan_drone_01_fallback_stationary_hold if drone_01_stationary_hold_fallback_available
-    + "Fallback Weapons Hit" khovan_drone_01_fallback_weapons_hit if drone_01_subsystem_hit_fallback_available
-    + "Fallback Ceasefire" khovan_drone_01_fallback_ceasefire if drone_01_ceasefire_fallback_available
+=== khovan_drone_contact_fire_send_message ===
+    # One Comms-channel send path for every drone drill confirmation, whether the
+    # gate was satisfied automatically or via Kestrel Comms fallback. Dillon
+    # narrates the drill as training instructor - same voice as the ten-second
+    # deploy prompt below - and khovan_lifeform_send falls back to borrowing
+    # Kestrel Yards as sender if Dillon's lifeform is not present.
+    default drone_message_text = ""
+    default drone_message_title = "Instructor"
+    default drone_message_color = "cyan"
+    default drone_message_breadcrumb = "[KHOVAN ACT1 DRONE MSG] guarded confirmation sent"
+    await task_schedule(khovan_lifeform_send, {"send_lifeform_id": dillon_lifeform_id, "send_sender": "Dillon", "send_title": drone_message_title, "send_text": drone_message_text, "send_title_color": drone_message_color, "send_fallback_sender_id": kestrel_yards_id, "send_breadcrumb": drone_message_breadcrumb})
+    ->END
 
 === khovan_drone_01_reset_flags ===
     drone_01_scan_complete = False
@@ -487,7 +506,7 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
     drone_contact_last_step = "drone_01_spawn"
     await task_schedule(khovan_drone_01_mark_scan_known)
     script.write_khovan_startup_trace(f"[KHOVAN ACT1 DRONE 01 SPAWN] target_id={drone_01_target_id} offset_m={drone_01_spawn_offset_m} spawn_count={drone_01_spawn_count}")
-    await task_schedule(khovan_set_current_objective, {"objective_id": "drone_01_scan", "objective_body": "Drone away. Science, scan the contact. Comms, hail it and relay its weak shield frequency to Weapons.", "objective_step": "Drone 01 scan and hail", "objective_breadcrumb": "[KHOVAN OBJECTIVE 017] Drone 01 deployed"})
+    await task_schedule(khovan_set_current_objective, {"objective_id": "drone_01_scan", "objective_body": "Drone away. Science, scan the contact. Wait for further instruction.", "objective_step": "Drone 01 scan and hail", "objective_breadcrumb": "[KHOVAN OBJECTIVE 017] Drone 01 deployed"})
     task_schedule(khovan_drone_01_deliver_deploy_prompt_after_delay, {"deploy_prompt_run_id": drone_contact_sequence_run_id})
     ->END
 
@@ -553,7 +572,7 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
     # UNPROVEN in this repo: data_set.set() from MAST. Only data_set.get() is cookbook-
     # proven (section 8). If this call errors or the drone is still "unknown" on Comms,
     # do NOT reach for science_set_scan_data as a quick fix - it costs the frequency
-    # panel. Use the Tarsis Comms "Khovan: Fallback Hail" route and raise an
+    # panel. Use the Kestrel Comms "Khovan: Fallback Hail" route and raise an
     # API-uncertainty finding instead.
     if artemis_id == 0 or drone_01_target_id == 0:
         drone_01_hail_fallback_available = True
@@ -662,11 +681,9 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
 # The trade is therefore either/or and cannot be split: a Khovan //science route on
 # this contact OR the stock shield-frequency panel. The drill needs the frequencies,
 # so the route goes. Science reads the weak frequency off the stock scan and passes
-# it to Weapons verbally; the drill gates are carried by the Tarsis Comms routes
-# khovan_drone_01_fallback_scan and khovan_drone_01_fallback_shield_relay, both
-# armed at spawn. FINDING for the operator: those two are now the primary route for
-# a Science-officer action, not fallbacks, and their button labels still say
-# "Fallback" - renaming them is player-facing content and out of scope here.
+# it to Weapons verbally. A direct hail completes the scan-and-relay gates; the
+# Kestrel Comms routes khovan_drone_01_fallback_scan and
+# khovan_drone_01_fallback_shield_relay remain armed at spawn only as fallbacks.
 #
 # Do not re-add //enable/science for khovan_drone_01 to "restore the Science
 # buttons" without re-reading the branch above; it silently costs the frequencies.
@@ -674,19 +691,37 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
 //enable/comms if has_roles(COMMS_SELECTED_ID, "khovan_drone_01")
 
 //comms if has_roles(COMMS_SELECTED_ID, "khovan_drone_01")
-    + "Hail Drone 01" khovan_drone_01_hail
+    # Guarded like every other completion button in this file (fallback_scan,
+    # fallback_weapons_lock, etc. all disappear once their gate is satisfied).
+    # This one previously had no condition at all, so it stayed visible forever -
+    # a re-click after hail completion silently re-ran the whole handler with no
+    # visible change, which read to the crew as "the hail did not work."
+    + "Hail Drone 01" khovan_drone_01_hail if not drone_01_hail_complete
 
 === khovan_drone_01_hail ===
+    # Duplicate-suppress to match the menu guard above - belt and suspenders, since
+    # a queued click can still land after the button should have vanished.
+    if drone_01_hail_complete:
+        ->END
+    drone_01_scan_complete = True
     drone_01_hail_complete = True
+    drone_01_shield_frequency_relay_complete = True
+    drone_01_scan_fallback_available = False
     drone_01_hail_fallback_available = False
-    drone_01_status = "comms_hail_complete"
+    drone_01_shield_relay_fallback_available = False
+    drone_01_status = "comms_hail_scan_relay_complete"
     script.write_khovan_startup_trace(f"[KHOVAN ACT1 DRONE 01 HAIL] target_id={COMMS_SELECTED_ID}")
     # Bare comms_receive() is the proven-live shape for a player-facing Comms reply in
     # this file - it is what khovan_drone_contact_fire_hail_spike_target uses, operator-
     # confirmed working. Do not wrap this one in comms_override; that wrapper is the
     # GM-only route workaround and is a separate, still-experimental case.
     comms_receive(drone_01_hail_response_text, title="Drone 01", title_color="green")
-    await task_schedule(khovan_set_current_objective, {"objective_id": "drone_01_relay", "objective_body": "The drone answers your hail and confirms it is a training contact. Science, relay its weak shield frequency to Weapons.", "objective_step": "Drone 01 shield relay", "objective_breadcrumb": "[KHOVAN OBJECTIVE 017A] Drone 01 hail complete"})
+    # Dillon confirms the next step in the Comms channel, not just the blue
+    # current-objective overlay - the overlay alone was hard to notice (reported
+    # live), and the hail response above only confirms the hail itself, not what
+    # comes after it.
+    await task_schedule(khovan_drone_contact_fire_send_message, {"drone_message_text": drone_01_weapons_lock_next_step_text, "drone_message_breadcrumb": "[KHOVAN ACT1 DRONE 01 HAIL] guarded next-step confirmation sent"})
+    await task_schedule(khovan_set_current_objective, {"objective_id": "drone_01_weapons_lock", "objective_body": "Weapons, lock beams on the drone. Helm, bring us between 1 and 2 km and hold us stationary for fifteen seconds.", "objective_step": "Drone 01 lock and range", "objective_breadcrumb": "[KHOVAN OBJECTIVE 018] hail scan relay complete"})
     ->END
 
 === khovan_drone_01_watch_stationary_hold ===
@@ -735,11 +770,18 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
     jump khovan_drone_01_watch_stationary_hold
 
 === khovan_drone_01_authorize_fire ===
+    # Duplicate-suppress: the automatic stationary-hold watcher and the Kestrel
+    # Comms fallback can both reach this label with every gate satisfied (a race
+    # is possible if the fallback lands the same tick the watcher completes), so
+    # guard on the completion flag itself, not just the individual gates.
+    if drone_01_fire_authorized:
+        ->END
     if not drone_01_active or not drone_01_scan_complete or not drone_01_hail_complete or not drone_01_shield_frequency_relay_complete or not drone_01_weapons_lock_active or not drone_01_range_band_active or not drone_01_stationary_hold_active:
         drone_01_status = "fire_authorization_blocked_missing_gate"
         ->END
     drone_01_fire_authorized = True
     drone_01_status = "fire_authorized_weapons_disable_only"
+    await task_schedule(khovan_drone_contact_fire_send_message, {"drone_message_text": drone_01_fire_authorized_confirmed_text, "drone_message_breadcrumb": "[KHOVAN ACT1 DRONE 01 FIRE AUTHORIZED] guarded confirmation sent"})
     await task_schedule(khovan_set_current_objective, {"objective_id": "drone_01_fire_authorized", "objective_body": "You are cleared to fire. Weapons, go to manual targeting and take the drone's weapons array only. Three confirmed hits should disable it. Then cease fire.", "objective_step": "Drone 01 Weapons disable", "objective_breadcrumb": "[KHOVAN OBJECTIVE 019] Drone 01 fire authorized"})
     ->END
 
@@ -813,13 +855,27 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
         drone_01_status = "non_weapons_manual_subsystem_hit"
         script.write_khovan_startup_trace(f"[KHOVAN ACT1 DRONE 01 DAMAGE] target_id={DAMAGE_TARGET_ID} manual_system={drone_01_manual_system}")
         ->END
+    await task_schedule(khovan_drone_01_register_weapons_hit, {"hit_source": "automatic_manual_system_observer"})
+    ->END
+
+=== khovan_drone_01_register_weapons_hit ===
+    # Single completion path for a confirmed Weapons-array hit, reached from the
+    # automatic //damage/object observer above and from the Kestrel Comms
+    # "Fallback Weapons Hit" route below. Centralizing here guarantees both paths
+    # count identically and both send the same Comms-channel acknowledgement -
+    # the automatic path previously advanced silently with no Comms confirmation
+    # at all, only the current-objective (blue text) update on the third hit.
+    default hit_source = "automatic_manual_system_observer"
     drone_01_weapons_hit_count = drone_01_weapons_hit_count + 1
+    drone_01_subsystem_hit_fallback_available = False
     drone_01_status = "weapons_subsystem_hit_confirmed"
-    script.write_khovan_startup_trace(f"[KHOVAN ACT1 DRONE 01 HIT] count={drone_01_weapons_hit_count} target_id={DAMAGE_TARGET_ID}")
+    script.write_khovan_startup_trace(f"[KHOVAN ACT1 DRONE 01 HIT] count={drone_01_weapons_hit_count} source={hit_source}")
+    await task_schedule(khovan_drone_contact_fire_send_message, {"drone_message_text": f"Artemis - Weapons: Hit {drone_01_weapons_hit_count} of 3 confirmed on Drone 01's weapons array.", "drone_message_breadcrumb": "[KHOVAN ACT1 DRONE 01 HIT] guarded confirmation sent"})
     if drone_01_weapons_hit_count >= 3:
         drone_01_weapons_disabled = True
         drone_01_status = "weapons_array_disabled_awaiting_ceasefire"
         drone_01_ceasefire_fallback_available = True
+        await task_schedule(khovan_drone_contact_fire_send_message, {"drone_message_text": drone_01_weapons_disabled_confirmed_text, "drone_message_breadcrumb": "[KHOVAN ACT1 DRONE 01 DISABLED] guarded confirmation sent"})
         await task_schedule(khovan_set_current_objective, {"objective_id": "drone_01_ceasefire", "objective_body": "The drone's weapons array is down. Captain, call ceasefire; Comms, confirm it with Dillon.", "objective_step": "Drone 01 ceasefire", "objective_breadcrumb": "[KHOVAN OBJECTIVE 020] Drone 01 Weapons disabled"})
     ->END
 
@@ -853,6 +909,7 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
     drone_01_ceasefire_confirmed = True
     drone_01_ceasefire_fallback_available = False
     drone_01_status = "controlled_disable_complete"
+    await task_schedule(khovan_drone_contact_fire_send_message, {"drone_message_text": drone_01_ceasefire_confirmed_text, "drone_message_breadcrumb": "[KHOVAN ACT1 DRONE 01 CEASEFIRE] guarded confirmation sent"})
     if drone_01_navproxy_id != 0:
         sim.delete_navproxy_by_id(drone_01_navproxy_id)
         drone_01_navproxy_id = 0
@@ -930,6 +987,7 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
     if drone_02_navproxy_id != 0:
         sim.delete_navproxy_by_id(drone_02_navproxy_id)
         drone_02_navproxy_id = 0
+    await task_schedule(khovan_drone_contact_fire_send_message, {"drone_message_text": drone_02_destroyed_confirmed_text, "drone_message_breadcrumb": "[KHOVAN ACT1 DRONE 02 DESTROY] guarded confirmation sent"})
     await task_schedule(khovan_drone_contact_fire_send_cultural_packet)
     script.write_khovan_startup_trace(f"[KHOVAN ACT1 DRONE 02 DESTROY] target_id={DESTROYED_ID} act2_ready=True")
     ->END
@@ -945,60 +1003,66 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
     drone_01_scan_complete = True
     drone_01_scan_fallback_available = False
     drone_01_status = "science_scan_confirmed"
-    script.write_khovan_startup_trace(f"[KHOVAN ACT1 DRONE 01 SCAN] confirmed via Tarsis Comms target_id={drone_01_target_id}")
+    script.write_khovan_startup_trace(f"[KHOVAN ACT1 DRONE 01 SCAN] confirmed via Kestrel Comms target_id={drone_01_target_id}")
+    await task_schedule(khovan_drone_contact_fire_send_message, {"drone_message_text": drone_01_scan_confirmed_text, "drone_message_breadcrumb": "[KHOVAN ACT1 DRONE 01 SCAN] guarded confirmation sent"})
     ->END
 
 === khovan_drone_01_fallback_hail ===
-    # Tarsis-side confirmation for when Drone 01 itself is not selectable on Comms -
+    # Kestrel-side confirmation for when Drone 01 itself is not selectable on Comms -
     # for example if khovan_drone_01_mark_scan_known failed and the contact is still
     # rendering as "unknown". Relays the drone's response rather than dropping it.
     drone_01_hail_complete = True
     drone_01_hail_fallback_available = False
-    drone_01_status = "comms_hail_confirmed_via_tarsis"
-    script.write_khovan_startup_trace(f"[KHOVAN ACT1 DRONE 01 HAIL] confirmed via Tarsis Comms target_id={drone_01_target_id}")
+    drone_01_status = "comms_hail_confirmed_via_kestrel"
+    script.write_khovan_startup_trace(f"[KHOVAN ACT1 DRONE 01 HAIL] confirmed via Kestrel Comms target_id={drone_01_target_id}")
     comms_receive(drone_01_hail_response_text, title="Drone 01", title_color="green")
     ->END
 
 === khovan_drone_01_fallback_shield_relay ===
-    # Primary route for the relay gate since the Khovan //science route was removed
-    # (see the block above //enable/comms for khovan_drone_01). Science reads the
-    # weak frequency off the stock scan panel and Comms confirms it here, so this
-    # also satisfies the scan gate - the frequency cannot be read without scanning.
+    # Fallback route when direct Drone 01 hail is not usable. Science reads the weak
+    # frequency off the stock scan panel and Comms confirms it here, so this also
+    # satisfies the scan gate - the frequency cannot be read without scanning.
     drone_01_scan_complete = True
     drone_01_scan_fallback_available = False
     drone_01_shield_frequency_relay_complete = True
     drone_01_shield_relay_fallback_available = False
     drone_01_status = "shield_frequency_relay_complete"
-    script.write_khovan_startup_trace(f"[KHOVAN ACT1 DRONE 01 SCAN RELAY] confirmed via Tarsis Comms target_id={drone_01_target_id}")
+    script.write_khovan_startup_trace(f"[KHOVAN ACT1 DRONE 01 SCAN RELAY] confirmed via Kestrel Comms target_id={drone_01_target_id}")
+    await task_schedule(khovan_drone_contact_fire_send_message, {"drone_message_text": drone_01_shield_relay_confirmed_text, "drone_message_breadcrumb": "[KHOVAN ACT1 DRONE 01 SCAN RELAY] guarded confirmation sent"})
     await task_schedule(khovan_set_current_objective, {"objective_id": "drone_01_weapons_lock", "objective_body": "Weapons, lock beams on the drone. Helm, bring us between 1 and 2 km and hold us stationary for fifteen seconds.", "objective_step": "Drone 01 lock and range", "objective_breadcrumb": "[KHOVAN OBJECTIVE 018] shield relay complete"})
     ->END
 
 === khovan_drone_01_fallback_weapons_lock ===
     drone_01_weapons_lock_active = True
     drone_01_weapons_lock_fallback_available = False
+    drone_01_status = "weapons_lock_confirmed_via_kestrel"
+    script.write_khovan_startup_trace(f"[KHOVAN ACT1 DRONE 01 WEAPONS LOCK] confirmed via Kestrel Comms target_id={drone_01_target_id}")
     task_schedule(khovan_drone_01_watch_stationary_hold, {"hold_run_id": drone_01_stationary_hold_run_id})
+    await task_schedule(khovan_drone_contact_fire_send_message, {"drone_message_text": drone_01_weapons_lock_confirmed_text, "drone_message_breadcrumb": "[KHOVAN ACT1 DRONE 01 WEAPONS LOCK] guarded confirmation sent"})
     ->END
 
 === khovan_drone_01_fallback_range ===
     drone_01_range_band_active = True
     drone_01_range_fallback_available = False
+    drone_01_status = "range_confirmed_via_kestrel"
+    script.write_khovan_startup_trace(f"[KHOVAN ACT1 DRONE 01 RANGE] confirmed via Kestrel Comms target_id={drone_01_target_id}")
+    await task_schedule(khovan_drone_contact_fire_send_message, {"drone_message_text": drone_01_range_confirmed_text, "drone_message_breadcrumb": "[KHOVAN ACT1 DRONE 01 RANGE] guarded confirmation sent"})
     ->END
 
 === khovan_drone_01_fallback_stationary_hold ===
     drone_01_stationary_hold_active = True
     drone_01_stationary_hold_seconds = 15
     drone_01_stationary_hold_fallback_available = False
+    drone_01_status = "stationary_hold_confirmed_via_kestrel"
+    script.write_khovan_startup_trace(f"[KHOVAN ACT1 DRONE 01 STATIONARY HOLD] confirmed via Kestrel Comms target_id={drone_01_target_id}")
+    await task_schedule(khovan_drone_contact_fire_send_message, {"drone_message_text": drone_01_stationary_hold_confirmed_text, "drone_message_breadcrumb": "[KHOVAN ACT1 DRONE 01 STATIONARY HOLD] guarded confirmation sent"})
     await task_schedule(khovan_drone_01_authorize_fire)
     ->END
 
 === khovan_drone_01_fallback_weapons_hit ===
     if not drone_01_fire_authorized:
         ->END
-    drone_01_weapons_hit_count = drone_01_weapons_hit_count + 1
-    drone_01_subsystem_hit_fallback_available = False
-    if drone_01_weapons_hit_count >= 3:
-        drone_01_weapons_disabled = True
-        drone_01_ceasefire_fallback_available = True
+    await task_schedule(khovan_drone_01_register_weapons_hit, {"hit_source": "comms_fallback_confirmation"})
     ->END
 
 === khovan_drone_01_fallback_ceasefire ===

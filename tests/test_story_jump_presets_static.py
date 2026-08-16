@@ -122,7 +122,7 @@ class StoryJumpPresetStaticTests(unittest.TestCase):
         expected_labels = {
             "mission_start_generator_governor": "JUMP-001 Mission Start",
             "tarsis_resupply_complete": "JUMP-004 Tarsis Resupply Complete",
-            "engineering_shakedown_complete": "Engineering Shakedown Complete (no JUMP-nnn match)",
+            "engineering_shakedown_complete": "JUMP-008A Engineering Shakedown Complete",
         }
 
         for preset_id, display in expected_labels.items():

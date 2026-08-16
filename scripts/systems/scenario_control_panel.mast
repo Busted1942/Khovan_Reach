@@ -23,6 +23,7 @@ shared scenario_control_panel_ui_api_status = "gm_comms_route_reference_backed"
     + "Refresh Overview" khovan_scenario_control_panel_refresh_overview
     + "Enable Test Mode" khovan_scenario_control_panel_enable_test_mode if not test_mode_enabled
     + "Disable Test Mode" khovan_scenario_control_panel_disable_test_mode if test_mode_enabled
+    + "Recover Controlled Damage Gate" khovan_engineering_confirm_controlled_damage if controlled_overload_prompt_sent and not controlled_overload_damage_detected
     + "Test Mode Story Jumps" //comms/gamemaster/khovan_story_jump_presets if test_mode_enabled
     + "Slice 06 Target Spike" //comms/gamemaster/khovan_drone_contact_fire_spike if test_mode_enabled
 

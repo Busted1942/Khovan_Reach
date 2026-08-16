@@ -7,6 +7,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 DRONE_PATH = "scripts/acts/act1_drone_contact_fire.mast"
+GENERATOR_PATH = "scripts/acts/act1_generator_tarsis_gate.mast"
 
 
 def read(path: str) -> str:
@@ -70,10 +71,14 @@ class Act1DroneContactFireStaticTests(unittest.TestCase):
             "Drone 01 proves Weapons subsystem disable; Drone 02 completes on destruction",
             "=== khovan_act1_drone_contact_fire_prepare_after_engineering ===",
             'drone_contact_sequence_status = "drone_01_ready_after_engineering"',
-            '"objective_id": "drone_01_ready"',
-            "Training drone standing by.",
+            "await task_schedule(khovan_drone_01_spawn)",
         ]:
             self.assertIn(phrase, drone)
+
+        prepare_body = label_body(drone, "khovan_act1_drone_contact_fire_prepare_after_engineering")
+        self.assertIn("await task_schedule(khovan_drone_01_spawn)", prepare_body)
+        self.assertNotIn('"objective_id": "drone_01_ready"', prepare_body)
+        self.assertNotIn('+ "Deploy Drone 01" khovan_drone_01_spawn', drone)
 
         for phrase in [
             "shared drone_contact_sequence_run_id = 0",
@@ -472,18 +477,19 @@ class Act1DroneContactFireStaticTests(unittest.TestCase):
 
     def test_drone_01_fire_authorization_shortcut_is_gm_test_only(self) -> None:
         # Diagnostic shortcut, not a fallback and not a gameplay path. It must stay
-        # behind the gamemaster + test_mode_enabled route and out of the Tarsis
+        # behind the gamemaster + test_mode_enabled route and out of the Kestrel
         # player Comms menu.
         drone = read(DRONE_PATH)
+        generator = read(GENERATOR_PATH)
         self.assertIn(
             '+ "Authorize Drone 01 Fire (test)" khovan_drone_01_test_authorize_fire if drone_01_active and not drone_01_fire_authorized',
             drone,
         )
         gm_panel_start = drone.index("//comms/gamemaster/khovan_drone_contact_fire_spike if has_roles(COMMS_ORIGIN_ID, \"gamemaster\") and test_mode_enabled")
-        tarsis_menu_start = drone.index('//comms if has_roles(COMMS_SELECTED_ID, "tarsis_station")')
-        self.assertLess(gm_panel_start, tarsis_menu_start)
-        tarsis_menu = drone[tarsis_menu_start:drone.index("=== khovan_drone_01_reset_flags ===", tarsis_menu_start)]
-        self.assertNotIn("khovan_drone_01_test_authorize_fire", tarsis_menu)
+        self.assertGreater(gm_panel_start, 0)
+        kestrel_menu_start = generator.index('//comms if has_roles(COMMS_SELECTED_ID, "kestrel_yards")')
+        kestrel_menu = generator[kestrel_menu_start:generator.index('//enable/comms if has_roles(COMMS_SELECTED_ID, "tarsis_station")', kestrel_menu_start)]
+        self.assertNotIn("khovan_drone_01_test_authorize_fire", kestrel_menu)
 
         body = label_body(drone, "khovan_drone_01_test_authorize_fire")
         # Must invalidate the running stationary-hold watcher first, or it clears
@@ -590,7 +596,7 @@ class Act1DroneContactFireStaticTests(unittest.TestCase):
         # as "unknown" with no Khovan Comms route. The removed <scan> block used to
         # mask this by writing scan text on panel render.
         drone = read(DRONE_PATH)
-        self.assertIn('shared drone_01_hail_response_text = "Training drone acknowledges. Transponder reads TSN training contact, no weapons free."', drone)
+        self.assertIn('shared drone_01_hail_response_text = "Training drone acknowledges. Transponder reads TSN training contact. Stand by for further instructions."', drone)
 
         known_body = label_body(drone, "khovan_drone_01_mark_scan_known")
         # Guards required by AGENTS.md section 4.
@@ -623,11 +629,55 @@ class Act1DroneContactFireStaticTests(unittest.TestCase):
             # GM-only-route workaround and is still experimental.
             self.assertNotIn("comms_override", code_only(body))
 
-    def test_drone_01_scan_and_relay_gates_survive_science_route_removal(self) -> None:
-        # With no //science route, the Tarsis Comms routes are the only way to reach
-        # fire authorization. Both must be armed at spawn, and the relay route must
-        # carry the scan gate and the objective advance the science route used to own.
+        direct_hail_body = label_body(drone, "khovan_drone_01_hail")
+        for phrase in [
+            "drone_01_scan_complete = True",
+            "drone_01_shield_frequency_relay_complete = True",
+            "drone_01_scan_fallback_available = False",
+            "drone_01_shield_relay_fallback_available = False",
+            '"objective_id": "drone_01_weapons_lock"',
+            "[KHOVAN OBJECTIVE 018] hail scan relay complete",
+        ]:
+            self.assertIn(phrase, direct_hail_body)
+        self.assertNotIn('"objective_id": "drone_01_relay"', direct_hail_body)
+
+    def test_drone_01_hail_button_is_guarded_and_announces_the_next_step(self) -> None:
+        # Regression guard for a reported live symptom: the "Hail Drone 01" button
+        # had no completion condition, so it stayed visible forever. A re-click
+        # after hail completion silently re-ran the whole handler with no visible
+        # change - same response text, same objective text - which read as "the
+        # hail did not trigger the next step" even though it had already succeeded.
         drone = read(DRONE_PATH)
+        self.assertIn(
+            '+ "Hail Drone 01" khovan_drone_01_hail if not drone_01_hail_complete',
+            drone,
+        )
+
+        body = label_body(drone, "khovan_drone_01_hail")
+        self.assertIn("if drone_01_hail_complete:", body)
+        self.assertLess(
+            body.index("if drone_01_hail_complete:"),
+            body.index("drone_01_hail_complete = True"),
+            "the duplicate-suppress guard must run before the completion flag is set",
+        )
+
+        # Comms-channel confirmation of the next step, not just the current-
+        # objective (blue text) overlay - reported hard to notice live.
+        self.assertIn(
+            'await task_schedule(khovan_drone_contact_fire_send_message, {"drone_message_text": drone_01_weapons_lock_next_step_text',
+            body,
+        )
+        self.assertIn(
+            'shared drone_01_weapons_lock_next_step_text = "Artemis - Weapons: Lock beams on Drone 01.\\nArtemis - Helm: Bring us between 1 and 2 kilometres and hold stationary for fifteen seconds."',
+            drone,
+        )
+
+    def test_drone_01_scan_and_relay_fallbacks_survive_science_route_removal(self) -> None:
+        # With no //science route, direct Drone 01 hail completes the drill gates.
+        # Kestrel retains independently armed scan and relay fallbacks in case the
+        # contact cannot be hailed.
+        drone = read(DRONE_PATH)
+        generator = read(GENERATOR_PATH)
         spawn_body = label_body(drone, "khovan_drone_01_spawn")
         self.assertIn("drone_01_scan_fallback_available = True", spawn_body)
         self.assertIn("drone_01_shield_relay_fallback_available = True", spawn_body)
@@ -636,7 +686,12 @@ class Act1DroneContactFireStaticTests(unittest.TestCase):
             '+ "Fallback Scan" khovan_drone_01_fallback_scan if drone_01_scan_fallback_available',
             '+ "Fallback Shield Relay" khovan_drone_01_fallback_shield_relay if drone_01_shield_relay_fallback_available',
         ]:
-            self.assertIn(route, drone)
+            self.assertIn(route, generator)
+
+        self.assertNotIn(
+            '//comms if has_roles(COMMS_SELECTED_ID, "tarsis_station") and drone_contact_production_available',
+            drone,
+        )
 
         relay_body = label_body(drone, "khovan_drone_01_fallback_shield_relay")
         for phrase in [
@@ -647,6 +702,93 @@ class Act1DroneContactFireStaticTests(unittest.TestCase):
             self.assertIn(phrase, relay_body)
 
         self.assertIn("drone_01_scan_complete = True", label_body(drone, "khovan_drone_01_fallback_scan"))
+
+    def test_khovan_drone_contact_fire_send_message_routes_through_lifeform_helper(self) -> None:
+        # Every drone-drill Comms acknowledgement funnels through this one label so
+        # a future edit cannot reintroduce a silent gate that only updates the
+        # current-objective (blue text) overlay. Dillon is the training instructor
+        # voice already used by the ten-second deploy prompt.
+        drone = read(DRONE_PATH)
+        body = label_body(drone, "khovan_drone_contact_fire_send_message")
+        self.assertIn('"send_lifeform_id": dillon_lifeform_id', body)
+        self.assertIn('"send_sender": "Dillon"', body)
+        self.assertIn('"send_fallback_sender_id": kestrel_yards_id', body)
+        self.assertIn("await task_schedule(khovan_lifeform_send,", body)
+
+    def test_every_drone_01_gate_confirmation_sends_a_comms_acknowledgement(self) -> None:
+        # Regression guard for the reported bug: fallback gates flipped their flag
+        # and updated the current-objective text, but never sent anything into the
+        # Comms channel, so the crew had no visible confirmation the click worked.
+        drone = read(DRONE_PATH)
+        for label in [
+            "khovan_drone_01_fallback_scan",
+            "khovan_drone_01_fallback_shield_relay",
+            "khovan_drone_01_fallback_weapons_lock",
+            "khovan_drone_01_fallback_range",
+            "khovan_drone_01_fallback_stationary_hold",
+            "khovan_drone_01_authorize_fire",
+            "khovan_drone_01_register_weapons_hit",
+            "khovan_drone_01_confirm_ceasefire",
+        ]:
+            body = label_body(drone, label)
+            self.assertIn(
+                "await task_schedule(khovan_drone_contact_fire_send_message,",
+                body,
+                f"{label} must acknowledge in the Comms channel, not just the objective overlay",
+            )
+
+        # The automatic weapons-select detector shares the same acknowledgement,
+        # duplicate-suppressed so re-confirming an existing lock does not re-fire it.
+        select_start = drone.index('//select/weapons if has_role(WEAPONS_ORIGIN_ID, "__player__")')
+        select_end = drone.index("->END", select_start)
+        select_body = drone[select_start:select_end]
+        self.assertIn("and not drone_01_weapons_lock_active:", select_body)
+        self.assertIn("await task_schedule(khovan_drone_contact_fire_send_message,", select_body)
+
+        # Drone 02's kill confirmation, ahead of the larger cultural-packet handoff.
+        destroy_start = drone.index('//damage/destroy if has_role(DESTROYED_ID, "khovan_drone_02")')
+        destroy_body = drone[destroy_start:drone.index("=== khovan_drone_contact_fire_send_cultural_packet ===", destroy_start)]
+        self.assertIn("await task_schedule(khovan_drone_contact_fire_send_message,", destroy_body)
+
+    def test_weapons_hit_counting_is_centralized_for_automatic_and_fallback_paths(self) -> None:
+        # Both the automatic //damage/object observer and the Kestrel Comms
+        # "Fallback Weapons Hit" route must land on the same completion label, so
+        # they count identically and both produce the same Comms acknowledgement -
+        # previously the fallback route incremented drone_01_weapons_hit_count
+        # through its own separate, unacknowledged copy of the logic, and the
+        # automatic path never acknowledged in Comms at all.
+        drone = read(DRONE_PATH)
+        damage_start = drone.index('//damage/object if has_role(DAMAGE_TARGET_ID, "khovan_drone_01")')
+        damage_end = drone.index("=== khovan_drone_01_register_weapons_hit ===", damage_start)
+        damage_body = drone[damage_start:damage_end]
+        self.assertIn(
+            'await task_schedule(khovan_drone_01_register_weapons_hit, {"hit_source": "automatic_manual_system_observer"})',
+            damage_body,
+        )
+        self.assertNotIn("drone_01_weapons_hit_count = drone_01_weapons_hit_count + 1", code_only(damage_body))
+
+        register_body = label_body(drone, "khovan_drone_01_register_weapons_hit")
+        self.assertIn("drone_01_weapons_hit_count = drone_01_weapons_hit_count + 1", register_body)
+        self.assertIn("if drone_01_weapons_hit_count >= 3:", register_body)
+
+        fallback_body = label_body(drone, "khovan_drone_01_fallback_weapons_hit")
+        self.assertIn(
+            'await task_schedule(khovan_drone_01_register_weapons_hit, {"hit_source": "comms_fallback_confirmation"})',
+            fallback_body,
+        )
+        self.assertNotIn("drone_01_weapons_hit_count = drone_01_weapons_hit_count + 1", code_only(fallback_body))
+
+    def test_fire_authorization_is_duplicate_suppressed(self) -> None:
+        # A race between the automatic stationary-hold watcher and the Kestrel
+        # Comms fallback (both can complete on the same tick) must not send the
+        # fire-authorization acknowledgement or objective update twice.
+        drone = read(DRONE_PATH)
+        body = label_body(drone, "khovan_drone_01_authorize_fire")
+        self.assertIn("if drone_01_fire_authorized:", body)
+        self.assertLess(
+            body.index("if drone_01_fire_authorized:"),
+            body.index("drone_01_fire_authorized = True"),
+        )
 
 
 if __name__ == "__main__":

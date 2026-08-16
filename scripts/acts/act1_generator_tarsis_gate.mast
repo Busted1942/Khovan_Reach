@@ -119,6 +119,23 @@ shared tarsis_resupply_text = "Artemis - Captain: Authorization packet closed ou
     + "Request Departure Clearance" khovan_kestrel_request_departure_clearance
     + "Request Emergency Homing Reserve" khovan_kestrel_request_emergency_homing_reserve
     + "Confirm Launch-Envelope Exit" khovan_kestrel_report_launch_envelope_clear
+    # Kestrel owns all player-facing fallback confirmations. Keep these options in
+    # this single route instead of adding competing //comms blocks in subsystem files.
+    + "Confirm Impulse 0 / Warp 200" khovan_engineering_confirm_power_preset if engineering_power_preset_fallback_available and not engineering_power_preset_confirmed
+    + "Confirm Speed 0 at Full Impulse" khovan_engineering_confirm_no_motion if engineering_no_motion_fallback_available and not engineering_no_motion_confirmed
+    + "DamCon Team in Crew Quarters and Rested" khovan_engineering_confirm_damcon_rest_cycle if damcon_rest_cycle_fallback_available and not damcon_rest_cycle_confirmed
+    + "Confirm Controlled Overload Started" khovan_engineering_start_controlled_overload if damcon_rest_cycle_confirmed and not controlled_overload_started
+    + "Confirm Repairs Complete" khovan_engineering_confirm_repair_complete if controlled_overload_repair_fallback_available and not controlled_overload_repair_confirmed
+    + "Confirm Combat Posture" khovan_engineering_confirm_navigation_priority if navigation_priority_preset_fallback_available and not navigation_priority_preset_set
+    + "Confirm Drone 01 Ceasefire" khovan_drone_01_confirm_ceasefire if drone_01_weapons_disabled and not drone_01_ceasefire_confirmed
+    + "Fallback Scan" khovan_drone_01_fallback_scan if drone_01_scan_fallback_available
+    + "Fallback Hail" khovan_drone_01_fallback_hail if drone_01_hail_fallback_available
+    + "Fallback Shield Relay" khovan_drone_01_fallback_shield_relay if drone_01_shield_relay_fallback_available
+    + "Fallback Weapons Lock" khovan_drone_01_fallback_weapons_lock if drone_01_weapons_lock_fallback_available
+    + "Fallback Range" khovan_drone_01_fallback_range if drone_01_range_fallback_available
+    + "Fallback Stationary Hold" khovan_drone_01_fallback_stationary_hold if drone_01_stationary_hold_fallback_available
+    + "Fallback Weapons Hit" khovan_drone_01_fallback_weapons_hit if drone_01_subsystem_hit_fallback_available
+    + "Fallback Ceasefire" khovan_drone_01_fallback_ceasefire if drone_01_ceasefire_fallback_available
 
 //enable/comms if has_roles(COMMS_SELECTED_ID, "tarsis_station")
     script.write_khovan_startup_trace("[KHOVAN ACT1 COMMS 007] Tarsis standard station selected")

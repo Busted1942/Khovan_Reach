@@ -96,7 +96,7 @@ mission. Mark each **OK** or write what felt wrong.
 
 - [ ] "Training drone standing by. Science, scan the contact; ..."
 - [ ] "Drone away. Science, scan the contact. ..."
-- [ ] Hail response: "Training drone acknowledges. Transponder reads TSN training contact, no weapons free."
+- [ ] Hail response: "Training drone acknowledges. Transponder reads TSN training contact. Stand by for further instructions."
 - [ ] Fire authorization: "You are cleared to fire. Weapons, go to manual targeting..."
 - [ ] Unauthorized-fire reset copy
 - [ ] Premature-destruction reset copy

@@ -555,6 +555,20 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
         ]:
             self.assertIn(route, act1)
 
+        self.assertEqual(
+            act1.count('//comms if has_roles(COMMS_SELECTED_ID, "kestrel_yards")'),
+            1,
+            "all Kestrel options must share one Comms block so routes do not compete for the same selected contact",
+        )
+        for fallback_route in [
+            '+ "Confirm Impulse 0 / Warp 200" khovan_engineering_confirm_power_preset',
+            '+ "Confirm Repairs Complete" khovan_engineering_confirm_repair_complete',
+            '+ "Fallback Scan" khovan_drone_01_fallback_scan',
+            '+ "Fallback Hail" khovan_drone_01_fallback_hail',
+            '+ "Fallback Ceasefire" khovan_drone_01_fallback_ceasefire',
+        ]:
+            self.assertIn(fallback_route, act1)
+
     def test_tarsis_docking_setup_waits_for_docking_clearance(self) -> None:
         act1 = read(ACT1_PATH)
         setup_body = label_body(act1, "khovan_act1_setup_kestrel_and_tarsis_contacts")
@@ -1252,6 +1266,10 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             ]
         ).lower()
         active_runtime_for_story_guard = active_runtime.replace("grid_restore_damcons", "")
+        # Kestrel is the deliberate owner of later-slice fallback controls. Those
+        # option labels may name DAMCON here, but their state predicates keep them
+        # hidden until the corresponding fallback is armed; the route-specific
+        # tests above pin those predicates and single-block ownership.
         for forbidden in [
             "Select a bridge console for Artemis",
             "khovan_reach_slice01_client_main",
@@ -1262,7 +1280,6 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             "@gui",
             "//gui",
             "arbitrary variable",
-            "damcon",
             "pirate",
             "comms test station",
             "khovan_comms_proof",

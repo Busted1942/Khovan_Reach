@@ -78,6 +78,7 @@ class ScenarioControlPanelStaticTests(unittest.TestCase):
             '+ "Refresh Overview" khovan_scenario_control_panel_refresh_overview',
             '+ "Enable Test Mode" khovan_scenario_control_panel_enable_test_mode if not test_mode_enabled',
             '+ "Disable Test Mode" khovan_scenario_control_panel_disable_test_mode if test_mode_enabled',
+            '+ "Recover Controlled Damage Gate" khovan_engineering_confirm_controlled_damage if controlled_overload_prompt_sent and not controlled_overload_damage_detected',
             '+ "Test Mode Story Jumps" //comms/gamemaster/khovan_story_jump_presets if test_mode_enabled',
             "=== khovan_scenario_control_panel_hold_transition ===",
             "=== khovan_scenario_control_panel_release_transition ===",

@@ -20,7 +20,7 @@ import scripts/acts/act2_halcyon_arrival.mast
 shared artemis_id = 0
 
 @map/khovan_reach "Khovan Reach"
-" TSN training mission bootstrap shell.
+" Take command of the TSN cruiser Artemis on a routine qualification cruise. Your crew will be assessed across every station as you prepare for standard operational duty.
 metadata: ```
 Properties:
   Main:
