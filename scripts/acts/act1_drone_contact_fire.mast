@@ -59,6 +59,17 @@ shared drone_01_weapons_damage_run_id = 0
 shared drone_01_weapons_damage_observer_status = "not_started"
 shared drone_01_grid_status = "not_started"
 shared drone_01_grid_damage_applied_count = 0
+# Training telemetry. The stock Science panel does not surface subsystem damage on
+# an NPC (cookbook 7.3 - measured, not inferred: system_damage 1.35 against
+# system_max_damage 2.0 while the panel displayed 100%). Both keys hold real engine
+# values though, so Dillon reports them rather than the crew flying blind.
+#
+# This REPORTS real telemetry, it does not simulate damage. Nothing here writes a
+# damage value or invents a parallel model; it reads what the stock critical already
+# wrote and puts it on the Comms channel.
+shared drone_01_weapons_health_percent = -1
+shared drone_01_telemetry_intro_sent = False
+shared drone_01_telemetry_status = "not_started"
 shared drone_01_science_report_request_sent = False
 shared drone_01_weapons_disabled = False
 shared drone_01_ceasefire_confirmed = False
@@ -513,6 +524,11 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
     # Grid belongs to the object being replaced; the respawn builds its own.
     drone_01_grid_status = "not_started"
     drone_01_grid_damage_applied_count = 0
+    # Telemetry belongs to the destroyed drone. The intro flag resets too, so a crew
+    # that lost the first drone still gets the explanation once on the replacement.
+    drone_01_weapons_health_percent = -1
+    drone_01_telemetry_intro_sent = False
+    drone_01_telemetry_status = "not_started"
     drone_01_science_report_request_sent = False
     drone_01_weapons_disabled = False
     drone_01_ceasefire_confirmed = False
@@ -1134,6 +1150,58 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
     await delay_sim(seconds=1)
     jump khovan_drone_01_watch_weapons_subsystem_damage
 
+=== khovan_drone_01_report_weapons_telemetry ===
+    # Report Drone 01's real Weapons-array condition on the Comms channel, because
+    # the stock Science panel will not show it. See cookbook 7.3: on an NPC the
+    # readout sits at 100% no matter what the stock critical does, and that is
+    # measured rather than theorised.
+    #
+    # This is REPORTING, not simulation. system_damage is written by the stock
+    # console's own critical-hit route and system_max_damage is set by the engine;
+    # both are read here and neither is written. If the stock mechanic stops
+    # producing damage, this line goes quiet with it, which is the property that
+    # makes it a training aid rather than a parallel damage model.
+    #
+    # It cannot go on the Science station itself. An //enable/science route for the
+    # drone would take the panel away from the engine and collapse it to a single
+    # "scan" tab, costing the A-E frequency bars the drill depends on (see the long
+    # note above khovan_drone_01_hail, and cookbook 7.1). Comms is the only surface
+    # that can carry it without breaking the one Science already does well.
+    drone_01_telemetry_object = to_object(drone_01_target_id)
+    if drone_01_telemetry_object is None:
+        drone_01_telemetry_status = "skipped_no_drone_object"
+        ->END
+    telemetry_damage = drone_01_telemetry_object.data_set.get("system_damage", sbs.SHPSYS.WEAPONS)
+    telemetry_max = drone_01_telemetry_object.data_set.get("system_max_damage", sbs.SHPSYS.WEAPONS)
+    if telemetry_damage is None or telemetry_max is None:
+        drone_01_telemetry_status = "skipped_telemetry_unavailable"
+        script.write_khovan_startup_trace("[KHOVAN ACT1 DRONE 01 TELEMETRY] system_damage or system_max_damage unset; report skipped")
+        ->END
+    # Guard the denominator. A zero here is exactly what produced INT32_MIN on the
+    # operator's Science panel on 2026-08-16 (cookbook 7.3 and 17.9); never divide
+    # by this value without checking it first.
+    if telemetry_max <= 0:
+        drone_01_telemetry_status = "skipped_max_damage_not_positive"
+        script.write_khovan_startup_trace(f"[KHOVAN ACT1 DRONE 01 TELEMETRY] system_max_damage={telemetry_max} not positive; report skipped")
+        ->END
+    drone_01_weapons_health_percent = int(100 * (1 - telemetry_damage / telemetry_max))
+    # The stock series is geometric (cur * 1.35) and overshoots max_damage after a
+    # few hits, so the raw figure goes negative. Clamp both ends.
+    if drone_01_weapons_health_percent < 0:
+        drone_01_weapons_health_percent = 0
+    if drone_01_weapons_health_percent > 100:
+        drone_01_weapons_health_percent = 100
+    drone_01_telemetry_status = "reported"
+    script.write_khovan_startup_trace(f"[KHOVAN ACT1 DRONE 01 TELEMETRY] damage={telemetry_damage} max={telemetry_max} health_percent={drone_01_weapons_health_percent}")
+    if drone_01_telemetry_intro_sent:
+        await task_schedule(khovan_drone_contact_fire_send_message, {"drone_message_text": f"Artemis - Science: Drone 01's weapons array now reading {drone_01_weapons_health_percent} percent.", "drone_message_breadcrumb": "[KHOVAN ACT1 DRONE 01 TELEMETRY] guarded follow-up report sent"})
+        ->END
+    # The fiction is true, which is the point: a training hull really is broadcasting
+    # its own internals, and a real warship really will not. Said once.
+    drone_01_telemetry_intro_sent = True
+    await task_schedule(khovan_drone_contact_fire_send_message, {"drone_message_text": f"Artemis - Science: Drone 01 is a training hull, instrumented to broadcast its own damage telemetry. A live Kralien warship will not do you that courtesy, so read her shields and frequency instead.\nArtemis - Science: Her weapons array is reading {drone_01_weapons_health_percent} percent.", "drone_message_breadcrumb": "[KHOVAN ACT1 DRONE 01 TELEMETRY] guarded first report sent"})
+    ->END
+
 === khovan_drone_01_register_weapons_hit ===
     # Single completion path for a confirmed Weapons-array hit, reached from the
     # automatic system_damage observer above and from the Kestrel Comms
@@ -1146,6 +1214,7 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
     drone_01_subsystem_hit_fallback_available = False
     drone_01_status = "weapons_subsystem_hit_confirmed"
     script.write_khovan_startup_trace(f"[KHOVAN ACT1 DRONE 01 HIT] count={drone_01_weapons_hit_count} of {drone_01_required_weapons_hits} source={hit_source}")
+    await task_schedule(khovan_drone_01_report_weapons_telemetry)
     # Only worth a running tally when more than one hit is required. At the
     # current one-hit gate the disable confirmation below says everything.
     if drone_01_weapons_hit_count < drone_01_required_weapons_hits:

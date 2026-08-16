@@ -999,6 +999,52 @@ class Act1DroneContactFireStaticTests(unittest.TestCase):
         self.assertIn('+ "JUMP-010A Drone 02 Live Fire" khovan_story_jump_preset_drone_02_live_fire', presets)
         self.assertIn('elif jump_id == "drone_02_live_fire":', presets)
 
+    def test_weapons_telemetry_reports_real_values_and_guards_the_denominator(self) -> None:
+        # The stock Science panel does not surface subsystem damage on an NPC
+        # (measured: system_damage 1.35 against system_max_damage 2.0 while the panel
+        # showed 100%), so Dillon reports the real values on the Comms channel.
+        drone = read(DRONE_PATH)
+        body = code_only(label_body(drone, "khovan_drone_01_report_weapons_telemetry"))
+
+        # REPORTING, not simulation. It may read these keys and must never write them
+        # - the moment it writes, it stops being the stock mechanic's telemetry and
+        # becomes a parallel damage model.
+        self.assertIn('data_set.get("system_damage", sbs.SHPSYS.WEAPONS)', body)
+        self.assertIn('data_set.get("system_max_damage", sbs.SHPSYS.WEAPONS)', body)
+        for forbidden in [
+            'data_set.set("system_damage"',
+            'data_set.set("system_max_damage"',
+            'set_data_set_value(drone_01_target_id, "system_damage"',
+            'set_data_set_value(drone_01_target_id, "system_max_damage"',
+        ]:
+            self.assertNotIn(forbidden, body, "telemetry must report the stock value, never write one")
+
+        # Dividing by system_max_damage without checking it is what put INT32_MIN on
+        # the operator's Science panel. The guard must precede the division.
+        self.assertIn("if telemetry_max <= 0:", body)
+        guard = body.index("if telemetry_max <= 0:")
+        divide = body.index("telemetry_damage / telemetry_max")
+        self.assertLess(guard, divide, "guard the denominator before dividing by it")
+
+        # The stock series overshoots max_damage, so the raw figure goes negative.
+        self.assertIn("if drone_01_weapons_health_percent < 0:", body)
+        self.assertIn("if drone_01_weapons_health_percent > 100:", body)
+
+        # Missing keys degrade quietly rather than reporting a wrong number.
+        self.assertIn("if telemetry_damage is None or telemetry_max is None:", body)
+
+        # It must NOT be delivered by a Science route. An //enable/science for the
+        # drone would collapse the stock panel to a single scan tab and cost the A-E
+        # frequency bars the drill depends on.
+        self.assertNotIn("//enable/science", body)
+        self.assertNotIn("//science", body)
+        self.assertIn("khovan_drone_contact_fire_send_message", body)
+
+        # Fired from the single hit-registration path so both the automatic observer
+        # and the Kestrel fallback report identically.
+        register = code_only(label_body(drone, "khovan_drone_01_register_weapons_hit"))
+        self.assertIn("await task_schedule(khovan_drone_01_report_weapons_telemetry)", register)
+
     def test_grid_build_is_preflighted_against_the_hull_data(self) -> None:
         # Live regression 2026-08-16: calling grid_rebuild_grid_objects on a hull with
         # no interior broke the Science panel outright. data/grid_data.json has an
