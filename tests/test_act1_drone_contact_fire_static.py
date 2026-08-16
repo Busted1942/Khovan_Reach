@@ -1004,20 +1004,26 @@ class Act1DroneContactFireStaticTests(unittest.TestCase):
         # (measured: system_damage 1.35 against system_max_damage 2.0 while the panel
         # showed 100%), so Dillon reports the real values on the Comms channel.
         drone = read(DRONE_PATH)
-        body = code_only(label_body(drone, "khovan_drone_01_report_weapons_telemetry"))
+        body = code_only(label_body(drone, "khovan_drone_report_weapons_telemetry"))
 
         # REPORTING, not simulation. It may read these keys and must never write them
         # - the moment it writes, it stops being the stock mechanic's telemetry and
         # becomes a parallel damage model.
         self.assertIn('data_set.get("system_damage", sbs.SHPSYS.WEAPONS)', body)
         self.assertIn('data_set.get("system_max_damage", sbs.SHPSYS.WEAPONS)', body)
-        for forbidden in [
-            'data_set.set("system_damage"',
-            'data_set.set("system_max_damage"',
-            'set_data_set_value(drone_01_target_id, "system_damage"',
-            'set_data_set_value(drone_01_target_id, "system_max_damage"',
-        ]:
-            self.assertNotIn(forbidden, body, "telemetry must report the stock value, never write one")
+        # Name-independent on purpose. An earlier version of this test listed
+        # 'set_data_set_value(drone_01_target_id, "system_damage"' literally, and when
+        # the label was generalized to telemetry_target_id the guard silently stopped
+        # guarding - a negative control caught it, review did not. This label has no
+        # legitimate reason to write anything to the drone at all, so forbid the write
+        # calls outright rather than trying to enumerate operand spellings.
+        for forbidden in ["set_data_set_value(", "data_set.set("]:
+            self.assertNotIn(
+                forbidden,
+                body,
+                "telemetry must report the stock value, never write one; "
+                f"found a write call ({forbidden}) in the telemetry label",
+            )
 
         # Dividing by system_max_damage without checking it is what put INT32_MIN on
         # the operator's Science panel. The guard must precede the division.
@@ -1043,7 +1049,7 @@ class Act1DroneContactFireStaticTests(unittest.TestCase):
         # Fired from the single hit-registration path so both the automatic observer
         # and the Kestrel fallback report identically.
         register = code_only(label_body(drone, "khovan_drone_01_register_weapons_hit"))
-        self.assertIn("await task_schedule(khovan_drone_01_report_weapons_telemetry)", register)
+        self.assertIn("await task_schedule(khovan_drone_report_weapons_telemetry", register)
 
     def test_grid_build_is_preflighted_against_the_hull_data(self) -> None:
         # Live regression 2026-08-16: calling grid_rebuild_grid_objects on a hull with

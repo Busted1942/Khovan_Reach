@@ -1447,7 +1447,7 @@ not a routine operation in this engine. Section 12.1 stays open.
 
 ## 14.6.1 The behavior key does NOT make a ship hostile. A fleet brain does.
 
-**[REFERENCE]** `legendarymissions/prefabs/basic_enemy.mast:57-85`, `fleets/fleet.mast:33-37`. **[UNPROVEN]** in Khovan — written 2026-08-16, not yet live-smoked.
+**[REFERENCE]** `legendarymissions/prefabs/basic_enemy.mast:57-85`, `fleets/fleet.mast:33-37`. **[LIVE]** — built and live-validated in Khovan 2026-08-16: Drone 02 manoeuvred and returned fire on the first run with the fleet brain attached.
 
 A spawned NPC that should fight back but just sits there is the symptom. The instinct is to hunt for an aggressive behavior key. **There isn't one.** Enumerating every `behav_*` string across all reference missions returns 15 names, and the only general ship behavior is `behav_npcship` — used identically by friendly transports, civilian cargo ships, and Kralien raiders. `behav_warship` does not exist.
 
@@ -1969,6 +1969,22 @@ equality check against a literal.
 Every guard added in this repo now gets deliberately broken once to confirm it
 fails, then restored. It has caught a guard that did not guard more than once.
 A test that has never failed is a test you have not tested.
+
+Two concrete catches from 2026-08-16, both of which review had already passed:
+
+**A guard stopped guarding when a variable was renamed.** A test forbade
+`set_data_set_value(drone_01_target_id, "system_damage"` by literal string. The
+label was later generalized and the operand became `telemetry_target_id`; the
+assertion still passed while the thing it forbade was now possible. Enumerating
+operand spellings is fragile — forbid the *call* (`set_data_set_value(`,
+`data_set.set(`) when a label has no legitimate reason to write at all.
+
+**Restore from an explicit copy, never `git checkout`, while work is
+uncommitted.** Undoing a deliberately-broken guard with
+`git checkout <file>` reverted the entire file to HEAD and destroyed an
+unrelated uncommitted feature in the same file. Copy the file aside first, or
+commit before running controls. Prefer committing: a control run against
+committed work has a safe restore point by construction.
 
 ## 17.9 Key presence is not content
 

@@ -166,6 +166,11 @@ shared drone_02_navproxy_id = 0
 # separately - a repeat GM jump that leaves fleets behind stacks brains.
 shared drone_02_fleet_id = 0
 shared drone_02_hostile_status = "not_started"
+# Drone 02 subsystem feedback. Pure reporting: its gate is destruction, so this
+# never blocks anything. Run-ID guarded like every other delayed task here.
+shared drone_02_weapons_damage_baseline = 0
+shared drone_02_weapons_damage_run_id = 0
+shared drone_02_weapons_damage_observer_status = "not_started"
 shared drone_02_status = "not_started"
 shared drone_02_destroyed = False
 shared drone_02_cleanup_in_progress = False
@@ -1150,7 +1155,12 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
     await delay_sim(seconds=1)
     jump khovan_drone_01_watch_weapons_subsystem_damage
 
-=== khovan_drone_01_report_weapons_telemetry ===
+=== khovan_drone_report_weapons_telemetry ===
+    # Generalized 2026-08-16 so Drone 02 gets the same readout. Both drones carry the
+    # "raider" role, so the stock critical route fires on both; only Khovan's
+    # reporting was Drone 01 only.
+    default telemetry_target_id = drone_01_target_id
+    default telemetry_drone_name = "Drone 01"
     # Report Drone 01's real Weapons-array condition on the Comms channel, because
     # the stock Science panel will not show it. See cookbook 7.3: on an NPC the
     # readout sits at 100% no matter what the stock critical does, and that is
@@ -1167,7 +1177,7 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
     # "scan" tab, costing the A-E frequency bars the drill depends on (see the long
     # note above khovan_drone_01_hail, and cookbook 7.1). Comms is the only surface
     # that can carry it without breaking the one Science already does well.
-    drone_01_telemetry_object = to_object(drone_01_target_id)
+    drone_01_telemetry_object = to_object(telemetry_target_id)
     if drone_01_telemetry_object is None:
         drone_01_telemetry_status = "skipped_no_drone_object"
         ->END
@@ -1194,12 +1204,12 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
     drone_01_telemetry_status = "reported"
     script.write_khovan_startup_trace(f"[KHOVAN ACT1 DRONE 01 TELEMETRY] damage={telemetry_damage} max={telemetry_max} health_percent={drone_01_weapons_health_percent}")
     if drone_01_telemetry_intro_sent:
-        await task_schedule(khovan_drone_contact_fire_send_message, {"drone_message_text": f"Artemis - Science: Drone 01's weapons array now reading {drone_01_weapons_health_percent} percent.", "drone_message_breadcrumb": "[KHOVAN ACT1 DRONE 01 TELEMETRY] guarded follow-up report sent"})
+        await task_schedule(khovan_drone_contact_fire_send_message, {"drone_message_text": f"Artemis - Science: {telemetry_drone_name}'s weapons array now reading {drone_01_weapons_health_percent} percent.", "drone_message_breadcrumb": "[KHOVAN ACT1 DRONE 01 TELEMETRY] guarded follow-up report sent"})
         ->END
     # The fiction is true, which is the point: a training hull really is broadcasting
     # its own internals, and a real warship really will not. Said once.
     drone_01_telemetry_intro_sent = True
-    await task_schedule(khovan_drone_contact_fire_send_message, {"drone_message_text": f"Artemis - Science: Drone 01 is a training hull, instrumented to broadcast its own damage telemetry. A live Kralien warship will not do you that courtesy, so read her shields and frequency instead.\nArtemis - Science: Her weapons array is reading {drone_01_weapons_health_percent} percent.", "drone_message_breadcrumb": "[KHOVAN ACT1 DRONE 01 TELEMETRY] guarded first report sent"})
+    await task_schedule(khovan_drone_contact_fire_send_message, {"drone_message_text": f"Artemis - Science: {telemetry_drone_name} is a training hull, instrumented to broadcast its own damage telemetry. A live Kralien warship will not do you that courtesy, so read her shields and frequency instead.\nArtemis - Science: Her weapons array is reading {drone_01_weapons_health_percent} percent.", "drone_message_breadcrumb": "[KHOVAN ACT1 DRONE 01 TELEMETRY] guarded first report sent"})
     ->END
 
 === khovan_drone_01_register_weapons_hit ===
@@ -1214,7 +1224,7 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
     drone_01_subsystem_hit_fallback_available = False
     drone_01_status = "weapons_subsystem_hit_confirmed"
     script.write_khovan_startup_trace(f"[KHOVAN ACT1 DRONE 01 HIT] count={drone_01_weapons_hit_count} of {drone_01_required_weapons_hits} source={hit_source}")
-    await task_schedule(khovan_drone_01_report_weapons_telemetry)
+    await task_schedule(khovan_drone_report_weapons_telemetry, {"telemetry_target_id": drone_01_target_id, "telemetry_drone_name": "Drone 01"})
     # Only worth a running tally when more than one hit is required. At the
     # current one-hit gate the disable confirmation below says everything.
     if drone_01_weapons_hit_count < drone_01_required_weapons_hits:
@@ -1364,6 +1374,11 @@ brain:
     script.write_khovan_startup_trace(f"[KHOVAN ACT1 DRONE 02 SPAWN] target_id={drone_02_target_id} offset_m=10000")
     await task_schedule(khovan_set_current_objective, {"objective_id": "drone_02_live_fire", "objective_body": "Live-fire target away at ten kilometres, and this one shoots back. Captain, engage and destroy it. Shields up, Engineering watch your damage, DAMCON stand ready. All stations coordinate as standard.", "objective_step": "Drone 02 destruction", "objective_breadcrumb": "[KHOVAN OBJECTIVE 021] Drone 02 deployed"})
     await task_schedule(khovan_drone_contact_fire_send_message, {"drone_message_text": drone_02_hostile_warning_text, "drone_message_breadcrumb": "[KHOVAN ACT1 DRONE 02 SPAWN] guarded hostile warning sent"})
+    # Subsystem feedback for the live-fire target. Baseline seeded from the fresh
+    # spawn so a value carried over from Drone 01's drill cannot read as a hit.
+    drone_02_weapons_damage_baseline = 0
+    drone_02_weapons_damage_run_id = drone_02_weapons_damage_run_id + 1
+    task_schedule(khovan_drone_02_watch_weapons_subsystem_damage, {"damage_run_id": drone_02_weapons_damage_run_id})
     ->END
 
 === khovan_act1_story_jump_seed_drone_02_live_fire ===
@@ -1424,6 +1439,42 @@ brain:
     await task_schedule(khovan_drone_02_spawn)
     ->END
 
+=== khovan_drone_02_watch_weapons_subsystem_damage ===
+    # Drone 02 feedback only. Its completion gate is destruction, not a subsystem
+    # disable, so nothing here gates anything - it exists so a crew applying the
+    # Drone 01 lesson under live fire can see it land.
+    #
+    # Needed because the stock Science panel reports 100% on an NPC no matter what
+    # (cookbook 7.3), and because every observer built for this drill was hardcoded
+    # to Drone 01. The stock critical route fires on Drone 02 already, since it gates
+    # on has_role(DAMAGE_TARGET_ID, "raider") and Drone 02 carries that role.
+    #
+    # No grid_damage_system() call here, unlike Drone 01's observer. kralien_cruiser
+    # has no interior, so that call cannot land; Drone 01 keeps it only for a future
+    # hull that does have one.
+    default damage_run_id = drone_02_weapons_damage_run_id
+    if damage_run_id != drone_02_weapons_damage_run_id:
+        ->END
+    if not drone_02_active or drone_02_destroyed:
+        ->END
+    if drone_02_target_id == 0:
+        drone_02_weapons_damage_observer_status = "stopped_missing_drone_id"
+        ->END
+    drone_02_object = to_object(drone_02_target_id)
+    if drone_02_object is None:
+        drone_02_weapons_damage_observer_status = "stopped_missing_drone_object"
+        ->END
+    current_drone_02_weapons_damage = drone_02_object.data_set.get("system_damage", sbs.SHPSYS.WEAPONS)
+    if current_drone_02_weapons_damage is None:
+        current_drone_02_weapons_damage = 0
+    if current_drone_02_weapons_damage > drone_02_weapons_damage_baseline:
+        drone_02_weapons_damage_baseline = current_drone_02_weapons_damage
+        drone_02_weapons_damage_observer_status = "weapons_subsystem_damage_increase_observed"
+        script.write_khovan_startup_trace(f"[KHOVAN ACT1 DRONE 02 SUBSYSTEM] weapons_damage={current_drone_02_weapons_damage}")
+        await task_schedule(khovan_drone_report_weapons_telemetry, {"telemetry_target_id": drone_02_target_id, "telemetry_drone_name": "Drone 02"})
+    await delay_sim(seconds=1)
+    jump khovan_drone_02_watch_weapons_subsystem_damage
+
 === khovan_drone_02_cleanup ===
     if drone_02_navproxy_id != 0:
         sim.delete_navproxy_by_id(drone_02_navproxy_id)
@@ -1437,6 +1488,10 @@ brain:
         sbs.delete_object(drone_02_fleet_id)
         drone_02_fleet_id = 0
     drone_02_hostile_status = "not_started"
+    # Retire the subsystem observer with the drone it was watching.
+    drone_02_weapons_damage_run_id = drone_02_weapons_damage_run_id + 1
+    drone_02_weapons_damage_baseline = 0
+    drone_02_weapons_damage_observer_status = "not_started"
     drone_02_active = False
     drone_02_target_id = 0
     drone_02_status = "cleaned_up_not_a_completion"
