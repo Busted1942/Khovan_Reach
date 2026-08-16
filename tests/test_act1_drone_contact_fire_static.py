@@ -1137,21 +1137,34 @@ class Act1DroneContactFireStaticTests(unittest.TestCase):
         self.assertIn("hull_has_no_interior_science_reads_100_percent", spawn_body)
         self.assertIn("if len(drone_01_grid_interior) == 0:", spawn_body)
 
-        observer_body = label_body(drone, "khovan_drone_01_watch_weapons_subsystem_damage")
-        self.assertIn(
-            "grid_damage_system(drone_01_target_id, sbs.SHPSYS.WEAPONS)",
-            observer_body,
-            "the stock crit only writes a summary key; grid_damage_system is the "
-            "built-in that damages a real node and updates the damage coefficients",
-        )
+        # The observer must NOT call grid_damage_system. Live 2026-08-16 21:03: it
+        # triggers grid_apply_system_damage, which overwrites system_damage with an
+        # integer damaged-node count while the stock critical writes a geometric
+        # float series to the same key. The two scales fought and the reported
+        # percentage oscillated (0, 40, 19, 40) instead of stepping down. The stock
+        # critical is the sole writer; the grid is still built at spawn.
+        for observer in [
+            "khovan_drone_01_watch_weapons_subsystem_damage",
+            "khovan_drone_02_watch_weapons_subsystem_damage",
+        ]:
+            observer_body = code_only(label_body(drone, observer))
+            self.assertNotIn(
+                "grid_damage_system(",
+                observer_body,
+                f"{observer} must not write system_damage; the stock critical is the "
+                "sole writer or the percentage series stops being monotonic",
+            )
 
-        # The baseline must be re-seeded after grid damage. grid_apply_system_damage
-        # rewrites system_damage as a damaged-node COUNT, a different scale from the
-        # stock console's geometric 1.35 series - keeping the old baseline would
-        # silently miss the next hit.
-        self.assertIn("rebased_weapons_damage", observer_body)
-        self.assertIn("drone_01_weapons_damage_baseline = rebased_weapons_damage", observer_body)
-        self.assertIn("if rebased_weapons_damage is None:", observer_body)
+        # Each observer re-seeds its baseline from the value read back after the hit,
+        # rather than from the value that triggered it. Kept even with a single writer
+        # so a stale baseline cannot swallow the following hit.
+        drone_01_observer = code_only(label_body(drone, "khovan_drone_01_watch_weapons_subsystem_damage"))
+        self.assertIn("drone_01_weapons_damage_baseline = rebased_weapons_damage", drone_01_observer)
+        self.assertIn("if rebased_weapons_damage is None:", drone_01_observer)
+
+        drone_02_observer = code_only(label_body(drone, "khovan_drone_02_watch_weapons_subsystem_damage"))
+        self.assertIn("drone_02_weapons_damage_baseline = rebased_drone_02_damage", drone_02_observer)
+        self.assertIn("if rebased_drone_02_damage is None:", drone_02_observer)
 
         # A grid is the internal damage model, not combat AI. Drone 01 must not pick
         # up a fleet or brain from this - it stays the passive disable target.
