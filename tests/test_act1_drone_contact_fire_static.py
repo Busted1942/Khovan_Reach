@@ -1085,93 +1085,43 @@ class Act1DroneContactFireStaticTests(unittest.TestCase):
         register = code_only(label_body(drone, "khovan_drone_01_register_weapons_hit"))
         self.assertIn("await task_schedule(khovan_drone_report_weapons_telemetry", register)
 
-    def test_grid_build_is_preflighted_against_the_hull_data(self) -> None:
-        # Live regression 2026-08-16: calling grid_rebuild_grid_objects on a hull with
-        # no interior broke the Science panel outright. data/grid_data.json has an
-        # entry for all 161 hulls but only 40 hold any grid_objects, and every Kralien
-        # warship hull is an empty placeholder.
+    def test_no_grid_is_built_and_the_stock_crit_is_the_sole_damage_writer(self) -> None:
+        # Concluded 2026-08-16 after two live regressions. Building an interior on a
+        # drone was an experiment to get the stock Science panel to show subsystem
+        # damage. It is abandoned, and the code must stay abandoned:
         #
-        # grid_rebuild_grid_objects counts nodes per role and unconditionally writes
-        # the result (internal_damage.py:139-142), so an empty hull writes
-        # system_max_damage = 0 for all four systems. Science divides by it and the
-        # divide-by-zero casts to INT32_MIN: "WEAP -2147483648" where "WEAP 100%" used
-        # to be. An unset key renders 100%; a zero renders garbage.
+        #   1. On a hull with no interior, grid_rebuild_grid_objects wrote
+        #      system_max_damage = 0 and the panel rendered INT32_MIN.
+        #   2. On xim_light_cruiser the interior built correctly (5 weapon nodes) and
+        #      real nodes were marked damaged - the panel still did not move. So the
+        #      panel is not grid-derived and the grid bought nothing. Worse,
+        #      grid_apply_system_damage overwrote system_damage with an integer node
+        #      count that fought the stock critical's geometric float series, and the
+        #      percentage oscillated (80, 60, 40, 0, back to 40) instead of stepping
+        #      down.
+        #
+        # Known-good configuration, live-confirmed by the operator: no grid, stock
+        # critical as the only writer, system_max_damage left at the hull's
+        # hullpoints so the 1.35x series is scaled against the right denominator.
         drone = read(DRONE_PATH)
-        body = code_only(label_body(drone, "khovan_drone_01_spawn"))
+        runtime = code_only(drone)
 
-        self.assertIn('grid_count_grid_data(drone_hull_art, "weapon")', body)
-
-        # The pre-flight key and the spawn hull MUST be the same constant. If they
-        # drift apart the guard checks a hull that is not the one being spawned, and
-        # its answer is worthless - which is precisely the class of mistake that
-        # caused this bug (a check that looked right and proved nothing).
-        self.assertIn("drone_hull_art, \"behav_npcship\"", body)
-
-        # Ordering is the entire fix. A post-call length check cannot help, because
-        # the zeros are already written by the time it runs.
-        preflight = body.index("grid_count_grid_data(")
-        build = body.index("grid_rebuild_grid_objects(")
-        self.assertLess(
-            preflight,
-            build,
-            "the hull must be checked BEFORE the grid is built; checking after is what "
-            "broke the Science panel, since the zeroed system_max_damage is already written",
-        )
-        self.assertIn("if drone_01_grid_weapon_nodes == 0:", body)
-
-    def test_drone_01_gets_a_grid_so_subsystem_damage_reaches_science(self) -> None:
-        # Root cause, live 2026-08-16: Science reported "WEAP 100%" on a drone the
-        # stock console had just announced as "WEAPONS Destroyed". The engine's
-        # subsystem damage model is grid-based - set_damage_coefficients()
-        # (internal_damage.py:410) reads only grid nodes, and with no grid every
-        # coefficient falls through to 1.0. The stock crit writes the system_damage
-        # summary key, which grid_apply_system_damage normally DERIVES from the grid,
-        # so on a gridless NPC nothing reads it back.
-        drone = read(DRONE_PATH)
-        spawn_body = label_body(drone, "khovan_drone_01_spawn")
-        self.assertIn("grid_rebuild_grid_objects(drone_01_target_id)", spawn_body)
-        # Degrades honestly rather than silently, and names which case it is in.
-        # With drone_hull_art = xim_light_cruiser the BUILD branch is the one that
-        # runs; the skip branch is kept for any hull without an interior, which is
-        # every Kralien warship.
-        self.assertIn("hull_has_no_interior_science_reads_100_percent", spawn_body)
-        self.assertIn("if len(drone_01_grid_interior) == 0:", spawn_body)
-
-        # The observer must NOT call grid_damage_system. Live 2026-08-16 21:03: it
-        # triggers grid_apply_system_damage, which overwrites system_damage with an
-        # integer damaged-node count while the stock critical writes a geometric
-        # float series to the same key. The two scales fought and the reported
-        # percentage oscillated (0, 40, 19, 40) instead of stepping down. The stock
-        # critical is the sole writer; the grid is still built at spawn.
-        for observer in [
-            "khovan_drone_01_watch_weapons_subsystem_damage",
-            "khovan_drone_02_watch_weapons_subsystem_damage",
-        ]:
-            observer_body = code_only(label_body(drone, observer))
+        for forbidden in ["grid_rebuild_grid_objects(", "grid_damage_system("]:
             self.assertNotIn(
-                "grid_damage_system(",
-                observer_body,
-                f"{observer} must not write system_damage; the stock critical is the "
-                "sole writer or the percentage series stops being monotonic",
+                forbidden,
+                runtime,
+                f"{forbidden} reintroduces a second writer on system_damage; the "
+                "percentage series stops being monotonic and the panel does not "
+                "improve, which is why this was abandoned",
             )
 
-        # Each observer re-seeds its baseline from the value read back after the hit,
-        # rather than from the value that triggered it. Kept even with a single writer
-        # so a stale baseline cannot swallow the following hit.
-        drone_01_observer = code_only(label_body(drone, "khovan_drone_01_watch_weapons_subsystem_damage"))
-        self.assertIn("drone_01_weapons_damage_baseline = rebased_weapons_damage", drone_01_observer)
-        self.assertIn("if rebased_weapons_damage is None:", drone_01_observer)
-
-        drone_02_observer = code_only(label_body(drone, "khovan_drone_02_watch_weapons_subsystem_damage"))
-        self.assertIn("drone_02_weapons_damage_baseline = rebased_drone_02_damage", drone_02_observer)
-        self.assertIn("if rebased_drone_02_damage is None:", drone_02_observer)
-
-        # A grid is the internal damage model, not combat AI. Drone 01 must not pick
-        # up a fleet or brain from this - it stays the passive disable target.
-        self.assertNotIn("brain_add(", spawn_body)
-        self.assertNotIn("fleet_spawn(", spawn_body)
-
-        self.assertIn("drone_01_grid_status = ", label_body(drone, "khovan_drone_01_reset_flags"))
+        # Both spawns record the decision rather than silently doing nothing.
+        for label in ["khovan_drone_01_spawn", "khovan_drone_02_spawn"]:
+            self.assertIn(
+                "no_grid_by_design_panel_is_not_grid_derived",
+                label_body(drone, label),
+                f"{label} should say why no grid is built, not just omit it",
+            )
 
     def test_player_facing_text_is_ascii_and_uses_no_dash_punctuation(self) -> None:
         # Operator preference 2026-08-16: player-facing lines use commas and full

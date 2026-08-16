@@ -685,6 +685,14 @@ What backs the readout on an NPC is not established. Do not propose a third mech
 
 > **Design consequence while this is unresolved: treat NPC subsystem damage as invisible to Science.** The stock console's own `Potential Critical hit` (yellow), `Critical hit` (red), and `<name> <SYSTEM> Destroyed` (white) broadcasts are the crew's real feedback channel, and they work. Build the drill's coaching around those, and leave Science on shields and frequency, which do work on an NPC. If a drill genuinely needs a visible subsystem degrade, the only path with evidence behind it is a hull that has a real interior (see the 40 below) — and that has not been tested either.
 
+> **CONCLUDED 2026-08-16 — the grid hypothesis is refuted, do not retry it.** The experiment finally ran on `xim_light_cruiser`: the interior built correctly (5 weapon nodes), `grid_damage_system` marked real nodes `__damaged__`, and the panel still did not move. Real, engine-modelled, behaviour-affecting damage with a real grid present, and the readout stayed put. The display is not grid-derived.
+>
+> It also actively broke the working readout. `grid_apply_system_damage` overwrites `system_damage` with an integer damaged-node **count**, while the stock critical writes a geometric **float** series (`cur * 1.35`) to the same key. Two writers, two scales. The observed percentage oscillated — 80, 60, 40, 0, then back up to 40 — instead of stepping down, partly because the damaged-node count itself fell from 5 back to 3 between hits (nodes reverting to undamaged; cause never established).
+>
+> Khovan now builds **no grid** on NPCs. The stock critical is the sole writer, `system_max_damage` stays at the hull's `hullpoints`, and the percentage steps down monotonically. Guarded by `test_no_grid_is_built_and_the_stock_crit_is_the_sole_damage_writer`.
+>
+> The pre-flight rule below is still correct for anyone who has a genuine reason to build a grid. It is kept because the failure it describes is real, not because Khovan does this any more.
+
 #### The failed grid fix, and why the guard is mandatory
 
 The obvious idea is to give the NPC an interior with `grid_rebuild_grid_objects()`. **On most enemy hulls this actively breaks the Science panel.**
