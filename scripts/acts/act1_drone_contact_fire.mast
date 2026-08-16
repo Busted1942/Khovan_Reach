@@ -407,7 +407,7 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
     default drone_message_title = "Instructor"
     default drone_message_color = "cyan"
     default drone_message_breadcrumb = "[KHOVAN ACT1 DRONE MSG] guarded confirmation sent"
-    await task_schedule(khovan_lifeform_send, {"send_lifeform_id": dillon_lifeform_id, "send_sender": "Dillon", "send_title": drone_message_title, "send_text": drone_message_text, "send_title_color": drone_message_color, "send_fallback_sender_id": kestrel_yards_id, "send_breadcrumb": drone_message_breadcrumb})
+    await task_schedule(khovan_lifeform_send, {"send_lifeform_id": dillon_lifeform_id, "send_sender": "Commander Dillon", "send_title": drone_message_title, "send_text": drone_message_text, "send_title_color": drone_message_color, "send_fallback_sender_id": kestrel_yards_id, "send_breadcrumb": drone_message_breadcrumb})
     ->END
 
 === khovan_drone_01_reset_flags ===
@@ -599,7 +599,7 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
         ->END
 
     drone_01_deploy_prompt_sent = True
-    await task_schedule(khovan_lifeform_send, {"send_lifeform_id": dillon_lifeform_id, "send_sender": "Dillon", "send_title": "Instructor", "send_text": drone_01_deploy_prompt_text, "send_title_color": "cyan", "send_fallback_sender_id": kestrel_yards_id, "send_breadcrumb": "[KHOVAN ACT1 DRONE 01 DEPLOY PROMPT] guarded ten-second player message sent"})
+    await task_schedule(khovan_lifeform_send, {"send_lifeform_id": dillon_lifeform_id, "send_sender": "Commander Dillon", "send_title": "Instructor", "send_text": drone_01_deploy_prompt_text, "send_title_color": "cyan", "send_fallback_sender_id": kestrel_yards_id, "send_breadcrumb": "[KHOVAN ACT1 DRONE 01 DEPLOY PROMPT] guarded ten-second player message sent"})
     ->END
 
 === khovan_drone_01_reset ===
@@ -722,6 +722,15 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
     # comes after it.
     await task_schedule(khovan_drone_contact_fire_send_message, {"drone_message_text": drone_01_weapons_lock_next_step_text, "drone_message_breadcrumb": "[KHOVAN ACT1 DRONE 01 HAIL] guarded next-step confirmation sent"})
     await task_schedule(khovan_set_current_objective, {"objective_id": "drone_01_weapons_lock", "objective_body": "Weapons, lock beams on the drone. Helm, bring us between 1 and 2 km and hold us stationary for fifteen seconds.", "objective_step": "Drone 01 lock and range", "objective_breadcrumb": "[KHOVAN OBJECTIVE 018] hail scan relay complete"})
+    # Re-check fire authorization here: Weapons/Helm can finish their lock,
+    # range, and stationary-hold gates before Comms hails (stations run in
+    # parallel). The stationary-hold watcher only calls
+    # khovan_drone_01_authorize_fire once, when ITS gates complete - if hail
+    # was the last gate outstanding at that moment, the watcher found the
+    # block and exited, and nothing else ever re-checked. Without this call,
+    # a crew that locked/held before hailing would sit at "fire blocked"
+    # forever with no further signal after this hail confirmation.
+    await task_schedule(khovan_drone_01_authorize_fire)
     ->END
 
 === khovan_drone_01_watch_stationary_hold ===
@@ -876,7 +885,7 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
         drone_01_status = "weapons_array_disabled_awaiting_ceasefire"
         drone_01_ceasefire_fallback_available = True
         await task_schedule(khovan_drone_contact_fire_send_message, {"drone_message_text": drone_01_weapons_disabled_confirmed_text, "drone_message_breadcrumb": "[KHOVAN ACT1 DRONE 01 DISABLED] guarded confirmation sent"})
-        await task_schedule(khovan_set_current_objective, {"objective_id": "drone_01_ceasefire", "objective_body": "The drone's weapons array is down. Captain, call ceasefire; Comms, confirm it with Dillon.", "objective_step": "Drone 01 ceasefire", "objective_breadcrumb": "[KHOVAN OBJECTIVE 020] Drone 01 Weapons disabled"})
+        await task_schedule(khovan_set_current_objective, {"objective_id": "drone_01_ceasefire", "objective_body": "The drone's weapons array is down. Captain, call ceasefire; Comms, confirm it with Commander Dillon.", "objective_step": "Drone 01 ceasefire", "objective_breadcrumb": "[KHOVAN OBJECTIVE 020] Drone 01 Weapons disabled"})
     ->END
 
 //damage/destroy if has_role(DESTROYED_ID, "khovan_drone_01")
@@ -1005,6 +1014,7 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
     drone_01_status = "science_scan_confirmed"
     script.write_khovan_startup_trace(f"[KHOVAN ACT1 DRONE 01 SCAN] confirmed via Kestrel Comms target_id={drone_01_target_id}")
     await task_schedule(khovan_drone_contact_fire_send_message, {"drone_message_text": drone_01_scan_confirmed_text, "drone_message_breadcrumb": "[KHOVAN ACT1 DRONE 01 SCAN] guarded confirmation sent"})
+    await task_schedule(khovan_drone_01_authorize_fire)
     ->END
 
 === khovan_drone_01_fallback_hail ===
@@ -1016,6 +1026,15 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
     drone_01_status = "comms_hail_confirmed_via_kestrel"
     script.write_khovan_startup_trace(f"[KHOVAN ACT1 DRONE 01 HAIL] confirmed via Kestrel Comms target_id={drone_01_target_id}")
     comms_receive(drone_01_hail_response_text, title="Drone 01", title_color="green")
+    # This route previously stopped here: it never sent the next-step
+    # confirmation or advanced the blue current-objective text, unlike the
+    # direct khovan_drone_01_hail path above. A crew hailed via the Kestrel
+    # fallback stayed on the "Drone away, Science scan the contact" objective
+    # indefinitely even after Weapons/Helm finished their gates - matching
+    # both fixes made to the direct hail handler.
+    await task_schedule(khovan_drone_contact_fire_send_message, {"drone_message_text": drone_01_weapons_lock_next_step_text, "drone_message_breadcrumb": "[KHOVAN ACT1 DRONE 01 HAIL] guarded next-step confirmation sent via Kestrel"})
+    await task_schedule(khovan_set_current_objective, {"objective_id": "drone_01_weapons_lock", "objective_body": "Weapons, lock beams on the drone. Helm, bring us between 1 and 2 km and hold us stationary for fifteen seconds.", "objective_step": "Drone 01 lock and range", "objective_breadcrumb": "[KHOVAN OBJECTIVE 018] hail confirmed via Kestrel"})
+    await task_schedule(khovan_drone_01_authorize_fire)
     ->END
 
 === khovan_drone_01_fallback_shield_relay ===
@@ -1030,6 +1049,7 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
     script.write_khovan_startup_trace(f"[KHOVAN ACT1 DRONE 01 SCAN RELAY] confirmed via Kestrel Comms target_id={drone_01_target_id}")
     await task_schedule(khovan_drone_contact_fire_send_message, {"drone_message_text": drone_01_shield_relay_confirmed_text, "drone_message_breadcrumb": "[KHOVAN ACT1 DRONE 01 SCAN RELAY] guarded confirmation sent"})
     await task_schedule(khovan_set_current_objective, {"objective_id": "drone_01_weapons_lock", "objective_body": "Weapons, lock beams on the drone. Helm, bring us between 1 and 2 km and hold us stationary for fifteen seconds.", "objective_step": "Drone 01 lock and range", "objective_breadcrumb": "[KHOVAN OBJECTIVE 018] shield relay complete"})
+    await task_schedule(khovan_drone_01_authorize_fire)
     ->END
 
 === khovan_drone_01_fallback_weapons_lock ===
@@ -1039,6 +1059,7 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
     script.write_khovan_startup_trace(f"[KHOVAN ACT1 DRONE 01 WEAPONS LOCK] confirmed via Kestrel Comms target_id={drone_01_target_id}")
     task_schedule(khovan_drone_01_watch_stationary_hold, {"hold_run_id": drone_01_stationary_hold_run_id})
     await task_schedule(khovan_drone_contact_fire_send_message, {"drone_message_text": drone_01_weapons_lock_confirmed_text, "drone_message_breadcrumb": "[KHOVAN ACT1 DRONE 01 WEAPONS LOCK] guarded confirmation sent"})
+    await task_schedule(khovan_drone_01_authorize_fire)
     ->END
 
 === khovan_drone_01_fallback_range ===
@@ -1047,6 +1068,7 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
     drone_01_status = "range_confirmed_via_kestrel"
     script.write_khovan_startup_trace(f"[KHOVAN ACT1 DRONE 01 RANGE] confirmed via Kestrel Comms target_id={drone_01_target_id}")
     await task_schedule(khovan_drone_contact_fire_send_message, {"drone_message_text": drone_01_range_confirmed_text, "drone_message_breadcrumb": "[KHOVAN ACT1 DRONE 01 RANGE] guarded confirmation sent"})
+    await task_schedule(khovan_drone_01_authorize_fire)
     ->END
 
 === khovan_drone_01_fallback_stationary_hold ===

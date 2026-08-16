@@ -711,7 +711,7 @@ class Act1DroneContactFireStaticTests(unittest.TestCase):
         drone = read(DRONE_PATH)
         body = label_body(drone, "khovan_drone_contact_fire_send_message")
         self.assertIn('"send_lifeform_id": dillon_lifeform_id', body)
-        self.assertIn('"send_sender": "Dillon"', body)
+        self.assertIn('"send_sender": "Commander Dillon"', body)
         self.assertIn('"send_fallback_sender_id": kestrel_yards_id', body)
         self.assertIn("await task_schedule(khovan_lifeform_send,", body)
 
@@ -749,6 +749,50 @@ class Act1DroneContactFireStaticTests(unittest.TestCase):
         destroy_start = drone.index('//damage/destroy if has_role(DESTROYED_ID, "khovan_drone_02")')
         destroy_body = drone[destroy_start:drone.index("=== khovan_drone_contact_fire_send_cultural_packet ===", destroy_start)]
         self.assertIn("await task_schedule(khovan_drone_contact_fire_send_message,", destroy_body)
+
+    def test_every_gate_completion_rechecks_fire_authorization(self) -> None:
+        # Regression guard for a reported live symptom: the crew got "Beam lock
+        # confirmed" and later a stationary hold, but fire never authorized and
+        # the blue current-objective text stayed frozen on "Drone away, Science
+        # scan the contact" - the very first objective, from before any gate
+        # closed. Root cause: khovan_drone_01_authorize_fire was only invoked
+        # from the stationary-hold watcher (and its Kestrel fallback), so if the
+        # crew locked weapons and held position BEFORE Comms hailed the drone,
+        # the watcher found the hail gate missing, gave up silently, and nothing
+        # ever re-checked once the hail (or any other out-of-order gate)
+        # completed afterward. Every gate-completion path must recheck.
+        drone = read(DRONE_PATH)
+        for label in [
+            "khovan_drone_01_hail",
+            "khovan_drone_01_fallback_scan",
+            "khovan_drone_01_fallback_hail",
+            "khovan_drone_01_fallback_shield_relay",
+            "khovan_drone_01_fallback_weapons_lock",
+            "khovan_drone_01_fallback_range",
+            "khovan_drone_01_fallback_stationary_hold",
+        ]:
+            body = label_body(drone, label)
+            self.assertIn(
+                "await task_schedule(khovan_drone_01_authorize_fire)",
+                body,
+                f"{label} completes a gate and must recheck fire authorization "
+                "in case it was the last gate outstanding",
+            )
+
+    def test_fallback_hail_syncs_the_blue_objective_like_the_direct_hail_route(self) -> None:
+        # Regression guard: the Kestrel "Fallback Hail" route set
+        # drone_01_hail_complete and replied over Comms, but unlike the direct
+        # "Hail Drone 01" button it never sent the next-step confirmation or
+        # advanced current_objective_id past "drone_01_scan" - a crew hailed via
+        # Kestrel stayed on the deploy-time objective text indefinitely even
+        # after Weapons/Helm finished locking and holding.
+        drone = read(DRONE_PATH)
+        body = label_body(drone, "khovan_drone_01_fallback_hail")
+        self.assertIn(
+            'await task_schedule(khovan_drone_contact_fire_send_message, {"drone_message_text": drone_01_weapons_lock_next_step_text',
+            body,
+        )
+        self.assertIn('"objective_id": "drone_01_weapons_lock"', body)
 
     def test_weapons_hit_counting_is_centralized_for_automatic_and_fallback_paths(self) -> None:
         # Both the automatic //damage/object observer and the Kestrel Comms
