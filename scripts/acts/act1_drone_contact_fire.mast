@@ -36,6 +36,28 @@ shared drone_01_stationary_last_z = 0
 shared drone_01_fire_authorized = False
 shared drone_01_manual_system = "none"
 shared drone_01_weapons_hit_count = 0
+# Operator decision 2026-08-16: one confirmed hit, reduced from three.
+#
+# The three-hit gate was written before the stock crit mechanic was read from
+# source. legendarymissions/consoles/manual_weapons.mast:187 rolls
+# random.randint(1,20) == 20 once per PRESS of a subsystem button, so three
+# confirmed hits is ~60 button presses, and manual_weapons.mast:169-173 clears
+# an armed critical whenever the player switches subsystem. One successful
+# critical teaches the lesson the drill exists for; the other two taught
+# patience with a d20.
+#
+# FINDING for the operator, not for the build side to close: design
+# 10_mast_requirements.md section 8.5 gate 9 still reads "three confirmed
+# hits". The doc is design authority and AGENTS.md section 2 forbids editing
+# docs/01_design/ from implementation work - the operator authorized this
+# runtime change and owns the matching doc edit.
+shared drone_01_required_weapons_hits = 1
+# Subsystem-damage observer. Replaces the MANUAL_SYSTEM inventory read that used
+# to drive hit counting - see khovan_drone_01_watch_weapons_subsystem_damage.
+shared drone_01_weapons_damage_baseline = 0
+shared drone_01_weapons_damage_run_id = 0
+shared drone_01_weapons_damage_observer_status = "not_started"
+shared drone_01_science_report_request_sent = False
 shared drone_01_weapons_disabled = False
 shared drone_01_ceasefire_confirmed = False
 shared drone_01_destroyed_in_error = False
@@ -440,6 +462,13 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
     drone_01_fire_authorized = False
     drone_01_manual_system = "none"
     drone_01_weapons_hit_count = 0
+    # Retire any live subsystem-damage watcher and drop its baseline: the respawn is
+    # a different object id, so a carried-over baseline would compare against a
+    # value read from the destroyed drone.
+    drone_01_weapons_damage_run_id = drone_01_weapons_damage_run_id + 1
+    drone_01_weapons_damage_baseline = 0
+    drone_01_weapons_damage_observer_status = "not_started"
+    drone_01_science_report_request_sent = False
     drone_01_weapons_disabled = False
     drone_01_ceasefire_confirmed = False
     drone_01_destroyed_in_error = False
@@ -812,13 +841,45 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
     # crew is first told to go to manual targeting - explaining the critical-hit
     # roll after they have already burned twenty presses is too late to help.
     await task_schedule(khovan_drone_contact_fire_send_message, {"drone_message_text": drone_01_weapons_crit_technique_text, "drone_message_breadcrumb": "[KHOVAN ACT1 DRONE 01 FIRE AUTHORIZED] guarded manual-targeting technique note sent"})
-    await task_schedule(khovan_set_current_objective, {"objective_id": "drone_01_fire_authorized", "objective_body": "You are cleared to fire. Weapons, go to manual targeting and take the drone's weapons array only. Three confirmed hits should disable it. Then cease fire.", "objective_step": "Drone 01 Weapons disable", "objective_breadcrumb": "[KHOVAN OBJECTIVE 019] Drone 01 fire authorized"})
+    # Seed the subsystem-damage baseline and start the observer here rather than at
+    # spawn: any damage before clearance triggers the unauthorized-fire reset, so
+    # there is nothing to count until now, and a watcher running through a reset
+    # would carry a stale baseline across the respawn.
+    drone_01_weapons_damage_baseline = 0
+    drone_object = to_object(drone_01_target_id)
+    if drone_object is not None:
+        seeded_weapons_damage = drone_object.data_set.get("system_damage", sbs.SHPSYS.WEAPONS)
+        if seeded_weapons_damage is not None:
+            drone_01_weapons_damage_baseline = seeded_weapons_damage
+    drone_01_weapons_damage_run_id = drone_01_weapons_damage_run_id + 1
+    drone_01_weapons_damage_observer_status = "watching_weapons_system_damage"
+    task_schedule(khovan_drone_01_watch_weapons_subsystem_damage, {"damage_run_id": drone_01_weapons_damage_run_id})
+    await task_schedule(khovan_set_current_objective, {"objective_id": "drone_01_fire_authorized", "objective_body": "You are cleared to fire. Weapons, go to manual targeting and take the drone's weapons array only. One confirmed critical hit will disable it. Then cease fire.", "objective_step": "Drone 01 Weapons disable", "objective_breadcrumb": "[KHOVAN OBJECTIVE 019] Drone 01 fire authorized"})
     ->END
 
 //damage/object if has_role(DAMAGE_TARGET_ID, "khovan_drone_01")
-    # Read the manual-hit inventory value FIRST. Everything below this line is
-    # bookkeeping; anything that yields before this read risks losing the signal.
-    manual_system = get_inventory_value(DAMAGE_SOURCE_ID, "MANUAL_SYSTEM")
+    # DO NOT reintroduce a MANUAL_SYSTEM read or clear in this handler.
+    #
+    # It used to open with:
+    #     manual_system = get_inventory_value(DAMAGE_SOURCE_ID, "MANUAL_SYSTEM")
+    #     ...
+    #     set_inventory_value(DAMAGE_SOURCE_ID, "MANUAL_SYSTEM", None)
+    # and counted a hit whenever that read came back WEAPONS.
+    #
+    # The stock console owns that inventory pair and races us for it. Its own
+    # //damage/object route (legendarymissions/consoles/manual_weapons.mast:196-207,
+    # matched on the "raider" role which Drone 01 carries) reads MANUAL_SYSTEM and
+    # aborts on `->END if system is None` before applying any subsystem damage. So
+    # whenever this handler won the race, it recorded a hit AND destroyed the
+    # engine's ability to actually damage the subsystem - the operator's exact
+    # 2026-08-16 report: "Hit 1 of 3 confirmed" in Comms with no damaged subsystem
+    # on the drone.
+    #
+    # Hit counting now lives in khovan_drone_01_watch_weapons_subsystem_damage,
+    # which polls the drone's real system_damage value. That is engine truth, it
+    # cannot race the stock console, and it makes a counted hit provably a real
+    # subsystem hit rather than a proxy signal.
+    #
     # Drill survivability (2026-08-09). Design 10_mast_requirements.md section 8.5
     # gate 9 requires "Drone 01 Weapons array disabled in three confirmed hits", but
     # shipData.yaml gives kralien_cruiser "hullpoints": 2 (kralien_battleship 3,
@@ -874,41 +935,78 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
         script.write_khovan_startup_trace(f"[KHOVAN ACT1 DRONE 01 RESET] unauthorized damage target_id={DAMAGE_TARGET_ID}")
         await task_schedule(khovan_drone_01_reset, {"reset_reason": "unauthorized_damage"})
         ->END
-    if manual_system is None:
-        drone_01_subsystem_hit_fallback_available = True
-        drone_01_status = "subsystem_hit_fallback_available"
-        script.write_khovan_startup_trace(f"[KHOVAN ACT1 DRONE 01 DAMAGE] target_id={DAMAGE_TARGET_ID} manual_system=None")
-        ->END
-    drone_01_manual_system = manual_system.name
-    set_inventory_value(DAMAGE_SOURCE_ID, "MANUAL_SYSTEM", None)
-    if drone_01_manual_system != "WEAPONS":
-        drone_01_status = "non_weapons_manual_subsystem_hit"
-        script.write_khovan_startup_trace(f"[KHOVAN ACT1 DRONE 01 DAMAGE] target_id={DAMAGE_TARGET_ID} manual_system={drone_01_manual_system}")
-        ->END
-    await task_schedule(khovan_drone_01_register_weapons_hit, {"hit_source": "automatic_manual_system_observer"})
+    # Science cue on the first authorized hit. "First hit" here is the first beam
+    # that lands after fire clearance, not the first subsystem critical - the
+    # crew can watch shields deplete from the very first shot, and that readout is
+    # what Weapons needs. Hard duplicate-suppressed: the 2026-08-16 trace logged
+    # 186 damage events in a single drill, so an unguarded send here would bury
+    # the Comms channel.
+    if not drone_01_science_report_request_sent:
+        drone_01_science_report_request_sent = True
+        await task_schedule(khovan_drone_contact_fire_send_message, {"drone_message_text": drone_01_science_report_request_text, "drone_message_breadcrumb": "[KHOVAN ACT1 DRONE 01 DAMAGE] guarded Science report request sent"})
     ->END
+
+=== khovan_drone_01_watch_weapons_subsystem_damage ===
+    # Polls the drone's real WEAPONS system_damage and counts every increase as a
+    # confirmed hit. Started by khovan_drone_01_authorize_fire.
+    #
+    # The read is the one already proven on an NPC target by the GM spike handler
+    # above: data_set.get("system_damage", sbs.SHPSYS.WEAPONS), where the second
+    # argument is an INDEX (sbs_utils/mock/sbs.py:570), and the index basis is
+    # WEAPONS=0 / ENGINES=1 / SENSORS=2 / SHIELDS=3 per
+    # sbs_utils/procedural/internal_damage.py:305-309. A key that has never been
+    # written returns None, hence the None-guards.
+    #
+    # Run-ID guarded per AGENTS.md section 4: an Act II pivot or a drill reset
+    # bumps drone_01_weapons_damage_run_id and this watcher retires itself.
+    default damage_run_id = drone_01_weapons_damage_run_id
+    if damage_run_id != drone_01_weapons_damage_run_id:
+        ->END
+    if not drone_01_active or drone_01_weapons_disabled or not drone_01_fire_authorized:
+        ->END
+    if drone_01_target_id == 0:
+        drone_01_weapons_damage_observer_status = "fallback_missing_drone_id"
+        drone_01_subsystem_hit_fallback_available = True
+        ->END
+    drone_object = to_object(drone_01_target_id)
+    if drone_object is None:
+        drone_01_weapons_damage_observer_status = "fallback_missing_drone_object"
+        drone_01_subsystem_hit_fallback_available = True
+        ->END
+
+    current_weapons_damage = drone_object.data_set.get("system_damage", sbs.SHPSYS.WEAPONS)
+    if current_weapons_damage is None:
+        current_weapons_damage = 0
+    if current_weapons_damage > drone_01_weapons_damage_baseline:
+        drone_01_weapons_damage_baseline = current_weapons_damage
+        drone_01_weapons_damage_observer_status = "weapons_subsystem_damage_increase_observed"
+        await task_schedule(khovan_drone_01_register_weapons_hit, {"hit_source": "automatic_weapons_system_damage_observer"})
+        ->END
+
+    await delay_sim(seconds=1)
+    jump khovan_drone_01_watch_weapons_subsystem_damage
 
 === khovan_drone_01_register_weapons_hit ===
     # Single completion path for a confirmed Weapons-array hit, reached from the
-    # automatic //damage/object observer above and from the Kestrel Comms
+    # automatic system_damage observer above and from the Kestrel Comms
     # "Fallback Weapons Hit" route below. Centralizing here guarantees both paths
     # count identically and both send the same Comms-channel acknowledgement -
     # the automatic path previously advanced silently with no Comms confirmation
-    # at all, only the current-objective (blue text) update on the third hit.
-    default hit_source = "automatic_manual_system_observer"
+    # at all, only the current-objective (blue text) update on the final hit.
+    default hit_source = "automatic_weapons_system_damage_observer"
     drone_01_weapons_hit_count = drone_01_weapons_hit_count + 1
     drone_01_subsystem_hit_fallback_available = False
     drone_01_status = "weapons_subsystem_hit_confirmed"
-    script.write_khovan_startup_trace(f"[KHOVAN ACT1 DRONE 01 HIT] count={drone_01_weapons_hit_count} source={hit_source}")
-    await task_schedule(khovan_drone_contact_fire_send_message, {"drone_message_text": f"Artemis - Weapons: Hit {drone_01_weapons_hit_count} of 3 confirmed on Drone 01's weapons array.", "drone_message_breadcrumb": "[KHOVAN ACT1 DRONE 01 HIT] guarded confirmation sent"})
-    # First confirmed hit is where Science gets pulled in: the crew can watch the
-    # drone's shields deplete on the stock scan, and subsystem damage only starts
-    # landing once they are down, so this is the moment the readout is worth
-    # calling. Sent once, on hit 1 only - repeating it on every hit would bury the
-    # hit counter itself.
-    if drone_01_weapons_hit_count == 1:
-        await task_schedule(khovan_drone_contact_fire_send_message, {"drone_message_text": drone_01_science_report_request_text, "drone_message_breadcrumb": "[KHOVAN ACT1 DRONE 01 HIT] guarded Science report request sent"})
-    if drone_01_weapons_hit_count >= 3:
+    script.write_khovan_startup_trace(f"[KHOVAN ACT1 DRONE 01 HIT] count={drone_01_weapons_hit_count} of {drone_01_required_weapons_hits} source={hit_source}")
+    # Only worth a running tally when more than one hit is required. At the
+    # current one-hit gate the disable confirmation below says everything.
+    if drone_01_weapons_hit_count < drone_01_required_weapons_hits:
+        await task_schedule(khovan_drone_contact_fire_send_message, {"drone_message_text": f"Artemis - Weapons: Hit {drone_01_weapons_hit_count} of {drone_01_required_weapons_hits} confirmed on Drone 01's weapons array.", "drone_message_breadcrumb": "[KHOVAN ACT1 DRONE 01 HIT] guarded confirmation sent"})
+        # Re-arm the observer for the next hit. Only when more are needed - past
+        # the gate the drone is destructible again and the watcher must stay down.
+        drone_01_weapons_damage_run_id = drone_01_weapons_damage_run_id + 1
+        task_schedule(khovan_drone_01_watch_weapons_subsystem_damage, {"damage_run_id": drone_01_weapons_damage_run_id})
+    if drone_01_weapons_hit_count >= drone_01_required_weapons_hits:
         drone_01_weapons_disabled = True
         drone_01_status = "weapons_array_disabled_awaiting_ceasefire"
         drone_01_ceasefire_fallback_available = True

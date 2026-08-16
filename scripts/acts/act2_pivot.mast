@@ -158,6 +158,7 @@ shared distress_localized_text = "Artemis - Captain: Source localized. Single ve
     damcon_buff_run_id = damcon_buff_run_id + 1
     drone_contact_sequence_run_id = drone_contact_sequence_run_id + 1
     drone_01_stationary_hold_run_id = drone_01_stationary_hold_run_id + 1
+    drone_01_weapons_damage_run_id = drone_01_weapons_damage_run_id + 1
     script.write_khovan_startup_trace("[KHOVAN ACT2 003] Act I delayed tasks invalidated by generation bump")
     ->END
 

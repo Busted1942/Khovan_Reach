@@ -391,9 +391,9 @@ class Act1DroneContactFireStaticTests(unittest.TestCase):
             'if drone_01_stationary_hold_seconds >= 15:',
             'default hold_run_id = drone_01_stationary_hold_run_id',
             'if hold_run_id != drone_01_stationary_hold_run_id or not drone_01_active:',
-            'manual_system = get_inventory_value(DAMAGE_SOURCE_ID, "MANUAL_SYSTEM")',
-            'if drone_01_manual_system != "WEAPONS":',
-            'if drone_01_weapons_hit_count >= 3:',
+            'current_weapons_damage = drone_object.data_set.get("system_damage", sbs.SHPSYS.WEAPONS)',
+            'if current_weapons_damage > drone_01_weapons_damage_baseline:',
+            'if drone_01_weapons_hit_count >= drone_01_required_weapons_hits:',
             'drone_01_weapons_disabled = True',
             'drone_contact_act2_ready = True',
             'drone_contact_act2_handoff_status = "ready_for_slice07_pivot"',
@@ -557,15 +557,18 @@ class Act1DroneContactFireStaticTests(unittest.TestCase):
         # The Spike Target is the reference configuration and must stay routeless too.
         self.assertNotIn('//enable/science if has_roles(SCIENCE_SELECTED_ID, "khovan_slice06', drone)
 
-    def test_drone_01_hull_is_held_so_three_subsystem_hits_can_land(self) -> None:
-        # Design 10_mast_requirements.md 8.5 gate 9 wants three confirmed Weapons-array
-        # hits, but shipData.yaml gives kralien_cruiser "hullpoints": 2 and manual
-        # subsystem targeting only reaches systems once shields are down. Live
-        # 2026-08-09: destroyed on the first hit. The hull is held at zero accumulated
-        # hits while the drill is live.
+    def test_drone_01_hull_is_held_so_subsystem_hits_can_land(self) -> None:
+        # shipData.yaml gives kralien_cruiser "hullpoints": 2 and manual subsystem
+        # targeting only reaches systems once shields are down. Live 2026-08-09:
+        # destroyed on the first hit. The hull is held at zero accumulated hits
+        # while the drill is live.
+        #
+        # Live 2026-08-16 promoted this from UNPROVEN to working: the trace logged
+        # 87 successful hull restores on one drone before it was finally destroyed,
+        # so writing hull_hit_counter back to 0 does hold the target alive.
         drone = read(DRONE_PATH)
         damage_start = drone.index('//damage/object if has_role(DAMAGE_TARGET_ID, "khovan_drone_01")')
-        damage_end = drone.index('//damage/destroy if has_role(DESTROYED_ID, "khovan_drone_01")', damage_start)
+        damage_end = drone.index("=== khovan_drone_01_watch_weapons_subsystem_damage ===", damage_start)
         body = code_only(drone[damage_start:damage_end])
 
         self.assertIn("if drone_01_active and not drone_01_weapons_disabled:", body)
@@ -575,19 +578,77 @@ class Act1DroneContactFireStaticTests(unittest.TestCase):
         # Weapons array through an intact shield.
         self.assertNotIn("shield_val", body)
 
-        # The manual-hit inventory read has to come before anything else in the
-        # handler, or a yield could lose the signal the whole drill depends on.
-        self.assertLess(
-            body.index('get_inventory_value(DAMAGE_SOURCE_ID, "MANUAL_SYSTEM")'),
-            body.index('set_data_set_value(DAMAGE_TARGET_ID, "hull_hit_counter", 0, 0)'),
-            "MANUAL_SYSTEM must be read before the hull hold",
+        self.assertIn("drone_01_hull_restore_count = 0", label_body(drone, "khovan_drone_01_reset_flags"))
+
+        register_body = label_body(drone, "khovan_drone_01_register_weapons_hit")
+        self.assertIn("if drone_01_weapons_hit_count >= drone_01_required_weapons_hits:", register_body)
+        self.assertIn("drone_01_weapons_disabled = True", register_body)
+
+    def test_damage_handler_never_touches_the_stock_manual_targeting_inventory(self) -> None:
+        # Regression guard for the 2026-08-16 live finding. The stock console owns
+        # MANUAL_SYSTEM / MANUAL_CRITICAL_HIT and has its own //damage/object route
+        # matched on the "raider" role that Drone 01 carries
+        # (legendarymissions/consoles/manual_weapons.mast:196-207). That route reads
+        # MANUAL_SYSTEM and aborts on `->END if system is None` before applying any
+        # subsystem damage.
+        #
+        # Our production handler used to read AND null the same value, so whenever it
+        # won the race it recorded a hit and simultaneously prevented the engine from
+        # actually damaging the subsystem - "Hit 1 of 3 confirmed" with no damaged
+        # subsystem on the target. The production drill must leave that pair alone.
+        #
+        # Scoped to the production handler only: the GM-only spike handler still reads
+        # the inventory pair deliberately, because observing that raw signal is the
+        # entire point of the spike.
+        drone = read(DRONE_PATH)
+        damage_start = drone.index('//damage/object if has_role(DAMAGE_TARGET_ID, "khovan_drone_01")')
+        damage_end = drone.index("=== khovan_drone_01_watch_weapons_subsystem_damage ===", damage_start)
+        body = code_only(drone[damage_start:damage_end])
+
+        for forbidden in ["MANUAL_SYSTEM", "MANUAL_CRITICAL_HIT"]:
+            self.assertNotIn(
+                forbidden,
+                body,
+                f"the production damage handler must not read or clear {forbidden}; "
+                "the stock manual-weapons console owns it and races us for it",
+            )
+
+    def test_subsystem_hit_observer_watches_real_system_damage(self) -> None:
+        # Hit counting reads engine truth rather than a proxy signal, using the
+        # index-based data_set read already proven on an NPC target by the GM spike
+        # handler (WEAPONS=0 per sbs_utils/procedural/internal_damage.py:305-309).
+        drone = read(DRONE_PATH)
+        body = label_body(drone, "khovan_drone_01_watch_weapons_subsystem_damage")
+
+        self.assertIn('drone_object.data_set.get("system_damage", sbs.SHPSYS.WEAPONS)', body)
+        self.assertIn("if current_weapons_damage > drone_01_weapons_damage_baseline:", body)
+        self.assertIn(
+            'await task_schedule(khovan_drone_01_register_weapons_hit, {"hit_source": "automatic_weapons_system_damage_observer"})',
+            body,
         )
 
-        # Holding stops at disable so the ceasefire/cleanup phase behaves normally,
-        # and the three-hit gate itself is untouched.
-        self.assertIn("if drone_01_weapons_hit_count >= 3:", body)
-        self.assertIn("drone_01_weapons_disabled = True", body)
-        self.assertIn("drone_01_hull_restore_count = 0", label_body(drone, "khovan_drone_01_reset_flags"))
+        # None-guard: data_set.get returns None for a key never written, and the
+        # comparison above would raise on None.
+        self.assertIn("if current_weapons_damage is None:", body)
+
+        # Run-ID guard, AGENTS.md section 4.
+        self.assertIn("default damage_run_id = drone_01_weapons_damage_run_id", body)
+        self.assertIn("if damage_run_id != drone_01_weapons_damage_run_id:", body)
+
+        # None-check on the target object, and a fallback armed when it cannot run.
+        self.assertIn("if drone_object is None:", body)
+        self.assertIn("drone_01_subsystem_hit_fallback_available = True", body)
+
+        # Started by fire authorization with a freshly seeded baseline, and retired
+        # on reset so a respawned drone does not inherit a stale comparison value.
+        authorize_body = label_body(drone, "khovan_drone_01_authorize_fire")
+        self.assertIn(
+            "task_schedule(khovan_drone_01_watch_weapons_subsystem_damage, {\"damage_run_id\": drone_01_weapons_damage_run_id})",
+            authorize_body,
+        )
+        reset_body = label_body(drone, "khovan_drone_01_reset_flags")
+        self.assertIn("drone_01_weapons_damage_run_id = drone_01_weapons_damage_run_id + 1", reset_body)
+        self.assertIn("drone_01_weapons_damage_baseline = 0", reset_body)
 
     def test_drone_01_is_hailable_and_answers_the_hail(self) -> None:
         # Second-order effect of removing the //science route, confirmed live and in
@@ -794,19 +855,36 @@ class Act1DroneContactFireStaticTests(unittest.TestCase):
         )
         self.assertIn('"objective_id": "drone_01_weapons_lock"', body)
 
-    def test_science_report_request_fires_on_the_first_confirmed_hit_only(self) -> None:
-        # The crew can watch the drone's shields deplete on the stock scan, and
-        # subsystem damage only lands once they are down, so Science is pulled in
-        # at hit 1. Guarded to hit 1 exactly - repeating it every hit would bury
-        # the "Hit N of 3" counter it is meant to accompany.
+    def test_science_report_request_fires_once_on_the_first_beam_hit(self) -> None:
+        # "First hit" is the first beam that lands after fire clearance, not the
+        # first subsystem critical: the crew can watch shields deplete from the very
+        # first shot, and that readout is what Weapons needs. Tying it to the
+        # critical would also collide with the disable confirmation now that one
+        # critical ends the drill.
+        #
+        # Duplicate suppression is not optional here - the 2026-08-16 trace logged
+        # 186 damage events in a single drill.
         drone = read(DRONE_PATH)
-        body = label_body(drone, "khovan_drone_01_register_weapons_hit")
-        self.assertIn("if drone_01_weapons_hit_count == 1:", body)
+        damage_start = drone.index('//damage/object if has_role(DAMAGE_TARGET_ID, "khovan_drone_01")')
+        damage_end = drone.index("=== khovan_drone_01_watch_weapons_subsystem_damage ===", damage_start)
+        body = code_only(drone[damage_start:damage_end])
+
+        self.assertIn("if not drone_01_science_report_request_sent:", body)
+        self.assertIn("drone_01_science_report_request_sent = True", body)
         self.assertIn(
             'await task_schedule(khovan_drone_contact_fire_send_message, {"drone_message_text": drone_01_science_report_request_text',
             body,
         )
+        self.assertLess(
+            body.index("drone_01_science_report_request_sent = True"),
+            body.index("drone_message_text\": drone_01_science_report_request_text"),
+            "the suppression flag must be set before the send, not after",
+        )
         self.assertIn("shared drone_01_science_report_request_text = ", drone)
+        self.assertIn(
+            "drone_01_science_report_request_sent = False",
+            label_body(drone, "khovan_drone_01_reset_flags"),
+        )
 
     def test_manual_targeting_coaching_matches_the_stock_crit_mechanic(self) -> None:
         # Accuracy guard on player-facing training text. The stock console
@@ -838,25 +916,23 @@ class Act1DroneContactFireStaticTests(unittest.TestCase):
         )
 
     def test_weapons_hit_counting_is_centralized_for_automatic_and_fallback_paths(self) -> None:
-        # Both the automatic //damage/object observer and the Kestrel Comms
+        # Both the automatic system_damage observer and the Kestrel Comms
         # "Fallback Weapons Hit" route must land on the same completion label, so
         # they count identically and both produce the same Comms acknowledgement -
         # previously the fallback route incremented drone_01_weapons_hit_count
         # through its own separate, unacknowledged copy of the logic, and the
         # automatic path never acknowledged in Comms at all.
         drone = read(DRONE_PATH)
-        damage_start = drone.index('//damage/object if has_role(DAMAGE_TARGET_ID, "khovan_drone_01")')
-        damage_end = drone.index("=== khovan_drone_01_register_weapons_hit ===", damage_start)
-        damage_body = drone[damage_start:damage_end]
+        observer_body = label_body(drone, "khovan_drone_01_watch_weapons_subsystem_damage")
         self.assertIn(
-            'await task_schedule(khovan_drone_01_register_weapons_hit, {"hit_source": "automatic_manual_system_observer"})',
-            damage_body,
+            'await task_schedule(khovan_drone_01_register_weapons_hit, {"hit_source": "automatic_weapons_system_damage_observer"})',
+            observer_body,
         )
-        self.assertNotIn("drone_01_weapons_hit_count = drone_01_weapons_hit_count + 1", code_only(damage_body))
+        self.assertNotIn("drone_01_weapons_hit_count = drone_01_weapons_hit_count + 1", code_only(observer_body))
 
         register_body = label_body(drone, "khovan_drone_01_register_weapons_hit")
         self.assertIn("drone_01_weapons_hit_count = drone_01_weapons_hit_count + 1", register_body)
-        self.assertIn("if drone_01_weapons_hit_count >= 3:", register_body)
+        self.assertIn("if drone_01_weapons_hit_count >= drone_01_required_weapons_hits:", register_body)
 
         fallback_body = label_body(drone, "khovan_drone_01_fallback_weapons_hit")
         self.assertIn(
