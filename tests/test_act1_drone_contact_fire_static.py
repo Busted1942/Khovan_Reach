@@ -1104,16 +1104,32 @@ class Act1DroneContactFireStaticTests(unittest.TestCase):
         # critical as the only writer, system_max_damage left at the hull's
         # hullpoints so the 1.35x series is scaled against the right denominator.
         drone = read(DRONE_PATH)
-        runtime = code_only(drone)
 
-        for forbidden in ["grid_rebuild_grid_objects(", "grid_damage_system("]:
-            self.assertNotIn(
-                forbidden,
-                runtime,
-                f"{forbidden} reintroduces a second writer on system_damage; the "
-                "percentage series stops being monotonic and the panel does not "
-                "improve, which is why this was abandoned",
-            )
+        # Scoped to the PRODUCTION drone path. The GM-only control experiment
+        # (khovan_subsys_control_*) deliberately calls both of these - that is the
+        # whole point of a control, and it is gated behind gamemaster + test_mode.
+        production_labels = [
+            "khovan_drone_01_spawn",
+            "khovan_drone_02_spawn",
+            "khovan_drone_01_watch_weapons_subsystem_damage",
+            "khovan_drone_02_watch_weapons_subsystem_damage",
+        ]
+        for label in production_labels:
+            body = code_only(label_body(drone, label))
+            for forbidden in ["grid_rebuild_grid_objects(", "grid_damage_system("]:
+                self.assertNotIn(
+                    forbidden,
+                    body,
+                    f"{forbidden} in {label} reintroduces a second writer on "
+                    "system_damage; the percentage series stops being monotonic and "
+                    "the panel does not improve, which is why this was abandoned",
+                )
+
+        # The control experiment must stay GM-gated so it can never reach a crew.
+        self.assertIn(
+            '//comms/gamemaster/khovan_subsys_control if has_roles(COMMS_ORIGIN_ID, "gamemaster") and test_mode_enabled',
+            drone,
+        )
 
         # Both spawns record the decision rather than silently doing nothing.
         for label in ["khovan_drone_01_spawn", "khovan_drone_02_spawn"]:

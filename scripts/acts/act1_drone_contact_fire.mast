@@ -35,6 +35,9 @@ shared subsys_control_active = False
 shared subsys_control_target_id = 0
 shared subsys_control_status = "not_started"
 shared subsys_control_last_reading = "not_read"
+shared subsys_control_variant = "none"
+shared subsys_control_forced_damage = 0
+shared subsys_control_node_count = 0
 shared drone_01_active = False
 shared drone_01_target_id = 0
 shared drone_01_navproxy_id = 0
@@ -233,9 +236,18 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
     + "Cleanup Target Spike" khovan_drone_contact_fire_cleanup_target_spike if drone_target_spike_active or drone_target_spike_destroyed_observed
     + "Authorize Drone 01 Fire (test)" khovan_drone_01_test_authorize_fire if drone_01_active and not drone_01_fire_authorized
     + "Cleanup Drone 02" khovan_drone_02_cleanup if drone_02_active
-    + "SUBSYS TEST: Spawn Bare Enemy" khovan_subsys_control_spawn if not subsys_control_active
-    + "SUBSYS TEST: Read Blob vs Panel" khovan_subsys_control_report if subsys_control_active
-    + "SUBSYS TEST: Cleanup" khovan_subsys_control_cleanup if subsys_control_active
+    + "Subsystem Panel Test" //comms/gamemaster/khovan_subsys_control
+
+//comms/gamemaster/khovan_subsys_control if has_roles(COMMS_ORIGIN_ID, "gamemaster") and test_mode_enabled
+    + "Back" //comms/gamemaster/khovan_drone_contact_fire_spike
+    + "V1 Bare stock kralien" khovan_subsys_control_spawn_v1
+    + "V2 Xim hull (has interior)" khovan_subsys_control_spawn_v2
+    + "V3 Xim plus khovan role" khovan_subsys_control_spawn_v3
+    + "Build interior on target" khovan_subsys_control_build_grid if subsys_control_active
+    + "Force GRID damage" khovan_subsys_control_force_grid_damage if subsys_control_active
+    + "Force BLOB write" khovan_subsys_control_force_blob_write if subsys_control_active
+    + "Read blob vs panel" khovan_subsys_control_report if subsys_control_active
+    + "Cleanup control target" khovan_subsys_control_cleanup if subsys_control_active
 
 === khovan_act1_initialize_drone_contact_fire ===
     drone_contact_fire_initialized = True
@@ -288,64 +300,112 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
 === khovan_subsys_control_spawn ===
     # CONTROL EXPERIMENT, operator-proposed 2026-08-16.
     #
-    # The question this exists to answer, and nothing else: does the stock Science
-    # panel EVER show a decreasing subsystem percentage on an NPC? Three theories
-    # about why it does not have now been wrong, all of them reasoned rather than
-    # measured, so this stops theorising and establishes the baseline.
+    # One question: does the stock Science panel EVER show a decreasing subsystem
+    # percentage on an NPC? Three mechanisms have been proposed today and all three
+    # were wrong, every one reasoned from source rather than measured against the
+    # panel. This establishes a known-good baseline instead of theorising a fourth.
     #
-    # Deliberately the most stock enemy this mission can produce. Compare against
-    # khovan_drone_01_spawn to see everything it is NOT doing:
-    #   - roles are exactly "kralien, raider", no khovan_* role
-    #   - kralien_cruiser, the stock hull, not drone_hull_art
-    #   - no navproxy, no scan link, no selection forcing
-    #   - no grid build, no grid_damage_system
-    #   - no polling observer, no hull hold, no fleet, no brain
-    #
-    # Spawned 1.2 km off Artemis because the Manual Weapons subsystem buttons only
-    # render inside 2 km (manual_weapons.mast:108). The existing GM Target Spike is
-    # equally bare but sits at 32 km, which makes it useless for this test.
-    #
-    # If this target's WEAP percentage falls on the Science panel, then something
-    # Khovan does to its drones breaks it, and we bisect by adding one difference
-    # at a time. If it stays pinned at 100%, the panel does not report NPC subsystem
-    # damage at all and no amount of mission code will change that.
+    # Built as GM-selectable variants because Cosmos has NO hot reload. The trace
+    # shows a fresh "script.py entered" before every single run, so a code edit
+    # costs a full mission restart. Everything worth testing is therefore chosen at
+    # runtime, and the whole matrix can be walked inside one load.
+    default control_hull = "kralien_cruiser"
+    default control_roles = "kralien, raider"
+    default control_label = "V1 bare stock"
+    if subsys_control_active:
+        await task_schedule(khovan_subsys_control_cleanup)
     artemis_object = to_object(artemis_id)
     if artemis_object is None:
         subsys_control_status = "blocked_no_artemis"
         ->END
-    subsys_control_target = npc_spawn(artemis_object.pos.x + 1200, artemis_object.pos.y, artemis_object.pos.z, "Control Target", "kralien, raider", "kralien_cruiser", "behav_npcship")
+    # 1.2 km, because the Manual Weapons subsystem buttons only render inside 2 km
+    # (manual_weapons.mast:108). The existing GM Target Spike is equally bare but
+    # sits at 32 km, which is why it was never usable for this test.
+    subsys_control_target = npc_spawn(artemis_object.pos.x + 1200, artemis_object.pos.y, artemis_object.pos.z, "Control Target", control_roles, control_hull, "behav_npcship")
     subsys_control_target_id = to_id(subsys_control_target)
     if subsys_control_target_id == 0:
         subsys_control_status = "spawn_failed"
         ->END
     subsys_control_active = True
-    subsys_control_status = "spawned_bare_stock_enemy_at_1200m"
-    script.write_khovan_startup_trace(f"[KHOVAN SUBSYS CONTROL] bare stock enemy spawned target_id={subsys_control_target_id}")
+    subsys_control_variant = control_label
+    subsys_control_forced_damage = 0
+    subsys_control_status = f"spawned:{control_label}"
+    script.write_khovan_startup_trace(f"[KHOVAN SUBSYS CONTROL] spawned {control_label} hull={control_hull} roles={control_roles} target_id={subsys_control_target_id}")
     with comms_override(COMMS_ORIGIN_ID, COMMS_ORIGIN_ID, from_name="Khovan Subsystem Control"):
-        comms_receive("Bare stock Kralien cruiser spawned 1.2 km off the bow. Nothing Khovan-specific is attached to it.\n\nScience: select it and watch WEAP percent.\nWeapons: Manual, press its weapons button until the yellow critical, then fire.\n\nThen use Read Blob vs Panel to compare the engine values against what Science displays.", title="Khovan Subsystem Control", title_color="cyan")
-    comms_navigate("//comms/gamemaster/khovan_drone_contact_fire_spike")
+        comms_receive(f"{control_label} spawned 1.2 km off the bow.\nhull {control_hull}\nroles {control_roles}\n\nScience: select it and watch WEAP percent.\n\nYou do not need to fire. Force Grid Damage and Force Blob Write change its state directly, then Read Blob vs Panel.", title="Khovan Subsystem Control", title_color="cyan")
+    comms_navigate("//comms/gamemaster/khovan_subsys_control")
+    ->END
+
+=== khovan_subsys_control_spawn_v1 ===
+    await task_schedule(khovan_subsys_control_spawn, {"control_hull": "kralien_cruiser", "control_roles": "kralien, raider", "control_label": "V1 bare stock kralien"})
+    ->END
+
+=== khovan_subsys_control_spawn_v2 ===
+    await task_schedule(khovan_subsys_control_spawn, {"control_hull": "xim_light_cruiser", "control_roles": "kralien, raider", "control_label": "V2 xim hull, has interior"})
+    ->END
+
+=== khovan_subsys_control_spawn_v3 ===
+    await task_schedule(khovan_subsys_control_spawn, {"control_hull": "xim_light_cruiser", "control_roles": "kralien, raider, khovan_drone_control", "control_label": "V3 xim plus khovan role"})
+    ->END
+
+=== khovan_subsys_control_build_grid ===
+    # Separates "does an interior exist" from "does damaging it move the panel".
+    control_object = to_object(subsys_control_target_id)
+    if control_object is None:
+        subsys_control_status = "grid_skipped_no_target"
+        ->END
+    grid_rebuild_grid_objects(subsys_control_target_id)
+    subsys_control_node_count = len(grid_objects(subsys_control_target_id))
+    subsys_control_status = f"grid_built_nodes_{subsys_control_node_count}"
+    script.write_khovan_startup_trace(f"[KHOVAN SUBSYS CONTROL] grid built nodes={subsys_control_node_count}")
+    with comms_override(COMMS_ORIGIN_ID, COMMS_ORIGIN_ID, from_name="Khovan Subsystem Control"):
+        comms_receive(f"Interior built. node_count {subsys_control_node_count}\n\nZero means this hull has no interior, so grid damage cannot apply to it.", title="Khovan Subsystem Control", title_color="cyan")
+    comms_navigate("//comms/gamemaster/khovan_subsys_control")
+    ->END
+
+=== khovan_subsys_control_force_grid_damage ===
+    # Damages a real weapon node using the stock built-in, no shooting required.
+    # The cleanest possible test of "does grid damage move the panel".
+    control_object = to_object(subsys_control_target_id)
+    if control_object is None:
+        ->END
+    control_landed = grid_damage_system(subsys_control_target_id, sbs.SHPSYS.WEAPONS)
+    subsys_control_status = f"forced_grid_damage_landed_{control_landed}"
+    script.write_khovan_startup_trace(f"[KHOVAN SUBSYS CONTROL] forced grid damage landed={control_landed}")
+    await task_schedule(khovan_subsys_control_report)
+    ->END
+
+=== khovan_subsys_control_force_blob_write ===
+    # Writes system_damage directly, which is exactly what the stock critical does,
+    # with no console and no beam involved. If the panel does not move for this
+    # either, the panel does not read this key and the question is settled.
+    control_object = to_object(subsys_control_target_id)
+    if control_object is None:
+        ->END
+    subsys_control_forced_damage = subsys_control_forced_damage + 1
+    set_data_set_value(subsys_control_target_id, "system_damage", subsys_control_forced_damage, sbs.SHPSYS.WEAPONS)
+    subsys_control_status = f"forced_blob_write_{subsys_control_forced_damage}"
+    script.write_khovan_startup_trace(f"[KHOVAN SUBSYS CONTROL] forced blob write system_damage={subsys_control_forced_damage}")
+    await task_schedule(khovan_subsys_control_report)
     ->END
 
 === khovan_subsys_control_report ===
-    # Prints the raw blob values beside a reminder to read the panel, so the two can
-    # be compared in the same instant. This is the measurement that has been missing:
-    # every previous conclusion inferred what the panel showed rather than pairing it
-    # with the engine state at the same moment.
+    # Prints engine state so it can be read against the panel in the same instant.
+    # That pairing is the measurement every earlier conclusion was missing.
     control_object = to_object(subsys_control_target_id)
     if control_object is None:
         with comms_override(COMMS_ORIGIN_ID, COMMS_ORIGIN_ID, from_name="Khovan Subsystem Control"):
             comms_receive("Control target is gone.", title="Khovan Subsystem Control", title_color="yellow")
-        comms_navigate("//comms/gamemaster/khovan_drone_contact_fire_spike")
+        comms_navigate("//comms/gamemaster/khovan_subsys_control")
         ->END
     control_weap = control_object.data_set.get("system_damage", sbs.SHPSYS.WEAPONS)
-    control_engn = control_object.data_set.get("system_damage", sbs.SHPSYS.ENGINES)
     control_weap_max = control_object.data_set.get("system_max_damage", sbs.SHPSYS.WEAPONS)
-    control_engn_max = control_object.data_set.get("system_max_damage", sbs.SHPSYS.ENGINES)
-    subsys_control_last_reading = f"WEAP {control_weap} / {control_weap_max}, ENGN {control_engn} / {control_engn_max}"
-    script.write_khovan_startup_trace(f"[KHOVAN SUBSYS CONTROL] blob reading {subsys_control_last_reading}")
+    control_nodes = len(grid_objects(subsys_control_target_id))
+    subsys_control_last_reading = f"system_damage {control_weap} of {control_weap_max}, grid nodes {control_nodes}"
+    script.write_khovan_startup_trace(f"[KHOVAN SUBSYS CONTROL] {subsys_control_variant} blob {subsys_control_last_reading}")
     with comms_override(COMMS_ORIGIN_ID, COMMS_ORIGIN_ID, from_name="Khovan Subsystem Control"):
-        comms_receive(f"ENGINE BLOB SAYS\n{subsys_control_last_reading}\n\nNow read the Science panel for the same contact.\n\nIf the blob shows damage and the panel still reads 100 percent, the panel does not report NPC subsystem damage and this is not something mission code can fix.", title="Khovan Subsystem Control", title_color="cyan")
-    comms_navigate("//comms/gamemaster/khovan_drone_contact_fire_spike")
+        comms_receive(f"{subsys_control_variant}\n\nENGINE SAYS\n{subsys_control_last_reading}\n\nNow read the Science panel for this contact. If the engine shows damage and the panel still reads 100 percent, the panel does not report NPC subsystem damage.", title="Khovan Subsystem Control", title_color="cyan")
+    comms_navigate("//comms/gamemaster/khovan_subsys_control")
     ->END
 
 === khovan_subsys_control_cleanup ===
@@ -353,9 +413,10 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
         sbs.delete_object(subsys_control_target_id)
     subsys_control_target_id = 0
     subsys_control_active = False
+    subsys_control_forced_damage = 0
+    subsys_control_node_count = 0
     subsys_control_status = "cleaned_up"
     script.write_khovan_startup_trace("[KHOVAN SUBSYS CONTROL] cleaned up")
-    comms_navigate("//comms/gamemaster/khovan_drone_contact_fire_spike")
     ->END
 
 === khovan_drone_contact_fire_spawn_target_spike ===
