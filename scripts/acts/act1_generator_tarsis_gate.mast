@@ -402,9 +402,11 @@ shared tarsis_resupply_text = "Artemis - Captain: Authorization packet closed ou
         kestrel_yards_id = to_id(kestrel_yards)
         set_face(kestrel_yards_id, random_terran(civilian=True))
         sim.add_navproxy(kestrel_yards_id, "Kestrel Yards", "starbase_command", "#4A7")
-    add_role(kestrel_yards_id, "Station")
     # Kestrel starts as a mechanical hold, not a Legendary docking transition.
+    # Its custom Comms block must be the only menu owner, so never leave either
+    # generic station role on it outside the one-shot docking-helper pass.
     remove_role(kestrel_yards_id, "station")
+    remove_role(kestrel_yards_id, "Station")
     add_role(kestrel_yards_id, "kestrel_yards")
     kestrel_roles = to_object(kestrel_yards_id).get_roles()
     script.write_khovan_startup_trace(f"[KHOVAN ACT1 COMMS 003] Kestrel standard station setup complete roles={kestrel_roles}")
@@ -436,7 +438,7 @@ shared tarsis_resupply_text = "Artemis - Captain: Authorization packet closed ou
         # The standard docking helper has completed. Kestrel uses a mechanical
         # departure hold, so it must finish without the stock station role: the
         # custom Khovan Comms route owns its opening panel.
-        add_role(kestrel_yards_id, "station")
+        remove_role(kestrel_yards_id, "station")
         remove_role(kestrel_yards_id, "Station")
         add_role(kestrel_yards_id, "kestrel_yards")
         kestrel_comms_options_status = "stock_station_role_cleared_kestrel_yards_retained_for_khovan_comms"

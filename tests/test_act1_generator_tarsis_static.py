@@ -426,8 +426,8 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             'sim.add_navproxy(kestrel_yards_id, "Kestrel Yards", "starbase_command", "#4A7")',
             "set_face(tarsis_station_id, random_terran(civilian=True))",
             'sim.add_navproxy(tarsis_station_id, "Tarsis Station", "starbase_command", "#4A7")',
-            'add_role(kestrel_yards_id, "Station")',
             'remove_role(kestrel_yards_id, "station")',
+            'remove_role(kestrel_yards_id, "Station")',
             'add_role(tarsis_station_id, "Station")',
             'remove_role(tarsis_station_id, "station")',
             'add_role(kestrel_yards_id, "kestrel_yards")',
@@ -440,8 +440,6 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             "[KHOVAN ACT1 DOCK 001] docking setup scheduled",
             "[KHOVAN ACT1 DOCK 001K] Kestrel Legendary docking helper skipped for startup mechanical hold fallback",
             "await task_schedule(docking_standard_player_station)",
-            'add_role(kestrel_yards_id, "station")',
-            'add_role(kestrel_yards_id, "Station")',
             'add_role(kestrel_yards_id, "kestrel_yards")',
             'kestrel_comms_options_status = "stock_station_role_cleared_kestrel_yards_retained_for_khovan_comms"',
             "[KHOVAN ACT1 COMMS 003B] Kestrel stock station role cleared; kestrel_yards retained for Khovan Comms options",
@@ -481,6 +479,18 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             "khovan_station_comms_docking_kernel_init",
         ]:
             self.assertNotIn(forbidden, body)
+
+    def test_kestrel_final_roles_exclude_stock_station_comms_owner(self) -> None:
+        """Kestrel's Khovan route must own the option panel after setup."""
+        setup_body = label_body(read(ACT1_PATH), "khovan_act1_setup_kestrel_and_tarsis_contacts")
+        post_helper = setup_body[setup_body.index("await task_schedule(docking_standard_player_station)"):]
+        post_helper = post_helper[:post_helper.index("if tarsis_station_id != 0:")]
+
+        self.assertIn('remove_role(kestrel_yards_id, "station")', post_helper)
+        self.assertIn('remove_role(kestrel_yards_id, "Station")', post_helper)
+        self.assertIn('add_role(kestrel_yards_id, "kestrel_yards")', post_helper)
+        self.assertNotIn('add_role(kestrel_yards_id, "station")', post_helper)
+        self.assertNotIn('add_role(kestrel_yards_id, "Station")', post_helper)
 
     def test_kestrel_start_hold_skips_transition_only_docking_helper(self) -> None:
         act1 = read(ACT1_PATH)
