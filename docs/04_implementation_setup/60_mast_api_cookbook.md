@@ -604,7 +604,14 @@ Consequences, all of which affect scenario design and not just code:
   - So "4X gives more critical chances" is wrong, and "beam rate doesn't matter" is also wrong. The accurate framing is *arming is free and fire-rate-independent; delivery rides on your beam fire.* This distinction was got wrong in this repo first in one direction and then the other (2026-08-16).
 - Expect **~20 presses per critical**. A design gate asking for N confirmed subsystem hits is asking for roughly 20N button presses.
 - **Switching subsystem throws away an armed critical** (the `_manual_system != latest_target` branch). A crew alternating between Weapons and Engines destroys its own progress and sees `"Lost Critical hit, chance"`.
-- Once armed, the critical waits for the next beam hit on that target to be consumed.
+- **A critical bypasses shields entirely.** **[LIVE]**, operator-validated 2026-08-16. It lands on the named subsystem with shields fully up; the crew never has to strip them first. Nothing in `manual_weapons.mast` checks shields, and the belief that it did was asserted in four places in this repo — three comments and one player-facing Science line that told crews to wait for something they never needed to wait for. Do not gate a subsystem drill on shields being down.
+- **An armed critical is consumed by a hit on ANY target carrying the gating role**, not only the one it was armed against. The route is `//damage/object if has_role(DAMAGE_TARGET_ID, "raider")`, and it clears `MANUAL_CRITICAL_HIT` *before* the `->END if target_id != DAMAGE_TARGET_ID` match check. With two raiders in range, a stray automatic beam on the wrong one silently burns the crit. Irrelevant to a single-target drill; a real hazard in a multi-hostile fight.
+
+Console UI facts that shape what you can tell a crew to do (`manual_weapons.mast:89-158`):
+
+- **The subsystem buttons only exist inside 2 km.** `jump manual_weapons_minimize if dist > 2000` collapses the panel beyond that. Any coaching that says "press the subsystem button" must first get the ship inside 2 km, or the button the crew is told to find is not on screen.
+- **There are exactly three buttons: `weapons`, `engine`, `sensors`.** There is no shields button, despite `SHPSYS` having a `SHIELDS` member. Never write "target any of her subsystems" — it sends the crew hunting for a control that does not exist.
+- The `Manual` control is a checkbox at the bottom-left of the Weapons console, and `MANUAL_BEAMS_ON` must be true before the buttons render at all.
 
 ### Recommended: count subsystem hits from `system_damage`, not from the inventory pair
 
@@ -653,13 +660,32 @@ Do **not** restore shields (`shield_val`) alongside the hull. Not because subsys
 
 Stop restoring the hull the moment the drill's gate is satisfied, or the target becomes unkillable for the cleanup phase that follows. And watch the restore count: a hold that fires constantly means the crew is effectively shooting an invincible target, which is its own bad lesson. Treat a high count as a signal to re-examine the drill's length, not as proof the hold is working.
 
-### Why Science reads 100% on a damaged NPC, and why "fixing" it can break the panel
+### Science reads 100% on a damaged NPC. You cannot fix this, and trying breaks the panel.
 
-**[LIVE]** Operator-observed 2026-08-16, both the cause and the failed fix.
+**[LIVE]** Operator-observed 2026-08-16 across several runs, including two failed fixes. Read this whole section before attempting a third.
 
-Science shows `WEAP 100%` on an NPC even after the stock console announces `WEAPONS Destroyed`. The engine's subsystem damage model is **grid-based**: `set_damage_coefficients()` (`internal_damage.py:410`) reads only grid nodes, and with no grid the node count is zero and every coefficient falls through to `1.0`. Meanwhile the stock manual crit writes `system_damage` directly, but that key is a *derived summary* that `grid_apply_system_damage()` normally computes **from** the grid. Nothing reads it back. On a gridless NPC the stock critical is effectively cosmetic: real messages, no modelled damage.
+Science shows `WEAP 100%` on an NPC even after the stock console announces `WEAPONS Destroyed`. The stock crit mechanic is working; the readout simply does not reflect it.
 
-The obvious fix is to give the NPC an interior with `grid_rebuild_grid_objects()`. **On most enemy hulls this makes things worse, not better.**
+**The panel does not read `system_damage` / `system_max_damage`.** This is settled by direct measurement, not inference. The same live run logged:
+
+```text
+[KHOVAN ACT1 DRONE 01 SUBSYSTEM] weapons_damage=1.35  weapons_max_damage=2.0
+```
+
+…while the panel displayed `WEAP 100%`. If it divided those two values it would have shown roughly 32% or 67%. It showed neither. Both keys hold live, sensible data — the engine sets `system_max_damage = 2.0` on its own, and the stock console writes `system_damage` on every crit — and the readout ignores them.
+
+Two mechanisms were proposed and **both were wrong**, each disproved by evidence rather than by review:
+
+1. *"The panel is grid-derived, so give the NPC a grid."* Broke the panel outright (below). Even after the grid was correctly skipped, the readout stayed at 100%, so the grid was never the mechanism.
+2. *"`system_max_damage` must be unset; supply a denominator."* The trace shows it was already `2.0`. There was nothing to supply.
+
+What backs the readout on an NPC is not established. Do not propose a third mechanism without a measurement that distinguishes it — this failure mode is unusually good at producing plausible theories.
+
+> **Design consequence: treat NPC subsystem damage as invisible to Science.** The stock console's own `Potential Critical hit` (yellow), `Critical hit` (red), and `<name> <SYSTEM> Destroyed` (white) broadcasts are the crew's real feedback channel, and they work. Build the drill's coaching around those, and leave Science on shields and frequency, which do work on an NPC. If a drill genuinely needs a visible subsystem degrade, the only path with evidence behind it is a hull that has a real interior (see the 40 below) — and that has not been tested either.
+
+#### The failed grid fix, and why the guard is mandatory
+
+The obvious idea is to give the NPC an interior with `grid_rebuild_grid_objects()`. **On most enemy hulls this actively breaks the Science panel.**
 
 ```mast
     # WRONG - breaks the Science panel on any hull without an interior
@@ -675,9 +701,9 @@ The obvious fix is to give the NPC an interior with `grid_rebuild_grid_objects()
 
 The failure mode is not a harmless no-op. `grid_rebuild_grid_objects` counts nodes per role and then writes what it counted unconditionally (`internal_damage.py:139-142`), so an empty hull writes `system_max_damage = 0` for all four systems. The Science readout divides by that value, and the divide-by-zero casts to `INT32_MIN` — the panel rendered `WEAP -2147483648`, wrapped across two lines, where it had previously read `WEAP 100%`.
 
-> **Leaving `system_max_damage` unset renders 100%. Setting it to zero renders garbage.** A post-call `len(grid_objects(id)) == 0` check cannot rescue this, because the zeros are already written by the time it runs. The check has to happen *before* the build.
+> **A zeroed `system_max_damage` renders garbage; the engine's own `2.0` renders 100%.** A post-call `len(grid_objects(id)) == 0` check cannot rescue this, because the zeros are already written by the time it runs. The check has to happen *before* the build.
 
-Practical consequence for mission design: **you cannot show subsystem damage on a Kralien hull.** If a drill needs Science to see a subsystem degrade, either pick a hull with a real interior from the 40, or accept the stock console's own `Critical hit` / `Destroyed` broadcasts as the crew's feedback and design the drill around those instead.
+Note what this does and does not prove. The divide-by-zero shows *something* in the render path consumes `system_max_damage`. It does **not** show the percentage is computed from it — the measurement above rules that out. Both facts are true at once, and the tempting synthesis ("so just set the denominator") was the second failed fix.
 
 ### GM-only diagnostic: reading the raw inventory signal
 
@@ -1152,7 +1178,11 @@ Guarded by `tests/test_mast_compile_or_preflight.py`:
 
 - `artemis_ship_name` as an identifier in startup files — known bad.
 - `grid_rebuild_grid_objects()` on a hull without pre-checking `grid_count_grid_data()` — an empty hull writes `system_max_damage = 0`, and the Science panel's divide-by-zero renders `INT32_MIN` instead of a percentage (7.3). Only 40 of 161 hulls have interiors; no Kralien warship does. Guarded by `test_grid_build_is_preflighted_against_the_hull_data`.
-- Testing `hull in grid_data` as proof a hull has an interior — every hull has an entry; most are empty placeholders. Count the `grid_objects`, not the key.
+- Testing `hull in grid_data` as proof a hull has an interior — every hull has an entry; most are empty placeholders. Count the `grid_objects`, not the key (17.9).
+- Player-facing text claiming a critical hit needs shields down first — it does not, operator-validated (7.3).
+- `brain_add()` on a ship id when making an NPC hostile — the brain attaches to the **fleet** id; on the ship it silently does nothing (14.6.1).
+- Copying the stock hostile brain verbatim into a mission with friendly stations — its `test_roles: station` branches outrank the `__player__` ones, so the hostile ignores the player and attacks the nearest friendly station (14.6.1).
+- Writing player-facing text with a dash as punctuation, or any non-ASCII character — commas and full stops only. Guarded by `test_player_facing_text_is_ascii_and_uses_no_dash_punctuation`.
 - `sim_create()`, `player_spawn(`, `assign_client_to_ship` in `playable_bootstrap.mast` — LegendaryMissions owns the server/client console and player-spawn lifecycle. Khovan only binds state to the reference-created Artemis (`playable_bootstrap.mast:13-36`).
 - Lifeform / upper-left overlay as a text destination — produced a black box. Text currently routes through guarded Comms instead (`audio_runtime.mast:17-18`).
 - Temporary Comms proof stations in production startup — removed in Slice 04, `ba794f3`.
@@ -1414,6 +1444,37 @@ mixing the two is what crashed the server on 2026-08-09.
 **`set_behavior` appears in none of the 112 LegendaryMissions files.** There is
 no precedent to copy, which is itself evidence: changing behavior after spawn is
 not a routine operation in this engine. Section 12.1 stays open.
+
+## 14.6.1 The behavior key does NOT make a ship hostile. A fleet brain does.
+
+**[REFERENCE]** `legendarymissions/prefabs/basic_enemy.mast:57-85`, `fleets/fleet.mast:33-37`. **[UNPROVEN]** in Khovan — written 2026-08-16, not yet live-smoked.
+
+A spawned NPC that should fight back but just sits there is the symptom. The instinct is to hunt for an aggressive behavior key. **There isn't one.** Enumerating every `behav_*` string across all reference missions returns 15 names, and the only general ship behavior is `behav_npcship` — used identically by friendly transports, civilian cargo ships, and Kralien raiders. `behav_warship` does not exist.
+
+Combat AI comes from a **fleet carrying a behavior tree**, and it takes three steps that are easy to do two-thirds of:
+
+```mast
+    ship = to_object(npc_spawn(x, y, z, name, "kralien, raider", "kralien_cruiser", "behav_npcship"))
+    # 1. populate the ally/hostile lists
+    side_set_ship_allies_and_enemies(ship)
+    # 2. a fleet, linked BOTH ways
+    fleet_obj = fleet_spawn(Vec3(x, y, z), "my_fleet_roles")
+    set_inventory_value(ship.id, "my_fleet_id", fleet_obj.id)
+    link(fleet_obj.id, "ship_list", ship.id)
+    # 3. the brain attaches to the FLEET id, never the ship id
+    brain_add(fleet_obj.id, brain, None, 0, None)
+```
+
+`brain` is a YAML behavior tree declared in the label's own `metadata:` block; metadata keys become variables in the label body. Khovan carries `metadata:` on `===` labels already (`act1_generator_tarsis_gate.mast:534`), so the syntax is proven here even though the fleet wiring is not.
+
+Two traps worth knowing before copying the stock tree:
+
+- **Attaching the brain to the ship id silently does nothing.** It must be the fleet.
+- **The stock tree prefers stations over players.** `ai_fleet_chase_roles` with `test_roles: station` appears *before* the `__player__` branches, so a copied-verbatim brain will send your hostile past the player to attack whatever friendly station is nearest. Khovan strips the station branches so Drone 02 chases the player only.
+
+The fleet is a **separate object from the ship** and outlives it. Delete it in cleanup or a repeat GM jump leaves an orphaned fleet whose brain keeps ticking.
+
+Related and independent: giving a ship an interior grid (7.3) is the *damage model*, not combat AI. A grid never makes anything fight back, and a brain never makes damage visible. They are unconnected subsystems that are easy to conflate because both feel like "making the NPC more real."
 
 ## 14.7 Where to look next
 
@@ -1908,3 +1969,55 @@ equality check against a literal.
 Every guard added in this repo now gets deliberately broken once to confirm it
 fails, then restored. It has caught a guard that did not guard more than once.
 A test that has never failed is a test you have not tested.
+
+## 17.9 Key presence is not content
+
+`'kralien_cruiser' in grid_data` returned `True` and was reported as "this hull
+has grid data." The entry existed and was **empty**. All 161 hulls have an entry
+in `data/grid_data.json`; only 40 hold any `grid_objects`. Acting on that
+mistake wrote `system_max_damage = 0` and put `INT32_MIN` on the operator's
+Science panel (7.3).
+
+The check that would have caught it costs one extra line: count the contents,
+never test the key. Any config keyed by an exhaustive list of engine assets is a
+candidate for hollow placeholder entries, because the list is generated for
+completeness rather than curated for content.
+
+## 17.10 A mechanism that explains the symptom is not the mechanism
+
+Two consecutive fixes for the same "Science reads 100%" symptom were wrong, and
+both were *coherent* — each explained the observation, cited real source, and
+predicted the right behavior for the wrong reason.
+
+1. *"The panel is grid-derived."* True that `set_damage_coefficients()` reads
+   only grid nodes. False that the panel reads it. Broke the panel.
+2. *"`system_max_damage` is unset, supply a denominator."* The divide-by-zero
+   crash genuinely proved something in the render path consumes that key. It did
+   not prove the percentage is computed from it. A trace line showing
+   `weapons_damage=1.35 weapons_max_damage=2.0` beside a displayed `100%`
+   refuted it in one measurement.
+
+Both were caught by the operator's screenshots and one `grep` of an existing
+diagnostic — not by review, and not by more reasoning. The pattern to recognize:
+**a plausible mechanism plus a matching symptom feels like a diagnosis and is
+not one.** Before acting, ask what measurement would distinguish this mechanism
+from a competing one, and whether the answer is already sitting in the trace.
+
+The corollary is a cheap habit that paid off here twice: when a diagnostic value
+is already being logged, `grep` it before proposing anything that depends on its
+value. The second fix was abandoned before a single line was written because the
+trace already contained the refutation.
+
+## 17.11 Correct the record where it was wrong, do not silently rewrite it
+
+When live evidence overturns a documented claim, the old claim is left in place
+and a dated superseding note is written beneath it — in `00_scenario_play_guide.md`,
+in this cookbook, and in code comments. Three claims were overturned in a single
+session (beam rate and criticals, shields and criticals, grids and the Science
+panel), and in each case the wrong version is still readable next to the right
+one.
+
+This is deliberate. Someone re-reading the file learns not just the fact but that
+it was got wrong, which is the part that stops a future agent from re-deriving
+the same appealing error. A silent edit erases exactly the evidence that would
+have prevented the repeat.
