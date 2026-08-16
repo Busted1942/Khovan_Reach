@@ -655,8 +655,8 @@ Known-good keys in use: `"starbase_command"` / `"behav_station"` for stations, `
 
 ## 8.2 Stock station role vs custom Comms routes
 
-**[LIVE — corrected 2026-08-09; Kestrel fix reconfirmed 2026-08-16,
-previous claim DISCONFIRMED]**
+**[LIVE for the stock-role collision — corrected 2026-08-09; recurring Kestrel
+failure reported 2026-08-16 remains unresolved, previous claim DISCONFIRMED]**
 
 This section previously claimed stock station behavior keys off a **capital**
 `Station` role, and told you not to clean the pattern up. That was wrong, and it
@@ -684,18 +684,49 @@ stock `station` role.
     add_role(station_id, "kestrel_yards")
 ```
 
-This is the preferred custom-Comms cleanup shape. Kestrel applies it both before
-and after the one-shot docking-helper pass. The two removals are intentionally
-redundant: either spelling clears the case-insensitive role, while writing both
-makes the route-ownership requirement explicit and prevents a future apparent
-case distinction from reintroducing the stock panel.
+This is the preferred **role-ownership cleanup** shape. Kestrel applies it both
+before and after the one-shot docking-helper pass. The two removals are
+intentionally redundant: either spelling clears the case-insensitive role, while
+writing both makes the ownership requirement explicit.
 
 Tarsis still temporarily uses `add_role(id, "station")` followed by
 `remove_role(id, "Station")` around its docking setup. That is functionally the
 same case-insensitive cleanup, but Tarsis genuinely needs stock docking behavior
 at specific points. Kestrel uses a mechanical departure hold and must finish
-without either generic station spelling. The operator confirmed on 2026-08-16
-that Kestrel's four custom Comms options render after this cleanup.
+without either generic station spelling.
+
+### Anti-pattern: treating route evaluation as visible-render proof
+
+**[LIVE CONTRADICTION — 2026-08-16].** Kestrel was initially reported working
+after the cleanup above, then reported broken again later the same day. The live
+trace still showed all of the following:
+
+- `[KHOVAN ACT1 COMMS 003C-ROLES]` with no `station` role;
+- `[KHOVAN ACT1 COMMS 005]`, proving the selected-id/custom-role guard matched;
+- `[KHOVAN ACT1 COMMS KESTREL OPTIONS]`, proving the custom route body ran;
+- in an earlier pass, handler breadcrumbs for departure clearance and reserve
+  loading, proving those buttons were visible and clickable at that time.
+
+Those are different claims. A route-body trace named `OPTIONS` does **not** prove
+that Cosmos displayed its buttons, and a final role list does **not** identify
+which Comms promise last wrote the panel. Even one successful click proves only
+that moment; it does not close an intermittent console/promise lifecycle failure.
+
+**Do not repeat this anti-pattern:**
+
+- do not set a status to `rendered` merely because the `//comms` body evaluated;
+- do not call a role cleanup the fix until the actual buttons are observed across
+  the required fresh-load, console-change, and story-jump paths;
+- do not rewrite `add_role`/`remove_role` ordering based only on matching final
+  role lists. In this SBS Utils build both helpers lowercase the name and only
+  mutate the role collection; neither refreshes the Comms dispatcher;
+- do not diagnose every blank Kestrel panel as the stock-role collision. That is
+  one proven failure class, not a universal explanation.
+
+Use evidence names that state what they prove: `route_body_evaluated`,
+`button_handler_selected`, and `buttons_observed_by_operator`. If the first is
+present while the panel is blank, investigate competing `CommsPromise` ownership
+or console lifecycle before changing roles again.
 
 **Only keep the stock `station` role when the object genuinely needs stock
 docking/resupply behavior**, and accept that custom Comms options will not render
@@ -1203,6 +1234,12 @@ So any object carrying a station role is *also* claimed by LegendaryMissions'
 own routes, and the stock panel owns the right-hand option list. That is
 precisely the Kestrel failure: Khovan's block evaluated and traced every click
 while the player saw the stock panel. See section 8.2 for the rule.
+
+**Do not overgeneralize this diagnosis.** A later blank-panel report occurred
+with Kestrel's final role list free of `station` and its custom route body still
+evaluating. The stock-role collision is proven, but the same visible symptom can
+also be a Comms-promise or console-lifecycle failure. Section 8.2 records the
+evidence split and the anti-pattern.
 
 The corollary for Act III: a cache, a derelict, or a pirate given a stock role
 inherits stock behavior you did not write. Give objects Khovan-specific roles
