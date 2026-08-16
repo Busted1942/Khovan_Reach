@@ -1201,14 +1201,14 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
     telemetry_max = drone_01_telemetry_object.data_set.get("system_max_damage", sbs.SHPSYS.WEAPONS)
     if telemetry_damage is None or telemetry_max is None:
         drone_01_telemetry_status = "skipped_telemetry_unavailable"
-        script.write_khovan_startup_trace("[KHOVAN ACT1 DRONE 01 TELEMETRY] system_damage or system_max_damage unset; report skipped")
+        script.write_khovan_startup_trace(f"[KHOVAN ACT1 TELEMETRY {telemetry_drone_name}] system_damage or system_max_damage unset; report skipped")
         ->END
     # Guard the denominator. A zero here is exactly what produced INT32_MIN on the
     # operator's Science panel on 2026-08-16 (cookbook 7.3 and 17.9); never divide
     # by this value without checking it first.
     if telemetry_max <= 0:
         drone_01_telemetry_status = "skipped_max_damage_not_positive"
-        script.write_khovan_startup_trace(f"[KHOVAN ACT1 DRONE 01 TELEMETRY] system_max_damage={telemetry_max} not positive; report skipped")
+        script.write_khovan_startup_trace(f"[KHOVAN ACT1 TELEMETRY {telemetry_drone_name}] system_max_damage={telemetry_max} not positive; report skipped")
         ->END
     drone_01_weapons_health_percent = int(100 * (1 - telemetry_damage / telemetry_max))
     # The stock series is geometric (cur * 1.35) and overshoots max_damage after a

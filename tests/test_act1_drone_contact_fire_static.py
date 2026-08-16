@@ -1010,6 +1010,29 @@ class Act1DroneContactFireStaticTests(unittest.TestCase):
         self.assertIn('+ "JUMP-010A Drone 02 Live Fire" khovan_story_jump_preset_drone_02_live_fire', presets)
         self.assertIn('elif jump_id == "drone_02_live_fire":', presets)
 
+    def test_telemetry_trace_labels_use_the_drone_name_parameter_everywhere(self) -> None:
+        # Live regression 2026-08-16: the telemetry label was generalized to take
+        # telemetry_drone_name, and the main success-path trace lines were updated to
+        # use it, but the two early-exit skip paths (missing telemetry, non-positive
+        # max_damage) were missed. Every Drone 02 hit was logged as "DRONE 01
+        # TELEMETRY" - the crew-facing Comms message was unaffected since it already
+        # used the parameter, but the trace is how this session settled every
+        # disputed question, and a mislabeled trace is worse than a missing one.
+        drone = read(DRONE_PATH)
+        body = code_only(label_body(drone, "khovan_drone_report_weapons_telemetry"))
+        self.assertNotIn(
+            "DRONE 01 TELEMETRY",
+            body,
+            "a hardcoded 'DRONE 01' trace label survived in a label that now serves "
+            "both drones; every trace line here must use telemetry_drone_name",
+        )
+        self.assertGreaterEqual(
+            body.count("TELEMETRY {telemetry_drone_name}"),
+            3,
+            "expected the parameterized label on all three trace call sites "
+            "(unavailable, non-positive max, and the success path)",
+        )
+
     def test_weapons_telemetry_reports_real_values_and_guards_the_denominator(self) -> None:
         # The stock Science panel does not surface subsystem damage on an NPC
         # (measured: system_damage 1.35 against system_max_damage 2.0 while the panel
