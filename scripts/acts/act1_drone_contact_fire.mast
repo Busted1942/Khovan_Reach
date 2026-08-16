@@ -99,27 +99,12 @@ shared drone_02_destroyed_confirmed_text = "Artemis - Weapons: Drone 02 destroye
 # whole point is pressure, not ambush, and this is the first time in the mission
 # anything shoots at them.
 shared drone_02_hostile_warning_text = "Artemis - Captain: Weapons free on Drone 02. Be aware this one is not passive - it will manoeuvre and return fire.\nArtemis - Engineering: Shields up and keep an eye on your damage. This is where the DAMCON work from the shakedown earns its keep."
-# Coaching lines. Both describe the STOCK manual-targeting mechanic exactly as
-# legendarymissions/consoles/manual_weapons.mast implements it - do not reword
-# these into "more beam hits means more critical chance", which is the intuitive
-# reading and is wrong for this engine:
-#
-#   manual_weapons_shoot (manual_weapons.mast:163-193) runs once per PRESS of a
-#   subsystem button on the Manual Weapons console, and rolls
-#   random.randint(1,20) == 20. Only on that 1-in-20 does it arm MANUAL_SYSTEM +
-#   MANUAL_CRITICAL_HIT and broadcast "Potential Critical hit" in yellow. Beam
-#   rate does not enter the roll at all - it only decides how fast an already
-#   armed critical gets consumed by the next hit.
-#
-#   Lines 169-173: pressing a DIFFERENT subsystem button clears the armed
-#   critical and broadcasts "Lost Critical hit, chance". Alternating between
-#   weapons and engines therefore destroys progress rather than doubling it.
+# Science tells the crew when subsystem damage becomes possible. The Captain's
+# fire-clearance message stays deliberately concise: it states the disable-only
+# order and names the report-back gate instead of narrating the stock console's
+# critical-hit implementation.
 shared drone_01_science_report_request_text = "Artemis - Science: Keep Drone 01 on your scan and call out its shield levels as they come down, and any subsystem damage as it lands.\nArtemis - Science: Weapons needs to hear the moment the shields are down - manual targeting cannot reach a subsystem through an intact shield."
-# Procedure, in the order the crew performs it. The console reports the armed
-# critical itself (the red "Critical hit <name> WEAPONS" and yellow "Potential
-# Critical hit <name>" lines are stock, manual_weapons.mast:190 and :231), so this
-# points at that readout rather than duplicating it in Dillon's voice.
-shared drone_01_weapons_crit_technique_text = "Artemis - Weapons: Select Manual Targeting, then select Drone 01: Weapons. Keep Weapons selected and press its subsystem button until the console reports a critical hit is armed.\nArtemis - Weapons: Then fire one beam without changing subsystems. The drill advances when that beam damages Drone 01's Weapons array.\nArtemis - Captain: Once the array is disabled, order ceasefire. Comms, confirm the ceasefire with Commander Dillon."
+shared drone_01_weapons_crit_technique_text = "Artemis - Captain: Order your ship into battle and disable, but do not destroy, the drone. After success, report back to Commander Dillon at Kestrel Yards."
 shared drone_01_known_marked = False
 shared drone_01_hull_restore_count = 0
 

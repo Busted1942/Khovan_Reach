@@ -886,33 +886,23 @@ class Act1DroneContactFireStaticTests(unittest.TestCase):
             label_body(drone, "khovan_drone_01_reset_flags"),
         )
 
-    def test_manual_targeting_coaching_matches_the_stock_crit_mechanic(self) -> None:
-        # Accuracy guard on player-facing training text. The stock console
-        # (legendarymissions/consoles/manual_weapons.mast:163-193) rolls
-        # random.randint(1,20) == 20 once per PRESS of a subsystem button, not
-        # per beam hit, and clears an armed critical when the player switches to
-        # a different subsystem. A previous draft of this note taught the
-        # intuitive-but-wrong "higher beam rate means more critical chances".
-        # This is a training mission - the coaching has to match the engine.
+    def test_fire_clearance_states_disable_order_and_report_back_gate(self) -> None:
+        # Player-facing clearance must say what outcome the Captain is ordering
+        # and what action advances the drill after that outcome.
         drone = read(DRONE_PATH)
         self.assertIn("shared drone_01_weapons_crit_technique_text = ", drone)
         technique = drone[drone.index("shared drone_01_weapons_crit_technique_text = "):]
         technique = technique[:technique.index("\n")].lower()
-        self.assertIn("press", technique)
-        for wrong in ["beam rate", "fire rate", "rate of fire"]:
-            self.assertNotIn(
-                wrong,
-                technique,
-                "beam/fire rate does not affect the critical-hit roll; the roll is "
-                "per subsystem-button press (manual_weapons.mast:187)",
-            )
+        self.assertIn("artemis - captain:", technique)
+        self.assertIn("disable, but do not destroy, the drone", technique)
+        self.assertIn("report back to commander dillon at kestrel yards", technique)
+        self.assertNotIn("kestral", technique)
 
         authorize_body = label_body(drone, "khovan_drone_01_authorize_fire")
         self.assertIn(
             'await task_schedule(khovan_drone_contact_fire_send_message, {"drone_message_text": drone_01_weapons_crit_technique_text',
             authorize_body,
-            "the technique note must arrive with the fire clearance, when the crew "
-            "is first told to go to manual targeting",
+            "the disable order and report-back gate must arrive with fire clearance",
         )
 
     def test_ceasefire_explains_the_handoff_to_the_live_fire_drone(self) -> None:
