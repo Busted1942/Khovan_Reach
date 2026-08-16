@@ -111,7 +111,7 @@ The crew should discover the generator limitation through play. Do not front-loa
 
 ### Mission Orders (as briefed by Dillon at scenario start)
 
-Routine qualification cruise. Standard pattern: depart Kestrel Yards, dock-and-resupply at Tarsis Station, conduct a shakedown profile selected by the captain, return for debrief. The captain may choose Full Shakedown, Compressed Shakedown, or Direct Scenario after launch. Dillon is embedded as instructor.
+Routine qualification cruise. Standard pattern: depart Kestrel Yards, dock-and-resupply at Tarsis Station, conduct a shakedown profile selected by the captain, return for debrief. The captain may choose Full Shakedown, Compressed Shakedown, or Direct Scenario after launch. Dillon is the qualification instructor, stationed at Kestrel Yards and transmitting to Artemis for the duration of the cruise — he is never physically aboard.
 
 Standard rules of engagement: defensive posture, hailing before any escalation, deference to TSN protocol. No live combat is anticipated.
 
@@ -161,7 +161,9 @@ The lifeform overlay is temporary build scaffolding. In-fiction, these messages 
 
 **Revision note (operator-ratified 2026-08-08) — "Training Control" is retired as a speaker.** Earlier text used "Training Control" as a faceless instructional voice alongside Dillon, and one message was even attributed to "Dillon / Training Control". That split the instructor role across two names for no design gain, and it wasted the character the crew is meant to recognise again in the next mission.
 
-All instructional and drill traffic is now **Dillon**, the instructor embedded aboard Artemis. Kestrel Yard Control and Tarsis Control remain distinct — they are external stations performing real operational functions (yard-lock, generator acceptance, docking clearance, resupply), not instruction.
+All instructional and drill traffic is now **Dillon**, the instructor. Kestrel Yard Control and Tarsis Control remain distinct — they are external stations performing real operational functions (yard-lock, generator acceptance, docking clearance, resupply), not instruction.
+
+**Revision note (operator-ratified 2026-08-16) — Dillon is stationed at Kestrel Yards, never aboard Artemis.** The 2026-08-08 revision above still described Dillon as "embedded aboard Artemis." That was wrong: Dillon is a person at Kestrel Yards, distinct from Kestrel Yard Control itself in the same way Hessler is a person aboard Halcyon Drift, distinct from the ship. He transmits to Artemis for the full duration of the cruise, including the Act II pivot and the debrief — he is never physically present on the bridge, at any point in the mission. This supersedes every "embedded aboard Artemis" / "standing behind the Captain's chair" description elsewhere in this file and in `docs/02_content/40_dillon_clips.md` and `docs/02_content/50_debrief_script.md`.
 
 Delivery convention that follows from this:
 
@@ -174,7 +176,7 @@ Implemented on `slice06-dillon-voice-and-prompt-polish`. Player-facing copy was 
 
 #### Scene 1: Kestrel Departure, Generator Advisory, and Shakedown Fork (~5-7 min)
 
-**Setting:** Artemis on the launch ramp at Kestrel Yards. Bridge crew at stations. Dillon present, standing behind the Captain's chair.
+**Setting:** Artemis on the launch ramp at Kestrel Yards. Bridge crew at stations. Dillon transmits from Kestrel Yards Control as the qualification cruise begins — he is not aboard.
 
 **Play:** Play Dillon Clip 1. The clip still frames the qualification cruise and hands the ship to the captain.
 

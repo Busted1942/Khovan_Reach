@@ -2,6 +2,8 @@
 
 *Template for the post-mission debrief delivered by Dillon. GM uses this as a structural guide; specific content comes from the v2.2 qualification cards and runtime support display filled in during play.*
 
+**Revision note (operator-ratified 2026-08-16) — Dillon is never physically aboard Artemis.** He transmits from Kestrel Yards for the entire cruise, including this debrief. See `docs/01_design/00_scenario_play_guide.md` for the full design-canon correction.
+
 ---
 
 ## ABOUT THIS TEMPLATE
@@ -31,7 +33,7 @@ The template is sequential. Work through it in order. Customize the GM-voiced co
 
 (Pause for Helm and Engineering to acknowledge.)
 
-**Dillon stands and addresses the bridge:**
+**Dillon's transmission opens on the bridge speakers:**
 
 **Play Dillon Clip 10, Part 1 (opening segment):**
 > "Captain. Crew. Khovan Reach is operationally complete. We're returning to standard. I'll walk the qualification framework station by station. Before I begin, the operational outcome:"

@@ -9,6 +9,8 @@
 
 This file keeps the 12 Dillon recorded clips as the canonical audio set. It adds v2.2 trigger notes and non-audio Training Control / Kestrel / Tarsis text packets for the Act I shakedown fork.
 
+**Revision note (operator-ratified 2026-08-16) — Dillon transmits from Kestrel Yards; he is never aboard Artemis.** Every staging direction below that has him standing on the bridge (Clip 1's "Dillon stands behind the captain's chair," the "physically present on the bridge" characterization, Clip 8's pivot address) is corrected by this note: he is present in voice only, for the whole cruise including the Act II pivot and debrief. See `docs/01_design/00_scenario_play_guide.md` for the full design-canon correction.
+
 ## Trigger changes
 
 **v2.2 cleanup note:** Text packets remain script-driven overlay/Comms-archive messages. No re-recording is required for this cleanup pass unless the production team chooses to refresh Dillon audio later.
@@ -80,7 +82,7 @@ Trigger: after speed-power reminder.
 
 Master Sergeant Dillon's voice (from Sigma Protocol design): calm, procedural, faintly bureaucratic. No emotion. No urgency. He is a specialist following procedure. Brief — short paragraphs, not long monologues.
 
-Khovan Reach uses him differently than Sigma Protocol did. In Sigma, Dillon was the background command-net voice requesting authorization. In Khovan Reach, he is physically present on the bridge as the qualification instructor. He observes more than he speaks. When he speaks, it's deliberate.
+Khovan Reach uses him differently than Sigma Protocol did. In Sigma, Dillon was the background command-net voice requesting authorization. In Khovan Reach, he is the qualification instructor, stationed at Kestrel Yards and transmitting to Artemis for the entire cruise — present in voice, never in person. He observes more than he speaks. When he speaks, it's deliberate.
 
 Three categories of clips:
 
@@ -98,7 +100,7 @@ Total: 12 clips. About 5-6 minutes of total audio.
 
 **Trigger:** Mission start, as Artemis prepares to leave Kestrel Yards.
 
-**Setup:** Bridge crew at stations. Dillon stands behind the captain's chair, addresses the bridge.
+**Setup:** Bridge crew at stations. Dillon transmits from Kestrel Yards Control, addressing the bridge over comms.
 
 **Script:**
 
@@ -357,7 +359,7 @@ Completion line:
 
 ## CLIP 8: PIVOT ACKNOWLEDGMENT
 
-**Trigger:** Immediately after Anderson's new orders are received and the captain acknowledges. Dillon addresses the bridge briefly.
+**Trigger:** Immediately after Anderson's new orders are received and the captain acknowledges. Dillon transmits to the bridge briefly.
 
 **Script:**
 

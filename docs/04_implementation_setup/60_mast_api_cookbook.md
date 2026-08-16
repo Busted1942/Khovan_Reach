@@ -1493,25 +1493,67 @@ the failure mode the cosmetic one.
 
 ## 16.4 Why this matters for Khovan
 
-Three named characters are people aboard ships, and all three are currently
-faked by borrowing a station's object id as the message sender:
+**CORRECTED 2026-08-16.** This section originally said Dillon is a person
+aboard Artemis. That was wrong, and the design canon has been corrected in
+`docs/01_design/00_scenario_play_guide.md` (revision note, 2026-08-16): Dillon
+is stationed at Kestrel Yards and transmits to Artemis for the entire cruise —
+he is never physically aboard, at any point including the Act II pivot and the
+debrief. Anderson was already correctly modeled this way; Dillon was not.
 
-| Character | Aboard | Today |
+Three named characters are people, and all three are currently faked by
+borrowing a station's object id as the message sender:
+
+| Character | Where | Today |
 |---|---|---|
-| **Master Sergeant Dillon** | Artemis | sends via `tarsis_station_id` |
+| **Master Sergeant Dillon** | Kestrel Yards | sends via `tarsis_station_id` / `kestrel_yards_id` |
 | **Hessler** | Halcyon Drift | Slice 08, unimplemented |
 | **Reyes** (DAMCON lead) | Halcyon Drift | Slice 09, unimplemented |
 
-Dillon is the clearest case. The play guide has him "embedded as instructor" and
-"standing behind the Captain's chair" — a person on the bridge. Borrowing a
-station id is what forced the `from_name`/`title` workaround in section 6.2, and
-it means Dillon's messages stop working if Tarsis goes out of range.
+Borrowing a station id is still what forced the `from_name`/`title` workaround
+in section 6.2, and it still means Dillon's messages depend on the borrowed
+station being in range. That problem is real independent of where Dillon
+stands.
 
-A lifeform hosted on Artemis is what Dillon *is*.
+**Do not assume the fix is changing Dillon's lifeform host.** The design
+correction changed where Dillon *is*, not necessarily where he should be
+*hosted*. `lifeform_helpers.mast` already hosts Anderson on `artemis_id`
+(`:145`) even though Anderson is equally remote — "hosted on Artemis only so
+the crew has someone to answer; his fiction is a remote transmission"
+(`lifeform_helpers.mast:121`). Per 16.3, the badge menu query is
+`role("comms_badge") & linked_to(COMMS_SELECTED_ID, "onboard")` — hosting on
+Artemis is what makes a remote character reachable from the crew's own
+internal Comms panel. Hosting Dillon on `kestrel_yards_id` instead would likely
+make his badge appear only when a console selects Kestrel Yards externally,
+which is probably *not* what's wanted. Keep `lifeform_host_id: artemis_id`
+(`scripts/lib/lifeform_helpers.mast:137`) unless live-smoke on the badge menu
+(cookbook 16.5, steps 1-2 — still not proven) shows a real reason to change it.
+This is genuinely unproven either way; treat it with section 12's
+API-uncertainty format rather than guessing.
 
-**Not built.** It would change how every Dillon message is sent, and Act I is
-mid-live-verification. The right moment is Slice 08, when Hessler needs the same
-machinery and a second character justifies proving the pattern once.
+## 16.4.1 OPEN RISK — does a borrowed sender have to be in range? [UNPROVEN]
+
+`lifeform_helpers.mast` header and 16.4 above both assert that borrowing a
+station id means the message "stops working if that station goes out of range."
+**No live evidence supports this.** It originates as an assertion in a code
+comment. Cookbook 6.2's `[LIVE]` entry requires only a non-zero sender id and a
+non-zero player id; it says nothing about distance.
+
+This matters now because on 2026-08-16 all six remaining Dillon fallback sites
+were switched from `tarsis_station_id` to `kestrel_yards_id` (operator
+decision) to match the corrected canon. If range is irrelevant, that change is
+a pure fiction fix. **If range does gate delivery, the change makes Act II
+worse**, because Artemis ends up ~95 km from Kestrel — much further than it
+ever gets from Tarsis.
+
+The fallback only runs when the lifeform path fails, so this is latent, not
+active, while `dillon_lifeform_id` is non-zero.
+
+**How to settle it during live smoke:** in Act II, at maximum distance from
+Kestrel, force the fallback (or observe it if lifeforms are failing) and check
+whether the Dillon message renders. Trace line to watch:
+`[KHOVAN LIB LIFEFORM SEND] Dillon fell back to station-borrow path`, followed
+by whether the text actually appears on a console. Record the result here and
+retag this section.
 
 ## 16.5 If you try it, prove it in this order
 
