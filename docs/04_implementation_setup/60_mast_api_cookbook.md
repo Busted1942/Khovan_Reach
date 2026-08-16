@@ -537,9 +537,120 @@ When a drill needs a Science-officer gate on a contact whose stock scan must sta
 
 ## 7.3 Damage and subsystem hits
 
-**[UNPROVEN]** `act1_drone_contact_fire.mast:213-248`. This is the highest-risk API in the mission — Slice 06's whole spike exists to test it. Do not build Drone 01 on it until live smoke confirms the fixed version below.
+### The rule: never read or clear the stock manual-targeting inventory from mission code
+
+**[LIVE]** — root-caused 2026-08-16 from a live trace plus stock source.
+
+`MANUAL_SYSTEM` and `MANUAL_CRITICAL_HIT` are **owned by the stock Manual Weapons console**, and that console has its own damage route:
+
+```mast
+# legendarymissions/consoles/manual_weapons.mast:196-207 - STOCK, not ours
+//damage/object if has_role(DAMAGE_TARGET_ID, "raider")
+    system = get_inventory_value(DAMAGE_SOURCE_ID, "MANUAL_SYSTEM")
+    target_id = get_inventory_value(DAMAGE_SOURCE_ID, "MANUAL_CRITICAL_HIT")
+    ->END if target_id == 0
+    set_inventory_value(DAMAGE_SOURCE_ID, "MANUAL_SYSTEM", None)
+    set_inventory_value(DAMAGE_SOURCE_ID, "MANUAL_CRITICAL_HIT", None)
+    ->END if target_id != DAMAGE_TARGET_ID
+    ->END if system is None          # <-- aborts before applying any damage
+    ...
+```
+
+Note the role: **`raider`**. Any contact you tag `raider` — which is most enemy spawns, and is what makes autoplay targeting helpers work — is already matched by that stock route. Your `//damage/object` handler and the stock one both fire on the same event, in unspecified order.
+
+So a mission handler that does this:
+
+```mast
+# WRONG - this is what Drone 01 shipped with until 2026-08-16
+//damage/object if has_role(DAMAGE_TARGET_ID, "khovan_drone_01")
+    manual_system = get_inventory_value(DAMAGE_SOURCE_ID, "MANUAL_SYSTEM")
+    ...
+    set_inventory_value(DAMAGE_SOURCE_ID, "MANUAL_SYSTEM", None)   # steals it
+```
+
+…races the stock console for the value. When the mission handler wins, it records a subsystem hit **and simultaneously guarantees the engine will not apply one**, because the stock route then reads `None` and bails at `->END if system is None`.
+
+The live signature of this bug is unmistakable and was reported exactly this way: *"Hit 1 of 3 confirmed"* in Comms, with the target's subsystem showing no damage at all. The 2026-08-16 trace logged **186 damage events** on one drone with `manual_system=None` on every single one, and exactly one event where the mission handler won the race.
+
+**Do not read, and do not clear, either key from production mission code.** Observe the effect instead — next subsection.
+
+### How the stock critical actually works
+
+**[LIVE]** — read from `legendarymissions/consoles/manual_weapons.mast:163-193`. This surprises everyone, so it is written out in full:
+
+```mast
+==== manual_weapons_shoot  =======       # reached from `on gui_message(gui_button("weapons"))` etc.
+    critical = get_inventory_value(ship_id, "MANUAL_CRITICAL_HIT", False)
+    if _manual_system != latest_target:
+        set_inventory_value(ship_id, "MANUAL_SYSTEM", _manual_system)
+        set_inventory_value(ship_id, "MANUAL_CRITICAL_HIT", None)     # switching CLEARS an armed crit
+        if critical:
+            comms_broadcast(client_id, "Lost Critical hit, chance", "cyan")
+    latest_target = _manual_system
+    yield idle if critical                                            # already armed: further presses do nothing
+    ...
+    if random.randint(1,20) == 20:                                    # 5%, per PRESS
+        set_inventory_value(ship_id, "MANUAL_SYSTEM", _manual_system)
+        set_inventory_value(ship_id, "MANUAL_CRITICAL_HIT", target_id)
+        comms_broadcast(client_id, f"Potential Critical hit {t.name}", "yellow")
+```
+
+Consequences, all of which affect scenario design and not just code:
+
+- The roll fires **once per press of a subsystem button** on the Manual Weapons console. It is **not** per beam hit.
+- **Beam rate is not an input to the roll.** A higher beam rate does not earn more critical chances; it only decides how fast an already-armed critical gets consumed, and how fast shields drop. Do not write player-facing training text that says otherwise.
+- Expect **~20 presses per critical**. A design gate asking for N confirmed subsystem hits is asking for roughly 20N button presses.
+- **Switching subsystem throws away an armed critical** (the `_manual_system != latest_target` branch). A crew alternating between Weapons and Engines destroys its own progress and sees `"Lost Critical hit, chance"`.
+- Once armed, the critical waits for the next beam hit on that target to be consumed.
+
+### Recommended: count subsystem hits from `system_damage`, not from the inventory pair
+
+The read itself is **[LIVE]** — `system_damage` is per-subsystem, indexed by `SHPSYS` (section 9.1), and 2026-08-08 trace data showed it climbing on a real Weapons kill and sitting at `0.0` on a GM cleanup. The polling observer built on it in `act1_drone_contact_fire.mast` (`khovan_drone_01_watch_weapons_subsystem_damage`) is **[COMPILE]** until the next live smoke records it.
+
+```mast
+=== khovan_drone_01_watch_weapons_subsystem_damage ===
+    default damage_run_id = drone_01_weapons_damage_run_id
+    if damage_run_id != drone_01_weapons_damage_run_id:      # run-ID guard, 5.1
+        ->END
+    if not drone_01_active or drone_01_weapons_disabled or not drone_01_fire_authorized:
+        ->END
+    drone_object = to_object(drone_01_target_id)
+    if drone_object is None:
+        drone_01_subsystem_hit_fallback_available = True     # arm the fallback, 5.2
+        ->END
+    current_weapons_damage = drone_object.data_set.get("system_damage", sbs.SHPSYS.WEAPONS)
+    if current_weapons_damage is None:                       # None-guard: key never written
+        current_weapons_damage = 0
+    if current_weapons_damage > drone_01_weapons_damage_baseline:
+        drone_01_weapons_damage_baseline = current_weapons_damage
+        await task_schedule(khovan_drone_01_register_weapons_hit, {"hit_source": "automatic_weapons_system_damage_observer"})
+        ->END
+    await delay_sim(seconds=1)
+    jump khovan_drone_01_watch_weapons_subsystem_damage
+```
+
+Why this is the better shape regardless of the race: it measures **engine truth**. A counted hit is a real subsystem-damage increment, not a proxy for one. Seed the baseline when you start the observer — a fresh spawn has no `system_damage` key at all, and a respawned target is a different object id.
+
+### Keeping a drill target alive while it absorbs hits
+
+**[LIVE]** — promoted from [UNPROVEN] on 2026-08-16. The trace recorded **87 successful restores** on one drone before it was finally destroyed, so writing the accumulator back to zero does hold a target alive.
+
+```mast
+    if drone_01_active and not drone_01_weapons_disabled:
+        set_data_set_value(DAMAGE_TARGET_ID, "hull_hit_counter", 0, 0)
+```
+
+`hull_hit_counter` is the key the stock DMX helper reads as hull damage (`data/missions/common/dmx.py:59`). This matters because manual subsystem targeting only reaches a subsystem once shields are **down**, and at that point the hull is the only thing left absorbing beams — `kralien_cruiser` has `hullpoints: 2`, so an unheld target dies long before a multi-hit drill finishes.
+
+Do **not** also restore shields (`shield_val`). Shields back up means subsystem targeting cannot reach the subsystem at all, which defeats the drill. Stop restoring the hull the moment the drill's gate is satisfied, or the target becomes unkillable for the cleanup phase that follows.
+
+### GM-only diagnostic: reading the raw inventory signal
+
+**[UNPROVEN]** `act1_drone_contact_fire.mast` spike handler. This is the one place the inventory pair is still read, and it is deliberate — observing that raw signal is the entire purpose of the GM spike. **It is not a production pattern.** A spike route reading these values is fine because nothing depends on the engine also applying the damage; a production drill is not, per the ownership rule above.
 
 **Bugfix history (2026-08-08), HALF OF IT SINCE REVERSED (2026-08-09).** The 2026-08-08 pass made two changes to this handler. The first was wrong: it claimed `.get(key, default)` is a flat lookup whose second argument is a default value, and rewrote `sbs.SHPSYS.WEAPONS`/`sbs.SHPSYS.ENGINES` to `0`. The signature is `def get(self, name, index=0)` and the writer indexes by `SHPSYS` — see section 9.1, which settles it. The original form was correct and has been restored; the replacement made both fields read index 0 and agree by construction. The second change was right and stands: subsystem-hit detection required `MANUAL_CRITICAL_HIT` to match `DAMAGE_TARGET_ID` **and** `MANUAL_SYSTEM` to be non-`None` in the same event; live smoke on 2026-08-08 showed `MANUAL_SYSTEM` fire once as `SHPSYS.WEAPONS` on an event where `MANUAL_CRITICAL_HIT` was `None`, and the AND discarded that real signal. Full account in `tests/SLICE06_VERIFICATION.md` Known Risks and the Live Smoke Log entry dated 2026-08-08 ("operator pass, weapons exercised") plus its correction.
+
+**2026-08-16 addendum — that anomaly now has an explanation.** A `MANUAL_SYSTEM` value arriving with `MANUAL_CRITICAL_HIT` already `None` is exactly what the ownership race produces: the stock console clears both keys in its own damage route, so a handler reading them mid-race can catch one set and the other already wiped. The 2026-08-08 conclusion (track the two independently, do not require both) was the right call for a *diagnostic* handler, but the deeper lesson is the one at the top of this section — production code should not be reading either key.
 
 ```mast
 //damage/object if has_role(DAMAGE_TARGET_ID, "khovan_slice06_spike_target")
@@ -997,6 +1108,8 @@ Every one of these came from a real Slice 01–05 failure.
 5. **Every delayed task needs a run-ID guard.** See 5.1.
 6. **Every spawn needs an existence check and a cleanup routine.** See 8.1, 8.5.
 7. **Set a status string on every branch, including the failure branch.** These strings are what the GM Scenario Control overview reads. A silent path is an undiagnosable path.
+8. **Do not read or write state a stock console owns.** Slice 06, 2026-08-16: the production drone handler read and nulled `MANUAL_SYSTEM`, which the stock Manual Weapons console owns and consumes in its own `//damage/object` route on the `raider` role. Winning that race recorded a hit *and* stopped the engine applying the damage. Before touching any `get_inventory_value` / `set_inventory_value` key, grep `legendarymissions/` for it — if a stock route reads it, observe the **effect** instead of the signal. See 7.3.
+9. **Confirm a gameplay mechanic from stock source before designing a gate around it.** The same slice specified "three confirmed subsystem hits" on the assumption that hits accumulate with beam fire. They do not: the critical is a 1-in-20 roll per *button press* and switching subsystems clears it (7.3). The gate was ~60 presses and no one knew until an operator sat through it.
 
 ## Known-bad — do not reintroduce
 
@@ -1006,6 +1119,8 @@ Guarded by `tests/test_mast_compile_or_preflight.py`:
 - `sim_create()`, `player_spawn(`, `assign_client_to_ship` in `playable_bootstrap.mast` — LegendaryMissions owns the server/client console and player-spawn lifecycle. Khovan only binds state to the reference-created Artemis (`playable_bootstrap.mast:13-36`).
 - Lifeform / upper-left overlay as a text destination — produced a black box. Text currently routes through guarded Comms instead (`audio_runtime.mast:17-18`).
 - Temporary Comms proof stations in production startup — removed in Slice 04, `ba794f3`.
+- `get_inventory_value` / `set_inventory_value` on `MANUAL_SYSTEM` or `MANUAL_CRITICAL_HIT` in a **production** handler — the stock Manual Weapons console owns both and races you for them; stealing the value suppresses the engine's own subsystem damage. Guarded by `test_damage_handler_never_touches_the_stock_manual_targeting_inventory`. The GM spike handler is the deliberate exception. See 7.3.
+- Player-facing text claiming beam rate raises critical-hit chance — it does not (7.3). Guarded by `test_manual_targeting_coaching_matches_the_stock_crit_mechanic`.
 - Any runtime reference to `_local_clones`, `archive/old_build_reference`, or `old_mast`. Git-ignored is not runtime-ignored.
 
 ---
