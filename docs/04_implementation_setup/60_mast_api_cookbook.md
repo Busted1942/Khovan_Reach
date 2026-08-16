@@ -660,13 +660,19 @@ Do **not** restore shields (`shield_val`) alongside the hull. Not because subsys
 
 Stop restoring the hull the moment the drill's gate is satisfied, or the target becomes unkillable for the cleanup phase that follows. And watch the restore count: a hold that fires constantly means the crew is effectively shooting an invincible target, which is its own bad lesson. Treat a high count as a signal to re-examine the drill's length, not as proof the hold is working.
 
-### The Science subsystem readout only refreshes on SCAN. It is not live.
+### Science shows shields live but subsystem damage only as of your last SCAN
 
 **[LIVE]** Operator-confirmed 2026-08-16 with a controlled experiment. This is the answer to a question that consumed most of a day and produced three wrong mechanisms before anyone tested the obvious thing.
 
 **Symptom.** Science shows `WEAP 100%` on an NPC forever, even while the stock console announces `Critical hit` and `WEAPONS Destroyed`, and even while the target visibly degrades — a drone with destroyed weapons stops firing, one with destroyed engines crawls.
 
 **Cause.** The panel's subsystem percentages are captured **when the contact is scanned** and never update again. Scan first and then shoot, and the readout sits on the pre-damage snapshot indefinitely. Damage the target first and *then* scan, and it shows the correct value immediately.
+
+**Not everything on that panel is stale — and the split is the point.** The same panel updates `FRNT SHLD` / `REAR SHLD`, `RANGE` and `BEARING` continuously while the subsystem percentages sit frozen. Shields come from the plain `shield_val` blob key and are read live; the subsystem percentages come from the scan snapshot.
+
+That is a deliberate design distinction, not an inconsistency. A shield bubble is externally observable, so sensors report it continuously. What is broken *inside* a hull is intelligence, and you only have it as of the last time you went and got it. Treat the subsystem readout as a scan report with a timestamp, not a live feed.
+
+The consequence for mission design is worth stating plainly: **re-scanning is the intended gameplay loop, not a workaround.** A Science officer's job during an engagement is to keep refreshing intelligence. Coaching that says "open the panel and watch it" teaches the wrong model and will leave a crew staring at pre-damage numbers for an entire fight.
 
 **The fix is operational, not code.** Science must re-scan after each hit:
 

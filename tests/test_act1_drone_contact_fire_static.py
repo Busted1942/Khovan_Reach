@@ -1158,7 +1158,14 @@ class Act1DroneContactFireStaticTests(unittest.TestCase):
                 break
         self.assertTrue(science_text, "Science coaching text is missing")
         self.assertIn("Scan her again after every hit", science_text)
-        self.assertIn("only refreshes when you scan", science_text)
+
+        # The coaching must teach the DISTINCTION, not just issue an instruction.
+        # Shields read live from the shield_val blob key; the subsystem percentages
+        # are a scan snapshot. A crew told only "re-scan" learns a workaround; a crew
+        # told why learns that internal condition is intelligence with a timestamp,
+        # which is the actual model the engine implements.
+        self.assertIn("read live", science_text)
+        self.assertIn("as fresh as your last scan", science_text)
 
         # The grid helpers reach the PLAYER's ship - the operator saw their own DAMCON
         # respond to a call aimed at an NPC, and grid_apply_system_damage ends with
