@@ -685,13 +685,11 @@ What backs the readout on an NPC is not established. Do not propose a third mech
 
 > **Design consequence while this is unresolved: treat NPC subsystem damage as invisible to Science.** The stock console's own `Potential Critical hit` (yellow), `Critical hit` (red), and `<name> <SYSTEM> Destroyed` (white) broadcasts are the crew's real feedback channel, and they work. Build the drill's coaching around those, and leave Science on shields and frequency, which do work on an NPC. If a drill genuinely needs a visible subsystem degrade, the only path with evidence behind it is a hull that has a real interior (see the 40 below) — and that has not been tested either.
 
-> **CONCLUDED 2026-08-16 — the grid hypothesis is refuted, do not retry it.** The experiment finally ran on `xim_light_cruiser`: the interior built correctly (5 weapon nodes), `grid_damage_system` marked real nodes `__damaged__`, and the panel still did not move. Real, engine-modelled, behaviour-affecting damage with a real grid present, and the readout stayed put. The display is not grid-derived.
+> **STATUS 2026-08-16: unresolved, and this section has been wrong in both directions in one day.** Operator confirmation is that **the Science panel does NOT show subsystem damage on an NPC**, with or without a grid interior. Tested with `xim_light_cruiser` (75-node interior, 5 weapon nodes) and `grid_damage_system()` marking real nodes `__damaged__`: the panel still did not display it. So the display is not simply grid-derived, and giving an NPC an interior does not make subsystem damage visible to Science.
 >
-> It also actively broke the working readout. `grid_apply_system_damage` overwrites `system_damage` with an integer damaged-node **count**, while the stock critical writes a geometric **float** series (`cur * 1.35`) to the same key. Two writers, two scales. The observed percentage oscillated — 80, 60, 40, 0, then back up to 40 — instead of stepping down, partly because the damaged-node count itself fell from 5 back to 3 between hits (nodes reverting to undamaged; cause never established).
+> Do not record this as refuted either. It was written up as "refuted" once and as "confirmed" once, both within an hour, and both times on an inference about what the panel showed rather than a direct statement of what it showed. What is actually established is narrow: the damage is real and behaviour-affecting (a drone with destroyed weapons stops firing; destroyed engines make it crawl), `system_damage` and `system_max_damage` both hold live values, and the panel reflects none of it.
 >
-> Khovan now builds **no grid** on NPCs. The stock critical is the sole writer, `system_max_damage` stays at the hull's `hullpoints`, and the percentage steps down monotonically. Guarded by `test_no_grid_is_built_and_the_stock_crit_is_the_sole_damage_writer`.
->
-> The pre-flight rule below is still correct for anyone who has a genuine reason to build a grid. It is kept because the failure it describes is real, not because Khovan does this any more.
+> **Practical guidance until this is settled: report the numbers over Comms.** That works, is honest, and reads real engine values. See `khovan_drone_report_weapons_telemetry`.
 
 #### The failed grid fix, and why the guard is mandatory
 
