@@ -310,9 +310,21 @@ Training Control instructs Engineering:
 
 ##### Scene 4A: Stationary Drone Controlled Disable (~12-15 min)
 
-**Revision note (operator-ratified 2026-08-16) — the disable is one confirmed critical hit, and beam rate does not affect critical chance.** Step 12 previously read "three confirmed manual subsystem hits"; it is now one. Tracks the gate 9 change in `docs/01_design/10_mast_requirements.md` section 8.5.
+**Revision note (operator-ratified 2026-08-16) — the disable is one confirmed critical hit.** Step 12 previously read "three confirmed manual subsystem hits"; it is now one. Tracks the gate 9 change in `docs/01_design/10_mast_requirements.md` section 8.5.
 
-This also corrects how the **Weapons reminder** below should be read. The stock critical is a `random.randint(1,20) == 20` roll fired **once per press of a subsystem button** on the Manual Weapons console (`legendarymissions/consoles/manual_weapons.mast:187`) — beam rate is not an input to that roll, and pressing a *different* subsystem button clears an armed critical (lines 169-173). The reminder's "beam rate and beam intensity are directly correlated" is accurate on its own terms and its "precision over brute force" lesson stands, but it must not be taught as "a higher beam rate earns more critical chances." It does not. The technique is: keep pressing the same subsystem button, and do not switch subsystems while a critical is armed.
+This also corrects how the **Weapons reminder** below should be read. The stock critical hit is a two-stage mechanic, and the two stages behave differently — conflating them is how this note got written wrong the first time (see the superseding note directly below).
+
+*Arming.* A `random.randint(1,20) == 20` roll fires **once per press of a subsystem button** on the Manual Weapons console (`legendarymissions/consoles/manual_weapons.mast:187`). The button has no cooldown and is not tied to the firing cycle, so the odds per press are a flat 1-in-20 at any beam rate. Pressing a *different* subsystem button clears an armed critical (lines 169-173). Once armed, further presses are no-ops rather than re-rolls (`yield idle if critical`, line 180).
+
+*Delivery.* An armed critical is consumed by the next **landed beam hit** (the `//damage/object` route, line 196). It cannot land without a beam actually connecting.
+
+The technique that follows: keep pressing the same subsystem button until the console reports the critical in yellow, then let your beams deliver it, and do not switch subsystems while one is armed.
+
+**Revision note (operator-ratified 2026-08-16, supersedes the beam-rate claim above) — beam rate does not change the odds, but it does change crits per minute.** The note above originally read "beam rate does not affect critical chance" and told the build side never to teach otherwise. That is correct about the *per-press roll* and wrong as a general statement, and the wrong half is the half a player feels.
+
+Because delivery requires a landed hit, a crew mashing the subsystem button fast enough to stay armed between shots is bottlenecked entirely on hits-per-minute. At that point crits landed per minute tracks beam hits per minute, and a 4X beam rate really does land roughly four times as many criticals as 1X. Nothing about the roll changed; the throughput did.
+
+Both errors are easy to make and both mislead: "4X gives more critical chances" is wrong, and "beam rate is irrelevant to criticals" is equally wrong. The accurate framing, and the one the runtime coaching now uses on the beam-lock message, is: **arming is free and fire-rate-independent; delivery rides on your beam fire.** `docs/04_implementation_setup/60_mast_api_cookbook.md` section 7.3 carries the same correction for the build side.
 
 **Objective:** Teach identification, hailing, shield-frequency relay, beam lock, range discipline, manual subsystem targeting, authorization, and ceasefire.
 
