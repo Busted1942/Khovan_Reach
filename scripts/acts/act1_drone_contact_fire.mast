@@ -178,7 +178,7 @@ shared drone_02_hostile_warning_text = "Artemis - Captain: Weapons free on Drone
 # for something they never needed to wait for. Shield levels are still worth
 # calling because ordinary beam damage does go through the shields first, and
 # because frequency matching is what brings them down, but they gate nothing.
-shared drone_01_science_report_request_text = "Artemis - Science: Keep Drone 01 on your scan and call out its shield levels as they come down, and any subsystem damage as it lands.\nArtemis - Science: A critical hit reaches the subsystem whether her shields are up or not, so do not hold Weapons back waiting on them."
+shared drone_01_science_report_request_text = "Artemis - Science: Keep Drone 01 on your scan and call out her shield levels as they come down.\nArtemis - Science: Scan her again after every hit. The subsystem readout only refreshes when you scan, so it will sit on the old numbers until you do.\nArtemis - Science: A critical hit reaches the subsystem whether her shields are up or not, so do not hold Weapons back waiting on them."
 shared drone_01_weapons_crit_technique_text = "Artemis - Captain: Order your ship into battle and disable, but do not destroy, the drone. After success, report back to Commander Dillon at Kestrel Yards."
 shared drone_01_known_marked = False
 shared drone_01_hull_restore_count = 0
@@ -243,8 +243,6 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
     + "V1 Bare stock kralien" khovan_subsys_control_spawn_v1
     + "V2 Xim hull (has interior)" khovan_subsys_control_spawn_v2
     + "V3 Xim plus khovan role" khovan_subsys_control_spawn_v3
-    + "Build interior on target" khovan_subsys_control_build_grid if subsys_control_active
-    + "Force GRID damage" khovan_subsys_control_force_grid_damage if subsys_control_active
     + "Force BLOB write" khovan_subsys_control_force_blob_write if subsys_control_active
     + "Read blob vs panel" khovan_subsys_control_report if subsys_control_active
     + "Cleanup control target" khovan_subsys_control_cleanup if subsys_control_active
@@ -349,6 +347,12 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
     ->END
 
 === khovan_subsys_control_build_grid ===
+    # UNWIRED 2026-08-16 and deliberately left unreachable. The operator saw
+    # their OWN DAMCON teams respond to a grid call aimed at an NPC, and
+    # grid_apply_system_damage ends with explode_player_ship(). The grid
+    # helpers behave as player-ship APIs. Do not add a menu entry back.
+    # It is also pointless: the panel reads system_damage, and a grid build
+    # RESETS that key to 0, which is the opposite of what is wanted.
     # Separates "does an interior exist" from "does damaging it move the panel".
     control_object = to_object(subsys_control_target_id)
     if control_object is None:
@@ -364,6 +368,12 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
     ->END
 
 === khovan_subsys_control_force_grid_damage ===
+    # UNWIRED 2026-08-16 and deliberately left unreachable. The operator saw
+    # their OWN DAMCON teams respond to a grid call aimed at an NPC, and
+    # grid_apply_system_damage ends with explode_player_ship(). The grid
+    # helpers behave as player-ship APIs. Do not add a menu entry back.
+    # It is also pointless: the panel reads system_damage, and a grid build
+    # RESETS that key to 0, which is the opposite of what is wanted.
     # Damages a real weapon node using the stock built-in, no shooting required.
     # The cleanest possible test of "does grid damage move the panel".
     control_object = to_object(subsys_control_target_id)

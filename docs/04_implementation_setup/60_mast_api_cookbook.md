@@ -660,58 +660,38 @@ Do **not** restore shields (`shield_val`) alongside the hull. Not because subsys
 
 Stop restoring the hull the moment the drill's gate is satisfied, or the target becomes unkillable for the cleanup phase that follows. And watch the restore count: a hold that fires constantly means the crew is effectively shooting an invincible target, which is its own bad lesson. Treat a high count as a signal to re-examine the drill's length, not as proof the hold is working.
 
-### Science reads 100% on a damaged NPC. You cannot fix this, and trying breaks the panel.
+### The Science subsystem readout only refreshes on SCAN. It is not live.
 
-**[LIVE]** Operator-observed 2026-08-16 across several runs, including two failed fixes. Read this whole section before attempting a third.
+**[LIVE]** Operator-confirmed 2026-08-16 with a controlled experiment. This is the answer to a question that consumed most of a day and produced three wrong mechanisms before anyone tested the obvious thing.
 
-Science shows `WEAP 100%` on an NPC even after the stock console announces `WEAPONS Destroyed`. The stock crit mechanic is working; the readout simply does not reflect it.
+**Symptom.** Science shows `WEAP 100%` on an NPC forever, even while the stock console announces `Critical hit` and `WEAPONS Destroyed`, and even while the target visibly degrades — a drone with destroyed weapons stops firing, one with destroyed engines crawls.
 
-**The panel does not read `system_damage` / `system_max_damage`.** This is settled by direct measurement, not inference. The same live run logged:
+**Cause.** The panel's subsystem percentages are captured **when the contact is scanned** and never update again. Scan first and then shoot, and the readout sits on the pre-damage snapshot indefinitely. Damage the target first and *then* scan, and it shows the correct value immediately.
+
+**The fix is operational, not code.** Science must re-scan after each hit:
+
+```
+Artemis - Science: Scan her again after every hit. The subsystem readout only
+refreshes when you scan, so it will sit on the old numbers until you do.
+```
+
+The arithmetic behind the display, confirmed by matching observed values against logged blob state:
 
 ```text
-[KHOVAN ACT1 DRONE 01 SUBSYSTEM] weapons_damage=1.35  weapons_max_damage=2.0
+displayed_percent = 100 * (1 - system_damage / system_max_damage)
 ```
 
-…while the panel displayed `WEAP 100%`. If it divided those two values it would have shown roughly 32% or 67%. It showed neither. Both keys hold live, sensible data — the engine sets `system_max_damage = 2.0` on its own, and the stock console writes `system_damage` on every crit — and the readout ignores them.
+`system_max_damage` is the hull's `hullpoints` from `shipData.yaml` (2.0 on `kralien_cruiser`, 3.0 on `xim_light_cruiser`). `system_damage` is written by the stock critical as a geometric series, `max(cur,1) * 1.35`. One crit on a 3-hullpoint hull gives `1 - 1.35/3 = 55%`, which is exactly what the panel displayed.
 
-Two mechanisms were proposed and **both were wrong**, each disproved by evidence rather than by review:
+**Do not build a grid to "fix" this.** Three mechanisms were proposed and all three were wrong, each reasoned from source rather than measured against the panel:
 
-1. *"The panel is grid-derived, so give the NPC a grid."* Broke the panel outright (below). Even after the grid was correctly skipped, the readout stayed at 100%, so the grid was never the mechanism.
-2. *"`system_max_damage` must be unset; supply a denominator."* The trace shows it was already `2.0`. There was nothing to supply.
+1. *"The panel is grid-derived, give the NPC an interior."* It built correctly on `xim_light_cruiser` (5 weapon nodes), `grid_damage_system` marked real nodes `__damaged__`, and the panel did not move — because nobody had re-scanned. Worse, `grid_rebuild_grid_objects` **resets `system_damage` to 0 and changes `system_max_damage`** from hullpoints to the weapon-node count, wiping the very value the panel reads. On a hull with no interior it writes `system_max_damage = 0` and the panel renders `INT32_MIN`.
+2. *"`system_max_damage` is unset, supply a denominator."* The trace showed it already set, from hullpoints.
+3. *"The crit is cosmetic and the panel is honest."* Killed by the target visibly degrading.
 
-What backs the readout on an NPC is not established. Do not propose a third mechanism without a measurement that distinguishes it — this failure mode is unusually good at producing plausible theories.
+**`grid_damage_system()` on an NPC can damage the PLAYER's ship.** Operator observed their own DAMCON teams responding to a call aimed at an NPC. `grid_apply_system_damage` also ends with `if should_explode: explode_player_ship(ship_id)`. Treat the grid helpers as player-ship APIs.
 
-> **Update 2026-08-16, later the same day — the damage is real, only the display is missing.** Operator observed a Drone 02 whose Weapons array had been destroyed *stop firing*, and one whose engines were destroyed *crawl away*. So the engine unquestionably acts on `system_damage` for NPCs; the earlier reading that the crit might be cosmetic is dead. The open question narrowed to why the readout does not reflect real, behaviour-affecting damage. The leading untested hypothesis is that the display is grid-derived while behaviour reads `system_damage` directly, which is testable only on a hull that has an interior — every Kralien warship hull has none, so the experiment was impossible until the drones moved to `xim_light_cruiser`. Result pending.
-
-> **Design consequence while this is unresolved: treat NPC subsystem damage as invisible to Science.** The stock console's own `Potential Critical hit` (yellow), `Critical hit` (red), and `<name> <SYSTEM> Destroyed` (white) broadcasts are the crew's real feedback channel, and they work. Build the drill's coaching around those, and leave Science on shields and frequency, which do work on an NPC. If a drill genuinely needs a visible subsystem degrade, the only path with evidence behind it is a hull that has a real interior (see the 40 below) — and that has not been tested either.
-
-> **STATUS 2026-08-16: unresolved, and this section has been wrong in both directions in one day.** Operator confirmation is that **the Science panel does NOT show subsystem damage on an NPC**, with or without a grid interior. Tested with `xim_light_cruiser` (75-node interior, 5 weapon nodes) and `grid_damage_system()` marking real nodes `__damaged__`: the panel still did not display it. So the display is not simply grid-derived, and giving an NPC an interior does not make subsystem damage visible to Science.
->
-> Do not record this as refuted either. It was written up as "refuted" once and as "confirmed" once, both within an hour, and both times on an inference about what the panel showed rather than a direct statement of what it showed. What is actually established is narrow: the damage is real and behaviour-affecting (a drone with destroyed weapons stops firing; destroyed engines make it crawl), `system_damage` and `system_max_damage` both hold live values, and the panel reflects none of it.
->
-> **Practical guidance until this is settled: report the numbers over Comms.** That works, is honest, and reads real engine values. See `khovan_drone_report_weapons_telemetry`.
-
-#### The failed grid fix, and why the guard is mandatory
-
-The obvious idea is to give the NPC an interior with `grid_rebuild_grid_objects()`. **On most enemy hulls this actively breaks the Science panel.**
-
-```mast
-    # WRONG - breaks the Science panel on any hull without an interior
-    grid_rebuild_grid_objects(target_id)
-
-    # RIGHT - ask the JSON first, it builds nothing
-    weapon_nodes = grid_count_grid_data("kralien_cruiser", "weapon")
-    if weapon_nodes != 0:
-        grid_rebuild_grid_objects(target_id)
-```
-
-`data/grid_data.json` has an entry for all 161 hulls, but **only 40 contain any `grid_objects`** — TSN, Xim, Arvonian, civilian hulls, and four starbases. Every Kralien *warship* hull is an empty placeholder; only `starbase_kralien` has an interior. Testing `hull in grid_data` proves nothing, because the hollow entries are present too. That exact mistake is what produced this bug.
-
-The failure mode is not a harmless no-op. `grid_rebuild_grid_objects` counts nodes per role and then writes what it counted unconditionally (`internal_damage.py:139-142`), so an empty hull writes `system_max_damage = 0` for all four systems. The Science readout divides by that value, and the divide-by-zero casts to `INT32_MIN` — the panel rendered `WEAP -2147483648`, wrapped across two lines, where it had previously read `WEAP 100%`.
-
-> **A zeroed `system_max_damage` renders garbage; the engine's own `2.0` renders 100%.** A post-call `len(grid_objects(id)) == 0` check cannot rescue this, because the zeros are already written by the time it runs. The check has to happen *before* the build.
-
-Note what this does and does not prove. The divide-by-zero shows *something* in the render path consumes `system_max_damage`. It does **not** show the percentage is computed from it — the measurement above rules that out. Both facts are true at once, and the tempting synthesis ("so just set the denominator") was the second failed fix.
+**Reusable lesson.** The panel was correct the whole time and so was the engine. Every wrong mechanism came from inferring what the display showed instead of pairing a known engine value with a look at the display in the same instant. The GM control target in `act1_drone_contact_fire.mast` (`khovan_subsys_control_*`, gamemaster + test-mode gated) exists to make that pairing cheap: spawn a bare stock enemy in range, force a known `system_damage` value with no beam or console involved, and read the panel. It settled this in two clicks after a day of reasoning. See 17.10.
 
 ### GM-only diagnostic: reading the raw inventory signal
 

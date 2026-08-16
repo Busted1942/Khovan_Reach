@@ -1139,6 +1139,40 @@ class Act1DroneContactFireStaticTests(unittest.TestCase):
                 f"{label} should say why no grid is built, not just omit it",
             )
 
+    def test_science_is_told_to_rescan_because_the_readout_is_not_live(self) -> None:
+        # THE answer to the "Science always reads 100%" question, operator-confirmed
+        # 2026-08-16 by controlled experiment: the panel captures subsystem
+        # percentages when the contact is SCANNED and never updates after that. Scan
+        # then shoot and it sits on the pre-damage snapshot forever; damage then scan
+        # and it is correct immediately.
+        #
+        # The panel was never broken and neither was the engine. Three mechanisms
+        # were proposed and all three were wrong before anyone tested the obvious
+        # thing, so this coaching line is load-bearing: without it a crew cannot see
+        # subsystem damage at all, and the whole drill's lesson is invisible.
+        drone = read(DRONE_PATH)
+        science_text = ""
+        for line in drone.splitlines():
+            if line.startswith("shared drone_01_science_report_request_text = "):
+                science_text = line
+                break
+        self.assertTrue(science_text, "Science coaching text is missing")
+        self.assertIn("Scan her again after every hit", science_text)
+        self.assertIn("only refreshes when you scan", science_text)
+
+        # The grid helpers reach the PLAYER's ship - the operator saw their own DAMCON
+        # respond to a call aimed at an NPC, and grid_apply_system_damage ends with
+        # explode_player_ship(). Neither may be reachable from the GM menu.
+        for hazard in [
+            '+ "Build interior on target"',
+            '+ "Force GRID damage"',
+        ]:
+            self.assertNotIn(
+                hazard,
+                drone,
+                "grid helpers can damage the player ship; this button must stay unwired",
+            )
+
     def test_player_facing_text_is_ascii_and_uses_no_dash_punctuation(self) -> None:
         # Operator preference 2026-08-16: player-facing lines use commas and full
         # stops, never a dash as punctuation. Two separate rules, both enforced here
