@@ -554,6 +554,12 @@ GM mark: final fallback only
 
 ## 8.5 Full or Compressed Shakedown — Drone 01 controlled disable
 
+**Revision note (operator-ratified 2026-08-16) — the Weapons-array disable is one confirmed critical hit, not three.** Gate 9 previously read "disabled in three confirmed hits." That number was set before the stock manual-targeting mechanic was read from source, and it does not survive contact with it: `legendarymissions/consoles/manual_weapons.mast:187` rolls `random.randint(1,20) == 20` **once per press of a subsystem button** — not per beam hit — so three confirmed hits is roughly sixty button presses. Worse, lines 169-173 of the same file clear an armed critical whenever the player switches subsystem, so a crew alternating between Weapons and Engines destroys its own progress. Beam rate does not enter the roll at all; it only decides how quickly an armed critical is consumed.
+
+One successful critical teaches what this gate exists to teach — that subsystem damage is worth pursuing and that manual targeting is the way to reach it. The additional two taught patience with a d20. Runtime now reads `drone_01_required_weapons_hits`, so the count is one line to change if live play argues for two.
+
+Related and unchanged in intent: hit confirmation is no longer inferred from the stock console's `MANUAL_SYSTEM` inventory value. The runtime observes the drone's real `system_damage` for the Weapons array instead, because the stock console owns that inventory pair and races any mission code that reads it. See `docs/04_implementation_setup/` for the implementation finding.
+
 Drone 01 setup:
 
 ```text
@@ -573,7 +579,7 @@ Required gates:
 6. Artemis stationary in band for 15 seconds.
 7. Captain/Training Control fire clearance issued.
 8. Weapons manual targeting active if detectable.
-9. Drone 01 Weapons array disabled in three confirmed hits.
+9. Drone 01 Weapons array disabled in one confirmed critical hit (see the revision note above; runtime constant `drone_01_required_weapons_hits`).
 10. Ceasefire confirmed.
 
 Early-fire reset:
