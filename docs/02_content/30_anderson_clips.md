@@ -20,6 +20,8 @@ The negative-space guardrail applies here: Anderson does NOT mention quantum fie
 
 ## CLIP 1: NEW ORDERS
 
+**Revision note (operator-ratified 2026-08-16).** The qualification officer is **Commander Dillon**.
+
 **Trigger:** Approximately one hour into the qualification cruise (after Drill Three concludes). Plays as a video transmission on the main screen.
 
 **Setup:** Comms announces incoming priority transmission from Command. Anderson appears on screen.
@@ -34,7 +36,7 @@ The negative-space guardrail applies here: Anderson does NOT mention quantum fie
 >
 > Your orders, Captain: proceed to the Khovan Reach region, locate the signal source, render aid as appropriate, and report findings. Anticipated transit from your current position is approximately ninety minutes at standard cruise.
 >
-> The qualification framework remains in effect. This is now a live operation under Master Sergeant Dillon's observation. Operate accordingly.
+> The qualification framework remains in effect. This is now a live operation under Commander Dillon's observation. Operate accordingly.
 >
 > Command, out."
 

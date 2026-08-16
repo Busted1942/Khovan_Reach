@@ -70,6 +70,8 @@ The tone is lighter than Sigma Protocol — no moral triangle, no hidden conspir
 
 **Voice-mode AI is limited.** One GPT-4o NPC — Hessler. Lightweight, cooperative, no tier gating. Used to expose the team to voice-mode roleplay before they encounter the harder version in Sigma Protocol. All other NPC dialogue (Anderson, Dillon, pirates under salvage cover, DAMCON team) is delivered through recorded clips or GM voice over Comms console exchanges.
 
+**Revision note (operator-ratified 2026-08-16).** Dillon's rank is Commander. Current player-facing labels and canonical content use **Commander Dillon**; historical live-smoke records retain the rank shown when those observations were captured.
+
 **Qualification is observation, not testing.** Players see no qualification cards during play. Dillon surfaces them at debrief. The mission is played as a real operation; competence is measured by what players actually do, not by checking items off a visible rubric.
 
 **No-fail with real costs.** Catastrophic failures (ship destruction) trigger a MAST state-save reload to the last drill checkpoint with prior qualifications preserved. Non-catastrophic failures (DAMCON casualties, Halcyon Drift loss, weapons depletion) are absorbed into qualification cards and acknowledged at debrief. The team always finishes the mission.
@@ -111,7 +113,7 @@ The crew should discover the generator limitation through play. Do not front-loa
 
 ### Mission Orders (as briefed by Dillon at scenario start)
 
-Routine qualification cruise. Standard pattern: depart Kestrel Yards, dock-and-resupply at Tarsis Station, conduct a shakedown profile selected by the captain, return for debrief. The captain may choose Full Shakedown, Compressed Shakedown, or Direct Scenario after launch. Dillon is the qualification instructor, stationed at Kestrel Yards and transmitting to Artemis for the duration of the cruise — he is never physically aboard.
+Routine qualification cruise. Standard pattern: depart Kestrel Yards, dock-and-resupply at Tarsis Station, conduct a shakedown profile selected by the captain, return for debrief. The captain may choose Full Shakedown, Compressed Shakedown, or Direct Scenario after launch. Commander Dillon is the qualification instructor, stationed at Kestrel Yards and transmitting to Artemis for the duration of the cruise — he is never physically aboard.
 
 Standard rules of engagement: defensive posture, hailing before any escalation, deference to TSN protocol. No live combat is anticipated.
 
@@ -167,7 +169,7 @@ All instructional and drill traffic is now **Dillon**, the instructor. Kestrel Y
 
 Delivery convention that follows from this:
 
-- **Comms messages** render a sender name. Dillon speaks in the first person; the body must not repeat "Dillon:" as a prefix, because the title already carries it.
+- **Comms messages** render a sender name. Commander Dillon speaks in the first person; the body must not repeat "Commander Dillon:" as a prefix, because the title already carries it.
 - **Current Objective panel** broadcasts body text only — no sender is rendered. Objective text is therefore terse in-world instruction with no speaker prefix.
 
 Implemented on `slice06-dillon-voice-and-prompt-polish`. Player-facing copy was also corrected for spelling and for design-language leakage ("no failure state", "fallback confirmation", "damage observer") that was reaching player consoles.

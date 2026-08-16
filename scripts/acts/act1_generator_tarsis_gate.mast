@@ -857,7 +857,7 @@ distance: 600
 
     training_speed_power_reminder_sent = True
     script.write_khovan_startup_trace("[KHOVAN ACT1 MSG ORDER] Dillon speed-power reminder sent after launch-envelope clearance")
-    await task_schedule(khovan_lifeform_send, {"send_lifeform_id": dillon_lifeform_id, "send_sender": "Dillon", "send_title": "Instructor", "send_text": training_speed_power_reminder_text, "send_title_color": "cyan", "send_fallback_sender_id": kestrel_yards_id, "send_breadcrumb": "[KHOVAN ACT1 MSG TRAINING 001] Dillon speed-power reminder sent"})
+    await task_schedule(khovan_lifeform_send, {"send_lifeform_id": dillon_lifeform_id, "send_sender": "Commander Dillon", "send_title": "Instructor", "send_text": training_speed_power_reminder_text, "send_title_color": "cyan", "send_fallback_sender_id": kestrel_yards_id, "send_breadcrumb": "[KHOVAN ACT1 MSG TRAINING 001] Dillon speed-power reminder sent"})
     ->END
 
 === khovan_tarsis_hail ===

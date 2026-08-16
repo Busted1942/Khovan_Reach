@@ -40,8 +40,8 @@ ADDRESSEE_RE = re.compile(r"^Artemis - [A-Z][A-Za-z]*:")
 # A body must not open by naming its own sender - comms_receive already renders
 # a header, so "Tarsis Control: ..." inside the body prints the name twice.
 SELF_NAMING_RE = re.compile(
-    r"^(Tarsis|Kestrel|Dillon|Training|Drone|Artemis)\b[^:\n]*:(?! )"
-    r"|^(Tarsis Control|Tarsis Station|Tarsis Docking Control|Kestrel Yard Control|Dillon|Training Control):"
+    r"^(Tarsis|Kestrel|Commander Dillon|Dillon|Training|Drone|Artemis)\b[^:\n]*:(?! )"
+    r"|^(Tarsis Control|Tarsis Station|Tarsis Docking Control|Kestrel Yard Control|Commander Dillon|Dillon|Training Control):"
 )
 
 

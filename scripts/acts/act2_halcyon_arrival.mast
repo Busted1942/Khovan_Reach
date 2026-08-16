@@ -169,7 +169,7 @@ shared halcyon_deploy_prompt_text = "Artemis - Captain: They have asked for an e
     # put his voice on the damaged freighter's own transponder, right after
     # Hessler speaks from that same id on the line above. Routed through the
     # lifeform helper so he speaks as himself; cookbook 16.3.2.
-    await task_schedule(khovan_lifeform_send, {"send_lifeform_id": dillon_lifeform_id, "send_sender": "Dillon", "send_title": "Instructor", "send_text": halcyon_deploy_prompt_text, "send_title_color": "cyan", "send_fallback_sender_id": kestrel_yards_id, "send_breadcrumb": "[KHOVAN ACT2 HALCYON 005B] deployment prompt sent"})
+    await task_schedule(khovan_lifeform_send, {"send_lifeform_id": dillon_lifeform_id, "send_sender": "Commander Dillon", "send_title": "Instructor", "send_text": halcyon_deploy_prompt_text, "send_title_color": "cyan", "send_fallback_sender_id": kestrel_yards_id, "send_breadcrumb": "[KHOVAN ACT2 HALCYON 005B] deployment prompt sent"})
     await task_schedule(khovan_set_current_objective, {"objective_id": "halcyon_deploy", "objective_body": "Artemis - Captain: Authorize the engineering deployment to Halcyon Drift.", "objective_step": "Engineering deployment", "objective_breadcrumb": "[KHOVAN OBJECTIVE 027] objective updated: engineering deployment"})
     await task_schedule(khovan_scenario_control_panel_update_overview)
     yield success

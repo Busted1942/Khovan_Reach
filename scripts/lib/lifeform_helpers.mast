@@ -123,7 +123,7 @@ shared anderson_no_orders_text = "Artemis - Comms: Command has no active orders 
 # NOT aboard, so he is hosted on Artemis only so the crew has someone to answer;
 # his fiction is a remote transmission and his badge reflects that.
 #
-# Ranks are canon: "Master Sergeant Dillon" and "Admiral Anderson" both appear
+# Ranks are canon: "Commander Dillon" and "Admiral Anderson" both appear
 # in docs/02_content/30_anderson_clips.md Clip 1.
 
 === khovan_create_mission_lifeforms ===
@@ -136,7 +136,7 @@ shared anderson_no_orders_text = "Artemis - Comms: Command has no active orders 
         ->END
 
     if dillon_lifeform_id == 0:
-        await task_schedule(khovan_lifeform_create, {"lifeform_name": "Master Sergeant Dillon", "lifeform_roles": "khovan_dillon", "lifeform_path": "//comms/khovan_dillon", "lifeform_host_id": artemis_id})
+        await task_schedule(khovan_lifeform_create, {"lifeform_name": "Commander Dillon", "lifeform_roles": "khovan_dillon", "lifeform_path": "//comms/khovan_dillon", "lifeform_host_id": artemis_id})
         dillon_lifeform_id = khovan_lifeform_last_id
         if dillon_lifeform_id != 0:
             dillon_lifeform_status = "created_aboard_artemis"
@@ -170,7 +170,7 @@ shared anderson_no_orders_text = "Artemis - Comms: Command has no active orders 
 === khovan_dillon_repeat_instruction ===
     # Re-reads the live objective rather than storing a second copy of the text,
     # so this can never drift from what the crew is actually being asked to do.
-    await task_schedule(khovan_lifeform_send, {"send_lifeform_id": dillon_lifeform_id, "send_sender": "Dillon", "send_title": "Instructor", "send_text": current_objective_body, "send_title_color": "cyan", "send_fallback_sender_id": kestrel_yards_id, "send_breadcrumb": "[KHOVAN LIB LIFEFORM] Dillon repeated current instruction"})
+    await task_schedule(khovan_lifeform_send, {"send_lifeform_id": dillon_lifeform_id, "send_sender": "Commander Dillon", "send_title": "Instructor", "send_text": current_objective_body, "send_title_color": "cyan", "send_fallback_sender_id": kestrel_yards_id, "send_breadcrumb": "[KHOVAN LIB LIFEFORM] Dillon repeated current instruction"})
     yield success
 
 === khovan_anderson_repeat_orders ===

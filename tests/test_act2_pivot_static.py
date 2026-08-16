@@ -178,7 +178,7 @@ class Slice07AGuards(unittest.TestCase):
             "khovan_act2_complete_distress_localization",
         ):
             body = label_body(read(ACT2_PATH), label)
-            self.assertIn('"send_sender": "Dillon"', body)
+            self.assertIn('"send_sender": "Commander Dillon"', body)
             self.assertIn('"send_fallback_sender_id": kestrel_yards_id', body)
             self.assertNotIn("tarsis_station_id", body)
 

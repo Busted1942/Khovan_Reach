@@ -94,7 +94,7 @@ shared navigation_priority_confirmed_text = "Artemis - Comms: Shakedown complete
 
 === khovan_engineering_send_message ===
     default engineering_message_text = ""
-    default engineering_message_title = "Dillon"
+    default engineering_message_title = "Commander Dillon"
     default engineering_message_color = "cyan"
     default engineering_message_breadcrumb = "[KHOVAN ACT1 ENG MSG] guarded message sent"
     # Routed through the lifeform helper so Dillon speaks as himself when his
@@ -303,7 +303,7 @@ shared navigation_priority_confirmed_text = "Artemis - Comms: Shakedown complete
     current_beat = "engineering_shakedown_impulse_zero_warp_200"
     last_checkpoint = "engineering_shakedown_start"
     script.write_khovan_startup_trace("[KHOVAN ACT1 ENG 003] Engineering shakedown started; impulse zero warp 200 instruction sent")
-    await task_schedule(khovan_set_current_objective, {"objective_id": "engineering_impulse_zero_warp_200", "objective_body": "Engineering, set impulse 0 and warp 200. Captain, order full impulse; Helm, hold us at zero while Dillon confirms we have not moved.", "objective_step": "Engineering impulse zero / warp 200", "objective_breadcrumb": "[KHOVAN OBJECTIVE 008] objective updated: Engineering impulse zero warp 200"})
+    await task_schedule(khovan_set_current_objective, {"objective_id": "engineering_impulse_zero_warp_200", "objective_body": "Engineering, set impulse 0 and warp 200. Captain, order full impulse; Helm, hold us at zero while Commander Dillon confirms we have not moved.", "objective_step": "Engineering impulse zero / warp 200", "objective_breadcrumb": "[KHOVAN OBJECTIVE 008] objective updated: Engineering impulse zero warp 200"})
     await task_schedule(khovan_scenario_control_panel_update_overview)
     task_schedule(khovan_engineering_watch_no_motion_validation)
     engineering_power_preset_run_id = engineering_power_preset_run_id + 1

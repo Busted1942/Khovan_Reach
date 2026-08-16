@@ -51,8 +51,8 @@ It also means the station-borrow fallback in `khovan_lifeform_send` is **not** c
 
 Cheapest decisive check first:
 
-1. **Select Artemis** (not a station) on a player Comms console. Do "Master Sergeant Dillon" and "Admiral Anderson" appear as badges, by name? This settles cookbook 16.5 steps 1–2 and costs about ten seconds.
-2. Click Dillon's badge → "Request Current Instruction". Does the route open and print the live objective with header `Dillon: Instructor`?
+1. **Select Artemis** (not a station) on a player Comms console. Do "Commander Dillon" and "Admiral Anderson" appear as badges, by name? This settles cookbook 16.5 steps 1–2 and costs about ten seconds.
+2. Click Commander Dillon's badge → "Request Current Instruction". Does the route open and print the live objective with header `Commander Dillon: Instructor`?
 3. Watch for the first-ever `[KHOVAN LIB LIFEFORM SEND] ... spoke as lifeform id=` line during Act I. Either that or `fell back to station-borrow path` is a pass for Act I continuity, but only the first proves the lifeform send path.
 4. In Act II, at maximum distance from Kestrel, confirm whether a fallback-path Dillon message still renders — the 16.4.1 range question.
 

@@ -68,7 +68,7 @@ class AddresseeConvention(unittest.TestCase):
     def test_player_copy_does_not_repeat_its_own_sender(self):
         """comms_receive renders the sender; naming it again prints it twice.
 
-        This is the same duplication that produced "Dillon: Dillon" headers.
+        This is the same duplication that produced "Commander Dillon: Commander Dillon" headers.
         """
         offenders = []
         for name, (path, value) in sorted(cc.all_player_copy().items()):
@@ -80,7 +80,7 @@ class AddresseeConvention(unittest.TestCase):
             if head.startswith("Artemis - "):
                 continue
             if ":" in value and re.match(
-                r"^(Tarsis|Kestrel|Dillon|Training)\b", head
+                r"^(Tarsis|Kestrel|Commander Dillon|Dillon|Training)\b", head
             ):
                 offenders.append(f"{path}: {name} -> {head!r}")
         self.assertEqual(

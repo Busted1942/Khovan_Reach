@@ -417,17 +417,17 @@ this is not the shape you want — use the NPC shape above it.
 
 `comms_override(..., from_name=X)` and `comms_receive(..., title=Y)` are **two
 different fields**, and the client concatenates them. Passing the same string to
-both produces a doubled header: `Dillon: Dillon`, `Kestrel Yard Control: Kestrel
+both produces a doubled header: `Commander Dillon: Commander Dillon`, `Kestrel Yard Control: Kestrel
 Yard Control`.
 
 Give them different values — speaker, then role:
 
 ```mast
-    with comms_override(sender_id, player_id, from_name="Dillon"):
+    with comms_override(sender_id, player_id, from_name="Commander Dillon"):
         comms_receive(text, title="Instructor", title_color="cyan")
 ```
 
-That renders `Dillon: Instructor`. The stock LegendaryMissions docking traffic
+That renders `Commander Dillon: Instructor`. The stock LegendaryMissions docking traffic
 does the same thing, which is why `Tarsis Station (usfp): Tarsis Docking Control`
 reads correctly while a hand-rolled message doubles up.
 
@@ -436,7 +436,7 @@ reads correctly while a hand-rolled message doubles up.
 `startup_sender` so existing call sites are unchanged.
 
 **Body text should not repeat the speaker.** Once the header carries it, a
-`"Dillon: ..."` prefix inside the message is duplicated on screen. This repo's
+`"Commander Dillon: ..."` prefix inside the message is duplicated on screen. This repo's
 convention is that the body opens with the *addressee* instead —
 `"Artemis - Engineering: ..."` — with one line per recipient.
 
@@ -1566,7 +1566,7 @@ borrowing a station's object id as the message sender:
 
 | Character | Where | Today |
 |---|---|---|
-| **Master Sergeant Dillon** | Kestrel Yards | lifeform; falls back to `kestrel_yards_id` |
+| **Commander Dillon** | Kestrel Yards | lifeform; falls back to `kestrel_yards_id` |
 | **Admiral Anderson** | Command, off-map | lifeform; falls back to `tarsis_station_id` — no on-map object is correct for him, so the borrow is a degraded fallback, not a fiction claim |
 | **Hessler** | Halcyon Drift | Slice 08, unimplemented |
 | **Reyes** (DAMCON lead) | Halcyon Drift | Slice 09, unimplemented |

@@ -364,7 +364,7 @@ class BootstrapStaticTests(unittest.TestCase):
         self.assertIn("[KHOVAN ACT1 UI] safe text message path used", audio)
         self.assertIn("[KHOVAN DILLON SAFE] Comms echo skipped because sender/context unavailable", audio)
         self.assertIn("await task_schedule(khovan_reach_send_safe_startup_message", audio)
-        self.assertIn('"startup_sender": "Dillon"', audio)
+        self.assertIn('"startup_sender": "Commander Dillon"', audio)
         self.assertIn('"startup_text": dillon_clip_1_stub_text', audio)
         self.assertIn('"startup_sender_id": kestrel_yards_id', audio)
         self.assertIn("[KHOVAN DILLON 001] Clip 1 text stand-in requested", audio)

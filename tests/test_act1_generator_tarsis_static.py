@@ -996,7 +996,7 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
             "training_speed_power_reminder_sent = True",
             "[KHOVAN ACT1 MSG ORDER] Dillon speed-power reminder sent after launch-envelope clearance",
             "await task_schedule(khovan_lifeform_send",
-            '"send_sender": "Dillon"',
+            '"send_sender": "Commander Dillon"',
             '"send_text": training_speed_power_reminder_text',
             '"send_fallback_sender_id": kestrel_yards_id',
             "[KHOVAN ACT1 MSG TRAINING 001] Dillon speed-power reminder sent",
