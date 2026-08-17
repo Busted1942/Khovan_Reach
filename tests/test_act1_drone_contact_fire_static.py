@@ -1139,7 +1139,7 @@ class Act1DroneContactFireStaticTests(unittest.TestCase):
                 f"{label} should say why no grid is built, not just omit it",
             )
 
-    def test_science_is_told_to_rescan_because_the_readout_is_not_live(self) -> None:
+    def test_science_is_told_to_rotate_bands_because_the_readout_is_not_live(self) -> None:
         # THE answer to the "Science always reads 100%" question, operator-confirmed
         # 2026-08-16 by controlled experiment: the panel captures subsystem
         # percentages when the contact is SCANNED and never updates after that. Scan
@@ -1157,7 +1157,19 @@ class Act1DroneContactFireStaticTests(unittest.TestCase):
                 science_text = line
                 break
         self.assertTrue(science_text, "Science coaching text is missing")
-        self.assertIn("Scan her again after every hit", science_text)
+
+        # CORRECTED 2026-08-16. This used to assert "Scan her again after every hit",
+        # and that instruction is measurably false: re-pressing an already-scanned
+        # band returns the engine's cache. The operator watched WEAP hold at 100%
+        # through repeated presses of the status band while the engine reported
+        # system_damage 0.86 of 2.0. Scanning an UNSCANNED band (intel, bio) refreshed
+        # the figures immediately - and neither carries subsystem data, so the refresh
+        # is bound to a scan completing, not to the band's contents.
+        #
+        # The old assertion actively protected wrong coaching, which is worse than no
+        # assertion at all. Pin the technique that works.
+        self.assertNotIn("Scan her again after every hit", science_text)
+        self.assertIn("Rotate to a band she has not baffled yet", science_text)
 
         # The coaching must teach the DISTINCTION, not just issue an instruction.
         # Shields read live from the shield_val blob key; the subsystem percentages
@@ -1166,6 +1178,11 @@ class Act1DroneContactFireStaticTests(unittest.TestCase):
         # which is the actual model the engine implements.
         self.assertIn("read live", science_text)
         self.assertIn("as fresh as your last scan", science_text)
+
+        # The in-fiction reason is load-bearing, not flavour: it is what makes
+        # "one clean read per band, then rotate" memorable under fire. A crew that
+        # only has the rule forgets it; a crew that has the reason reconstructs it.
+        self.assertIn("baffles the band it came in on", science_text)
 
         # The grid helpers reach the PLAYER's ship - the operator saw their own DAMCON
         # respond to a call aimed at an NPC, and grid_apply_system_damage ends with

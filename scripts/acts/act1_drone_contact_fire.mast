@@ -178,7 +178,21 @@ shared drone_02_hostile_warning_text = "Artemis - Captain: Weapons free on Drone
 # for something they never needed to wait for. Shield levels are still worth
 # calling because ordinary beam damage does go through the shields first, and
 # because frequency matching is what brings them down, but they gate nothing.
-shared drone_01_science_report_request_text = "Artemis - Science: Her shield levels read live on your panel, so call them out as they come down.\nArtemis - Science: Subsystem damage does not. That reading is only as fresh as your last scan. Scan her again after every hit or you will be reporting old numbers to your Captain.\nArtemis - Science: A critical hit reaches the subsystem whether her shields are up or not, so do not hold Weapons back waiting on them."
+# CORRECTED 2026-08-16 (operator-validated live, second correction to this line):
+# this previously said "Scan her again after every hit", which does not work.
+# Re-pressing a band that has already been scanned returns the engine's cache and
+# changes nothing - the operator watched WEAP sit at 100% through repeated presses
+# of the status band while the engine reported system_damage 0.86 of 2.0. What DOES
+# refresh the figures is scanning a band that has not been scanned yet: intel or
+# bio re-resolved the subsystem numbers immediately, and neither of those bands
+# carries subsystem data, so the refresh is bound to a scan COMPLETING rather than
+# to which band ran.
+#
+# The old wording therefore sent Science to do the one thing that provably fails.
+# The fiction below is not decoration - it is what makes the correct technique
+# memorable, and it maps exactly onto the measured behaviour: one clean read per
+# band, rotate to get another.
+shared drone_01_science_report_request_text = "Artemis - Science: Her shield levels read live on your panel, so call them out as they come down.\nArtemis - Science: Subsystem integrity does not. That reading is only as fresh as your last scan. A Kralien hull feels an interrogation pulse and baffles the band it came in on, so you get one clean read per band and then she keeps feeding you that same picture no matter what you do to her.\nArtemis - Science: Pressing the same band again will not help you. Rotate to a band she has not baffled yet and the integrity figures resolve fresh. You have four. Spend them when it counts.\nArtemis - Science: A critical hit reaches the subsystem whether her shields are up or not, so do not hold Weapons back waiting on them."
 shared drone_01_weapons_crit_technique_text = "Artemis - Captain: Order your ship into battle and disable, but do not destroy, the drone. After success, report back to Commander Dillon at Kestrel Yards."
 shared drone_01_known_marked = False
 shared drone_01_hull_restore_count = 0

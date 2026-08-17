@@ -769,3 +769,109 @@ next action: 1) restart, spawn a target, try Read Target Spike Status
   GM console may display messages in a UI surface not yet identified
   from a screenshot.
 ```
+
+### LIVE SMOKE 2026-08-16 (Science subsystem readout resolved; two workarounds failed)
+
+```text
+branch: slice06-drone-contact-fire
+build: locally installed Artemis3-x64-release, restarted per this file's guidance
+result: RESOLVED as a stock engine defect. Question closed by measurement;
+        both attempted code workarounds failed and were reverted.
+
+scope: The long-running "Science always reads WEAP 100% on an NPC"
+       question. Run on the GM control target (khovan_subsys_control_*),
+       V1 bare stock kralien_cruiser, roles "kralien, raider", spawned
+       1.2 km off Artemis with no Khovan science route in the path.
+
+checks:
+- Stale control, CONFIRMED. Force BLOB write set system_damage to 1;
+  engine reported 0.86 of 2.0 (the engine repairs NPC subsystem damage
+  on its own tick - see the decay at trace lines 7396 and 7430). Science
+  status band displayed WEAP 100% throughout. A live panel would have
+  read 57%.
+- Re-pressing an ALREADY-SCANNED band: FAILS TO REFRESH. Repeated
+  presses of "status" left WEAP at 100%. This refutes the previous
+  coaching line "Scan her again after every hit", which had been in
+  player-facing text since 2026-08-16 earlier that day.
+- Scanning a NOT-YET-SCANNED band: REFRESHES. "intel" and "bio" both
+  re-resolved the subsystem figures immediately. Neither band carries
+  subsystem data, so the refresh is bound to a scan COMPLETING, not to
+  which band ran. The engine's scan cache is PER BAND.
+- Shields on the same panel remained live throughout (FRNT/REAR SHLD
+  observed moving 26/100 -> 80/80 across the session), as did RANGE and
+  BEARING. The live/snapshot split is real and is the teaching point.
+
+workarounds attempted and FAILED - do not repeat:
+- GM refresh levers (6 methods, runtime-selectable to avoid a restart
+  per variant): writing cur_scan_ID / cur_scan_type / cur_scan_percent
+  on the SCANNING ship's blob at index 0; clearing the target's per-side
+  band keys; science_ensure_scan(); bare deselect/reselect. Note that
+  ScanPromise.start_scan is dead code in the installed sbs_utils - a
+  bare return at science.py:321 - so nothing drives those keys any more.
+- Custom Science console button (gui_tab_add_top("rescan") plus a
+  //gui/tab/rescan label, deliberately NOT a //enable/science route, to
+  avoid the panel cost documented in cookbook 7.1). THE TAB RENDERED -
+  that mechanism is now [LIVE] and reusable - but the button's
+  band-clearing action produced no refresh.
+- No sbs scan API exists to reach for. sbs_utils/mock/sbs.py, the
+  pybind-generated mirror of the engine's Python surface, contains one
+  "scan" hit and it is a list of blob key names. Caveat carried: a mock
+  can drift from the real binding, so this is strong evidence, not proof.
+
+resolution: Treated as a stock engine defect. No mission code ships for
+  it - a mission-side fix would make this panel behave differently from
+  every other mission the crew plays, which defeats the training intent.
+  Instead the native technique (rotate to an unscanned band) is taught,
+  with an in-fiction reason (Kralien counter-intrusion baffling: one
+  clean read per band) carried in drone_01_science_report_request_text.
+  Both attempted workarounds were reverted to vanilla; quick tests PASS.
+
+trace_marker_last: [KHOVAN SUBSYS CONTROL] V1 bare stock kralien blob
+  system_damage 0.86 of 2.0, grid nodes 0
+
+blocker: none for Slice 06. Open upstream item: worth filing an
+  Artemis/Cosmos bug report - "Science status subsystem readout never
+  refreshes; only a scan on a not-yet-scanned band re-resolves it." To
+  make the report airtight, reproduce once on a stock non-Khovan mission
+  so it does not mention this repo at all.
+
+next action: 1) operator owns the matching design/content edits - see
+  the findings below, docs/01_design/ and docs/02_content/ are outside
+  implementation scope per AGENTS.md section 2; 2) optionally reproduce
+  on a stock mission and file the upstream report.
+```
+
+## Findings routed to the operator (2026-08-16)
+
+Filed in the five-field format defined in AGENTS.md section 2. Both were
+subsequently authorized and closed by the operator the same day; the entries are
+kept rather than deleted so the route is readable as a worked example.
+
+```text
+Claim touched:  docs/02_content/40_dillon_clips.md, Clip 4 Step 10 - "Step ten.
+                Science and Comms, verify target status."
+Evidence class: live measured (per-band scan cache, control target, 2026-08-16)
+Disposition:    amended
+Owner:          content owner - NOT the implementing agent
+Dependency:     none
+Posture:        advisory. Science cannot verify a subsystem disable from a band
+                already scanned, so the step depends on band rotation the script
+                never mentions. Whether to say so in the clip is a content call.
+CLOSED 2026-08-16: operator authorized; Step 10 reworded and a Step 8 Science
+                band note added, mirroring the runtime coaching string.
+```
+
+```text
+Claim touched:  docs/01_design/30_qualification_cards.md, Science observation
+                items 1 and 2 - "provide usable data", "verify Engine disable"
+Evidence class: live measured (same session)
+Disposition:    amended
+Owner:          design lead - NOT the implementing agent
+Dependency:     none
+Posture:        advisory. Whether band rotation is a pass criterion or assumed
+                background skill is a design decision, not an implementation one.
+                Stating neither leaves the assessor to improvise.
+CLOSED 2026-08-16: operator authorized; rotation is now prompted-and-still-a-PASS
+                in item 1 (guided drill) and unprompted-to-PASS in item 2
+                (unguided drill), with a debrief-framing note added.
+```

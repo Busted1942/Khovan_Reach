@@ -276,6 +276,26 @@ Completion line:
 
 > "Subsystem check complete. Weapons subsystem disabled."
 
+### Step 8 note — Science sensor bands
+
+Sent to Science as the disable begins. This is the line that makes the drill's damage
+visible to the crew at all — without it Science reports the pre-damage figures for the
+whole engagement and the lesson of the drill is invisible.
+
+> "Science, her shield levels read live on your panel, so call them out as they come down.
+>
+> Her subsystem integrity does not. That reading is only as fresh as your last scan. A Kralien hull feels an interrogation pulse and baffles the band it came in on, so you get one clean read per band and then she keeps feeding you that same picture no matter what you do to her.
+>
+> Pressing the same band again will not help you. Rotate to a band she has not baffled yet and the integrity figures resolve fresh. You have four. Spend them when it counts.
+>
+> A critical hit reaches the subsystem whether her shields are up or not, so do not hold Weapons back waiting on them."
+
+**Delivery notes:**
+
+- Mirrors `drone_01_science_report_request_text` in `scripts/acts/act1_drone_contact_fire.mast`. Keep the two in sync; a static test pins the key phrases.
+- The counter-intrusion framing is not decoration. It maps onto measured engine behavior (2026-08-16: an already-scanned band returns cached figures, an unscanned band re-resolves them), and it is what lets a crew reconstruct the technique under fire when the bare rule would be forgotten.
+- The last line exists because the opposite was once taught and was wrong. Do not reintroduce any wording that gates subsystem damage on stripping shields.
+
 ### Step 9 — Ceasefire
 
 > "Step nine. Captain, call ceasefire. Weapons, confirm weapons safe."
@@ -286,11 +306,16 @@ Completion line:
 
 ### Step 10 — Verification
 
-> "Step ten. Science and Comms, verify target status."
+> "Step ten. Science and Comms, verify target status. Science — take the confirmation on a band you have not used yet. The one you have been reading is baffled and will tell you what it told you last time."
 
 Completion line:
 
-> "Verification complete. Drone status stable."
+> "Verification complete. Weapons subsystem confirmed down on a fresh band. Drone status stable."
+
+**Delivery notes:**
+
+- The band reminder is load-bearing here, not a flourish. Science verifying a disable on the band they already used will read the pre-damage figure and report the drill failed when it succeeded.
+- In Drill Three there are no step calls, so this is the last time Science is told. Item 2 of the Science qualification card treats unprompted band rotation as the pass criterion.
 
 ---
 

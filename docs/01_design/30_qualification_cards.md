@@ -300,17 +300,32 @@ If the Engineer stayed aboard Halcyon Drift during pirate/salvage-cover arrival,
 
 Did Science complete the guided Drill Two scan/classification check and provide the data needed for Weapons subsystem targeting?
 
-- PASS: Identified the contact as a TSN drill drone, reported relevant frequency/subsystem data, and later verified the Weapons subsystem disabled state.
-- PARTIAL: Completed the guided check but required prompting or delayed data delivery.
-- NEEDS RETEST: Could not identify the contact or did not provide actionable subsystem/frequency data even when prompted.
+- PASS: Identified the contact as a TSN drill drone, reported relevant frequency/subsystem data, and verified the Weapons subsystem disabled state on a fresh sensor band after the Step 10 prompt.
+- PARTIAL: Completed the guided check but required prompting or delayed data delivery, or reported a stale subsystem figure and corrected it once reminded that the band was baffled.
+- NEEDS RETEST: Could not identify the contact, did not provide actionable subsystem/frequency data even when prompted, or reported the pre-damage subsystem reading as current and did not correct it when prompted.
+
+> **Note on the sensor-band criterion (added 2026-08-16).** Subsystem integrity is a
+> per-band snapshot, not a live feed: re-reading a band that has already been scanned
+> returns the earlier figures unchanged, while an unused band re-resolves them. Shield
+> levels on the same panel *are* live. Drill Two is guided, so Dillon prompts the
+> rotation at Step 10 and being prompted is still a PASS. What separates PASS from
+> NEEDS RETEST here is whether Science corrects a stale report once told — not whether
+> they knew the technique in advance.
 
 **2. Unguided moving-target data and Engine verification (Scene 4)**
 
 Did Science independently reacquire the evasive Drill Three drone, provide usable data, and verify Engine disable?
 
-- PASS: Reacquired moving target, surfaced frequency/subsystem data without waiting for step prompt, and verified Engine disable at completion.
-- PARTIAL: Reacquired or reported data late, or required a nudge, but ultimately supported the objective.
-- NEEDS RETEST: Did not reacquire effectively, did not surface useful Engine targeting data, or failed to verify disable state.
+- PASS: Reacquired moving target, surfaced frequency/subsystem data without waiting for step prompt, and verified Engine disable at completion — rotating to an unused sensor band unprompted, since Drill Three carries no step calls.
+- PARTIAL: Reacquired or reported data late, or required a nudge — including a reminder that the subsystem reading was stale — but ultimately supported the objective.
+- NEEDS RETEST: Did not reacquire effectively, did not surface useful Engine targeting data, or reported stale subsystem figures as current through to the end of the drill.
+
+> **Why band rotation is the criterion here and not in item 1.** Drill Three removes the
+> step calls by design, so this is where a technique demonstrated under prompting has to
+> come back unprompted. A Science officer who rotated bands in Drill Two only because
+> Dillon said to, and then reads a frozen figure through all of Drill Three, has not
+> learned the skill — and the failure is silent, because a stale panel looks exactly like
+> a working one.
 
 **3. Distress signal detection (Scene 7)**
 
@@ -349,6 +364,10 @@ When the claimed claimed salvagers arrived, did Science scan them and surface th
 The Science qualification has the highest variance because the cache component identification (item 5) is binary — correct or incorrect on first attempt determines the timer compression. A Science officer who identified correctly first time saved meaningful time for the rescue. One who picked wrong put pressure on the DAMCON timer.
 
 Note this dynamic at debrief. The Science qualification is about precision under partial information — the cache inventory contained foils (military-grade stabilizer, civilian regulator, etc.) and the correct selection required attention to the diagnostic detail Engineering relayed.
+
+Sensor-band discipline (items 1 and 2) is worth calling out separately at debrief, because it is the one Science habit that transfers to every engagement rather than to one puzzle. The underlying lesson is that a subsystem reading carries a timestamp: shields are observed continuously from outside a hull, but what is broken *inside* one is intelligence, and you only hold it as of the last time you went and got it. A Science officer who internalizes that stops treating the panel as a feed and starts treating a scan as something spent deliberately — which is the correct model, and the one the engine actually implements.
+
+Be fair about the failure mode when it appears. Reporting a frozen figure is not carelessness; a stale panel is indistinguishable from a working one, and the officer has no cue that anything is wrong. The question at debrief is whether they re-checked before reporting, not whether they were fooled once.
 
 ---
 

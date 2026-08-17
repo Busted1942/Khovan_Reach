@@ -32,6 +32,7 @@ The current active source tree is this package.
 - `docs/00_project/00_source_index.md`
 - `docs/00_project/10_repo_structure.md`
 - `docs/00_project/20_build_start_checklist.md`
+- `docs/00_project/30_glossary.md` (engine, tooling, and process vocabulary — several terms carry measured meanings that are easy to get subtly wrong)
 
 Repo-root implementation-agent control:
 

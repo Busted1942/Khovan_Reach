@@ -137,7 +137,9 @@ The template structure for each station:
 > [Optional developmental note. Examples:]
 > - 'Your cache component identification was correct on first attempt. The civilian-grade stabilizer was the right choice. Time saved: approximately 15 minutes. Three personnel are alive because of that precision.'
 > - 'Your first cache selection was incorrect. The recovery — return trip and reselection — cost approximately 18 minutes of the DAMCON team's available timer. The team survived. They're hypoxic but they survived. The lesson is in the precision required from your station when downstream stakes are personnel.'
-> - 'Your claimed-salvager scan returned suspicious results — weapons signatures, transponder mismatches. Comms used the data effectively to advance the deception detection. Coordinated work between Science and Comms was the qualification highlight on this cruise.'"
+> - 'Your claimed-salvager scan returned suspicious results — weapons signatures, transponder mismatches. Comms used the data effectively to advance the deception detection. Coordinated work between Science and Comms was the qualification highlight on this cruise.'
+> - 'You rotated sensor bands in Drill Three without being told. That is the habit worth keeping: a subsystem reading carries a timestamp, and a stale one looks exactly like a live one. Your Captain got current numbers because you went and got them.'
+> - 'In Drill Three you reported subsystem figures from a band that had already been baffled, so the Captain was working from a picture several minutes old. You were not careless — nothing on that panel tells you it has gone stale, which is precisely why the discipline has to be yours rather than the instrument's. Re-read on a fresh band before you report.'"
 
 ### Comms debrief
 

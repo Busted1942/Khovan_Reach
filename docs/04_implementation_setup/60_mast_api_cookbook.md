@@ -477,6 +477,8 @@ Note `+ "Label":` with a trailing colon opens an inline block; without a colon i
 
 **Adding a Khovan `//enable/science` for a contact costs you that contact's stock Science panel.** You lose the `status`/`intel`/`bio` tabs, the A–E shield-frequency bars, and the `WEAP/ENGN/SENS/SHLD` percentages, and you cannot get them back while the route exists. This part is proven: removing the Khovan route from Drone 01 restored the full panel on a live run.
 
+**To put something on Science without paying that cost, use a console tab. [LIVE] 2026-08-16.** `gui_tab_add_top("<name>")` at file top level plus a `//gui/tab/<name>` label adds a tab to the console top bar — the same mechanism that puts `debug` next to `science` in LegendaryMissions (`consoles/debug.mast:7,11`). It never touches the scan route, so the bars and the four stock bands survive. **Confirmed live: the tab renders.** Two caveats from that same run: the tab appears on *every* console for that client, not just Science, and in the one attempt made the `on gui_message(gui_button(...))` handler behind it did not visibly act — so treat tab *rendering* as `[LIVE]` and the button *action* as `[UNPROVEN]`. See 7.3 for what that attempt was trying to do and why it was abandoned.
+
 **Correction, 2026-08-09 — do not repeat the original explanation of *why*.** This entry first claimed the stock panel appears because *no* `//enable/science` passes, leaving the engine to render natively. That is wrong. `legendarymissions/science_scans/science.mast:144` carries
 
 ```mast
@@ -674,12 +676,25 @@ That is a deliberate design distinction, not an inconsistency. A shield bubble i
 
 The consequence for mission design is worth stating plainly: **re-scanning is the intended gameplay loop, not a workaround.** A Science officer's job during an engagement is to keep refreshing intelligence. Coaching that says "open the panel and watch it" teaches the wrong model and will leave a crew staring at pre-damage numbers for an entire fight.
 
-**The fix is operational, not code.** Science must re-scan after each hit:
+**The fix is operational, not code.** Science must re-scan — but *not* on the band they are already looking at:
 
 ```
-Artemis - Science: Scan her again after every hit. The subsystem readout only
-refreshes when you scan, so it will sit on the old numbers until you do.
+Artemis - Science: Pressing the same band again will not help you. Rotate to a
+band she has not baffled yet and the integrity figures resolve fresh.
 ```
+
+> **Corrected 2026-08-16 — re-scanning the same band does nothing.** This section previously told Science to "scan her again after every hit". That instruction is measurably false and was in the player-facing coaching line for a day. Operator live validation: WEAP held at `100%` through repeated presses of the **status** band while the engine reported `system_damage 0.86 of 2.0`. Scanning a band that had **not** been scanned yet — `intel` or `bio` — re-resolved the subsystem figures immediately.
+>
+> Neither `intel` nor `bio` carries subsystem data, so the refresh is bound to a scan **completing**, not to which band ran. An already-scanned band returns the engine's cache and completes no scan. The operative rule is **one clean read per band, then rotate**.
+
+**Attempted workarounds, both failed — do not repeat.** The measured behaviour looks script-reachable and is not:
+
+1. *A GM lever that re-publishes the scan.* Six methods wired and offered as runtime-selectable buttons: writing `cur_scan_ID`/`cur_scan_type`/`cur_scan_percent` on the **scanning ship's** blob at index 0 (the engine's own scan state machine per `sbs_utils/procedural/science.py:352-354`, corroborated by the C++ scrap in `legendarymissions/README.md:10-12`); clearing the target's per-side band keys; `science_ensure_scan()`; and a bare deselect/reselect. Note that `ScanPromise.start_scan` is **dead code** in the installed sbs_utils — `science.py:321` is a bare `return` above the whole body — so nothing drives those keys any more.
+2. *A custom Science console button that clears the bands and forces a re-scan.* Built as a `gui_tab_add_top("rescan")` top tab with a `//gui/tab/rescan` label, deliberately **not** a `//enable/science` route, because a mission science route makes sbs_utils own the panel and `show_buttons()` then always writes the tab list (`science.py:437`), which costs the A–E shield-frequency bars. **The tab rendered and the button did nothing.** So `gui_tab_add_top` + `//gui/tab/` is confirmed working in this repo — that part is reusable — but the band-clearing behind the button did not produce a refresh.
+
+**There is no scan API to reach for.** `sbs_utils/mock/sbs.py` is the pybind-generated mirror of the engine's entire Python surface (~90 module functions, tagged `### from pybind`). It is a test double — line 6 is `sys.modules["sbs"] = sys.modules[__name__]` — imported only by sbs_utils' own `tests/`, never at runtime, and never by this mission except in two citation comments. Grepping it for `scan` returns exactly one hit: a list of blob key names (`tsnscan`, `tsnstatus`, `tsnintel`, `tsnbio`). No `sbs.science_*`, no invalidate, no re-publish. Caveat worth carrying: a mock can drift from the real binding, so this is strong evidence rather than proof.
+
+**Treat this as a stock engine defect and teach around it.** The refresh path that works is a native in-game action available to any crew in any mission, so the coaching costs nothing and transfers. The in-fiction reason carried in `drone_01_science_report_request_text` — Kralien counter-intrusion baffling, one clean read per band — is load-bearing rather than decorative: it maps exactly onto the measured behaviour, and a crew that has the reason can reconstruct the technique under fire when the rule alone would be forgotten.
 
 The arithmetic behind the display, confirmed by matching observed values against logged blob state:
 
@@ -2017,6 +2032,31 @@ The corollary is a cheap habit that paid off here twice: when a diagnostic value
 is already being logged, `grep` it before proposing anything that depends on its
 value. The second fix was abandoned before a single line was written because the
 trace already contained the refutation.
+
+**Third instance, 2026-08-16 — and the sharpest one, because the wrong answer was
+half right.** The measurement above ("damage the target, *then* scan, and the
+panel is correct") was generalized into the player-facing instruction *"Scan her
+again after every hit."* That instruction is false. Re-pressing an already-scanned
+band returns the engine's cache and completes no scan; the operator watched `WEAP`
+hold at `100%` through repeated presses of `status` while the engine reported
+`system_damage 0.86 of 2.0`. Only scanning a band that has **not** been scanned
+yet re-resolves the figures. The cache is **per band**, and the original
+experiment never tested a second read because it only ever scanned once.
+
+The failure mode is worth naming separately from 17.10's first two: this was not
+a mechanism invented from source reading. It was a *real measurement*, correctly
+taken, then extrapolated one step past what it covered — from "a first scan shows
+current damage" to "any scan shows current damage." The experiment that would have
+caught it is the trivial one nobody ran: **do the working action twice.** A result
+established with N=1 does not tell you the action is repeatable, and coaching is
+exactly where that gap becomes a crew staring at a stale number.
+
+Two workarounds were then built on that half-right model and both failed — a
+GM lever writing the engine's `cur_scan_*` keys, and a custom Science console
+button clearing the band keys. Neither moved the panel. Recorded in 7.3 so they
+are not re-attempted. The outcome was to treat it as a stock engine defect, teach
+the native technique (rotate bands), and give it an in-fiction reason so the crew
+can reconstruct it under fire.
 
 ## 17.11 Correct the record where it was wrong, do not silently rewrite it
 

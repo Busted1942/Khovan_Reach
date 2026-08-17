@@ -25,6 +25,27 @@ Implementation agents may change runtime code, tests, documentation, and tooling
 
 If implementation discovers an architecture issue, surface it as a finding, blocker, source-update proposal, or slice-plan change. Do not silently change scenario intent to fit implementation convenience.
 
+## The findings return path
+
+Design flows down; evidence has to flow back up, or the design document stays confidently wrong and the correction survives only as long as someone remembers the conversation. Implementation still never edits `docs/01_design/` or `docs/02_content/` — but "surface a finding" is not a format, and a finding written as loose prose gets lost.
+
+File findings in the slice's verification record, under a `## Findings routed to the operator (<date>)` heading, one entry each, carrying all five fields:
+
+```text
+Claim touched:  the design statement this bears on, quoted or cited by file and line
+Evidence class: from the section 5 table - asserted / static / preflight / observed / measured
+Disposition:    confirmed | amended | overturned | unproven | blocked
+Owner:          who makes the resulting edit - never the implementing agent
+Dependency:     what has to happen first, or "none"
+```
+
+Rules that make the path work:
+
+- **Disposition is a closed vocabulary.** Anything outside those five words is prose, and prose cannot be counted or filtered.
+- **Overturned requires attached evidence** at observed or better. An overturned claim without a measurement is just disagreement.
+- **Correct the record where it was wrong, do not silently rewrite it.** The superseded claim stays readable, dated, next to the finding that killed it. See cookbook 17.11 — a silent edit erases exactly the evidence that stops the next agent re-deriving the same appealing error.
+- **State conclusion posture.** A finding either recommends (and justifies) or lays out a tradeoff and names the decision as the operator's. Mixing the two is how a recommendation gets mistaken for a decision.
+
 Do not change scenario design, player-facing content, qualification criteria, DAMCON timing, Hessler behavior, pirate fiction, or debrief content unless the task explicitly targets those docs. Concretely, this means: **do not edit `docs/01_design/` or `docs/02_content/` during implementation work.** Design conflicts are surfaced as findings and routed to the operator — never resolved in place, never worked around silently.
 
 Do not reintroduce `artemis_ship_name`, `sim_create()`, `player_spawn(`, or `assign_client_to_ship` into the bootstrap path. LegendaryMissions owns the console and player-spawn lifecycle; Khovan only binds state to the ship it creates.
@@ -97,9 +118,17 @@ Never conflate these. This is the rule most often broken here.
 
 | Class | Proves | Does not prove |
 |---|---|---|
+| Asserted | nothing | anything — a claim with no evidence is E0, however reasonable it sounds |
 | Static tests | file/text structure | anything at runtime |
 | MAST compile preflight | `story.mast` + imports compile | runtime values, GUI lifecycle, player assignment, renderer behavior, playability |
-| Live Cosmos smoke | actual behavior | — |
+| **Live observed** | it happened once, under one configuration | that it repeats, or holds outside the case tried |
+| **Live measured** | actual behavior — instrumented, reproduced, paired against an expected value | — |
+
+**Split "live" into observed and measured.** These used to be one row and the conflation shipped a defect. A single observation tells you the action worked *that time*; it does not tell you the action is repeatable, and a rule written from it will be stated as though it is.
+
+**Guidance and player-facing copy may only be written from live measured.** If you are about to turn a finding into an instruction a crew or another agent will follow, the finding has to have been reproduced. The cheapest promotion from observed to measured is the one nobody runs: **do the working thing twice.**
+
+Worked example, 2026-08-16 — "damage the target, then scan, and the panel is correct" was a correct live *observation*. It was generalized into the coaching line "Scan her again after every hit", which is false: re-scanning an already-scanned band returns the engine's cache. The cache is per band, and the original experiment never scanned twice. See cookbook 7.3 and 17.10.
 
 A breadcrumb marker in `tests/live_startup_trace.txt` proves the marker was reached, not that the feature works. If live Cosmos contradicts static tests, **live wins.** Update the record, add a regression check, and do not claim the slice complete until the live failure is fixed or documented as a blocker.
 
