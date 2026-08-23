@@ -294,6 +294,8 @@ If the Engineer stayed aboard Halcyon Drift during pirate/salvage-cover arrival,
 
 ## SCIENCE
 
+**Revision note (operator-ratified 2026-08-16) — band rotation added to items 1 and 2.** The stock Science panel's subsystem-integrity readout is a per-band scan snapshot, not a live feed (measured 2026-08-16; see `docs/04_implementation_setup/60_mast_api_cookbook.md` section 7.3). Item 1 (guided Drill Two) now treats a prompted rotation as a PASS and grades on whether Science corrects a stale report once told. Item 2 (unguided Drill Three) treats unprompted rotation as the pass criterion, since Drill Three carries no step calls. A debrief-framing note was also added below covering both outcomes.
+
 ### Observation items
 
 **1. Guided contact classification and subsystem data (Scene 3)**

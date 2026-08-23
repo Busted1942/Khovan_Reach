@@ -325,6 +325,9 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
     default control_label = "V1 bare stock"
     if subsys_control_active:
         await task_schedule(khovan_subsys_control_cleanup)
+    if artemis_id == 0:
+        subsys_control_status = "blocked_no_artemis"
+        ->END
     artemis_object = to_object(artemis_id)
     if artemis_object is None:
         subsys_control_status = "blocked_no_artemis"
