@@ -4,7 +4,7 @@ Goal: Halcyon Drift exists as a scannable, hailable contact; Engineering and DAM
 
 ## Status
 
-implemented-live-unproven — all packet tasks built and statically covered. **No live Cosmos run.** Status is reviewer-set per handoff protocol 4.3.
+live-proven — reviewer closure directed by the operator on 2026-08-23 after the listed use cases were exercised repeatedly across multiple play-test sessions. The earlier PARTIAL entry remains in the append-only log; the closure entry records the later evidence.
 
 ## Source Sections Used
 
@@ -20,17 +20,17 @@ implemented-live-unproven — all packet tasks built and statically covered. **N
 - section 8.5 `[LIVE]` — cleanup routine.
 - section 7.1 `[LIVE]` — preserve the stock Science display by omitting custom `//science` routes; Science reports verbally and the observable gate is carried by Comms.
 - section 6.1 `[LIVE]` — matching `//enable/comms` and `//comms` companions gated on Halcyon's selected role; lifeform-backed replies explicitly `comms_navigate("//comms")` to rebuild that root after their sender overrides finish.
-- section 7.4 `[LIVE]` / preference 3 `[UNPROVEN]` — an unknown contact gets no Comms buttons, so both new-contact and reuse paths refresh only Halcyon's side-specific `scan` key and leave the stock `scan_type_list` untouched. The fallback remains armed until this is live-measured.
+- section 7.4 `[LIVE]` / preference 3 `[UNPROVEN]` in the cookbook — an unknown contact gets no Comms buttons, so both new-contact and reuse paths refresh only Halcyon's side-specific `scan` key and leave the stock `scan_type_list` untouched. This slice's repeated play tests locally promote the applied route to live-measured evidence; they do not change the cookbook-wide tag.
 - section 8.2 `[LIVE]` — Halcyon carries only Khovan roles, no stock `station` role, so no stock panel competes for the option list.
 - section 5.2 `[LIVE]` — n/a here; no polling observer in this slice.
-- section 9.4 `[COMPILE]` plus section 12 uncertainty handling — the installed library exposes `grid_restore_damcons()` but no away-team abstraction. The detachment therefore follows the library's own grid-object deletion shape and remains live-unproven.
+- section 9.4 `[COMPILE]` plus section 12 uncertainty handling — the installed library exposes `grid_restore_damcons()` but no away-team abstraction. The detachment follows the library's own grid-object deletion shape; repeated authorize/recall/jump use cases now supply live-measured evidence for this slice.
 
 ## Files Touched
 
 - `scripts/lib/entity_cleanup_helpers.mast` (new — first file in `scripts/lib/`)
 - `scripts/acts/act2_halcyon_arrival.mast` (new)
 - `scripts/main.mast` (imports + init)
-- `scripts/systems/story_jump_presets.mast` (JUMP-013)
+- `scripts/systems/story_jump_presets.mast` (the former JUMP-013 Halcyon-arrival preset was later retired; JUMP-012 now owns the complete arrival checkpoint)
 - `tests/test_act2_halcyon_arrival_static.py` (new)
 - `run_tests.py`
 
@@ -50,11 +50,11 @@ The packet flags `damcon_deployed` / `damcon_deploy_status` as a collision hazar
 4. The Captain orders Comms to select Halcyon and hail; the hail handler records `halcyon_scan_observed` and `halcyon_hail_observed`. Hessler answers and asks Artemis to transmit an away-team complement consisting of the required DAMCON team and one or two officers, including Engineering. Dillon then addresses only the Captain with protocol: Comms assembles the manifest, Engineering is required by the repair, one additional officer is discretionary, and DAMCON Team Reyes consists of Reyes, Park, and Achebe. Dillon also states that a Captain joining the away team must designate acting command aboard Artemis. After the lifeform-backed replies, the handler explicitly rebuilds Halcyon's selected root route so the manifest action replaces the completed hail action.
 5. Comms selects Engineering and optionally the Captain, Science, Weapons, Helm, or Comms as the second officer. Add/remove controls enforce a maximum of two; transmission is unavailable until Engineering is selected. If the Captain is selected, Comms must designate a remaining Science, Weapons, Helm, or Comms officer as acting command before transmission becomes available. The final control explicitly says `Transmit Manifest & Authorize Departure`, and Dillon's protocol copy warns that transmission immediately sends the declared officers and DAMCON team off Artemis.
 6. Transmitting the manifest is the Captain's departure authorization → the runtime selects DC3 when available, removes that real grid team and any old-style rally marker from Artemis, verifies the `damcons` roster fell by exactly one, then sets `engineering_placement = aboard_halcyon` and `damcon_deployed`. Hessler acknowledges the manifest only after the transfer succeeds. A failed reduction blocks the away-mission transition, exposes fallback status, and leaves a `Retry Away-Team Departure` Comms action.
-7. Optional recall → `grid_restore_damcons(artemis_id)` recreates the tracked named team, the runtime verifies the roster rose by exactly one, then sets `engineering_placement = returned_to_artemis`. The shared Act II reset path performs the same restoration before JUMP-011/012/013 cleanup can clear deployment state.
+7. Optional recall → `grid_restore_damcons(artemis_id)` recreates the tracked named team, the runtime verifies the roster rose by exactly one, then sets `engineering_placement = returned_to_artemis`. The shared Act II reset path performs the same restoration before JUMP-011/012 cleanup can clear deployment state.
 
 ## GM Controls
 
-JUMP-013 Halcyon Arrival, Test-Mode gated. **Runs cleanup before seeding**, so repeat jumps cannot stack contacts.
+JUMP-012 Distress Localized is the Test-Mode-gated Halcyon arrival checkpoint. It runs the shared Act II reset and cleanup barrier before rebuilding the contact, and repeated execution must leave exactly one Halcyon at the guarded approach. The redundant former JUMP-013 Halcyon Arrival preset is absent; Slice 08 may reuse the free number for a distinct boundary.
 
 ## Player-Facing Behavior
 
@@ -67,7 +67,7 @@ Hessler's hail reply, Hessler's request for the away-team complement, his post-t
 - **Helper owns no shared state.** Parses the lib file and asserts zero `shared` declarations. Slice 11 needs this routine for two pirates at once; state would make it a singleton.
 - **Cleanup does not clear its own flag.** Asserts `halcyon_cleanup_in_progress = False` is *absent* from the cleanup routine, because the deferred destroy handler owns the clear. This is the exact bug fixed live on 2026-08-08.
 - **Selections cleared before deletion**, ordered.
-- **JUMP-013 cleans before spawning**, ordered.
+- **JUMP-012 uses the repeat-safe reset and guarded approach**, with the retired Halcyon-arrival construct absent and JUMP-013's number free for a distinct future preset.
 - **Comms block opens with a statement**, not an option line — the Kestrel failure shape.
 - **Halcyon Comms survives reuse and lifeform replies.** Asserts both spawn branches refresh the known-contact key and hail/status replies navigate back to the selected Halcyon root after sender overrides.
 - **DAMCON departure is a grid mutation, not a story-only flag.** Asserts the authorization calls the detach routine before advancing, DC3 is preferred, the library's grid-delete/agent-cleanup pair is used, and exactly-one count verification is present.
@@ -78,20 +78,17 @@ Hessler's hail reply, Hessler's request for the away-team complement, his post-t
 
 ## Acceptance Covered
 
-Statically: idempotent spawn, cleanup ordering, scan and hail flags, a one-team DAMCON grid reduction before deployment state advances, tracked-team restoration before recall/jump state advances, `engineering_placement` set and readable, checkpoint written, JUMP-013 cleanup-before-seed.
+Statically: idempotent spawn, cleanup ordering, scan and hail flags, a one-team DAMCON grid reduction before deployment state advances, tracked-team restoration before recall/jump state advances, `engineering_placement` set and readable, checkpoint written, and JUMP-012's guarded repeat-safe arrival path.
+
+Live measured by operator report across repeated play-test sessions: repeat JUMP-012 contact/range/reset behavior; stock Science display; known Halcyon Comms route; Hessler hail and status responses; manifest add/remove/revise, officer-limit, Captain/acting-command, and transmission gating cases; departure authorization; exactly-one DAMCON removal; recall; and full-roster restoration on later jumps.
 
 ## Acceptance Not Covered
 
-- **Everything live.** No Cosmos run.
-- **Duplicate spawn.** Only disprovable by running JUMP-013 twice and counting contacts. This is the packet's stop condition: duplicates mean fix the helper before Slice 08, because Slices 10/11/12 all reuse it.
-- **Whether the Comms panel renders.** The packet calls an empty panel here "the exact Slice 04 Tarsis failure" and says treat it as FAIL, not ambiguous.
-- **Whether Hessler's Halcyon-hosted lifeform and badge render.** Dillon and Anderson prove the helper can create addressable lifeforms, but Hessler's deferred creation after the Halcyon spawn and cleanup/recreation cycle remain live-unproven. The Halcyon-object fallback preserves every required message.
-- **Whether `tsn_warpster` is an acceptable hull for a Vesperan civilian hauler.** Chosen because it is the only hull proven to spawn in this repo. Cosmetic, but wrong for the fiction — see Known Risks.
-- **Whether Halcyon's spawn offset puts it in sensor range.** 12 km ahead, 4 km off, untested.
-- **Whether the DAMCON roster visibly drops and restores in this Cosmos build.** Static tests and compile preflight prove the route and call shapes, not live Engineering UI/agent lifecycle behavior.
-- **Whether the Comms option list remains usable at every one/two-officer add/remove/revise state.** Static checks prove the conditions and handlers exist, not that the live panel refreshes after each selection.
-- **Officer departure is story state, not console reassignment.** Only the DAMCON grid team is mechanically removed. Selected bridge officers must roleplay leaving their stations; the runtime does not disconnect clients or disable consoles.
-- **Captain decisions from Halcyon are a narrative relocation, not a new downstream runtime branch.** Slice packets gate later behavior on `engineering_placement`, cascade state, and elapsed time; they do not read Captain location. Future Scene 9/10 presentation must nevertheless respect the acting-command assignment rather than assuming every Captain decision originates on the Artemis bridge.
+No in-scope Slice 07B acceptance item remains uncovered.
+
+Evidence provenance limitation: the closure is an operator attestation covering many play-test sessions, not a retained trace, screenshot set, build-version ledger, or reviewer-witnessed single run. That limits later forensic reconstruction but does not leave the repeatedly exercised acceptance cases open.
+
+Intentional boundaries, not missing acceptance: selected bridge officers leave through story state rather than console reassignment, and Captain decisions from Halcyon are narrative relocation rather than a separate downstream runtime branch. The `tsn_warpster` hull remains a cosmetic placeholder tracked under Known Risks.
 
 ## Known Risks/API Uncertainties
 
@@ -128,6 +125,8 @@ Recommended spike or next action:
                      after each action; do not promote player guidance from static
                      or compile evidence.
 ```
+
+**Resolution, 2026-08-23 — live measured.** The operator reports exercising authorization, recall, subsequent story-jump restoration, and the other listed use cases repeatedly across many play tests. The roster fell by exactly one on departure, restored on recall/reset, and did not accumulate loss across the tested cases. The uncertainty block remains above as the pre-test record; its HIGH-until-measured condition is now satisfied for this slice.
 
 ## Findings routed to the operator (2026-08-23)
 
@@ -275,14 +274,7 @@ The operator reported losing the Halcyon Comms route. Static inspection found tw
 
 ## Next Action
 
-Operator live smoke, in this order:
-
-1. **Run JUMP-012 twice.** JUMP-013 must not appear in the GM tree. Count Halcyon contacts and read the Artemis-to-Halcyon range after each JUMP-012. Exactly one Halcyon at approximately 5 km is expected after each run. A JUMP-013 option, a crash, two or more contacts, Artemis at Tarsis, or a range outside 4.5-5.5 km = stop.
-2. Select Halcyon on Science → does the normal multi-band display remain visible, with no custom one-tab `Scan` / `no data` panel?
-3. After Science reports verbally, select Halcyon on Comms → does `Hail Halcyon Drift` render under a known Halcyon sender? `unknown` or an empty panel = FAIL.
-4. Hail → does it proceed directly to two messages headed `Captain Aurel Hessler: Halcyon Drift`, with no Science or Dillon message? Does `Request Status Update` also answer as Hessler?
-5. On Comms, open `Assemble Away-Team Complement`. Select and remove Engineering, then select and remove each optional officer one at a time; repeat that entire cycle twice. The submenu must refresh after every click without an assertion, blank panel, or stale option. Then select Engineering alone and transmit. Hessler must repeat DAMCON Team Reyes plus Engineering and say Halcyon is standing by; authorization must then appear. Revise and test an ordinary second officer; Hessler must name that officer. Revise again, select Captain, and confirm transmission remains hidden until an acting commander is designated. After designation Hessler must name both Captain and acting command. A third away officer must never be selectable, and removing Engineering must hide transmission.
-6. Before authorization, record the Engineering roster (normally DC1/DC2/DC3). Authorize → exactly one team, preferably DC3, disappears and the trace reports `before=3 after=2`. Recall → the same named team returns and the trace reports `before=2 after=3`. Run JUMP-012 twice after a deployment; each jump must leave the full starting roster with no cumulative loss or extra teams.
+Slice 07B is closed. Merge the reconciled Slice 08 packet through the docs/governance branch, return to clean `master`, then open the Slice 08 implementation branch. The next live acceptance work belongs to Slice 08; do not repeat Slice 07B merely to recreate evidence already supplied by the operator.
 
 ---
 
@@ -436,3 +428,23 @@ checks:
 trace_marker_last: unknown - not reported
 blocker: NEXT-ACTION-1 not yet run; this is the item that exercises both this session's fixes (the 5.2 barrier-reset fail-closed change and the JUMP-013 removal) under live Cosmos
 next action: run NEXT-ACTION-1; if it passes, Part 1 `Status` and `Acceptance Not Covered` are reviewer fields per handoff protocol 4.3 and still need reviewer sign-off before this slice is fully closed, independent of this log
+
+### LIVE SMOKE 2026-08-23 — closure
+branch: multiple operator play-test sessions; final Slice 07 runtime merged to master
+commit: final merged runtime at 6e3b56b (individual play-test commits not reported)
+build: Cosmos <versions not retained in this record>
+result: PASS
+
+Reported by the operator after the earlier PARTIAL block: all listed use cases were run over many play tests. This is repeat evidence and therefore measured for acceptance, while its provenance remains operator-attested rather than trace- or screenshot-verified.
+
+checks:
+- NEXT-ACTION-1: PASS      repeated JUMP-012 leaves JUMP-013 absent, exactly one Halcyon at the guarded approach, and restores the full DAMCON roster after deployment
+- NEXT-ACTION-2: PASS      stock multi-band Science display remains usable
+- NEXT-ACTION-3: PASS      known Halcyon sender and hail route remain available
+- NEXT-ACTION-4: PASS      Hessler hail and status routes remain available across the exercised contact lifecycles
+- NEXT-ACTION-5: PASS      repeated manifest selection, removal, revision, officer limit, Captain/acting-command, and transmission-gating cases
+- NEXT-ACTION-6: PASS      authorization removes exactly one tracked DAMCON team; recall and later jumps restore it without cumulative loss
+
+trace_marker_last: unknown — no single retained trace represents the many play-test sessions
+blocker: none
+next action: Slice 08 implementation from clean master after the reconciled packet merges

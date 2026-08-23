@@ -313,17 +313,23 @@ Source docs:         docs/01_design/00_scenario_play_guide.md Scene 9
                        inside AUTO wrapper: "Beat tracker, comms channel, cascade readiness";
                        GM paces the Hessler conversation), section 12 (post_cascade)
                      docs/02_content/00_hessler_voice_mode.md
+                     docs/04_implementation_setup/60_mast_api_cookbook.md sections 5.1,
+                       5.2, 17.11, 17.12, and 17.12.1
                      tests/SLICE07B_VERIFICATION.md
 
 Files to modify:     scripts/acts/act2_away_mission.mast             (new)
                      scripts/main.mast
-                     scripts/systems/story_jump_presets.mast         (JUMP-014, JUMP-015)
+                     scripts/systems/story_jump_presets.mast         (JUMP-013 through JUMP-015)
                      tests/test_act2_away_mission_static.py          (new)
+                     tests/test_story_jump_presets_static.py
+                     tests/test_coverage_matrix.md
                      run_tests.py
                      tests/SLICE08_VERIFICATION.md                   (new)
 
-Runtime owner model: act2_away_mission.mast owns away_* / hessler_* / cascade_* state and the
-                     beat tracker. This is the first GM-DRIVE scene: runtime owns structure
+Runtime owner model: act2_away_mission.mast owns away_*, hessler_channel_open,
+                     hessler_contact_status, cascade_*, convergence_*, bridge_report_*, and
+                     the beat tracker. lifeform_helpers.mast retains ownership of
+                     hessler_lifeform_*. This is the first GM-DRIVE scene: runtime owns structure
                      and readiness only, never dialogue content. The GM drives pacing; the
                      runtime must never auto-advance a beat the GM has not marked, except
                      the cascade readiness gate.
@@ -339,8 +345,10 @@ State variables needed:
                      cascade_time                  cascade_trigger_source
                      bridge_report_status          bridge_report_last
                      cascade_fallback_available
-                     Collision check: no existing shared name begins away_, hessler_,
-                     cascade_, convergence_, or bridge_.
+                     Collision check: exact proposed names are available. The hessler_ prefix
+                     is already shared: lifeform_helpers.mast owns hessler_lifeform_id and
+                     hessler_lifeform_status. Reuse that existing Halcyon-hosted Hessler
+                     lifeform and do not shadow, reset, or recreate its lifecycle state here.
                      cascade_triggered / cascade_time are named exactly as
                      10_mast_requirements.md section 9.1 specifies, because Slice 09's
                      activation contract reads them verbatim.
@@ -354,41 +362,66 @@ Merge-back required: yes
 
 Implementation tasks:
                      1. Create act2_away_mission.mast + wiring.
-                     2. Beat tracker: ordered beat list, GM-advanced, with current beat
+                     2. Reuse hessler_lifeform_id and the existing Hessler send/fallback path
+                        delivered by Slice 07B; do not create a second Hessler lifeform.
+                     3. Beat tracker: ordered beat list, GM-advanced, with current beat
                         surfaced to the GM overview. No auto-advance.
-                     3. Hessler comms channel state (open/close), GM-controlled.
-                     4. Convergence flag - the condition set that makes cascade legitimate.
-                     5. Cascade readiness gate + cascade trigger, writing cascade_triggered
+                     4. Hessler comms channel state (open/close), GM-controlled.
+                     5. Convergence flag - the condition set that makes cascade legitimate.
+                     6. Cascade readiness gate + cascade trigger, writing cascade_triggered
                         and cascade_time. Include a GM manual trigger as the documented
                         fallback and set cascade_fallback_available.
-                     6. Bridge report state so the bridge crew sees away-team status.
-                     7. post_cascade checkpoint write.
-                     8. JUMP-014 away_mission_start + JUMP-015 cascade_decision presets.
+                     7. Guard every delayed cascade/readiness task with an away-mission run ID;
+                        cleanup and all three story jumps must invalidate earlier tasks.
+                     8. Bridge report state so the bridge crew sees away-team status. This is
+                        state/surface work only; do not invent Reyes dialogue or a Reyes
+                        lifeform in this slice.
+                     9. Write last_checkpoint = "post_cascade" after a valid cascade trigger.
+                    10. Add three independent presets, each using reset/cleanup helpers rather
+                        than chaining one story jump through another:
+                        - JUMP-013 away_team_deployed: the distinct Scene 8 -> Scene 9 boundary.
+                          Seed a transmitted manifest and exactly one deployed DAMCON team by
+                          calling the existing Slice 07B deployment path, not by setting only
+                          presentation flags.
+                        - JUMP-014 away_mission_start: initialize the Scene 9 wrapper at its
+                          first GM-controlled beat.
+                        - JUMP-015 cascade_decision: seed the final pre-cascade decision state
+                          without firing the cascade automatically.
+                        Remove the temporary "JUMP-013 is free" placeholder assertion when
+                        JUMP-013's real static coverage is added.
 
-Tests required:      JUMPTEST-014, JUMPTEST-015
-                     SAVE-006
+Tests required:      JUMPTEST-013, JUMPTEST-014, JUMPTEST-015
+                     SAVE-006: Slice 08 proves the checkpoint write and valid trigger ordering;
+                       Slice 15 retains ownership of checkpoint reload/persistence proof.
                      OBJ-005, OBJ-006
-                     All verified present in tests/test_coverage_matrix.md.
+                     Reconcile that split ownership explicitly in tests/test_coverage_matrix.md.
 
 Acceptance criteria: Beat tracker never auto-advances; GM can move forward and the runtime
                      records each beat; cascade sets cascade_triggered and a usable
-                     cascade_time; post_cascade checkpoint persists; both presets seed
-                     valid state; quick passes.
+                     cascade_time; a valid cascade writes the post_cascade checkpoint; all
+                     three presets seed valid, independent state; JUMP-013 leaves exactly one
+                     DAMCON team deployed and cannot inherit a prior jump's state; quick passes.
 
 Expected observations:
                      GM overview shows current away-mission beat and it changes only on GM
                        action.
                      Cascade sets cascade_triggered true and stamps cascade_time.
                      Bridge report surface shows away-team status to non-GM stations.
+                     GM Test Mode lists JUMP-013 away_team_deployed, JUMP-014
+                       away_mission_start, and JUMP-015 cascade_decision in order.
 
 Failure/ambiguous observations:
                      A beat advances without GM action (structure loss - FAIL).
                      Cascade fires without convergence and without explicit GM override.
                      cascade_time is unset, zero, or None after trigger - this silently
                        breaks every Slice 09 threshold; treat as FAIL, not ambiguous.
+                     JUMP-013 fails to reduce Artemis's DAMCON roster by exactly one, or
+                       inherits a prior hail/manifest/deployment flag (cleanup/seed failure -
+                       FAIL).
                      Bridge report state set but nothing renders (AMBIGUOUS).
 
-What remains unproven: Whether cascade_time survives checkpoint reload (Slice 15 spike).
+What remains unproven: Whether cascade_time and post_cascade survive checkpoint reload
+                       (Slice 15).
                      Whether the beat tracker is usable at conversational pace with a real
                        GM - only a crewed session can show this.
 
@@ -400,10 +433,18 @@ Next action by result:
 Known risks:         This is the first GM-DRIVE scene; the temptation to auto-advance for
                        convenience directly violates the section 7 ownership model.
                      cascade_time is the single highest-leverage value in Acts II/III.
+                     JUMP-013 previously named a redundant Halcyon-arrival preset and was
+                       deleted after live cleanup/state leakage. Its number is intentionally
+                       reissued here for a distinct boundary; JUMP-014 and JUMP-015 retain
+                       their canonical meanings. Do not restore the deleted promote path.
+                     Slice 07B is live-proven by operator report across repeated play-test
+                       sessions. Preserve that verification record's earlier PARTIAL entry as
+                       history; consume its later closure entry as the current prerequisite.
 
 Do not implement:    Any DAMCON timer behavior (Slice 09) - this slice only fires the
                        trigger and records the timestamp.
                      Hessler dialogue text or TTS.
+                     A duplicate Hessler lifeform, a Reyes lifeform, or new Reyes dialogue.
                      Cache, pirates, combat, repair.
                      Audio playback.
 ```
