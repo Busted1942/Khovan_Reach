@@ -1633,4 +1633,3 @@ These are surfaced, not resolved, per `70_agent_handoff_protocol.md` section 8.
    Found while writing these packets: Slices 10, 13, and 14 each need to validate a preset in that range and had nothing valid to cite. The affected packets now name the gap explicitly and fall back to a neighbouring subsystem ID rather than inventing a JUMPTEST number, because inventing one would put an ID in a packet that the coverage-matrix check would then have to be weakened to accept.
 
    Resolution is a design-doc edit (extend the JUMPTEST range to 027 in `40_admin_testing_plan.md` section 10), so it is routed to the operator rather than made here. Six IDs, mechanical change.
-

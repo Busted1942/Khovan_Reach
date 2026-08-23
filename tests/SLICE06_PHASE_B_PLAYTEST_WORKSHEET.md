@@ -18,7 +18,7 @@ Use one fresh server session for the normal run. Record `PASS`, `FAIL`, or `AMBI
 - [ ] Current objective shows Drone 01 ready
 - [ ] Trace file cleared or a session start marker recorded
 
-Evidence notes:  
+Evidence notes:
 ______________________________________________________________________________
 
 ## ACT1-019 — Drone 01 early-fire reset
@@ -33,7 +33,7 @@ Expected outcome:
 - [ ] Objective broadcast says: “Training Control: unauthorized hit detected. Target reset. Reacquire, reestablish range, and wait for clearance.”
 - [ ] No Drone 02 spawn and no Act-II-ready state.
 
-Observed result: `PASS / FAIL / AMBIGUOUS`  Notes: ________________________________  
+Observed result: `PASS / FAIL / AMBIGUOUS`  Notes: ________________________________
 Trace marker / screenshot: _____________________________________________________
 
 Failure or ambiguity to record: wrong offset, stale gate, no objective, duplicate target, or no trace/state evidence.
@@ -50,7 +50,7 @@ Expected outcome:
 - [ ] Objective broadcast says: “Training Control: target destroyed. Drill objective was controlled subsystem disable. Target reset for repeat.”
 - [ ] Drone 02 does not spawn.
 
-Observed result: `PASS / FAIL / AMBIGUOUS`  Notes: ________________________________  
+Observed result: `PASS / FAIL / AMBIGUOUS`  Notes: ________________________________
 Trace marker / screenshot: _____________________________________________________
 
 Failure or ambiguity to record: cleanup counted as a kill, offset did not increment, Drone 02 appeared, or no evidence.
@@ -68,8 +68,8 @@ Expected outcome:
 - [ ] After a continuous 15-second stationary hold in range, the objective broadcast authorizes Weapons fire.
 - [ ] If an observer cannot verify a value, its named Comms/GM fallback is available.
 
-Observed result: `PASS / FAIL / AMBIGUOUS`  Notes: ________________________________  
-Range observed: __________ m  Hold observed: __________ s  
+Observed result: `PASS / FAIL / AMBIGUOUS`  Notes: ________________________________
+Range observed: __________ m  Hold observed: __________ s
 Trace marker / screenshot: _____________________________________________________
 
 Failure or ambiguity to record: early authorization, timer survives movement/reset, wrong range, or fallback unavailable.
@@ -98,8 +98,8 @@ Expected outcome:
 - [ ] The one valid hit is evidenced and sets Weapons disabled.
 - [ ] Objective broadcast requests ceasefire; Drone 01 is not complete until ceasefire is confirmed.
 
-Observed result: `PASS / FAIL / AMBIGUOUS`  Notes: ________________________________  
-Hit evidence / `MANUAL_SYSTEM` values: __________________________________________  
+Observed result: `PASS / FAIL / AMBIGUOUS`  Notes: ________________________________
+Hit evidence / `MANUAL_SYSTEM` values: __________________________________________
 Trace marker / screenshot: _____________________________________________________
 
 Failure or ambiguity to record: count advances on generic damage, no valid hit registers, signal absent without fallback, or disable occurs before a confirmed hit.
@@ -116,8 +116,8 @@ Expected outcome:
 - [ ] `drone_contact_act2_ready` becomes true and `drone_contact_act2_handoff_status` identifies Slice 07 readiness.
 - [ ] `mission_phase` remains `act_1`; Slice 06 does not invent or invoke an Act-II callback.
 
-Observed result: `PASS / FAIL / AMBIGUOUS`  Notes: ________________________________  
-Drone 02 offset: __________ m  Cleanup source: __________________  Kill source: __________________  
+Observed result: `PASS / FAIL / AMBIGUOUS`  Notes: ________________________________
+Drone 02 offset: __________ m  Cleanup source: __________________  Kill source: __________________
 Trace marker / screenshot: _____________________________________________________
 
 Failure or ambiguity to record: cleanup counts as completion, wrong spawn range, no ready marker, phase changes early, or no source evidence.
@@ -133,7 +133,7 @@ Expected outcome:
 - [ ] No Phase A instrumentation wording (“observe whether”, API-test language, or stock-menu probe text) is player-visible.
 - [ ] Objective identifies the Act-II-ready boundary and tells the crew to stand by for orders.
 
-Observed result: `PASS / FAIL / AMBIGUOUS`  Notes: ________________________________  
+Observed result: `PASS / FAIL / AMBIGUOUS`  Notes: ________________________________
 Archive entry / screenshot: ____________________________________________________
 
 Failure or ambiguity to record: missing/duplicated packet, GM-only output, instrumentation text, or no archive/state evidence.
@@ -163,8 +163,8 @@ Failure or ambiguity to record: missing/duplicated packet, GM-only output, instr
 | ACT1-023 | __________ | __________________ | __________________ |
 | ACT1-024 | __________ | __________________ | __________________ |
 
-Overall: `PASS / PARTIAL / FAIL / AMBIGUOUS`  
-Trace marker last: _____________________________________________________________  
+Overall: `PASS / PARTIAL / FAIL / AMBIGUOUS`
+Trace marker last: _____________________________________________________________
 Operator finding / blocker: ___________________________________________________
 
 Static checks prove file structure only. This worksheet’s checkboxes become live evidence only when backed by the operator observation and trace/state evidence recorded above.
