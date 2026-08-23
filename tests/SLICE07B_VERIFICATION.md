@@ -199,18 +199,114 @@ Dependency: live-test the Comms selection flow and decide whether optional-offic
 
 The operator directed Hessler to request the full away-team complement and required Comms to select one or two officers in addition to DAMCON. Runtime implementation preserves Engineering as mandatory because Scene 9's repair conversation and Slice 09's timer branch require `engineering_placement = aboard_halcyon`; Comms may add the Captain, Science, Weapons, Helm, or Comms. If the Captain goes, transmission is blocked until Comms designates a remaining officer as acting command, and the bridge objective transfers to that command role. Static inspection found no future slice gate that reads Captain location; the downstream mechanical inputs are Engineering placement, cascade state, and elapsed time. This creates a player-facing choice not yet represented in the protected design documents. No design/content file was edited by implementation.
 
+### Non-ASCII punctuation corrupted Dillon's manifest protocol
+
+Claim touched: the cookbook known-bad rule at section 11 states that player-facing text must use ASCII and no dash punctuation, guarded by `test_player_facing_text_is_ascii_and_uses_no_dash_punctuation`.
+Evidence class: observed
+Disposition: confirmed
+Owner: operator, for live acceptance of the repaired Dillon message
+Dependency: restart Cosmos, hail Halcyon, and inspect the full Dillon protocol line through the DAMCON names
+
+The operator screenshot shows the Comms renderer turning the em dashes around `Reyes, Park, and Achebe` into multiple lines of garbage characters. The existing regression named by the cookbook inspected only the Act I drone file, so it did not protect new copy elsewhere in the mission. Dillon's line now uses two ASCII sentences, and the shared mission-text contract now checks every runtime `*_text` variable for ASCII and forbidden dash punctuation.
+
+### In-place manifest option mutation preceded an engine space-object assertion
+
+Claim touched: this record's Player-Facing Behavior claim that Comms could repeatedly select and remove away-team members safely on Halcyon's target-selected route.
+Evidence class: observed
+Disposition: amended
+Owner: operator, for live-measured acceptance of repeated selection and removal
+Dependency: restart Cosmos and complete the add/remove sequence below twice without an assertion or stale menu
+
+The operator screenshot records Artemis' `MissionScript.cpp` line 785 assertion `VALID_SPACE_OBJ(ID)` while Comms was selecting and deselecting crew. The live trace shows repeated evaluation of Halcyon's custom Comms route, no manifest transmission, and no deployment, so the failure occurred during roster editing rather than Hessler messaging or DAMCON transfer. The prior handlers changed which buttons were visible but did not return the Comms promise to a named route. The repair places roster controls in `//comms/khovan_halcyon_manifest`, explicitly refreshes that submenu after every add, remove, and acting-command action, and returns to the Halcyon root after transmission. Per-action trace breadcrumbs now identify the last completed click if the assertion recurs. This is a cookbook-shaped repair, but the exact engine-side invalid ID remains unproven until the same toggle sequence succeeds twice.
+
+### JUMP-013 left Artemis at Tarsis instead of staging the Halcyon arrival
+
+Claim touched: this record's Runtime Flow claim that JUMP-013 seeds a playable Scene 8 Halcyon-arrival checkpoint.
+Evidence class: observed
+Disposition: amended
+Owner: operator, for live-measured acceptance of the repeat-safe approach placement
+Dependency: restart Cosmos and execute JUMP-013 twice, checking the Artemis-to-Halcyon range after each execution
+
+The operator screenshot shows Halcyon spawned at the fixed distress point while Artemis remains beside Tarsis, approximately 95 km away. Static inspection confirmed JUMP-013 validated the contact and scene but never changed or checked the player ship's position. The repair uses the same guarded direct `Vec3` position assignment already observed in the Kestrel mechanical hold, clears stale docking state, sets throttle to zero, and places Artemis five kilometres short of Halcyon. The seed now blocks and reports a failed validation if either object is missing or the resulting range is outside 4.5-5.5 km. This recommends a collision-safe approach point rather than overlapping the two ships.
+
+### Repeat Act II jump passed a lifeform Agent to the space-object deletion API
+
+Claim touched: this record's Runtime Flow and cleanup claims that JUMP-012/JUMP-013 can remove an existing Hessler lifeform and Halcyon contact repeat-safely.
+Evidence class: observed
+Disposition: amended
+Owner: operator, for live-measured acceptance of repeated JUMP-012/JUMP-013 teardown
+Dependency: restart Cosmos, execute JUMP-013 followed by JUMP-012 twice, and retain the lifeform-cleanup and Halcyon-cleanup trace groups
+
+The append-only trace ends after Act I timer invalidation on the failing JUMP-012, before any Hessler or Halcyon cleanup breadcrumb. The previous run had created Hessler with story-Agent id `36028797018964722`; cleanup then called `sbs.delete_object()` with that id. Installed `lifeform_spawn()` constructs a plain Python `Agent`, while `sbs.delete_object()` accepts SBS space-object ids and asserts `VALID_SPACE_OBJ(ID)` otherwise. The repair reverses `lifeform_init()` wiring by removing the badge path and transferring Hessler off Halcyon, then calls `Agent.destroyed()` and never invokes the space-object deletion API. Three breadcrumbs bracket those lifecycle steps. The trace/source pairing strongly identifies the crash cause; repeat live execution remains required to promote the repair to measured.
+
+### Consecutive JUMP-012 then JUMP-013 redundantly rebuilt the same Halcyon state
+
+Claim touched: this record's Runtime Flow claim that adjacent Act II presets can be executed consecutively without crashing or destroying a valid arrival state.
+Evidence class: observed
+Disposition: amended
+Owner: operator, for live-measured acceptance of in-place JUMP-012 to JUMP-013 promotion
+Dependency: restart Cosmos and execute JUMP-012 followed by JUMP-013 twice, retaining both JUMP-013 PROMOTE trace groups
+
+The operator reports another server crash after executing JUMP-013 immediately after JUMP-012. The append-only trace shows JUMP-012 had created Hessler and Halcyon successfully. JUMP-013 then unconditionally called the complete JUMP-012 seed again, moved Artemis back through the Act I/Tarsis setup, and stopped after Act I timer invalidation before the Halcyon cleanup barrier could report. JUMP-013 now recognizes a localized, spawned, correctly positioned JUMP-012 state and promotes it in place, preserving that Halcyon/Hessler pair. Direct JUMP-013 still builds JUMP-012 when the prerequisite state is absent. This removes the unnecessary teardown from the observed failing sequence; repeat live execution remains required.
+
 ## Next Action
 
 Operator live smoke, in this order:
 
-1. **Run JUMP-013 twice.** Count Halcyon contacts. Two or more = stop; the cleanup helper is wrong and four later slices depend on it.
+1. **Run JUMP-012 followed by JUMP-013 twice.** The trace must show `JUMP 013 PROMOTE` after each JUMP-013, with no intervening Halcyon cleanup. Count Halcyon contacts and read the Artemis-to-Halcyon range after each jump. Exactly one Halcyon at approximately 5 km is expected throughout. A crash, a `JUMP 013 BUILD` after successful JUMP-012, two or more contacts, Artemis at Tarsis, or a range outside 4.5-5.5 km = stop.
 2. Select Halcyon on Science → does the normal multi-band display remain visible, with no custom one-tab `Scan` / `no data` panel?
 3. After Science reports verbally, select Halcyon on Comms → does `Hail Halcyon Drift` render under a known Halcyon sender? `unknown` or an empty panel = FAIL.
 4. Hail → does it proceed directly to two messages headed `Captain Aurel Hessler: Halcyon Drift`, with no Science or Dillon message? Does `Request Status Update` also answer as Hessler?
-5. On Comms, select Engineering alone and transmit. Hessler must repeat DAMCON Team Reyes plus Engineering and say Halcyon is standing by; authorization must then appear. Revise and test an ordinary second officer; Hessler must name that officer. Revise again, select Captain, and confirm transmission remains hidden until an acting commander is designated. After designation Hessler must name both Captain and acting command. A third away officer must never be selectable, and removing Engineering must hide transmission.
+5. On Comms, open `Assemble Away-Team Complement`. Select and remove Engineering, then select and remove each optional officer one at a time; repeat that entire cycle twice. The submenu must refresh after every click without an assertion, blank panel, or stale option. Then select Engineering alone and transmit. Hessler must repeat DAMCON Team Reyes plus Engineering and say Halcyon is standing by; authorization must then appear. Revise and test an ordinary second officer; Hessler must name that officer. Revise again, select Captain, and confirm transmission remains hidden until an acting commander is designated. After designation Hessler must name both Captain and acting command. A third away officer must never be selectable, and removing Engineering must hide transmission.
 6. Before authorization, record the Engineering roster (normally DC1/DC2/DC3). Authorize → exactly one team, preferably DC3, disappears and the trace reports `before=3 after=2`. Recall → the same named team returns and the trace reports `before=2 after=3`. Run JUMP-013 twice after a deployment; each jump must leave the full starting roster with no cumulative loss or extra teams.
 
 ---
+
+### Status-string convention has a write side and no read side
+
+Claim touched: `AGENTS.md` section 4, "Set a status string on every branch, including failure branches - the GM overview reads them."
+Evidence class: static
+Disposition: amended
+Owner: operator - approved 2026-08-23; implementation to follow in a scoped cleanup
+Dependency: none
+
+Static analysis of the compiled mission counts 74 `*_status` shared variables. The GM overview
+(`khovan_scenario_control_panel_update_overview`) reads 4 of them. The remaining 70 are written and
+read by nobody, in any file, by any expression or route condition.
+
+The second half of the section 4 sentence was never built. 123 labels set a `*_status` variable and
+also write a startup trace in the same label, recording the same event twice - once into a shared
+variable that is overwritten and never read, and once into the append-only trace, which carries a
+timestamp and keeps history. The mission already contains 447 trace calls, so the diagnostic channel
+the status variables were standing in for exists and is in active use.
+
+Amended convention, approved: `*_status` means GM-contract state and must appear in the overview.
+Everything else records through `script.write_khovan_startup_trace(...)` and holds no shared
+variable. This is the root cause of 114 write-only-state findings and most of 100 branch-records-no-
+outcome findings; both classes disappear when the convention states what it actually requires.
+
+Superseded claim retained above per cookbook 17.11: the section 4 sentence stands as written in
+`AGENTS.md` until the operator edits it, and this finding is the record of why it is wrong.
+
+### Player-facing sends have six entry points and no shared suppression
+
+Claim touched: `AGENTS.md` section 4, "Duplicate-suppress every player-facing message."
+Evidence class: static
+Disposition: unproven
+Owner: operator - decision deferred, not yet approved for implementation
+Dependency: a decision on whether to unify the send path before further Act II content
+
+Six labels wrap message delivery (`khovan_lifeform_send`, `khovan_reach_send_safe_startup_message`,
+`khovan_engineering_send_message`, `khovan_drone_contact_fire_send_message`, and two beat-specific
+senders), and a further 33 labels call `comms_receive` directly without going through any of them.
+Because there is no single send path, suppression cannot be centralised, so each beat maintains its
+own flag - 24 `*_sent` variables at present.
+
+A single `khovan_send(message_id, ...)` owning suppression by message id would remove those flags and
+the 27 unsuppressed-send findings with them. It touches 39 call sites and is a refactor, not a
+cleanup, so it is recorded here as a tradeoff rather than a recommendation. The decision is the
+operator's.
+
 
 # Live smoke log (append-only)
 

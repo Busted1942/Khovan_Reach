@@ -3,8 +3,8 @@
 
 shared current_objective_panel_initialized = False
 shared current_objective_panel_status = "not_initialized"
-shared current_objective_delivery_mode = "text_waterfall_comms_broadcast"
-shared current_objective_api_status = "reference_backed_comms_broadcast_live_smoke_required"
+# unused record (masttools MAST019): shared current_objective_delivery_mode = "text_waterfall_comms_broadcast"
+# unused record (masttools MAST019): shared current_objective_api_status = "reference_backed_comms_broadcast_live_smoke_required"
 shared current_objective_id = "none"
 shared current_objective_title = "Current Objective"
 shared current_objective_body = ""
@@ -17,7 +17,6 @@ shared current_objective_updated_at = 0
 shared current_objective_archive_id = "none"
 shared current_objective_last_message = ""
 shared current_objective_broadcast_status = "not_sent"
-shared current_objective_test_marker = "S06"
 
 === khovan_current_objective_init ===
     current_objective_panel_initialized = True

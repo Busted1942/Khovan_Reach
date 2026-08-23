@@ -10,8 +10,8 @@ shared scenario_control_panel_action_log = "Scenario Control Panel action log in
 shared scenario_control_panel_last_action = "none"
 shared scenario_control_panel_hold_count = 0
 shared scenario_control_panel_release_count = 0
-shared scenario_control_panel_gm_only_guard = 'has_roles(COMMS_ORIGIN_ID, "gamemaster")'
-shared scenario_control_panel_ui_api_status = "gm_comms_route_reference_backed"
+# unused record (masttools MAST019): shared scenario_control_panel_gm_only_guard = 'has_roles(COMMS_ORIGIN_ID, "gamemaster")'
+# unused record (masttools MAST019): shared scenario_control_panel_ui_api_status = "gm_comms_route_reference_backed"
 
 //comms if has_roles(COMMS_ORIGIN_ID, "gamemaster")
     + "Khovan Scenario Control" //comms/gamemaster/khovan_scenario_control_panel
@@ -26,7 +26,6 @@ shared scenario_control_panel_ui_api_status = "gm_comms_route_reference_backed"
     + "Recover Controlled Damage Gate" khovan_engineering_confirm_controlled_damage if controlled_overload_prompt_sent and not controlled_overload_damage_detected
     + "GM: Record Science Signal Fix" khovan_act2_gm_confirm_science_localization if distress_localization_fallback_available and distress_signal_detected and not distress_localized
     + "Test Mode Story Jumps" //comms/gamemaster/khovan_story_jump_presets if test_mode_enabled
-    + "Slice 06 Target Spike" //comms/gamemaster/khovan_drone_contact_fire_spike if test_mode_enabled
 
 === khovan_scenario_control_panel_initialize ===
     scenario_control_panel_initialized = True

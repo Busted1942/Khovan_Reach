@@ -190,9 +190,17 @@ shared dillon_observer_assessment_text = "Artemis - Captain: I am observing. The
         ->END
     hessler_object_for_cleanup = to_object(hessler_lifeform_id)
     if hessler_object_for_cleanup is not None:
-        sbs.delete_object(hessler_lifeform_id)
-        hessler_lifeform_status = "removal_requested"
-        script.write_khovan_startup_trace(f"[KHOVAN LIB LIFEFORM] Hessler removal requested id={hessler_lifeform_id}")
+        # lifeform_spawn() creates a Python Agent with a story id, not an SBS
+        # space object. Calling sbs.delete_object() on this id asserts
+        # VALID_SPACE_OBJ in MissionScript.cpp. Reverse lifeform_init's wiring,
+        # then remove the Agent through its own lifecycle.
+        script.write_khovan_startup_trace(f"[KHOVAN LIB LIFEFORM CLEANUP 001] disabling Hessler badge id={hessler_lifeform_id}")
+        lifeform_set_path(hessler_lifeform_id, None)
+        script.write_khovan_startup_trace(f"[KHOVAN LIB LIFEFORM CLEANUP 002] detaching Hessler from host id={hessler_lifeform_id}")
+        lifeform_transfer(hessler_lifeform_id, None)
+        hessler_object_for_cleanup.destroyed()
+        hessler_lifeform_status = "removed"
+        script.write_khovan_startup_trace(f"[KHOVAN LIB LIFEFORM CLEANUP 003] Hessler Agent removed id={hessler_lifeform_id}")
     else:
         hessler_lifeform_status = "removed"
     hessler_lifeform_id = 0

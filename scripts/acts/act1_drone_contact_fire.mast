@@ -3,9 +3,9 @@
 
 shared drone_contact_fire_initialized = False
 shared drone_contact_sequence_status = "not_initialized"
-shared drone_contact_detection_mode = "phase_a_spike_only_live_cosmos_proof_required"
+# unused record (masttools MAST019): shared drone_contact_detection_mode = "phase_a_spike_only_live_cosmos_proof_required"
 shared drone_contact_last_step = "none"
-shared drone_contact_source_decision = "Drone 01 proves Weapons subsystem disable; Drone 02 completes on destruction by user decision after source ambiguity review."
+# unused record (masttools MAST019): shared drone_contact_source_decision = "Drone 01 proves Weapons subsystem disable; Drone 02 completes on destruction by user decision after source ambiguity review."
 shared drone_contact_sequence_run_id = 0
 shared drone_contact_production_available = False
 shared drone_contact_profile_route = "not_started"
@@ -115,7 +115,6 @@ shared drone_01_range_fallback_available = False
 shared drone_01_stationary_hold_fallback_available = False
 shared drone_01_subsystem_hit_fallback_available = False
 shared drone_01_ceasefire_fallback_available = False
-shared drone_01_instruction_sent = False
 shared drone_01_reset_message_sent = False
 shared drone_01_hail_response_text = "Training drone acknowledges. Transponder reads TSN training contact. Stand by for further instructions."
 shared drone_01_known_scan_text = "Drone 01: TSN training contact. Transponder active."
@@ -220,7 +219,6 @@ shared drone_02_status = "not_started"
 shared drone_02_destroyed = False
 shared drone_02_cleanup_in_progress = False
 shared drone_02_destruction_source = "not_observed"
-shared drone_02_instruction_sent = False
 
 shared drone_target_spike_available = False
 shared drone_target_spike_active = False
@@ -245,7 +243,7 @@ shared drone_target_spike_stock_comms_menu_observation = "live_smoke_required"
 shared drone_target_spike_training_safe_observation = "live_smoke_required"
 shared drone_target_spike_result = "unproven"
 shared drone_target_spike_blocker = "live_smoke_required"
-shared drone_target_spike_fallback = "If automatic scan, target selection, subsystem hit, or destruction evidence fails live, use Comms/captain confirmation and GM mark as final fallback."
+# unused record (masttools MAST019): shared drone_target_spike_fallback = "If automatic scan, target selection, subsystem hit, or destruction evidence fails live, use Comms/captain confirmation and GM mark as final fallback."
 
 //comms/gamemaster/khovan_drone_contact_fire_spike if has_roles(COMMS_ORIGIN_ID, "gamemaster") and test_mode_enabled
     + "Back" //comms/gamemaster/khovan_scenario_control_panel

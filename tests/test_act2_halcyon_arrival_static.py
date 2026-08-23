@@ -160,18 +160,65 @@ class HalcyonSpawnIsIdempotent(unittest.TestCase):
         self.assertIn("halcyon_cleanup_wait_ticks >= 5", wait)
         self.assertIn('halcyon_cleanup_barrier_status = "timed_out_contact_or_hessler_still_indexed"', wait)
 
-    def test_jump_013_builds_on_repeat_safe_jump_012_path(self) -> None:
+    def test_jump_013_promotes_valid_jump_012_without_destructive_reseed(self) -> None:
         body = label_body(read(HALCYON_PATH), "khovan_act2_story_jump_seed_halcyon_arrival")
+        self.assertIn('if distress_localized and halcyon_spawned and halcyon_jump_012_relocation_status == "relocated_to_halcyon_approach":', body)
+        self.assertIn("[KHOVAN ACT2 JUMP 013 PROMOTE] reusing valid JUMP-012 Halcyon contact without cleanup", body)
+        self.assertIn("else:", body)
         self.assertIn("task_schedule(khovan_act2_story_jump_seed_distress_localized)", body)
+        self.assertLess(
+            body.index('if distress_localized and halcyon_spawned and halcyon_jump_012_relocation_status == "relocated_to_halcyon_approach":'),
+            body.index("task_schedule(khovan_act2_story_jump_seed_distress_localized)"),
+        )
         self.assertIn('if act1_story_jump_cleanup_barrier_status != "settled":', body)
         self.assertIn("if not halcyon_spawned:", body)
+        self.assertIn("task_schedule(khovan_halcyon_relocate_artemis_for_jump_013)", body)
+        self.assertIn('if halcyon_jump_013_relocation_status != "relocated_to_halcyon_approach":', body)
         self.assertIn('current_scene = 8', body)
         self.assertIn('current_beat = "scene_8_halcyon_arrival"', body)
 
-    def test_jump_013_summary_validates_contact_and_scene(self) -> None:
+    def test_jump_012_relocates_artemis_to_a_guarded_five_kilometre_approach(self) -> None:
+        halcyon = read(HALCYON_PATH)
+        body = label_body(halcyon, "khovan_halcyon_relocate_artemis_for_jump_012")
+        self.assertIn("shared halcyon_jump_012_approach_range_m = 5000", halcyon)
+        self.assertIn("shared halcyon_jump_012_actual_range_m = 0", halcyon)
+        self.assertLess(body.index("if artemis_id == 0:"), body.index("to_object(artemis_id)"))
+        self.assertIn("if artemis_object is None:", body)
+        self.assertIn("if halcyon_object_id == 0:", body)
+        self.assertIn("if halcyon_jump_object is None:", body)
+        self.assertIn(
+            "artemis_object.pos = Vec3(halcyon_jump_object.pos.x - halcyon_jump_012_approach_range_m, halcyon_jump_object.pos.y, halcyon_jump_object.pos.z)",
+            body,
+        )
+        self.assertIn('artemis_object.data_set.set("dock_base_id", 0, 0)', body)
+        self.assertIn('artemis_object.data_set.set("dock_state", "undocked", 0)', body)
+        self.assertIn('artemis_object.data_set.set("playerThrottle", 0, 0)', body)
+        self.assertIn("sbs.distance_id(artemis_id, halcyon_object_id)", body)
+        self.assertIn('halcyon_jump_012_relocation_status = "relocated_to_halcyon_approach"', body)
+
+    def test_jump_013_relocates_artemis_to_a_guarded_five_kilometre_approach(self) -> None:
+        halcyon = read(HALCYON_PATH)
+        body = label_body(halcyon, "khovan_halcyon_relocate_artemis_for_jump_013")
+        self.assertIn("shared halcyon_jump_013_approach_range_m = 5000", halcyon)
+        self.assertLess(body.index("if artemis_id == 0:"), body.index("to_object(artemis_id)"))
+        self.assertIn("if artemis_object is None:", body)
+        self.assertIn("if halcyon_object_id == 0:", body)
+        self.assertIn("if halcyon_jump_object is None:", body)
+        self.assertIn(
+            "artemis_object.pos = Vec3(halcyon_jump_object.pos.x - halcyon_jump_013_approach_range_m, halcyon_jump_object.pos.y, halcyon_jump_object.pos.z)",
+            body,
+        )
+        self.assertIn('artemis_object.data_set.set("dock_base_id", 0, 0)', body)
+        self.assertIn('artemis_object.data_set.set("dock_state", "undocked", 0)', body)
+        self.assertIn('artemis_object.data_set.set("playerThrottle", 0, 0)', body)
+        self.assertIn("sbs.distance_id(artemis_id, halcyon_object_id)", body)
+        self.assertIn('halcyon_jump_013_relocation_status = "relocated_to_halcyon_approach"', body)
+
+    def test_jump_013_summary_validates_contact_scene_and_approach_placement(self) -> None:
         story_jump = read("scripts/systems/story_jump_presets.mast")
-        self.assertIn('if act1_story_jump_cleanup_barrier_status == "settled" and halcyon_cleanup_barrier_status == "settled" and halcyon_spawned and current_scene == 8:', story_jump)
-        self.assertIn('story_jump_framework_warning = "Halcyon is not active in Scene 8;', story_jump)
+        self.assertIn('halcyon_spawned and halcyon_jump_013_relocation_status == "relocated_to_halcyon_approach" and current_scene == 8:', story_jump)
+        self.assertIn("Artemis was not placed at its approach point", story_jump)
+        self.assertIn("Artemis placed five kilometres off Halcyon", story_jump)
 
     def test_spawn_promotes_runtime_to_halcyon_arrival_scene(self) -> None:
         body = label_body(read(HALCYON_PATH), "khovan_halcyon_spawn")
@@ -272,7 +319,7 @@ class HalcyonRoutesAndDeployment(unittest.TestCase):
         self.assertIn("Away-mission protocol requires Comms to assemble and transmit the manifest.", halcyon)
         self.assertIn("Assign Engineering and, at your discretion, one additional officer", halcyon)
         self.assertIn("If you join the away team, designate the officer who will hold command of Artemis in your absence", halcyon)
-        self.assertIn("DAMCON Team Reyes—Reyes, Park, and Achebe—is the required damage-control element", halcyon)
+        self.assertIn("DAMCON Team Reyes consists of Reyes, Park, and Achebe. It is the required damage-control element", halcyon)
         self.assertLess(
             hail.index('"send_text": halcyon_deploy_prompt_text'),
             hail.index('"send_text": dillon_away_manifest_protocol_text'),
@@ -328,7 +375,24 @@ class HalcyonRoutesAndDeployment(unittest.TestCase):
         self.assertIn("len(remaining_hessler) == 0", barrier)
         self.assertIn("if hessler_lifeform_id == 0:", remove)
         self.assertIn("if hessler_object_for_cleanup is not None:", remove)
-        self.assertIn("sbs.delete_object(hessler_lifeform_id)", remove)
+        self.assertNotIn("sbs.delete_object(hessler_lifeform_id)", remove)
+        self.assertIn("lifeform_set_path(hessler_lifeform_id, None)", remove)
+        self.assertIn("lifeform_transfer(hessler_lifeform_id, None)", remove)
+        self.assertIn("hessler_object_for_cleanup.destroyed()", remove)
+        self.assertLess(
+            remove.index("lifeform_set_path(hessler_lifeform_id, None)"),
+            remove.index("lifeform_transfer(hessler_lifeform_id, None)"),
+        )
+        self.assertLess(
+            remove.index("lifeform_transfer(hessler_lifeform_id, None)"),
+            remove.index("hessler_object_for_cleanup.destroyed()"),
+        )
+        for breadcrumb in [
+            "[KHOVAN LIB LIFEFORM CLEANUP 001]",
+            "[KHOVAN LIB LIFEFORM CLEANUP 002]",
+            "[KHOVAN LIB LIFEFORM CLEANUP 003]",
+        ]:
+            self.assertIn(breadcrumb, remove)
 
     def test_objective_orders_science_report_then_captain_hail(self) -> None:
         body = label_body(read(HALCYON_PATH), "khovan_halcyon_spawn")
@@ -421,6 +485,52 @@ class HalcyonRoutesAndDeployment(unittest.TestCase):
             body = label_body(halcyon, label)
             self.assertIn("halcyon_manifest_officer_count >= 2", body)
             self.assertIn("task_schedule(khovan_halcyon_manifest_recount)", body)
+
+    def test_manifest_mutation_uses_a_stable_refreshed_comms_submenu(self) -> None:
+        halcyon = read(HALCYON_PATH)
+        root_route = halcyon.split(
+            '//comms if has_roles(COMMS_SELECTED_ID, "khovan_halcyon_drift")', 1
+        )[1].split(
+            '\n//comms/khovan_halcyon_manifest if has_roles(COMMS_SELECTED_ID, "khovan_halcyon_drift")',
+            1,
+        )[0]
+        self.assertIn(
+            '+ "Assemble Away-Team Complement" //comms/khovan_halcyon_manifest',
+            root_route,
+        )
+        self.assertNotIn('+ "Select Engineering Officer', root_route)
+        self.assertNotIn('+ "Remove Engineering Officer', root_route)
+        self.assertIn(
+            '//comms/khovan_halcyon_manifest if has_roles(COMMS_SELECTED_ID, "khovan_halcyon_drift")',
+            halcyon,
+        )
+        self.assertIn('+ "Back to Halcyon Drift" //comms', halcyon)
+        mutation_labels = [
+            "khovan_halcyon_manifest_add_engineering",
+            "khovan_halcyon_manifest_add_captain",
+            "khovan_halcyon_manifest_add_science",
+            "khovan_halcyon_manifest_add_weapons",
+            "khovan_halcyon_manifest_add_helm",
+            "khovan_halcyon_manifest_add_comms",
+            "khovan_halcyon_manifest_remove_engineering",
+            "khovan_halcyon_manifest_remove_captain",
+            "khovan_halcyon_manifest_remove_science",
+            "khovan_halcyon_manifest_remove_weapons",
+            "khovan_halcyon_manifest_remove_helm",
+            "khovan_halcyon_manifest_remove_comms",
+            "khovan_halcyon_manifest_command_science",
+            "khovan_halcyon_manifest_command_weapons",
+            "khovan_halcyon_manifest_command_helm",
+            "khovan_halcyon_manifest_command_comms",
+            "khovan_halcyon_manifest_command_clear",
+        ]
+        for label in mutation_labels:
+            body = label_body(halcyon, label)
+            self.assertIn('comms_navigate("//comms/khovan_halcyon_manifest")', body)
+            self.assertIn("[KHOVAN ACT2 HALCYON MANIFEST CLICK]", body)
+        confirm = label_body(halcyon, "khovan_halcyon_manifest_confirm")
+        self.assertIn('comms_navigate("//comms")', confirm)
+        self.assertIn("[KHOVAN ACT2 HALCYON MANIFEST CLICK] transmit complement", confirm)
 
     def test_transmitted_complement_names_required_damcon_team_and_selected_officers(self) -> None:
         body = label_body(read(HALCYON_PATH), "khovan_halcyon_manifest_confirm")

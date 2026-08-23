@@ -129,6 +129,42 @@ class NoDesignLanguageOnPlayerConsoles(unittest.TestCase):
         self.assertEqual([], offenders, "\n".join(offenders))
 
 
+class PlayerCopyEncoding(unittest.TestCase):
+    """Cosmos Comms corrupts non-ASCII punctuation instead of failing loudly."""
+
+    def test_all_executable_mast_lines_are_ascii(self):
+        """Cover inline and dynamically formatted copy, not only *_text fields."""
+        offenders = []
+        for path in cc.mast_files():
+            rel = path.relative_to(cc.ROOT).as_posix()
+            for line_number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+                if line.lstrip().startswith("#"):
+                    continue
+                try:
+                    line.encode("ascii")
+                except UnicodeEncodeError:
+                    offenders.append(f"{rel}:{line_number} contains non-ASCII runtime text")
+        self.assertEqual([], offenders, "\n".join(offenders))
+
+    def test_all_shared_player_copy_is_ascii_and_uses_no_dash_punctuation(self):
+        """Cookbook known-bad rule: player copy uses ASCII commas/full stops."""
+        offenders = []
+        for name, (path, value) in sorted(cc.all_player_copy().items()):
+            if name == "scenario_control_panel_overview_text":
+                continue  # GM-facing, not rendered on a player Comms console.
+            try:
+                value.encode("ascii")
+            except UnicodeEncodeError:
+                offenders.append(f"{path}: {name} contains non-ASCII text")
+            for line in value.split("\\n"):
+                spoken = re.sub(r"^Artemis - [A-Z][A-Za-z]*:", "", line.strip())
+                if " - " in spoken or "—" in spoken or "–" in spoken:
+                    offenders.append(
+                        f"{path}: {name} uses dash punctuation; use a comma or full stop"
+                    )
+        self.assertEqual([], offenders, "\n".join(offenders))
+
+
 class NoRegressionOfFixedTypos(unittest.TestCase):
     """Sixteen of these were shipping to player consoles before 2026-08-09."""
 

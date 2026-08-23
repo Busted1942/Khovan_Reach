@@ -95,7 +95,7 @@ class Act1DroneContactFireStaticTests(unittest.TestCase):
         self.assertNotIn('mission_phase = "act_2"', drone)
         self.assertNotIn("khovan_act2_", drone)
 
-    def test_gm_only_test_mode_spike_controls_exist(self) -> None:
+    def test_spike_diagnostics_are_not_exposed_on_the_gm_tree(self) -> None:
         drone = read(DRONE_PATH)
         panel = read("scripts/systems/scenario_control_panel.mast")
         self.assertIn(
@@ -107,10 +107,11 @@ class Act1DroneContactFireStaticTests(unittest.TestCase):
             '+ "Select Target Spike" khovan_drone_contact_fire_select_target_spike if drone_target_spike_active',
             '+ "Read Target Spike Status" khovan_drone_contact_fire_report_target_spike',
             '+ "Cleanup Target Spike" khovan_drone_contact_fire_cleanup_target_spike if drone_target_spike_active or drone_target_spike_destroyed_observed',
-            '+ "Slice 06 Target Spike" //comms/gamemaster/khovan_drone_contact_fire_spike if test_mode_enabled',
         ]:
-            self.assertIn(phrase, drone + panel)
+            self.assertIn(phrase, drone)
 
+        self.assertNotIn("Slice 06 Target Spike", panel)
+        self.assertNotIn("//comms/gamemaster/khovan_drone_contact_fire_spike", panel)
         self.assertNotIn("//comms/khovan_drone_contact_fire_spike", drone)
         self.assertNotIn("@gui", drone)
         self.assertNotIn("//gui", drone)

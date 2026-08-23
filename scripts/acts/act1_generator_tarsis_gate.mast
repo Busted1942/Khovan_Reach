@@ -3,10 +3,10 @@
 
 shared act1_generator_tarsis_gate_initialized = False
 shared act1_generator_tarsis_gate_status = "not_initialized"
-shared act1_launch_detection_mode = "temporary_comms_confirmation"
-shared act1_docking_detection_mode = "temporary_comms_confirmation"
-shared act1_text_delivery_mode = "guarded_comms_text_no_lifeform_overlay"
-shared act1_comms_archive_status = "trace_and_action_log_stub"
+# unused record (masttools MAST019): shared act1_launch_detection_mode = "temporary_comms_confirmation"
+# unused record (masttools MAST019): shared act1_docking_detection_mode = "temporary_comms_confirmation"
+# unused record (masttools MAST019): shared act1_text_delivery_mode = "guarded_comms_text_no_lifeform_overlay"
+# unused record (masttools MAST019): shared act1_comms_archive_status = "trace_and_action_log_stub"
 shared act1_last_progression_summary = "Act I generator/Tarsis gate not initialized."
 
 shared kestrel_yards_id = 0
@@ -14,9 +14,9 @@ shared kestrel_departure_clearance_granted = False
 shared kestrel_departure_gate_status = "waiting_for_clearance"
 shared kestrel_departure_hold_status = "not_initialized"
 shared kestrel_departure_hold_release_status = "not_released"
-shared kestrel_departure_hold_detection_mode = "mechanical_position_throttle_hold_no_legendary_docking"
+# unused record (masttools MAST019): shared kestrel_departure_hold_detection_mode = "mechanical_position_throttle_hold_no_legendary_docking"
 shared kestrel_start_docking_helper_status = "not_initialized"
-shared kestrel_yard_lock_visual_mode = "mechanical_yard_lock_overlay_fallback"
+# unused record (masttools MAST019): shared kestrel_yard_lock_visual_mode = "mechanical_yard_lock_overlay_fallback"
 shared kestrel_yard_lock_visual_status = "not_initialized"
 shared kestrel_comms_options_status = "not_rendered"
 shared kestrel_known_contact_status = "not_seeded"
@@ -71,7 +71,7 @@ shared tarsis_resupply_confirmed = False
 shared tarsis_station_visibility_status = "known_for_slice04_comms_no_hard_science_gate"
 shared tarsis_docking_resupply_status = "blocked_until_docking_clearance"
 shared tarsis_docking_gate_status = "not_initialized"
-shared tarsis_docking_rejection_text = "Artemis - Helm: Clearance not granted. Finish your Comms traffic before you approach."
+# unused record (masttools MAST019): shared tarsis_docking_rejection_text = "Artemis - Helm: Clearance not granted. Finish your Comms traffic before you approach."
 shared tarsis_comms_options_status = "not_rendered"
 shared tarsis_generator_support_response_sent = False
 shared tarsis_docking_clearance_response_sent = False
@@ -80,7 +80,7 @@ shared generator_governor_cleared = False
 
 shared kestrel_launch_envelope_objective_text = "Artemis - Helm: Clear the launch envelope, 1 km off Kestrel.\nArtemis - Comms: Confirm when we are out."
 shared kestrel_yard_lock_visual_text = "Artemis - Comms: You are in yard-lock until you request departure clearance. Call when the captain is ready."
-shared kestrel_homing_reserve_text = "Artemis - Comms: No homing loaded until you request the emergency reserve. Two rounds only; Tarsis restores the rest with the authorization packet."
+# unused record (masttools MAST019): shared kestrel_homing_reserve_text = "Artemis - Comms: No homing loaded until you request the emergency reserve. Two rounds only; Tarsis restores the rest with the authorization packet."
 shared kestrel_homing_reserve_request_text = "Artemis - Weapons: Transfer complete. Two rounds, reserve margin only, not a combat load. Dump one into the engines if the captain wants speed."
 shared kestrel_homing_reserve_prompt_text = "Artemis - Captain: You are running slower than you should be. That is the generator governor, and it holds until Tarsis accepts your authorization packet.\nArtemis - Comms: If you want speed before then, request the emergency homing reserve.\nArtemis - Engineering: You and Weapons can dump the charge from a torpedo into the engines for a partial refill."
 shared training_speed_power_reminder_text = "Artemis - Captain: Stay on the shakedown plan. The yard commander would like this ship kept in one piece for another ten thousand parsecs."
@@ -425,7 +425,13 @@ shared tarsis_resupply_text = "Artemis - Captain: Authorization packet closed ou
     remove_role(kestrel_yards_id, "station")
     remove_role(kestrel_yards_id, "Station")
     add_role(kestrel_yards_id, "kestrel_yards")
-    kestrel_roles = to_object(kestrel_yards_id).get_roles()
+    # AGENTS.md section 4: to_object can return None, and .get_roles()
+    # on None faults here. The value only feeds the trace below, so an
+    # unavailable object degrades the message rather than the setup.
+    kestrel_roles_object = to_object(kestrel_yards_id)
+    kestrel_roles = "unavailable"
+    if kestrel_roles_object is not None:
+        kestrel_roles = kestrel_roles_object.get_roles()
     script.write_khovan_startup_trace(f"[KHOVAN ACT1 COMMS 003] Kestrel standard station setup complete roles={kestrel_roles}")
 
     existing_tarsis_station = to_object_list(role("tarsis_station"))
@@ -440,7 +446,13 @@ shared tarsis_resupply_text = "Artemis - Captain: Authorization packet closed ou
     add_role(tarsis_station_id, "Station")
     remove_role(tarsis_station_id, "station")
     add_role(tarsis_station_id, "tarsis_station")
-    tarsis_roles = to_object(tarsis_station_id).get_roles()
+    # AGENTS.md section 4: to_object can return None, and .get_roles()
+    # on None faults here. The value only feeds the trace below, so an
+    # unavailable object degrades the message rather than the setup.
+    tarsis_roles_object = to_object(tarsis_station_id)
+    tarsis_roles = "unavailable"
+    if tarsis_roles_object is not None:
+        tarsis_roles = tarsis_roles_object.get_roles()
     script.write_khovan_startup_trace(f"[KHOVAN ACT1 COMMS 004B] Tarsis Station spawned id={tarsis_station_id}")
     script.write_khovan_startup_trace(f"[KHOVAN ACT1 COMMS 004] Tarsis standard station setup complete roles={tarsis_roles}")
     script.write_khovan_startup_trace("[KHOVAN ACT1 SCAN 001] Tarsis contact available for Slice 04 Comms; Science scan remains observational only")
@@ -938,7 +950,13 @@ distance: 600
     tarsis_mechanical_dock_observed = False
     tarsis_docking_observer_status = "watching_after_clearance"
     tarsis_docking_observer_last_snapshot = "not_checked"
-    tarsis_roles_after_clearance = to_object(tarsis_station_id).get_roles()
+    # AGENTS.md section 4: to_object can return None, and .get_roles()
+    # on None faults here. The value only feeds the trace below, so an
+    # unavailable object degrades the message rather than the setup.
+    tarsis_roles_after_object = to_object(tarsis_station_id)
+    tarsis_roles_after_clearance = "unavailable"
+    if tarsis_roles_after_object is not None:
+        tarsis_roles_after_clearance = tarsis_roles_after_object.get_roles()
     script.write_khovan_startup_trace(f"[KHOVAN ACT1 DOCK 004S] Tarsis stock Station role restored after clearance for mechanical docking affordance roles={tarsis_roles_after_clearance}")
     await task_schedule(docking_standard_player_station)
     script.write_khovan_startup_trace("[KHOVAN ACT1 DOCK 004U] standard friendly station docking helper rerun for Tarsis after clearance")

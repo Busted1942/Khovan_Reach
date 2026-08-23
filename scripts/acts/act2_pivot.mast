@@ -411,4 +411,17 @@ shared distress_localization_prompt_text = "Artemis - Captain: Proceed toward be
     act2_last_progression_summary = "Seeded to localized state; Phase B owns Halcyon arrival."
     script.write_khovan_startup_trace("[KHOVAN ACT2 JUMP 012] seeded distress-localized state")
     await task_schedule(khovan_halcyon_spawn)
+    if not halcyon_spawned:
+        act2_pivot_status = "jump_012_blocked_halcyon_not_spawned"
+        distress_localization_fallback_available = True
+        script.write_khovan_startup_trace("[KHOVAN ACT2 JUMP 012 BLOCKED] localized seed did not produce Halcyon")
+        ->END
+    await task_schedule(khovan_halcyon_relocate_artemis_for_jump_012)
+    if halcyon_jump_012_relocation_status != "relocated_to_halcyon_approach":
+        act2_pivot_status = "jump_012_blocked_artemis_not_at_halcyon"
+        distress_localization_fallback_available = True
+        script.write_khovan_startup_trace(f"[KHOVAN ACT2 JUMP 012 BLOCKED] Artemis relocation failed status={halcyon_jump_012_relocation_status}")
+        ->END
+    act2_pivot_status = "seeded_distress_localized_artemis_at_halcyon"
+    script.write_khovan_startup_trace("[KHOVAN ACT2 JUMP 012] Artemis placed at five kilometre Halcyon approach")
     ->END

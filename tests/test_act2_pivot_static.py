@@ -336,7 +336,7 @@ class Slice07AJumpPresets(unittest.TestCase):
     def test_jump_011_and_012_validate_actual_postconditions(self) -> None:
         story_jump = read("scripts/systems/story_jump_presets.mast")
         self.assertIn('if act1_story_jump_cleanup_barrier_status == "settled" and anderson_orders_delivered and anderson_orders_ack_status == "pending":', story_jump)
-        self.assertIn('if act1_story_jump_cleanup_barrier_status == "settled" and distress_localized and halcyon_spawned:', story_jump)
+        self.assertIn('if act1_story_jump_cleanup_barrier_status == "settled" and distress_localized and halcyon_spawned and halcyon_jump_012_relocation_status == "relocated_to_halcyon_approach":', story_jump)
         self.assertIn('story_jump_last_validation_result = "runtime_seed_failed"', story_jump)
 
     def test_seeds_invalidate_act1_timers(self) -> None:
@@ -370,9 +370,15 @@ class Slice07AJumpPresets(unittest.TestCase):
         self.assertNotIn("task_schedule(khovan_act2_deliver_anderson_orders)", body)
         self.assertIn("distress_localized = True", body)
         self.assertIn("task_schedule(khovan_halcyon_spawn)", body)
+        self.assertIn("task_schedule(khovan_halcyon_relocate_artemis_for_jump_012)", body)
+        self.assertIn('if halcyon_jump_012_relocation_status != "relocated_to_halcyon_approach":', body)
         self.assertLess(
             body.index("distress_localized = True"),
             body.index("task_schedule(khovan_halcyon_spawn)"),
+        )
+        self.assertLess(
+            body.index("task_schedule(khovan_halcyon_spawn)"),
+            body.index("task_schedule(khovan_halcyon_relocate_artemis_for_jump_012)"),
         )
 
     def test_quick_suite_includes_slice07a_checks(self) -> None:
