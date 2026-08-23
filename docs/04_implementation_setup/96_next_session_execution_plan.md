@@ -33,8 +33,13 @@ Nothing below is worth doing until these run. Each has a stop condition.
 
 1. **Slice 06 Phase B** — `tests/SLICE06_PHASE_B_PLAYTEST_WORKSHEET.md`, exit
    criteria in `tests/SLICE06_VERIFICATION.md`.
-2. **JUMP-013 twice, count Halcyon contacts.** Two or more = **stop**; the
-   cleanup helper is wrong and Slices 10/11/12 all reuse it.
+2. **JUMP-012 twice, count Halcyon contacts.** Two or more = **stop**; the
+   cleanup helper is wrong and Slices 10/11/12 all reuse it. *(Retired
+   2026-08-23: this gate originally named JUMP-013, a second preset for the
+   same Halcyon-arrival beat. It was deleted as redundant with JUMP-012, which
+   already spawns Halcyon and stages the same approach — see cookbook 17.12.
+   013 is expected to be reissued to a future preset; do not read this line as
+   still pointing at a live jump.)*
 3. **Act II pivot** — does `[KHOVAN ACT2 002] mission_phase=act_2` fire without
    GM action?
 4. **Lifeforms** — do Dillon and Anderson appear as Comms badges by name? Trace

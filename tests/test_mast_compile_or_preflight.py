@@ -96,6 +96,101 @@ class MastCompileOrPreflightTests(unittest.TestCase):
         self.assertNotIn("assign_client_to_ship", playable)
         self.assertNotIn("artemis_ship_name", playable)
 
+    def test_gui_body_interpolation_never_references_an_undeclared_shared(self) -> None:
+        """Cookbook 17.13: a declaration pruner cannot see `% {var}`.
+
+        masttools MAST019 counts expression-position references and does not
+        count substitution inside a `<<[...]` GUI body, so on 2026-08-23 it
+        commented out `tarsis_docking_rejection_text` while its only use site
+        still read it. Compile preflight does not close this either - an
+        undefined name in a GUI body faults at render, not at parse.
+
+        Scoped to `% {name}` deliberately. A bare `{name}` appears inside
+        f-strings and format specifiers all over the runtime, and widening
+        this to cover those would flag task-local names and produce the
+        cry-wolf failure mode 17.6 warns about.
+        """
+        import re
+
+        mast_files = sorted((ROOT / "scripts").rglob("*.mast"))
+        self.assertTrue(mast_files, "no runtime .mast files found")
+
+        declared: set[str] = set()
+        for path in mast_files:
+            for line in path.read_text(encoding="utf-8").splitlines():
+                match = re.match(r"\s*shared\s+([A-Za-z_]\w*)\s*=", line)
+                if match:
+                    declared.add(match.group(1))
+
+        dangling: list[str] = []
+        for path in mast_files:
+            rel = path.relative_to(ROOT).as_posix()
+            for number, line in enumerate(
+                path.read_text(encoding="utf-8").splitlines(), start=1
+            ):
+                if line.lstrip().startswith("#"):
+                    continue
+                for name in re.findall(r"%\s*\{\s*([A-Za-z_]\w*)\s*\}", line):
+                    if name not in declared:
+                        dangling.append(f"{rel}:{number}: % {{{name}}}")
+
+        self.assertEqual(
+            [],
+            dangling,
+            "GUI-body interpolation references a name with no `shared` "
+            "declaration; a pruning pass most likely removed it - see "
+            "cookbook 17.13",
+        )
+
+    def test_act2_jump_reset_clears_its_barrier_before_it_can_bail(self) -> None:
+        """Cookbook 5.2: reset the published status flag first, fail closed.
+
+        `khovan_halcyon_reset_for_act2_jump` restores a deployed DAMCON team
+        before running its cleanup barrier and bails if that restore fails.
+        Two guards in act2_pivot.mast read `halcyon_cleanup_barrier_status` to
+        decide whether the reset actually ran, so if the bail path leaves the
+        previous jump's "settled" in place, a later jump proceeds on evidence
+        produced by a different jump entirely.
+        """
+        import re
+
+        halcyon = (
+            ROOT / "scripts" / "acts" / "act2_halcyon_arrival.mast"
+        ).read_text(encoding="utf-8")
+        match = re.search(
+            r"^=== khovan_halcyon_reset_for_act2_jump ===(?P<body>.*?)(?=^=== |\Z)",
+            halcyon,
+            flags=re.MULTILINE | re.DOTALL,
+        )
+        self.assertIsNotNone(match, "missing khovan_halcyon_reset_for_act2_jump")
+        body = match.group("body")
+
+        reset = body.find('halcyon_cleanup_barrier_status = "not_run"')
+        self.assertNotEqual(
+            -1,
+            reset,
+            "the reset must clear halcyon_cleanup_barrier_status - cookbook 5.2",
+        )
+        first_bail = body.find("->END")
+        self.assertNotEqual(-1, first_bail, "expected at least one bail path")
+        self.assertLess(
+            reset,
+            first_bail,
+            "halcyon_cleanup_barrier_status is reset after a path that can "
+            "already have bailed; a stale 'settled' then reads as consent - "
+            "cookbook 5.2",
+        )
+
+        pivot = (ROOT / "scripts" / "acts" / "act2_pivot.mast").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn(
+            'if halcyon_cleanup_barrier_status != "settled":',
+            pivot,
+            "no downstream guard reads the flag; if the consumer moved, "
+            "re-point this regression rather than deleting it",
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

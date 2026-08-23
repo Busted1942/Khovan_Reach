@@ -181,7 +181,7 @@ Coverage statuses:
 | JUMP-010 | 03-16 | not-covered | not yet tested |
 | JUMP-011 | 03-16 | not-covered | not yet tested |
 | JUMP-012 | 03-16 | not-covered | not yet tested |
-| JUMP-013 | 03-16 | not-covered | not yet tested |
+| JUMP-013 | 03-16 | retired 2026-08-23 | preset deleted as redundant with JUMP-012 (cookbook 17.12); number free for reissue, do not skip to 014 |
 | JUMP-014 | 03-16 | not-covered | not yet tested |
 | JUMP-015 | 03-16 | not-covered | not yet tested |
 | JUMP-016 | 03-16 | not-covered | not yet tested |

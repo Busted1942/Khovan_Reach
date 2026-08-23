@@ -54,13 +54,11 @@ shared halcyon_damcon_transfer_fallback_available = False
 shared halcyon_jump_012_approach_range_m = 5000
 shared halcyon_jump_012_actual_range_m = 0
 shared halcyon_jump_012_relocation_status = "not_attempted"
-shared halcyon_jump_013_approach_range_m = 5000
-shared halcyon_jump_013_relocation_status = "not_attempted"
 
 shared halcyon_hail_response_text = "Artemis - Captain: Captain Aurel Hessler, Halcyon Drift. Our primary reactor is down, hull is open in two sections, and we are on emergency power. Seven aboard, three injured."
 shared halcyon_known_scan_data = "Vesperan civilian cargo hauler. Distress beacon active."
 shared halcyon_deploy_prompt_text = "Artemis - Captain: Before we open the transfer lock, transmit the complement of your away team. We require one DAMCON team and one or two officers, including a qualified engineer, to make the damaged sections safe."
-shared dillon_away_manifest_protocol_text = "Artemis - Captain: Away-mission protocol requires Comms to assemble and transmit the manifest. Assign Engineering and, at your discretion, one additional officer. If you join the away team, designate the officer who will hold command of Artemis in your absence. DAMCON Team Reyes consists of Reyes, Park, and Achebe. It is the required damage-control element."
+shared dillon_away_manifest_protocol_text = "Artemis - Captain: Away-mission protocol requires Comms to assemble and transmit the manifest. Transmitting the completed manifest is also the Captain's departure authorization: the declared officers and DAMCON Team Reyes will leave Artemis immediately. Assign Engineering and, at your discretion, one additional officer. If you join the away team, designate the officer who will hold command of Artemis in your absence. DAMCON Team Reyes consists of Reyes, Park, and Achebe. It is the required damage-control element."
 shared halcyon_deploy_acknowledgement_text = "Artemis - Captain: Manifest not yet received."
 shared halcyon_status_waiting_text = "Artemis - Captain: Halcyon Drift is holding on emergency power. We still need your engineering and damage-control teams."
 shared halcyon_status_teams_aboard_text = "Artemis - Captain: Your engineering and damage-control teams are aboard Halcyon Drift. We will report when they complete their assessment."
@@ -80,7 +78,7 @@ shared halcyon_status_teams_returned_text = "Artemis - Captain: Your teams have 
     + "Hail Halcyon Drift" khovan_halcyon_hail if not halcyon_hail_observed
     + "Assemble Away-Team Complement" //comms/khovan_halcyon_manifest if halcyon_hail_observed and not halcyon_manifest_confirmed
     + "Revise Away-Team Complement" khovan_halcyon_manifest_revise if halcyon_manifest_confirmed and not engineering_deployed
-    + "Authorize Engineering Deployment" khovan_halcyon_authorize_deployment if halcyon_manifest_confirmed and not engineering_deployed
+    + "Retry Away-Team Departure" khovan_halcyon_authorize_deployment if halcyon_manifest_confirmed and not engineering_deployed
     + "Recall Away Team to Artemis" khovan_halcyon_recall_engineering if engineering_deployed and engineering_placement == "aboard_halcyon"
     + "Request Status Update" khovan_halcyon_report_status
 
@@ -106,7 +104,7 @@ shared halcyon_status_teams_returned_text = "Artemis - Captain: Your teams have 
     + "Designate Helm Officer as Acting Command" khovan_halcyon_manifest_command_helm if halcyon_manifest_captain_selected and not halcyon_manifest_confirmed and not halcyon_manifest_helm_selected
     + "Designate Comms Officer as Acting Command" khovan_halcyon_manifest_command_comms if halcyon_manifest_captain_selected and not halcyon_manifest_confirmed and not halcyon_manifest_comms_selected
     + "Clear Acting Command Designation" khovan_halcyon_manifest_command_clear if halcyon_manifest_captain_selected and not halcyon_manifest_confirmed and halcyon_manifest_acting_command_designated
-    + "Transmit Away-Team Complement" khovan_halcyon_manifest_confirm if not halcyon_manifest_confirmed and halcyon_manifest_engineering_selected and halcyon_manifest_officer_count >= 1 and halcyon_manifest_officer_count <= 2 and (not halcyon_manifest_captain_selected or halcyon_manifest_acting_command_designated)
+    + "Transmit Manifest & Authorize Departure" khovan_halcyon_manifest_confirm if not halcyon_manifest_confirmed and halcyon_manifest_engineering_selected and halcyon_manifest_officer_count >= 1 and halcyon_manifest_officer_count <= 2 and (not halcyon_manifest_captain_selected or halcyon_manifest_acting_command_designated)
 
 # Cleanup fires this same hook, so the flag is read and cleared HERE, never at
 # the call site - scripts/lib/entity_cleanup_helpers.mast documents why.
@@ -163,7 +161,6 @@ shared halcyon_status_teams_returned_text = "Artemis - Captain: Your teams have 
     halcyon_damcon_transfer_fallback_available = False
     halcyon_jump_012_actual_range_m = 0
     halcyon_jump_012_relocation_status = "not_attempted"
-    halcyon_jump_013_relocation_status = "not_attempted"
     script.write_khovan_startup_trace("[KHOVAN ACT2 HALCYON 001] Halcyon arrival state initialized")
     await task_schedule(khovan_halcyon_restart_arrival_observer)
     ->END
@@ -180,6 +177,11 @@ shared halcyon_status_teams_returned_text = "Artemis - Captain: Your teams have 
 # dependent state, and re-arm the automatic arrival observer. Cleanup's deferred
 # destroy flag is deliberately not cleared here; the destroy hook owns it.
 === khovan_halcyon_reset_for_act2_jump ===
+    # Fail closed, not stale-open. A downstream JUMP-011/012 guard reads
+    # halcyon_cleanup_barrier_status to decide whether the reset actually
+    # ran; without this reset, a DAMCON-restore bail below leaves last
+    # run's "settled" in place and the guard passes on stale evidence.
+    halcyon_cleanup_barrier_status = "not_run"
     await task_schedule(khovan_halcyon_restore_damcon_team)
     if damcon_deployed:
         halcyon_arrival_status = "act2_reset_blocked_damcon_restore_failed"
@@ -217,13 +219,12 @@ shared halcyon_status_teams_returned_text = "Artemis - Captain: Your teams have 
     halcyon_damcon_transfer_fallback_available = False
     halcyon_jump_012_actual_range_m = 0
     halcyon_jump_012_relocation_status = "not_attempted"
-    halcyon_jump_013_relocation_status = "not_attempted"
     await task_schedule(khovan_halcyon_restart_arrival_observer)
     ->END
 
 # Phase B owns the contact spawn. Observe the localization state published by
 # the Act II pivot and spawn Halcyon automatically at that same fixed source.
-# JUMP-013 remains the manual fallback if this bounded observer expires.
+# JUMP-012 remains the GM fallback if this bounded observer expires.
 === khovan_halcyon_watch_distress_localization ===
     default arrival_run_id = 0
     if halcyon_spawned:
@@ -240,9 +241,9 @@ shared halcyon_status_teams_returned_text = "Artemis - Captain: Your teams have 
         ->END
 
     if halcyon_arrival_observer_ticks >= 3000:
-        halcyon_arrival_status = "arrival_observer_timed_out_use_jump_013"
+        halcyon_arrival_status = "arrival_observer_timed_out_use_jump_012"
         halcyon_contact_fallback_available = True
-        script.write_khovan_startup_trace("[KHOVAN ACT2 HALCYON FALLBACK] arrival observer ceiling reached; use JUMP-013")
+        script.write_khovan_startup_trace("[KHOVAN ACT2 HALCYON FALLBACK] arrival observer ceiling reached; use JUMP-012")
         ->END
 
     await delay_sim(seconds=3)
@@ -261,6 +262,11 @@ shared halcyon_status_teams_returned_text = "Artemis - Captain: Your teams have 
         halcyon_object_id = existing_halcyon[0].id
         halcyon_spawned = True
         halcyon_arrival_status = "reused_existing_contact"
+        # A surviving contact can lose its player-side known state across a
+        # story-jump or console lifecycle change. SBS Utils suppresses every
+        # Comms button while the selected contact is unknown, so refresh that
+        # key before returning through the reuse path.
+        await task_schedule(khovan_halcyon_mark_known_for_comms)
         await task_schedule(khovan_create_hessler_lifeform, {"hessler_host_id": halcyon_object_id})
         script.write_khovan_startup_trace(f"[KHOVAN ACT2 HALCYON] reused existing contact id={halcyon_object_id}")
         ->END
@@ -303,22 +309,30 @@ shared halcyon_status_teams_returned_text = "Artemis - Captain: Your teams have 
     # recovery because this direct write is compile-backed, not yet live-measured
     # on Halcyon.
     await task_schedule(khovan_set_current_objective, {"objective_id": "halcyon_arrival", "objective_body": "Artemis - Captain: Have Science report on Halcyon, then order Comms to hail.", "objective_step": "Science report, then Captain orders hail", "objective_owner": "Artemis Captain", "objective_breadcrumb": "[KHOVAN OBJECTIVE 026] objective updated: Science verbal report precedes Comms hail"})
+    await task_schedule(khovan_halcyon_mark_known_for_comms)
+    await task_schedule(khovan_scenario_control_panel_update_overview)
+    ->END
+
+=== khovan_halcyon_mark_known_for_comms ===
     if artemis_id == 0:
         halcyon_arrival_status = "known_contact_seed_blocked_no_artemis"
         halcyon_contact_fallback_available = True
         script.write_khovan_startup_trace("[KHOVAN ACT2 HALCYON KNOWN BLOCKED] Artemis id is 0; use Comms/GM fallback")
-        await task_schedule(khovan_scenario_control_panel_update_overview)
+        ->END
+    if halcyon_object_id == 0:
+        halcyon_arrival_status = "known_contact_seed_blocked_no_halcyon"
+        halcyon_contact_fallback_available = True
+        script.write_khovan_startup_trace("[KHOVAN ACT2 HALCYON KNOWN BLOCKED] Halcyon id is 0; use Comms/GM fallback")
         ->END
     artemis_object = to_object(artemis_id)
     halcyon_known_object = to_object(halcyon_object_id)
     if artemis_object is not None and halcyon_known_object is not None:
         halcyon_known_object.data_set.set("scan", halcyon_known_scan_data, artemis_object.side)
-        script.write_khovan_startup_trace("[KHOVAN ACT2 HALCYON KNOWN] stock Science scan key seeded; Comms hail available")
+        script.write_khovan_startup_trace("[KHOVAN ACT2 HALCYON KNOWN] player-side scan key refreshed; Comms route available")
     else:
         halcyon_arrival_status = "known_contact_seed_blocked_missing_object"
         halcyon_contact_fallback_available = True
         script.write_khovan_startup_trace("[KHOVAN ACT2 HALCYON KNOWN SAFE] missing Artemis or Halcyon object; use Comms/GM fallback")
-    await task_schedule(khovan_scenario_control_panel_update_overview)
     ->END
 
 === khovan_halcyon_cleanup ===
@@ -344,7 +358,7 @@ shared halcyon_status_teams_returned_text = "Artemis - Captain: Your teams have 
 # delete_object() and its destroy hook are deferred. A respawn must not query
 # the role index until the doomed contact has actually left it, or it can
 # re-adopt the old id and then lose that object moments later. This bounded
-# barrier is the cookbook 5.2 [LIVE] observer shape; JUMP-013 remains the fallback.
+# barrier is the cookbook 5.2 [LIVE] observer shape; JUMP-012 remains the fallback.
 === khovan_halcyon_cleanup_and_wait_for_respawn ===
     halcyon_cleanup_barrier_status = "cleanup_requested"
     halcyon_cleanup_wait_ticks = 0
@@ -368,7 +382,7 @@ shared halcyon_status_teams_returned_text = "Artemis - Captain: Your teams have 
     if halcyon_cleanup_wait_ticks >= 5:
         halcyon_cleanup_barrier_status = "timed_out_contact_or_hessler_still_indexed"
         halcyon_contact_fallback_available = True
-        halcyon_arrival_status = "cleanup_barrier_timed_out_use_jump_013"
+        halcyon_arrival_status = "cleanup_barrier_timed_out_use_jump_012"
         script.write_khovan_startup_trace("[KHOVAN ACT2 HALCYON CLEANUP FALLBACK] contact or Hessler remained in role index; respawn blocked")
         ->END
     jump khovan_halcyon_wait_for_cleanup_settle
@@ -398,6 +412,9 @@ shared halcyon_status_teams_returned_text = "Artemis - Captain: Your teams have 
     halcyon_manifest_status = "waiting_for_comms_selection"
     await task_schedule(khovan_set_current_objective, {"objective_id": "halcyon_deploy", "objective_body": "Artemis - Captain: Order Comms to select Engineering and up to one additional officer, then transmit the away-team complement. If you go, designate acting command first.", "objective_step": "Comms selects complement and any acting command", "objective_owner": "Artemis Captain", "objective_breadcrumb": "[KHOVAN OBJECTIVE 027] objective updated: Comms assembles away-team complement"})
     await task_schedule(khovan_scenario_control_panel_update_overview)
+    # The lifeform sends above temporarily override the sender context. Rebuild
+    # the selected Halcyon root so the new manifest action appears immediately.
+    comms_navigate("//comms")
     yield success
 
 === khovan_halcyon_manifest_recount ===
@@ -603,13 +620,21 @@ shared halcyon_status_teams_returned_text = "Artemis - Captain: Your teams have 
     if halcyon_manifest_comms_selected:
         halcyon_manifest_summary = f"{halcyon_manifest_summary}; Comms Officer"
     halcyon_manifest_confirmed = True
-    halcyon_manifest_status = "complement_transmitted"
-    halcyon_deploy_acknowledgement_text = f"Artemis - Captain: Manifest received: {halcyon_manifest_summary}. We are standing by at Halcyon's transfer lock to receive the away team."
+    halcyon_manifest_status = "complement_transmitted_authorizing_departure"
+    script.write_khovan_startup_trace(f"[KHOVAN ACT2 HALCYON MANIFEST] transmitted and departure authorized officers={halcyon_manifest_officer_count} complement={halcyon_manifest_summary}")
+    await task_schedule(khovan_halcyon_authorize_deployment)
+    if not engineering_deployed:
+        halcyon_manifest_status = "departure_authorization_failed"
+        await task_schedule(khovan_set_current_objective, {"objective_id": "halcyon_departure_retry", "objective_body": "Artemis - Captain: The manifest was transmitted, but the away-team transfer did not complete. Comms, select Halcyon Drift and retry the away-team departure.", "objective_step": "Retry away-team departure", "objective_owner": "Artemis Captain", "objective_breadcrumb": "[KHOVAN OBJECTIVE 027A] objective updated: departure transfer retry required"})
+        await task_schedule(khovan_scenario_control_panel_update_overview)
+        comms_navigate("//comms")
+        yield fail
+
+    halcyon_manifest_status = "complement_transmitted_departure_authorized"
+    halcyon_deploy_acknowledgement_text = f"Artemis - Captain: Manifest received: {halcyon_manifest_summary}. Transfer authorized; your declared away team is aboard Halcyon Drift."
     if not halcyon_deploy_acknowledgement_sent:
-        await task_schedule(khovan_lifeform_send, {"send_lifeform_id": hessler_lifeform_id, "send_sender": "Captain Aurel Hessler", "send_title": "Halcyon Drift", "send_text": halcyon_deploy_acknowledgement_text, "send_title_color": "green", "send_fallback_sender_id": halcyon_object_id, "send_breadcrumb": "[KHOVAN ACT2 HALCYON 005D] Hessler received complement and is standing by"})
+        await task_schedule(khovan_lifeform_send, {"send_lifeform_id": hessler_lifeform_id, "send_sender": "Captain Aurel Hessler", "send_title": "Halcyon Drift", "send_text": halcyon_deploy_acknowledgement_text, "send_title_color": "green", "send_fallback_sender_id": halcyon_object_id, "send_breadcrumb": "[KHOVAN ACT2 HALCYON 005D] Hessler received manifest and away team"})
         halcyon_deploy_acknowledgement_sent = True
-    script.write_khovan_startup_trace(f"[KHOVAN ACT2 HALCYON MANIFEST] transmitted officers={halcyon_manifest_officer_count} complement={halcyon_manifest_summary}")
-    await task_schedule(khovan_set_current_objective, {"objective_id": "halcyon_deploy_authorized", "objective_body": "Artemis - Captain: Halcyon has the away-team complement. Authorize the engineering deployment when ready.", "objective_step": "Captain authorizes declared complement", "objective_owner": "Artemis Captain", "objective_breadcrumb": "[KHOVAN OBJECTIVE 027A] objective updated: complement transmitted; awaiting authorization"})
     await task_schedule(khovan_scenario_control_panel_update_overview)
     comms_navigate("//comms")
     yield success
@@ -816,6 +841,7 @@ shared halcyon_status_teams_returned_text = "Artemis - Captain: Your teams have 
     if engineering_placement == "returned_to_artemis":
         halcyon_status_reply_text = halcyon_status_teams_returned_text
     await task_schedule(khovan_lifeform_send, {"send_lifeform_id": hessler_lifeform_id, "send_sender": "Captain Aurel Hessler", "send_title": "Halcyon Drift", "send_text": halcyon_status_reply_text, "send_title_color": "green", "send_fallback_sender_id": halcyon_object_id, "send_breadcrumb": "[KHOVAN ACT2 HALCYON STATUS] Hessler status update sent"})
+    comms_navigate("//comms")
     yield success
 
 # --- Story-jump seed --------------------------------------------------------
@@ -857,79 +883,4 @@ shared halcyon_status_teams_returned_text = "Artemis - Captain: Your teams have 
         ->END
     halcyon_jump_012_relocation_status = "relocated_to_halcyon_approach"
     script.write_khovan_startup_trace(f"[KHOVAN ACT2 JUMP 012 RELOCATE] Artemis placed range={halcyon_jump_012_actual_range_m} from Halcyon id={halcyon_object_id}")
-    ->END
-
-=== khovan_halcyon_relocate_artemis_for_jump_013 ===
-    halcyon_jump_013_relocation_status = "relocation_started"
-    if artemis_id == 0:
-        halcyon_jump_013_relocation_status = "blocked_missing_artemis_id"
-        halcyon_contact_fallback_available = True
-        script.write_khovan_startup_trace("[KHOVAN ACT2 JUMP 013 RELOCATE BLOCKED] missing Artemis id")
-        ->END
-    artemis_object = to_object(artemis_id)
-    if artemis_object is None:
-        halcyon_jump_013_relocation_status = "blocked_missing_artemis_object"
-        halcyon_contact_fallback_available = True
-        script.write_khovan_startup_trace("[KHOVAN ACT2 JUMP 013 RELOCATE BLOCKED] missing Artemis object")
-        ->END
-    if halcyon_object_id == 0:
-        halcyon_jump_013_relocation_status = "blocked_missing_halcyon_id"
-        halcyon_contact_fallback_available = True
-        script.write_khovan_startup_trace("[KHOVAN ACT2 JUMP 013 RELOCATE BLOCKED] missing Halcyon id")
-        ->END
-    halcyon_jump_object = to_object(halcyon_object_id)
-    if halcyon_jump_object is None:
-        halcyon_jump_013_relocation_status = "blocked_missing_halcyon_object"
-        halcyon_contact_fallback_available = True
-        script.write_khovan_startup_trace("[KHOVAN ACT2 JUMP 013 RELOCATE BLOCKED] missing Halcyon object")
-        ->END
-
-    # The [LIVE] Kestrel yard-lock path uses this guarded direct Vec3 assignment.
-    # Five kilometres leaves a safe approach gap while putting Halcyon well
-    # inside the consoles' useful local range for the Scene 8 scan and hail.
-    artemis_object.pos = Vec3(halcyon_jump_object.pos.x - halcyon_jump_013_approach_range_m, halcyon_jump_object.pos.y, halcyon_jump_object.pos.z)
-    artemis_object.data_set.set("dock_base_id", 0, 0)
-    artemis_object.data_set.set("dock_state", "undocked", 0)
-    artemis_object.data_set.set("playerThrottle", 0, 0)
-    halcyon_jump_013_actual_range_m = sbs.distance_id(artemis_id, halcyon_object_id)
-    if halcyon_jump_013_actual_range_m < 4500 or halcyon_jump_013_actual_range_m > 5500:
-        halcyon_jump_013_relocation_status = "blocked_approach_range_not_confirmed"
-        halcyon_contact_fallback_available = True
-        script.write_khovan_startup_trace(f"[KHOVAN ACT2 JUMP 013 RELOCATE BLOCKED] range={halcyon_jump_013_actual_range_m}")
-        ->END
-    halcyon_jump_013_relocation_status = "relocated_to_halcyon_approach"
-    script.write_khovan_startup_trace(f"[KHOVAN ACT2 JUMP 013 RELOCATE] Artemis placed range={halcyon_jump_013_actual_range_m} from Halcyon id={halcyon_object_id}")
-    ->END
-
-=== khovan_act2_story_jump_seed_halcyon_arrival ===
-    # Promote an already-valid JUMP-012 state in place. Re-running its full seed
-    # here would send Artemis back through Tarsis and delete/recreate the live
-    # Halcyon/Hessler pair. Besides being unnecessary, that consecutive 12 -> 13
-    # cleanup path crashed live before its deletion barrier could report.
-    if distress_localized and halcyon_spawned and halcyon_jump_012_relocation_status == "relocated_to_halcyon_approach":
-        script.write_khovan_startup_trace("[KHOVAN ACT2 JUMP 013 PROMOTE] reusing valid JUMP-012 Halcyon contact without cleanup")
-    else:
-        script.write_khovan_startup_trace("[KHOVAN ACT2 JUMP 013 BUILD] no valid JUMP-012 state; seeding localized contact")
-        await task_schedule(khovan_act2_story_jump_seed_distress_localized)
-    if act1_story_jump_cleanup_barrier_status != "settled":
-        halcyon_arrival_status = "jump_013_blocked_act1_cleanup_not_settled"
-        halcyon_contact_fallback_available = True
-        script.write_khovan_startup_trace("[KHOVAN ACT2 JUMP 013 BLOCKED] Act I cleanup did not settle")
-        ->END
-    if not halcyon_spawned:
-        halcyon_arrival_status = "jump_013_blocked_halcyon_not_spawned"
-        halcyon_contact_fallback_available = True
-        script.write_khovan_startup_trace("[KHOVAN ACT2 JUMP 013 BLOCKED] localized seed did not produce Halcyon")
-        ->END
-    await task_schedule(khovan_halcyon_relocate_artemis_for_jump_013)
-    if halcyon_jump_013_relocation_status != "relocated_to_halcyon_approach":
-        halcyon_arrival_status = "jump_013_blocked_artemis_not_at_halcyon"
-        halcyon_contact_fallback_available = True
-        script.write_khovan_startup_trace(f"[KHOVAN ACT2 JUMP 013 BLOCKED] Artemis relocation failed status={halcyon_jump_013_relocation_status}")
-        ->END
-    current_scene = 8
-    current_beat = "scene_8_halcyon_arrival"
-    last_checkpoint = "post_halcyon_arrival"
-    halcyon_arrival_status = "seeded_halcyon_arrival_contact_active"
-    script.write_khovan_startup_trace("[KHOVAN ACT2 JUMP 013] seeded Halcyon arrival state with Artemis at five kilometre approach")
     ->END

@@ -65,7 +65,7 @@ class StoryJumpPresetStaticTests(unittest.TestCase):
         story_jump = read("scripts/systems/story_jump_presets.mast")
         for phrase in [
             "shared story_jump_registry_initialized = False",
-            'shared story_jump_registry_ids = "mission_start_generator_governor|tarsis_resupply_complete|engineering_shakedown_complete|drone_02_live_fire|anderson_orders|distress_localized|halcyon_arrival"',
+            'shared story_jump_registry_ids = "mission_start_generator_governor|tarsis_resupply_complete|engineering_shakedown_complete|drone_02_live_fire|anderson_orders|distress_localized"',
             "shared story_jump_preset_count = 4",
             "shared story_jump_metadata_required_fields =",
             "shared story_jump_generation_id = 0",
@@ -77,6 +77,49 @@ class StoryJumpPresetStaticTests(unittest.TestCase):
 
         for field in REQUIRED_METADATA_FIELDS:
             self.assertIn(field, story_jump)
+
+    def test_retired_halcyon_arrival_preset_is_not_registered_or_exposed(self) -> None:
+        """The redundant halcyon_arrival preset stays retired.
+
+        JUMP-012 already spawns Halcyon and stages the same five-kilometre
+        approach, so a second preset for the same beat only re-introduced the
+        promote-in-place hazard in cookbook 17.12.
+
+        This guards the retired *construct*, not the JUMP-013 *number*. The
+        number is a free slot and is expected to be reissued to an unrelated
+        beat; asserting on "JUMP-013" itself would block that reuse and send
+        the next jump to JUMP-014 for no reason. If a future preset legitimately
+        reintroduces a `halcyon_arrival` id for a different purpose, retire this
+        test deliberately rather than loosening it by hand.
+        """
+        story_jump = read("scripts/systems/story_jump_presets.mast")
+        halcyon = read("scripts/acts/act2_halcyon_arrival.mast")
+        for retired in [
+            "khovan_story_jump_preset_halcyon_arrival",
+            'jump_id == "halcyon_arrival"',
+            "khovan_act2_story_jump_seed_halcyon_arrival",
+            "khovan_halcyon_relocate_artemis_for_jump_013",
+            "halcyon_jump_013_",
+        ]:
+            self.assertNotIn(retired, story_jump + halcyon)
+        self.assertIn('+ "JUMP-012 Distress Localized" khovan_story_jump_preset_distress_localized', story_jump)
+
+    def test_jump_013_number_is_free_for_reissue(self) -> None:
+        """Cookbook 17.12: JUMP-013 was retired, not permanently burned.
+
+        Documents the intent that the next new preset claims 013 rather than
+        skipping to 014. If a new JUMP-013 is added, this test should start
+        failing on the second assertion and be replaced by that preset's own
+        coverage - a deliberate hand-off, not a silent one.
+        """
+        story_jump = read("scripts/systems/story_jump_presets.mast")
+        self.assertNotIn("JUMP-014", story_jump, "013 is free; do not skip it")
+        self.assertNotIn(
+            "JUMP-013",
+            story_jump,
+            "a JUMP-013 preset now exists - replace this placeholder with real "
+            "coverage for it and drop this test",
+        )
 
     def test_active_preset_ids_and_metadata_fields_exist(self) -> None:
         story_jump = read("scripts/systems/story_jump_presets.mast")

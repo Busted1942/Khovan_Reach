@@ -17,6 +17,7 @@ shared current_objective_updated_at = 0
 shared current_objective_archive_id = "none"
 shared current_objective_last_message = ""
 shared current_objective_broadcast_status = "not_sent"
+shared current_objective_test_marker = "S06"
 
 === khovan_current_objective_init ===
     current_objective_panel_initialized = True

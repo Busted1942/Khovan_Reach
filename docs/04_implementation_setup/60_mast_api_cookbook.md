@@ -29,6 +29,7 @@ Each pattern is tagged:
 
 - **[LIVE]** — exercised in live Cosmos and recorded in a slice verification doc.
 - **[COMPILE]** — compiles under the installed sbs_utils MastStory preflight (`tests/test_mast_compile_or_preflight.py`), but its runtime behavior is not yet proven.
+- **[STATIC]** — established by reading the active files and confirmed by the Python static suite, with no compile preflight or live run behind it. Correct about file/text structure and about control flow you can trace by eye; proves nothing about runtime values or renderer behavior. Matches the "Static tests" row of `AGENTS.md` section 5.
 - **[UNPROVEN]** — written against reference/API reading only. Compiles. May not work. Treat as a hypothesis.
 
 Do not upgrade a tag without a live smoke record.
@@ -114,6 +115,76 @@ To assign a shared from inside a label, repeat the `shared` keyword (`scripts/sy
 ```
 
 Convention in this repo: each subsystem file owns its own `shared` block at the top; `bootstrap_state.mast` owns only cross-cutting mission state. Do not add Act-specific gates to `bootstrap_state.mast`.
+
+### The `shared` declaration is what makes every later plain assignment shared
+
+**[SOURCE-CITED - sbs_utils v1.3.0, `mast/mastscheduler.py:800-811` and `:783-798`.]**
+
+A plain `x = value` inside a label does **not** carry a scope of its own. At
+runtime it goes through `set_value_keep_scope`, which looks the name up and
+reuses whatever scope it already lives in:
+
+```python
+def set_value_keep_scope(self, key, value):
+    scoped_val = self.get_value(key, value)      # walks label data -> task -> main
+    scope = scoped_val[1]
+    if scope is None:
+        scope = Scope.TEMP
+    self.set_value(key, value, scope)            # SHARED -> Agent.SHARED, else task-local
+```
+
+`get_value` returns `Scope.SHARED` only if the name is found in `main`, which is
+where the top-level `shared` declaration put it. If the name is nowhere,
+`get_value` falls through to `(default, Scope.NORMAL)` and the assignment
+silently becomes **task-local**.
+
+Three consequences worth holding onto:
+
+- **Deleting a `shared` declaration does not just remove an initial value.** It
+  changes where every subsequent `x = ...` in the mission writes. The writes keep
+  working, the compile stays clean, and cross-task reads quietly stop seeing
+  anything.
+- **Nothing errors.** An unbound name reads as the default, so a condition gated
+  on it evaluates falsy rather than raising - a Comms option gated on a flag
+  whose declaration disappeared simply stops rendering, with no trace line and no
+  compile error to point at it.
+- **Repeating the `shared` keyword inside a label (above) is not stylistic.**
+  `shared artemis_id = artemis_object.id` is what binds the name into shared
+  scope; the same line without `shared` would bind it to that task only.
+
+**Rule.** Treat a `shared` declaration as load-bearing even when nothing appears
+to read it. See 17.13 for what a pruning tool misses, and 17.14 for how the
+symptom of a missing declaration was misdiagnosed.
+
+### `to_object(0)` returns `None`, so a None check is a valid bound-ship guard
+
+**[SOURCE-CITED - sbs_utils v1.3.0, `procedural/query.py:115-137`.]**
+
+`to_object` short-circuits on zero:
+
+```python
+def to_object(other):
+    ...
+    elif other==0:
+        return None
+```
+
+So these are equivalent guards, and section 4's "guard `if artemis_id == 0`
+before any ship API call" is satisfied by either:
+
+```mast
+    if artemis_id == 0:
+        ->END
+    # ... use artemis_id
+
+    artemis_object = to_object(artemis_id)      # same protection
+    if artemis_object is not None:
+        # ... use artemis_object
+```
+
+Prefer the second when you need the object anyway: one lookup instead of a test
+plus a lookup, and the guard sits next to the thing being guarded. The first is
+still correct when you only need the id.
 
 ### A literal `\n` survives ONLY in a `shared` declaration
 
@@ -325,6 +396,48 @@ MAST has no "watch this value" primitive here. Automatic gates are built as a se
 ```
 
 **Every automatic gate in this mission must ship with its fallback.** The source design principle is: automatic gate first, Comms/captain confirmation second, GM manual mark last. A gate with no fallback is a mission-stopping bug, because the operator cannot recover mid-session.
+
+### Reset the published status flag first, so an early bail fails closed
+
+**[COMPILE — 2026-08-23]** The defect and the reasoning below are static; the
+repaired shape additionally passes the installed MastStory preflight. Runtime
+behavior of the bail path is still unproven — see the SLICE07B finding for the
+live dependency. The example above resets its tick *counter* at the top.
+That is not enough when the observer also publishes a status flag that another
+label reads as permission to proceed. If the owning operation can bail before the
+observer ever runs, the flag still holds the **previous** run's value — and a
+previous success reads as consent for a run that never happened.
+
+Found in `scripts/acts/act2_halcyon_arrival.mast`. `khovan_halcyon_reset_for_act2_jump`
+restores a deployed DAMCON team before it runs its cleanup barrier, and bails if
+that restore fails. On that path `halcyon_cleanup_barrier_status` was never
+touched, so it kept `"settled"` from an earlier jump. The downstream guards in
+`khovan_act2_story_jump_seed_anderson_orders` and `..._seed_distress_localized`
+test exactly that string, so a JUMP-011/012 could proceed on evidence produced by
+a different jump entirely.
+
+The fix is one line, placed before any statement that can `->END`:
+
+```mast
+=== khovan_halcyon_reset_for_act2_jump ===
+    # Fail closed, not stale-open: downstream guards read this flag to decide
+    # whether the reset actually ran.
+    halcyon_cleanup_barrier_status = "not_run"
+    await task_schedule(khovan_halcyon_restore_damcon_team)
+    if damcon_deployed:
+        halcyon_arrival_status = "act2_reset_blocked_damcon_restore_failed"
+        halcyon_contact_fallback_available = True
+        ->END
+    await task_schedule(khovan_halcyon_cleanup_and_wait_for_respawn)
+    if halcyon_cleanup_barrier_status != "settled":
+        ->END
+```
+
+**Rule.** A status flag that another label reads as a precondition must be reset
+to its not-run value as the first statement of the operation that owns it — not
+at the point where the observer starts, because a bail can happen in between.
+Section 11 rule 7 says set a status on every branch; this is its companion,
+because the branch that never executes writes nothing at all.
 
 ---
 
@@ -1200,6 +1313,8 @@ Guarded by `tests/test_mast_compile_or_preflight.py`:
 - `get_inventory_value` / `set_inventory_value` on `MANUAL_SYSTEM` or `MANUAL_CRITICAL_HIT` in a **production** handler — the stock Manual Weapons console owns both and races you for them; stealing the value suppresses the engine's own subsystem damage. Guarded by `test_damage_handler_never_touches_the_stock_manual_targeting_inventory`. The GM spike handler is the deliberate exception. See 7.3.
 - Player-facing text claiming beam rate raises the critical-hit **roll odds** — it does not; the roll is per subsystem-button press (7.3). Note the converse is also wrong: beam rate *does* raise crits landed per minute, because delivery requires a landed hit. State it as throughput, never as odds.
 - Any runtime reference to `_local_clones`, `archive/old_build_reference`, or `old_mast`. Git-ignored is not runtime-ignored.
+- Removing a `shared` declaration on a tool's "unused" verdict without running the static suite — MAST019 cannot see `% {var}` GUI-body interpolation and pruned a live one (17.13). Guarded for this case by `tests/test_act1_generator_tarsis_static.py`, which asserts both the declaration and its `% {...}` use site.
+- A story-jump seed that promotes a prior jump's state in place without re-applying the resets that seed's transitive chain owned (17.12), or a validation gate that reads a status flag the skipped path was supposed to write (17.12.1). The 2026-08-23 instance was resolved by deleting the redundant jump rather than by patching the promote branch — check whether a fragile jump needs to exist before hardening it.
 
 ---
 
@@ -2074,3 +2189,165 @@ This is deliberate. Someone re-reading the file learns not just the fact but tha
 it was got wrong, which is the part that stops a future agent from re-deriving
 the same appealing error. A silent edit erases exactly the evidence that would
 have prevented the repeat.
+
+## 17.12 Promoting a story-jump state in place skips every reset the seed it replaced owned
+
+**[STATIC — 2026-08-23, commit `38602d2`.]** Read this before changing any
+`khovan_*_story_jump_seed_*` label.
+
+> **Resolved 2026-08-23, later the same day — the labels below no longer exist.**
+> The defect was first patched by re-applying the missing resets inside the
+> promote branch. That patch was then superseded by a better fix: **JUMP-013 was
+> deleted outright**, because JUMP-012 already spawns Halcyon and places Artemis
+> at the same five-kilometre approach, so the second jump was a near-duplicate
+> whose only distinct behavior was the fragile promote path. `scripts/` now has
+> no `jump_013` reference and `story_jump_preset_count` is back to 4.
+>
+> **The number 013 is retired construct, not a retired slot.** The next new
+> preset should claim JUMP-013 rather than skip to JUMP-014 - the operator's
+> instruction, 2026-08-23. `tests/test_story_jump_presets_static.py::test_jump_013_number_is_free_for_reissue`
+> is a placeholder that starts failing the moment a real JUMP-013 exists; delete
+> it and let that preset's own coverage take over.
+>
+> The incident is kept because the **rule** outlived the code. Do not go looking
+> for `khovan_act2_story_jump_seed_halcyon_arrival`; read this for the hazard
+> class, not as a map of the current file. Note also the cheapest fix for a
+> fragile jump: ask whether the jump needs to exist at all.
+
+JUMP-013 originally opened by calling JUMP-012's seed, then layering its own
+state on top. That chain crashed live during consecutive 12 → 13 cleanup, so it
+was replaced with a promote-in-place branch: if a valid JUMP-012 state is already
+present, reuse the live contact instead of deleting and respawning it. The
+crash-avoidance reasoning was sound. What was not visible from the call site is
+what else that one call was doing:
+
+```text
+khovan_act2_story_jump_seed_distress_localized
+  └─ khovan_act2_story_jump_reset_act2_base
+       └─ khovan_halcyon_reset_for_act2_jump   <- the only caller
+```
+
+`khovan_halcyon_reset_for_act2_jump` is the sole path that clears Scene 8
+progress — hail observed, manifest confirmed, engineering and DAMCON deployed.
+Skipping the seed skipped a reset **two calls deep**, so JUMP-013 after a played
+JUMP-012 landed with the hail already observed, the manifest already transmitted,
+the away team already aboard, and one DAMCON team still deleted off Artemis's
+grid. The Halcyon Comms panel offered only "Recall Away Team" and "Request Status
+Update": an unplayable arrival beat.
+
+It was also self-perpetuating. The promote branch gates on
+`halcyon_jump_012_relocation_status == "relocated_to_halcyon_approach"`, and the
+only label that clears that flag is the reset the promote branch skips. Once
+JUMP-012 had run, no later JUMP-013 could ever take the rebuild path again.
+
+**Rules.**
+
+- Before replacing a seed call with in-place promotion, walk that seed's
+  **transitive** call chain and list every reset it owns. The reset you break
+  will be the one you did not know it called.
+- If the promote path is genuinely the right answer, re-apply those resets inline
+  and cite the label you copied them from, so the two definitions of "reset" can
+  be diffed instead of quietly drifting.
+- Never let a promote branch gate on a flag that only the skipped path clears.
+
+## 17.12.1 A flag written by a step you skipped is not evidence about the step you ran
+
+Same incident, and the more general half of it.
+
+The GM panel validated JUMP-013 partly on
+`halcyon_cleanup_barrier_status == "settled"` (`scripts/systems/story_jump_presets.mast`).
+That flag is written by the cleanup barrier the promote branch never runs, so it
+was still holding JUMP-012's value. The panel reported `valid_runtime_seed` for
+the unplayable state described above — a green light sourced entirely from a
+different jump's evidence.
+
+This is `AGENTS.md` section 5 applied to runtime flags rather than to agent
+claims, and it fails the same way: the reading is real, it is just about
+something else. When a validation gate reads a status string, confirm the writer
+of that string ran **in this operation**. A flag that survives across jumps needs
+either a generation stamp or an explicit reset (5.2), or it is not evidence.
+
+## 17.14 A missing `shared` declaration breaks by silence, not by fault
+
+**[SOURCE-CITED correction - 2026-08-23. Supersedes an assertion made earlier the
+same day; the original is stated below rather than removed, per 17.11.]**
+
+**Superseded claim.** After a MAST002 pass removed 151 `shared` declarations and
+the operator reported a Comms problem, the diagnosis given was that a route body
+*faulted* - that this first statement
+
+```mast
+//comms if has_roles(COMMS_SELECTED_ID, "kestrel_yards")
+    kestrel_comms_options_status = "rendered_for_selected_kestrel"
+    + "Hail Kestrel Yards" khovan_kestrel_hail
+```
+
+would raise once its declaration was gone, aborting the body and taking every
+button below it. That mechanism explains the symptom exactly, which is why it
+was convincing.
+
+**It is wrong.** `mastscheduler.py:800-811` shows an assignment to an unbound
+name does not raise: it resolves to `Scope.NORMAL` and writes task-local (see
+4.1). The route body runs to completion. Nothing faults.
+
+The real failure mode is **silence**. A name that is no longer shared reads as
+its default in any other task, so anything gated on it evaluates falsy and does
+not render. No exception, no trace line, no compile error.
+
+**Why this is filed here.** This is 17.10 - "a mechanism that explains the
+symptom is not the mechanism" - committed by the party that had just written the
+tool causing the breakage, in the same session, with the source available
+throughout. The check that would have caught it was reading
+`set_value_keep_scope` before asserting a fault, which took about four minutes
+once actually done.
+
+**Rules.**
+
+- A mechanism whose source you have not read is a hypothesis, however well it
+  fits. Tag it `[UNPROVEN]` and say so.
+- "It crashed" and "it silently stopped rendering" call for different searches.
+  Guessing wrong sends the next person hunting an exception that never existed.
+- When a bulk edit and a bug report land in the same hour, correlation is
+  evidence about *which* edit, not about *how* it broke.
+
+## 17.13 A declaration-pruning tool does not see MAST's GUI-body interpolation
+
+**[STATIC — 2026-08-23, commit `38602d2`.]**
+
+A masttools MAST019 "unused record" pass commented out ~32 `shared`
+declarations across the runtime files. Thirty-one were genuinely unused. One was
+not:
+
+```mast
+# The pass wrote this:
+# unused record (masttools MAST019): shared tarsis_docking_rejection_text = "..."
+
+# while this, in khovan_tarsis_docking_rejected_before_clearance, still reads it:
+    with comms_override(DOCKING_NPC_ID, DOCKING_PLAYER_ID, from_name="Tarsis Docking Control"):
+        <<[yellow,black] "Docking Clearance Required"
+            % {tarsis_docking_rejection_text}
+```
+
+MAST019 counts expression-position references. It does not count `% {var}`
+substitution inside a `<<[...]` GUI body, so the only live use of the variable was
+invisible to it. Compile preflight does not close this either — an undefined name
+in a GUI body faults at render, not at parse. The break would first appear as a
+player approaching Tarsis without clearance.
+
+What caught it was a static test asserting the literal declaration line
+(`tests/test_act1_generator_tarsis_static.py`, which asserts both the
+`shared tarsis_docking_rejection_text = ...` line and the `% {tarsis_docking_rejection_text}`
+usage). That is 17.7 earning its keep.
+
+**Rules.**
+
+- A pruning tool's notion of "usage" must cover every interpolation form MAST
+  supports: `f"..."`, `{var}` inside `comms_receive` titles, and `% {var}` GUI
+  bodies. Treat any tool-driven declaration removal as unproven until the static
+  suite passes.
+- Run `python run_tests.py quick` **before** committing a bulk pruning pass, not
+  after. This one shipped in a commit that left the suite red in four places.
+- Commenting a declaration out rather than deleting it hides the breakage from
+  substring-matching tests, because `# unused record (...): shared x = "y"` still
+  contains `shared x = "y"`. A later pass that deletes the comment turns a silent
+  break into a visible one. Prefer deletion, so the tests fail immediately.

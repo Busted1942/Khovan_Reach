@@ -613,7 +613,10 @@ class Act1GeneratorTarsisStaticTests(unittest.TestCase):
         self.assertIn('tarsis_docking_setup_role_status = "station_and_Station_roles_restored_after_clearance"', enable_body)
         self.assertIn('tarsis_docking_observer_status = "watching_after_clearance"', enable_body)
         self.assertIn('tarsis_docking_observer_last_snapshot = "not_checked"', enable_body)
-        self.assertIn("tarsis_roles_after_clearance = to_object(tarsis_station_id).get_roles()", enable_body)
+        # AGENTS.md section 4 guard: to_object can return None and .get_roles()
+        # on None faults. The landmark is the guarded form.
+        self.assertIn("tarsis_roles_after_object = to_object(tarsis_station_id)", enable_body)
+        self.assertIn("if tarsis_roles_after_object is not None:", enable_body)
         self.assertIn("tarsis_docking_player = to_object(player_id)", enable_body)
         self.assertIn('tarsis_docking_player.data_set.set("dock_base_id", 0, 0)', enable_body)
         self.assertIn('tarsis_docking_player.data_set.set("dock_state", "undocked", 0)', enable_body)
