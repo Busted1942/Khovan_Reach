@@ -156,27 +156,46 @@ shared story_jump_preset_drone_02_live_fire_metadata = "jump_id=drone_02_live_fi
         await task_schedule(khovan_act2_story_jump_seed_anderson_orders)
         story_jump_last_display_name = "JUMP-011 Anderson Orders"
         story_jump_last_target_scene = 5
-        story_jump_last_validation_result = "valid_runtime_seed"
-        story_jump_expected_next_event = "Science reports the distress localization."
-        story_jump_seeded_state_summary = "Act II entered, Anderson orders delivered and acknowledged, Dillon pivot note sent, distress signal detected, localization still open."
-        story_jump_skipped_observations = "Manual jump skips proof of the Act I handoff, the Anderson message surface, and the acknowledgment route."
-        story_jump_gm_display = "JUMP-011 Anderson Orders preset seeded."
+        if act1_story_jump_cleanup_barrier_status == "settled" and anderson_orders_delivered and anderson_orders_ack_status == "pending":
+            story_jump_last_validation_result = "valid_runtime_seed"
+        else:
+            story_jump_last_validation_result = "runtime_seed_failed"
+            story_jump_framework_warning = "Anderson orders were not delivered with acknowledgment pending; inspect the JUMP-011 BLOCKED trace."
+        story_jump_expected_next_event = "Captain directs Comms to select Tarsis Station and acknowledge Anderson's orders."
+        story_jump_seeded_state_summary = "Act I recorded as successfully completed; Kestrel/Tarsis holds released; Drone 01, Drone 02, Drone 02 fleet AI, and GM test contacts confirmed deleted. Act II entered with Anderson orders visibly delivered and acknowledgment pending."
+        story_jump_entities = "Artemis, Kestrel Yards, and Tarsis Station remain. All Act I drone, fleet, target-spike, and subsystem-control object ids captured at jump time were deleted before Anderson delivery."
+        story_jump_timers = "All Act I observers invalidated after successful-state seeding; no prior drill timer remains authoritative."
+        story_jump_clips = "Anderson Clip 1 text stand-in delivered through the normal message path"
+        story_jump_skipped_observations = "Manual jump skips proof of the Act I handoff; Anderson delivery and the acknowledgment route remain testable."
+        story_jump_gm_display = "JUMP-011 Anderson Orders delivered; awaiting Tarsis acknowledgment."
     elif jump_id == "distress_localized":
         await task_schedule(khovan_act2_story_jump_seed_distress_localized)
         story_jump_last_display_name = "JUMP-012 Distress Localized"
-        story_jump_last_target_scene = 7
-        story_jump_last_validation_result = "valid_runtime_seed"
-        story_jump_expected_next_event = "Phase B: Halcyon Drift arrival."
-        story_jump_seeded_state_summary = "Act II entered with the distress source already localized; Phase B owns Halcyon spawn, scan, and hail."
+        story_jump_last_target_scene = 8
+        if act1_story_jump_cleanup_barrier_status == "settled" and distress_localized and halcyon_spawned:
+            story_jump_last_validation_result = "valid_runtime_seed"
+        else:
+            story_jump_last_validation_result = "runtime_seed_failed"
+            story_jump_framework_warning = "Localized state or Halcyon contact is missing; inspect the JUMP-012 BLOCKED and HALCYON CLEANUP traces."
+        story_jump_expected_next_event = "Captain directs Science to scan and Comms to hail Halcyon Drift."
+        story_jump_seeded_state_summary = "Act I recorded as successfully completed and cleared exactly as in JUMP-011. Act II entered with the distress source localized and Halcyon Drift spawned at the fixed Tarsis-relative contact point."
+        story_jump_entities = "Artemis, Kestrel Yards, Tarsis Station, and one repeat-safe Halcyon Drift contact. All captured Act I drones, fleet AI, and GM test contacts were confirmed deleted before the Halcyon spawn."
+        story_jump_timers = "All Act I observers invalidated after successful-state seeding; Act II localization is complete and Halcyon owns the active contact state."
         story_jump_skipped_observations = "Manual jump skips proof of the localization route in addition to everything JUMP-011 skips."
-        story_jump_gm_display = "JUMP-012 Distress Localized preset seeded."
+        story_jump_gm_display = "JUMP-012 Distress Localized; Halcyon contact active."
     elif jump_id == "halcyon_arrival":
         await task_schedule(khovan_act2_story_jump_seed_halcyon_arrival)
         story_jump_last_display_name = "JUMP-013 Halcyon Arrival"
         story_jump_last_target_scene = 8
-        story_jump_last_validation_result = "valid_runtime_seed"
-        story_jump_expected_next_event = "Science scans and Comms hails Halcyon Drift."
-        story_jump_seeded_state_summary = "Halcyon Drift spawned and selectable; scan, hail, and deployment state reset. Cleanup runs first so repeat jumps do not stack contacts."
+        if act1_story_jump_cleanup_barrier_status == "settled" and halcyon_cleanup_barrier_status == "settled" and halcyon_spawned and current_scene == 8:
+            story_jump_last_validation_result = "valid_runtime_seed"
+        else:
+            story_jump_last_validation_result = "runtime_seed_failed"
+            story_jump_framework_warning = "Halcyon is not active in Scene 8; inspect the JUMP-013 BLOCKED and HALCYON CLEANUP traces."
+        story_jump_expected_next_event = "Captain directs Science to scan and Comms to hail Halcyon Drift."
+        story_jump_seeded_state_summary = "Act I recorded as successfully completed and cleared exactly as in JUMP-011. Halcyon Drift spawned and selectable; scan, hail, and deployment state reset. Both Act I and Halcyon cleanup barriers settled before success was reported."
+        story_jump_entities = "Artemis, Kestrel Yards, Tarsis Station, and exactly one Halcyon Drift contact. No captured Act I drone, fleet AI, GM test contact, or prior Halcyon remains."
+        story_jump_timers = "All Act I observers invalidated after successful-state seeding; Halcyon observers reset for the new Scene 8 contact."
         story_jump_skipped_observations = "Manual jump skips proof of the Act II transit and the localization route."
         story_jump_gm_display = "JUMP-013 Halcyon Arrival preset seeded."
     else:

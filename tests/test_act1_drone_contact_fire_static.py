@@ -1010,6 +1010,45 @@ class Act1DroneContactFireStaticTests(unittest.TestCase):
         self.assertIn('+ "JUMP-010A Drone 02 Live Fire" khovan_story_jump_preset_drone_02_live_fire', presets)
         self.assertIn('elif jump_id == "drone_02_live_fire":', presets)
 
+    def test_act2_success_seed_clears_act1_without_spawning_another_drone(self) -> None:
+        drone = read(DRONE_PATH)
+        body = label_body(drone, "khovan_act1_story_jump_seed_act1_success_cleanup")
+
+        for cleanup in [
+            "task_schedule(khovan_drone_01_cleanup)",
+            "task_schedule(khovan_drone_02_cleanup)",
+            "task_schedule(khovan_drone_contact_fire_cleanup_target_spike)",
+            "task_schedule(khovan_subsys_control_cleanup)",
+        ]:
+            self.assertIn(cleanup, body)
+        self.assertNotIn("task_schedule(khovan_drone_01_spawn)", body)
+        self.assertNotIn("task_schedule(khovan_drone_02_spawn)", body)
+        self.assertIn("jump khovan_act1_story_jump_wait_for_cleanup_settle", body)
+
+        cleanup = label_body(drone, "khovan_drone_01_cleanup")
+        self.assertIn("sbs.delete_object(drone_01_target_id)", cleanup)
+        self.assertIn("sim.delete_navproxy_by_id(drone_01_navproxy_id)", cleanup)
+        self.assertIn("drone_01_stationary_hold_run_id = drone_01_stationary_hold_run_id + 1", cleanup)
+        self.assertIn("drone_01_weapons_damage_run_id = drone_01_weapons_damage_run_id + 1", cleanup)
+
+        barrier = label_body(drone, "khovan_act1_story_jump_wait_for_cleanup_settle")
+        self.assertIn("await delay_sim(seconds=1)", barrier)
+        self.assertIn("act1_story_jump_cleanup_drone_02_fleet_id", barrier)
+        self.assertIn('act1_story_jump_cleanup_barrier_status = "settled"', barrier)
+        self.assertIn('act1_story_jump_cleanup_barrier_status = "timed_out_prior_object_still_present"', barrier)
+
+        finalize = label_body(drone, "khovan_act1_story_jump_finalize_act1_success")
+        self.assertIn("task_schedule(khovan_act1_release_kestrel_departure_hold)", finalize)
+        self.assertIn("drone_contact_production_available = False", finalize)
+        self.assertIn("drone_01_weapons_disabled = True", finalize)
+        self.assertIn("drone_01_ceasefire_confirmed = True", finalize)
+        self.assertIn("drone_02_destroyed = True", finalize)
+        self.assertIn("drone_contact_act2_ready = True", finalize)
+        self.assertIn("drone_contact_cultural_packet_sent = True", finalize)
+        self.assertIn("set_science_selection(artemis_id, 0)", finalize)
+        self.assertIn("set_comms_selection(artemis_id, 0)", finalize)
+        self.assertIn("set_weapons_selection(artemis_id, 0)", finalize)
+
     def test_telemetry_trace_labels_use_the_drone_name_parameter_everywhere(self) -> None:
         # Live regression 2026-08-16: the telemetry label uses its
         # telemetry_drone_name parameter for every trace path. The trace is how this

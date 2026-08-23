@@ -25,6 +25,7 @@ shared distress_localization_fallback_available = False
 shared distress_localization_source = "none"
 shared distress_source_x = 0
 shared distress_source_z = 0
+shared distress_source_tarsis_range_m = 95000
 shared distress_range_sq = 0
 shared distress_detection_range_sq = 0
 shared distress_detection_range_m = 30000
@@ -36,23 +37,22 @@ shared dillon_clip_8_stub_sent = False
 # Player-facing copy. Addressee convention, cookbook 6.2: the body opens with
 # who is being addressed, one line per recipient, and never re-names its own
 # sender because the message header already carries it.
-shared anderson_orders_text = "Artemis - Captain: Admiral Anderson, Command Coordination. Long-range monitoring has picked up a fragmentary distress signal in the Khovan Reach region. TSN-compatible emergency band, too degraded to identify or authenticate. Either a civilian beacon or a TSN vessel in difficulty, and no other asset is in range to answer it.\nArtemis - Helm: Come about for Khovan Reach. Roughly ninety minutes at standard cruise.\nArtemis - Comms: Acknowledge these orders for the record. The qualification framework stays in effect; this is a live operation now."
-shared dillon_clip_8_text = "Artemis - Captain: The framework still applies, but the consequences are real now.\nArtemis - Comms: Report the deviation to Command and keep the cadence up. I will keep observing."
-shared distress_transit_objective_text = "Artemis - Helm: Take us into the Khovan Reach region.\nArtemis - Science: Sweep as we close; the signal should resolve once we are inside sensor range."
-shared distress_localization_prompt_text = "Artemis - Science: Run a long-range sweep and triangulate the distress source.\nArtemis - Comms: Report the fix to the captain when Science has it."
-shared distress_localized_text = "Artemis - Captain: Source localized. Single vessel, civilian cargo profile, roughly fifteen minutes off the direct route. The beacon pattern reads authentic, not a lure.\nArtemis - Helm: Set course when the captain gives the word."
+shared anderson_orders_text = "Artemis - Captain: Admiral Anderson, Command Coordination. Long-range monitoring has picked up a fragmentary distress signal approximately ninety kilometres from Tarsis Station, bearing zero-nine-zero. It is on a TSN-compatible emergency band, but too degraded to identify or authenticate: either a civilian beacon or a TSN vessel in difficulty. No other asset is in range to answer it. Proceed to the reported area, locate the source, render aid as appropriate, and report your findings. The qualification framework remains in effect; this is a live operation now. Acknowledge these orders for the record."
+shared dillon_clip_8_text = "Artemis - Captain: The framework still applies, but the consequences are real now. Direct your crew, report the deviation to Command, and keep the ship's cadence up. I will keep observing."
+shared distress_transit_objective_text = "Artemis - Captain: Take Artemis toward the reported area approximately ninety kilometres from Tarsis Station, bearing zero-nine-zero. Direct Science to sweep as you close; the signal should resolve once you are inside sensor range."
+shared distress_localization_prompt_text = "Artemis - Captain: Proceed toward bearing zero-nine-zero from Tarsis Station and direct Science to maintain a long-range sweep. Once Science locates the signal, investigate the contact and determine what assistance it requires."
 
 # Comms route rides Tarsis. Play guide Scene 5 puts Artemis "returning from the
 # training area, en route back toward Tarsis", so Tarsis is the station in
 # contact during the pivot, and its route is the live-proven one in this repo
 # (act1_generator_tarsis_gate.mast). Halcyon does not exist until Phase B, so a
 # scan route on the distress source cannot be the Phase A path - the Acts II/III
-# gate map rates that row against Halcyon, which Phase B spawns.
+# gate map rates that row against Halcyon, which Phase B spawns. This route only
+# acknowledges Anderson and reports status; Science owns localization.
 //comms if has_roles(COMMS_SELECTED_ID, "tarsis_station") and mission_phase == "act_2"
     act2_pivot_status = "act2_comms_options_rendered"
     script.write_khovan_startup_trace("[KHOVAN ACT2 COMMS OPTIONS] Act II options rendered")
     + "Acknowledge Anderson Orders" khovan_act2_acknowledge_orders if anderson_orders_delivered and anderson_orders_ack_status == "pending"
-    + "Report Distress Localization" khovan_act2_confirm_distress_localization if distress_signal_detected and not distress_localized
     + "Report Act II Status" khovan_act2_report_status
 
 === khovan_act2_initialize_pivot ===
@@ -184,7 +184,7 @@ shared distress_localized_text = "Artemis - Captain: Source localized. Single ve
     # path and the station borrow is strictly a degraded fallback. Cookbook
     # 16.3.2.
     await task_schedule(khovan_lifeform_send, {"send_lifeform_id": anderson_lifeform_id, "send_sender": "Admiral Anderson", "send_title": "Command Coordination", "send_text": anderson_orders_text, "send_title_color": "yellow", "send_fallback_sender_id": tarsis_station_id, "send_breadcrumb": "[KHOVAN ACT2 004A] Anderson orders message sent"})
-    await task_schedule(khovan_set_current_objective, {"objective_id": "act2_anderson_orders", "objective_body": "Artemis - Comms: Acknowledge Admiral Anderson's orders for the record.", "objective_step": "Act II new orders", "objective_breadcrumb": "[KHOVAN OBJECTIVE 023] objective updated: Anderson orders"})
+    await task_schedule(khovan_set_current_objective, {"objective_id": "act2_anderson_orders", "objective_body": "Artemis - Captain: Admiral Anderson's command channel is being relayed through Tarsis Station. Have Comms select Tarsis Station and acknowledge his orders for the record.", "objective_step": "Act II new orders", "objective_owner": "Artemis Captain", "objective_breadcrumb": "[KHOVAN OBJECTIVE 023] objective updated: Anderson orders"})
     await task_schedule(khovan_scenario_control_panel_update_overview)
     ->END
 
@@ -202,6 +202,7 @@ shared distress_localized_text = "Artemis - Captain: Source localized. Single ve
     act2_pivot_status = "orders_acknowledged_awaiting_distress_localization"
     act2_last_progression_summary = "Captain acknowledged Anderson orders; Dillon pivot note sent."
     script.write_khovan_startup_trace("[KHOVAN ACT2 005] Anderson orders acknowledged by Comms")
+    comms_receive("Acknowledgment recorded and relayed to Command. Their bearing solution is approximate, so keep Artemis closing on zero-nine-zero. Once the source enters the ship's long-range sensor envelope, Science should resolve it. Captain, investigate the contact when Science reports the fix.", title="Tarsis Command Relay", title_color="green")
     await task_schedule(khovan_act2_deliver_dillon_pivot_note)
     await task_schedule(khovan_act2_open_distress_localization)
     yield success
@@ -215,10 +216,9 @@ shared distress_localized_text = "Artemis - Captain: Source localized. Single ve
     await task_schedule(khovan_engineering_send_message, {"engineering_message_text": dillon_clip_8_text, "engineering_message_breadcrumb": "[KHOVAN ACT2 006A] Dillon pivot note sent"})
     ->END
 
-# Scene 7. The source is at the edge of sensor range and no object exists for it
-# yet - Halcyon spawns in Phase B - so this is a reported fix rather than a scan
-# gate. 10_mast_requirements.md section 7 classifies Scene 7 as AUTO + GM-SUP,
-# and the localization half is the GM-supervised part.
+# Scene 7. No contact object exists yet - Halcyon spawns in Phase B - so Science
+# localizes the seeded signal coordinate through the automatic proximity sweep.
+# The GM-supervised route is recovery only and is never exposed on player Comms.
 === khovan_act2_open_distress_localization ===
     if distress_signal_detected:
         ->END
@@ -230,27 +230,27 @@ shared distress_localized_text = "Artemis - Captain: Source localized. Single ve
     current_beat = "scene_6_long_range_transit"
     act2_pivot_status = "closing_on_distress_source"
 
-    # Park the source ahead of Artemis on her current heading, far enough out
-    # that the crew has to fly there. Scene 6 is a transit; the signal is meant
-    # to resolve as they close, not the moment orders arrive.
-    if artemis_id == 0:
-        distress_science_gate_status = "fallback_missing_artemis_id_at_seed"
-        script.write_khovan_startup_trace("[KHOVAN ACT2 SWEEP] source not seeded: no Artemis id; Comms report is the route")
+    # Tarsis is the fixed navigation reference named in Anderson's orders. The
+    # source sits exactly 95 km due east (+X / bearing 090) of the station, while
+    # the player-facing estimate is deliberately rounded to approximately 90 km.
+    if tarsis_station_id == 0:
+        distress_science_gate_status = "fallback_missing_tarsis_id_at_seed"
+        script.write_khovan_startup_trace("[KHOVAN ACT2 SWEEP] source not seeded: no Tarsis id; GM Science-report recovery is available")
         ->END
-    artemis_object = to_object(artemis_id)
-    if artemis_object is None:
-        distress_science_gate_status = "fallback_missing_artemis_object_at_seed"
-        script.write_khovan_startup_trace("[KHOVAN ACT2 SWEEP] source not seeded: no Artemis object; Comms report is the route")
+    tarsis_object = to_object(tarsis_station_id)
+    if tarsis_object is None:
+        distress_science_gate_status = "fallback_missing_tarsis_object_at_seed"
+        script.write_khovan_startup_trace("[KHOVAN ACT2 SWEEP] source not seeded: no Tarsis object; GM Science-report recovery is available")
         ->END
-    distress_source_x = artemis_object.pos.x + 90000
-    distress_source_z = artemis_object.pos.z + 30000
+    distress_source_x = tarsis_object.pos.x + distress_source_tarsis_range_m
+    distress_source_z = tarsis_object.pos.z
 
     distress_sweep_run_id = distress_sweep_run_id + 1
     distress_sweep_observer_ticks = 0
     script.write_khovan_startup_trace(f"[KHOVAN ACT2 007] distress source seeded at ({distress_source_x},{distress_source_z}); sweep running")
     task_schedule(khovan_act2_watch_distress_proximity, {"sweep_run_id": distress_sweep_run_id})
     await task_schedule(khovan_lifeform_send, {"send_lifeform_id": dillon_lifeform_id, "send_sender": "Commander Dillon", "send_title": "Instructor", "send_text": distress_localization_prompt_text, "send_title_color": "cyan", "send_fallback_sender_id": kestrel_yards_id, "send_breadcrumb": "[KHOVAN ACT2 007A] distress localization prompt sent"})
-    await task_schedule(khovan_set_current_objective, {"objective_id": "act2_distress_transit", "objective_body": distress_transit_objective_text, "objective_step": "Act II transit to signal", "objective_breadcrumb": "[KHOVAN OBJECTIVE 024] objective updated: transit to distress source"})
+    await task_schedule(khovan_set_current_objective, {"objective_id": "act2_distress_transit", "objective_body": distress_transit_objective_text, "objective_step": "Act II transit to signal", "objective_owner": "Artemis Captain", "objective_breadcrumb": "[KHOVAN OBJECTIVE 024] objective updated: transit to distress source"})
     await task_schedule(khovan_scenario_control_panel_update_overview)
     ->END
 
@@ -291,15 +291,15 @@ shared distress_localized_text = "Artemis - Captain: Source localized. Single ve
         ->END
 
     if distress_sweep_observer_ticks >= 600:
-        distress_science_gate_status = "sweep_ceiling_reached_use_comms_report"
-        script.write_khovan_startup_trace(f"[KHOVAN ACT2 SWEEP FALLBACK] ceiling reached range_sq={distress_range_sq}; Comms report still open")
+        distress_science_gate_status = "sweep_ceiling_reached_use_gm_science_report"
+        script.write_khovan_startup_trace(f"[KHOVAN ACT2 SWEEP FALLBACK] ceiling reached range_sq={distress_range_sq}; GM Science-report recovery available")
         ->END
 
     await delay_sim(seconds=3)
     jump khovan_act2_watch_distress_proximity
     ->END
 
-=== khovan_act2_confirm_distress_localization ===
+=== khovan_act2_gm_confirm_science_localization ===
     if distress_localized:
         script.write_khovan_startup_trace("[KHOVAN ACT2 MSG ORDER] duplicate suppressed distress localization")
         yield success
@@ -308,12 +308,11 @@ shared distress_localized_text = "Artemis - Captain: Source localized. Single ve
         script.write_khovan_startup_trace("[KHOVAN ACT2 BLOCKED] localization before signal detected")
         yield fail
 
-    await task_schedule(khovan_act2_complete_distress_localization, {"localization_source": "comms_report_confirmation"})
+    await task_schedule(khovan_act2_complete_distress_localization, {"localization_source": "gm_supervised_science_report"})
     yield success
 
-# Single completion label so both the reported route and any Phase B scan route
-# land in one place and record which one fired - the shape Slice 05 uses for its
-# observer/fallback pairs.
+# Single completion label so the automatic sweep and GM recovery record the
+# same state and source without generating a localization Comms message.
 === khovan_act2_complete_distress_localization ===
     default localization_source = "unspecified"
     if distress_localized:
@@ -321,13 +320,12 @@ shared distress_localized_text = "Artemis - Captain: Source localized. Single ve
     distress_localized = True
     distress_localization_source = localization_source
     distress_localization_status = "localized"
-    distress_science_gate_status = "satisfied_by_report"
+    distress_science_gate_status = "satisfied_by_science_report"
     current_beat = "scene_7_distress_localized"
     act2_pivot_status = "distress_localized_ready_for_phase_b"
     act2_last_progression_summary = "Distress source localized; Phase B owns Halcyon arrival."
     script.write_khovan_startup_trace(f"[KHOVAN ACT2 008] distress source localized source={localization_source}")
-    await task_schedule(khovan_lifeform_send, {"send_lifeform_id": dillon_lifeform_id, "send_sender": "Commander Dillon", "send_title": "Instructor", "send_text": distress_localized_text, "send_title_color": "cyan", "send_fallback_sender_id": kestrel_yards_id, "send_breadcrumb": "[KHOVAN ACT2 008A] localization result sent"})
-    await task_schedule(khovan_set_current_objective, {"objective_id": "act2_localized", "objective_body": "Artemis - Helm: Set course for the distress source on the captain's order.", "objective_step": "Act II course to source", "objective_breadcrumb": "[KHOVAN OBJECTIVE 025] objective updated: course to distress source"})
+    await task_schedule(khovan_set_current_objective, {"objective_id": "act2_localized", "objective_body": "Artemis - Captain: Close on Halcyon. Have Science report, then order Comms to hail.", "objective_step": "Science report, then Captain orders hail", "objective_owner": "Artemis Captain", "objective_breadcrumb": "[KHOVAN OBJECTIVE 025] objective updated: Science verbal report precedes Comms hail"})
     await task_schedule(khovan_scenario_control_panel_update_overview)
     ->END
 
@@ -338,41 +336,79 @@ shared distress_localized_text = "Artemis - Captain: Source localized. Single ve
     yield success
 
 # --- Story-jump seeds -------------------------------------------------------
-# JUMP-011 lands just after Anderson's orders; JUMP-012 lands with the source
-# already localized. Both bump Act I generations so a seeded jump cannot leave a
-# stale Act I timer running, which is the hazard the packet names.
+# JUMP-011 delivers Anderson's orders and waits for the normal Tarsis
+# acknowledgment. JUMP-012 lands with the source already localized. Both build
+# on the same clean Act II reset so a later-state contact or stale timer cannot
+# survive a backwards jump.
 
-=== khovan_act2_story_jump_seed_anderson_orders ===
+=== khovan_act2_story_jump_reset_act2_base ===
+    await task_schedule(khovan_act1_story_jump_seed_act1_success_cleanup)
     await task_schedule(khovan_act2_invalidate_act1_timers)
     mission_phase = "act_2"
     current_scene = 5
-    current_beat = "scene_5_orders_acknowledged"
-    last_checkpoint = "post_anderson_orders"
+    current_beat = "scene_5_new_orders"
+    last_checkpoint = "pre_anderson_orders"
     act2_pivot_initialized = True
     act2_pivot_run_id = act2_pivot_run_id + 1
+    anderson_orders_delivered = False
+    anderson_clip_1_stub_sent = False
+    anderson_orders_ack_status = "pending"
+    anderson_orders_prompt_run_id = anderson_orders_prompt_run_id + 1
+    dillon_clip_8_stub_sent = False
+    distress_signal_detected = False
+    distress_localized = False
+    distress_localization_status = "not_started"
+    distress_science_gate_status = "not_started"
+    distress_localization_fallback_available = False
+    distress_localization_source = "none"
+    distress_source_x = 0
+    distress_source_z = 0
+    distress_sweep_run_id = distress_sweep_run_id + 1
+    distress_sweep_observer_ticks = 0
+    act2_pivot_status = "story_jump_reset_ready_for_anderson_orders"
+    act2_last_progression_summary = "Act II reset; Anderson orders ready for delivery."
+    await task_schedule(khovan_halcyon_reset_for_act2_jump)
+    ->END
+
+=== khovan_act2_story_jump_seed_anderson_orders ===
+    await task_schedule(khovan_act2_story_jump_reset_act2_base)
+    if act1_story_jump_cleanup_barrier_status != "settled":
+        act2_pivot_status = "jump_011_blocked_act1_cleanup_not_settled"
+        script.write_khovan_startup_trace("[KHOVAN ACT2 JUMP 011 BLOCKED] Act I cleanup did not settle")
+        ->END
+    if halcyon_cleanup_barrier_status != "settled":
+        act2_pivot_status = "jump_011_blocked_cleanup_not_settled"
+        script.write_khovan_startup_trace("[KHOVAN ACT2 JUMP 011 BLOCKED] Halcyon cleanup did not settle")
+        ->END
+    await task_schedule(khovan_act2_deliver_anderson_orders)
+    script.write_khovan_startup_trace("[KHOVAN ACT2 JUMP 011] Anderson orders delivered; awaiting Tarsis acknowledgment")
+    ->END
+
+=== khovan_act2_story_jump_seed_distress_localized ===
+    await task_schedule(khovan_act2_story_jump_reset_act2_base)
+    if act1_story_jump_cleanup_barrier_status != "settled":
+        act2_pivot_status = "jump_012_blocked_act1_cleanup_not_settled"
+        script.write_khovan_startup_trace("[KHOVAN ACT2 JUMP 012 BLOCKED] Act I cleanup did not settle")
+        ->END
+    if halcyon_cleanup_barrier_status != "settled":
+        act2_pivot_status = "jump_012_blocked_cleanup_not_settled"
+        script.write_khovan_startup_trace("[KHOVAN ACT2 JUMP 012 BLOCKED] Halcyon cleanup did not settle")
+        ->END
     anderson_orders_delivered = True
     anderson_clip_1_stub_sent = True
     anderson_orders_ack_status = "acknowledged"
     dillon_clip_8_stub_sent = True
     distress_signal_detected = True
-    distress_localized = False
-    distress_localization_status = "awaiting_science_report"
-    distress_science_gate_status = "open_no_contact_object_until_phase_b"
-    distress_localization_fallback_available = True
-    distress_localization_source = "none"
-    act2_pivot_status = "seeded_post_anderson_orders"
-    act2_last_progression_summary = "Seeded to post-Anderson-orders state; localization still open."
-    script.write_khovan_startup_trace("[KHOVAN ACT2 JUMP 011] seeded post-Anderson-orders state")
-    ->END
-
-=== khovan_act2_story_jump_seed_distress_localized ===
-    await task_schedule(khovan_act2_story_jump_seed_anderson_orders)
     distress_localized = True
     distress_localization_status = "localized"
-    distress_science_gate_status = "satisfied_by_report"
+    distress_science_gate_status = "satisfied_by_science_report"
+    distress_localization_fallback_available = True
     distress_localization_source = "story_jump_seed"
+    current_scene = 7
     current_beat = "scene_7_distress_localized"
+    last_checkpoint = "post_anderson_orders"
     act2_pivot_status = "seeded_distress_localized"
     act2_last_progression_summary = "Seeded to localized state; Phase B owns Halcyon arrival."
     script.write_khovan_startup_trace("[KHOVAN ACT2 JUMP 012] seeded distress-localized state")
+    await task_schedule(khovan_halcyon_spawn)
     ->END

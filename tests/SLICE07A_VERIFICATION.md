@@ -48,11 +48,11 @@ Collision check: the duplicate-shared check in `run_tests.py` passes, and no nam
 3. On handoff: all Act I run-IDs are bumped, `mission_phase` becomes `act_2`, scene 5.
 4. Anderson Clip 1 text goes out through the guarded safe-message wrapper; `last_checkpoint` becomes `post_anderson_orders`.
 5. Comms acknowledges via the Tarsis route → Dillon Clip 8 → distress-localization route opens (scene 7).
-6. Comms reports the fix → `khovan_act2_complete_distress_localization` records the source and hands off to Phase B.
+6. The automatic proximity sweep resolves the signal → Artemis Science reports the fix to the Captain → `khovan_act2_complete_distress_localization` records the source and hands off to Phase B. GM Scenario Control retains recovery; player Comms does not.
 
 ## GM Controls
 
-JUMP-011 Anderson Orders and JUMP-012 Distress Localized, both Test-Mode gated, both bumping Act I generations so a seed cannot leave a stale Act I timer running.
+JUMP-011 Anderson Orders and JUMP-012 Distress Localized, both Test-Mode gated, both bumping Act I generations so a seed cannot leave a stale Act I timer running. `GM: Record Science Signal Fix` is the non-player fallback for a failed proximity sweep.
 
 ## Player-Facing Behavior
 
@@ -71,7 +71,7 @@ Anderson's orders, Dillon's pivot note, the localization prompt, and the localiz
 
 - Act II is reachable from the Slice 06 end state without GM intervention (observer path) — **statically**.
 - Anderson Clip 1 and Dillon Clip 8 are each duplicate-suppressed.
-- Localization has a working reported path and records its source.
+- Localization has an automatic sensor path plus a GM-only recovery, records its source, and updates the Captain's objective without sending a localization Comms message.
 - `post_anderson_orders` checkpoint is written.
 - JUMP-011/012 seed valid states and invalidate Act I timers.
 - No design or content doc modified.
@@ -92,9 +92,65 @@ The packet says "Science can localize the distress signal", but the packet also 
 
 Built as a Comms-reported fix on the Tarsis route, with `distress_science_gate_status` recording that no contact object exists until Phase B. **If the intent was a Science console action, this needs a design ruling and a Phase B rework** — routed, not decided.
 
+**Superseded 2026-08-23 by explicit operator direction.** The coordinate-based proximity sweep remains the automatic detector because no Phase A contact exists to scan, but the report and ownership are now Science-facing. The player Comms completion route was removed; only a GM recovery remains. Live rendering of the shipboard Science sender is still unproven.
+
+**Superseded again 2026-08-23 by the operator's live screenshot and direction to drop the message.** Localization now changes runtime state and the Captain's objective silently. Science's player-facing report occurs during the Halcyon investigation/hail sequence, not as an automatic Comms-style message at localization.
+
 **2. Anderson has no sender object.** He borrows `tarsis_station_id`, exactly as Dillon does. If Tarsis is out of Comms range during the pivot, the guarded wrapper skips the message and writes the safe breadcrumb rather than failing — but the orders would then never appear. Watch for `[KHOVAN ACT2 SAFE]` in the trace.
 
 **3. The Comms route rides Tarsis.** Play guide Scene 5 has Artemis returning toward Tarsis, so this should hold, but a crew that has flown far from Tarsis may lose the route. The GM jump presets are the backstop.
+
+## Findings routed to the operator (2026-08-23)
+
+### Automatic localization report appeared as an unwanted Comms message
+
+Claim touched: this record's superseded claim that the automatic sweep and GM recovery should render an `Artemis Science: Sensor Report` localization message.
+Evidence class: observed
+Disposition: amended
+Owner: operator, for live acceptance that localization is silent while the Captain's objective still advances
+Dependency: restart Cosmos, cross the localization threshold once organically and once through the GM recovery
+
+The operator screenshot shows the automatic Science report occupying the Comms message feed after localization and explicitly directs that it be dropped. The completion path now records localization and updates the Captain-directed objective without sending that message. The later Halcyon investigation still gives Science the report and preserves the Captain-ordered hail path.
+
+### JUMP-011 suppressed the event it was meant to expose
+
+Claim touched: `tests/TEST_PLAN_2026-08-10.md` section 4.1 and this record's Next Action claim that JUMP-011 can continue past an Anderson message-surface failure.
+Evidence class: observed
+Disposition: amended
+Owner: operator, for live acceptance of the repaired jump
+Dependency: restart Cosmos on the repaired branch and execute JUMP-011 twice
+
+The operator observed that the JUMP-011 button appeared to do nothing. Static inspection found that its seed set `anderson_clip_1_stub_sent = True` and `anderson_orders_ack_status = "acknowledged"`, suppressing both the normal Anderson delivery and the Tarsis acknowledgment option. The repair now performs a clean Act II reset, invokes the normal Anderson-delivery label, and leaves acknowledgment pending. Recommendation: accept only after two executions visibly deliver Anderson's packet and expose `Acknowledge Anderson Orders`; this remains observed, not measured, until that rerun.
+
+### JUMP-012 reported localization before producing a complete arrival state
+
+Claim touched: this record's claim that JUMP-012 seeds a valid localized state and `scripts/systems/story_jump_presets.mast`'s former target of Scene 7.
+Evidence class: static
+Disposition: amended
+Owner: operator, for live acceptance of the repaired jump
+Dependency: restart Cosmos and execute JUMP-012 twice
+
+The seed set `distress_localized = True` but left contact creation to a background observer, so the button could appear inert and its summary could report Scene 7 while automatic flow was entering Scene 8. The repair now waits for deferred cleanup, spawns Halcyon explicitly through the common path, promotes the runtime to Scene 8, and validates both `distress_localized` and `halcyon_spawned` before reporting success. Recommendation: accept only when both runs leave exactly one selectable Halcyon contact and a Captain-directed scan/hail objective.
+
+### JUMP-011 did not establish a complete post-Act I success state
+
+Claim touched: this record's GM Controls claim that JUMP-011 seeds a valid Act II entry state.
+Evidence class: static
+Disposition: amended
+Owner: operator, for live acceptance of the cleanup barrier and seeded postconditions
+Dependency: execute JUMP-011 once with Drone 01 active, once with Drone 02 and its fleet active, and once while a Kestrel/Tarsis hold is active
+
+The earlier repair invalidated Act I timers and reset Act II state, but it did not remove every Act I object or positively record every prior gate as successful. The amended shared seed now records the generator/Tarsis and Engineering success postconditions without advancing into another drill, deletes Drone 01, Drone 02, Drone 02's separate behavior-tree fleet, the GM target spike, and the subsystem-control target, then waits up to five simulation seconds for those exact captured object ids to leave the engine. Only after that barrier settles does it mark both drone drills complete, disable further Act I production, release the mechanical hold, and invalidate the newly seeded Act I observers. JUMP-011, JUMP-012, and JUMP-013 all use this base and all three now include the settled Act I cleanup in their runtime-success contract; JUMP-013 additionally requires its Halcyon cleanup barrier to settle. Recommendation: accept when each preset leaves no old drone/fleet contact, Artemis undocked and controllable, and only the contact/message state appropriate to that preset.
+
+### Player Comms incorrectly owned the distress localization report
+
+Claim touched: this record's Runtime Flow step 6 and Known Risk 1, which described the Tarsis Comms report as the implemented localization completion path.
+Evidence class: static
+Disposition: amended
+Owner: operator, for live acceptance of the Science report and Tarsis trigger explanation
+Dependency: acknowledge Anderson organically, cross the proximity threshold, and observe the message headers and available Tarsis options
+
+The operator directed that Science, not Comms or Dillon, report the located signal and that the Captain be told to investigate it. The `Report Distress Localization` player option and its completion source were removed. Tarsis Command Relay now uses the acknowledgment response to explain fictionally that entering the long-range sensor envelope lets Science resolve the source; the automatic sweep then sends `Artemis Science: Sensor Report` to the Captain and directs investigation. A GM-only `GM: Record Science Signal Fix` action preserves the required fallback without giving player Comms ownership. Recommendation: accept only if Tarsis shows no localization option, its acknowledgment explains the trigger, and the automatic and GM-recovery paths both render the same Science-owned report.
 
 ## Next Action
 

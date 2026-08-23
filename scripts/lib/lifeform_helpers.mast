@@ -23,8 +23,11 @@ shared dillon_lifeform_id = 0
 shared dillon_lifeform_status = "not_created"
 shared anderson_lifeform_id = 0
 shared anderson_lifeform_status = "not_created"
+shared hessler_lifeform_id = 0
+shared hessler_lifeform_status = "not_created"
 
-shared anderson_no_orders_text = "Artemis - Comms: Command has no active orders for you beyond your cruise profile."
+shared anderson_no_orders_text = "Artemis - Captain: Command has no active orders for you beyond your cruise profile."
+shared dillon_observer_assessment_text = "Artemis - Captain: I am observing. The current operation remains under your command."
 
 # --- Creation ---------------------------------------------------------------
 #
@@ -154,23 +157,74 @@ shared anderson_no_orders_text = "Artemis - Comms: Command has no active orders 
     script.write_khovan_startup_trace(f"[KHOVAN LIB LIFEFORM] characters ready dillon={dillon_lifeform_id} anderson={anderson_lifeform_id} status={khovan_lifeform_support_status}")
     ->END
 
+# Hessler cannot be created at bootstrap because Halcyon does not exist yet.
+# Create him when the contact spawns and remove him before that contact is
+# cleaned up. Cookbook 16.3.1 [LIVE] supplies the lifeform creation pattern;
+# every send retains the object-borrow fallback from 16.3.2.
+=== khovan_create_hessler_lifeform ===
+    default hessler_host_id = 0
+    if hessler_host_id == 0:
+        hessler_lifeform_status = "blocked_missing_halcyon"
+        script.write_khovan_startup_trace("[KHOVAN LIB LIFEFORM] Captain Aurel Hessler not created: Halcyon id is 0")
+        ->END
+    if hessler_lifeform_id != 0:
+        existing_hessler_object = to_object(hessler_lifeform_id)
+        if existing_hessler_object is not None:
+            hessler_lifeform_status = "created_aboard_halcyon"
+            script.write_khovan_startup_trace(f"[KHOVAN LIB LIFEFORM] duplicate suppressed: Hessler id={hessler_lifeform_id}")
+            ->END
+        hessler_lifeform_id = 0
+
+    await task_schedule(khovan_lifeform_create, {"lifeform_name": "Captain Aurel Hessler", "lifeform_roles": "khovan_hessler", "lifeform_path": "//comms/khovan_hessler", "lifeform_host_id": hessler_host_id})
+    hessler_lifeform_id = khovan_lifeform_last_id
+    if hessler_lifeform_id != 0:
+        hessler_lifeform_status = "created_aboard_halcyon"
+    else:
+        hessler_lifeform_status = "fallback_halcyon_borrow"
+    script.write_khovan_startup_trace(f"[KHOVAN LIB LIFEFORM] Hessler ready id={hessler_lifeform_id} host={hessler_host_id} status={hessler_lifeform_status}")
+    ->END
+
+=== khovan_remove_hessler_lifeform ===
+    if hessler_lifeform_id == 0:
+        hessler_lifeform_status = "not_created"
+        ->END
+    hessler_object_for_cleanup = to_object(hessler_lifeform_id)
+    if hessler_object_for_cleanup is not None:
+        sbs.delete_object(hessler_lifeform_id)
+        hessler_lifeform_status = "removal_requested"
+        script.write_khovan_startup_trace(f"[KHOVAN LIB LIFEFORM] Hessler removal requested id={hessler_lifeform_id}")
+    else:
+        hessler_lifeform_status = "removed"
+    hessler_lifeform_id = 0
+    ->END
+
 # Badge routes. internal_comms navigates here via the path stored on each
 # lifeform, so these must exist or the badge opens nothing.
 
 //comms/khovan_dillon
     script.write_khovan_startup_trace("[KHOVAN LIB LIFEFORM] Dillon badge route opened")
     + "Back" //comms
-    + "Request Current Instruction" khovan_dillon_repeat_instruction
+    + "Request Current Instruction" khovan_dillon_repeat_instruction if current_objective_owner == "Commander Dillon"
+    + "Request Observer Assessment" khovan_dillon_observer_assessment if current_objective_owner != "Commander Dillon"
 
 //comms/khovan_anderson
     script.write_khovan_startup_trace("[KHOVAN LIB LIFEFORM] Anderson badge route opened")
     + "Back" //comms
     + "Request Orders Repeat" khovan_anderson_repeat_orders
 
+//comms/khovan_hessler
+    script.write_khovan_startup_trace("[KHOVAN LIB LIFEFORM] Hessler badge route opened")
+    + "Back" //comms
+    + "Repeat Assistance Request" khovan_hessler_repeat_assistance if halcyon_hail_observed and not engineering_deployed
+
 === khovan_dillon_repeat_instruction ===
     # Re-reads the live objective rather than storing a second copy of the text,
     # so this can never drift from what the crew is actually being asked to do.
     await task_schedule(khovan_lifeform_send, {"send_lifeform_id": dillon_lifeform_id, "send_sender": "Commander Dillon", "send_title": "Instructor", "send_text": current_objective_body, "send_title_color": "cyan", "send_fallback_sender_id": kestrel_yards_id, "send_breadcrumb": "[KHOVAN LIB LIFEFORM] Dillon repeated current instruction"})
+    yield success
+
+=== khovan_dillon_observer_assessment ===
+    await task_schedule(khovan_lifeform_send, {"send_lifeform_id": dillon_lifeform_id, "send_sender": "Commander Dillon", "send_title": "Observer", "send_text": dillon_observer_assessment_text, "send_title_color": "cyan", "send_fallback_sender_id": kestrel_yards_id, "send_breadcrumb": "[KHOVAN LIB LIFEFORM] Dillon observer assessment sent"})
     yield success
 
 === khovan_anderson_repeat_orders ===
@@ -185,4 +239,8 @@ shared anderson_no_orders_text = "Artemis - Comms: Command has no active orders 
         await task_schedule(khovan_lifeform_send, {"send_lifeform_id": anderson_lifeform_id, "send_sender": "Admiral Anderson", "send_title": "Command Coordination", "send_text": anderson_no_orders_text, "send_title_color": "yellow", "send_fallback_sender_id": tarsis_station_id, "send_breadcrumb": "[KHOVAN LIB LIFEFORM] Anderson no-orders reply sent"})
         yield success
     await task_schedule(khovan_lifeform_send, {"send_lifeform_id": anderson_lifeform_id, "send_sender": "Admiral Anderson", "send_title": "Command Coordination", "send_text": anderson_orders_text, "send_title_color": "yellow", "send_fallback_sender_id": tarsis_station_id, "send_breadcrumb": "[KHOVAN LIB LIFEFORM] Anderson repeated orders"})
+    yield success
+
+=== khovan_hessler_repeat_assistance ===
+    await task_schedule(khovan_lifeform_send, {"send_lifeform_id": hessler_lifeform_id, "send_sender": "Captain Aurel Hessler", "send_title": "Halcyon Drift", "send_text": halcyon_deploy_prompt_text, "send_title_color": "green", "send_fallback_sender_id": halcyon_object_id, "send_breadcrumb": "[KHOVAN LIB LIFEFORM] Hessler repeated assistance request"})
     yield success

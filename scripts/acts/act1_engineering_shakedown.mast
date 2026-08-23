@@ -244,6 +244,16 @@ shared navigation_priority_confirmed_text = "Artemis - Comms: Shakedown complete
 
 === khovan_act1_story_jump_seed_engineering_shakedown_complete ===
     await task_schedule(khovan_act1_story_jump_seed_post_tarsis_handoff)
+    await task_schedule(khovan_act1_story_jump_record_engineering_shakedown_complete)
+    await task_schedule(khovan_act1_drone_contact_fire_prepare_after_engineering)
+    script.write_khovan_startup_trace("[KHOVAN JUMP ACT1 ENG COMPLETE] engineering shakedown complete seed requested")
+    log("Khovan admin jump seeded Slice 05 engineering shakedown complete.")
+    ->END
+
+=== khovan_act1_story_jump_record_engineering_shakedown_complete ===
+    # Record the successful postconditions without starting Drone 01. The Act II
+    # admin transition uses this path to close every prior gate while leaving
+    # the training range empty.
     shakedown_mode = "full"
     engineering_shakedown_available = True
     engineering_shakedown_started = True
@@ -273,9 +283,7 @@ shared navigation_priority_confirmed_text = "Artemis - Comms: Shakedown complete
     current_scene = 2
     current_beat = "engineering_shakedown_complete"
     last_checkpoint = "engineering_shakedown_complete"
-    await task_schedule(khovan_act1_drone_contact_fire_prepare_after_engineering)
-    script.write_khovan_startup_trace("[KHOVAN JUMP ACT1 ENG COMPLETE] engineering shakedown complete seed requested")
-    log("Khovan admin jump seeded Slice 05 engineering shakedown complete.")
+    script.write_khovan_startup_trace("[KHOVAN JUMP ACT1 ENG COMPLETE] engineering success postconditions recorded without advancing")
     ->END
 
 === khovan_act1_engineering_shakedown_start ===
@@ -492,6 +500,10 @@ shared navigation_priority_confirmed_text = "Artemis - Comms: Shakedown complete
     if engineering_no_motion_confirmed:
         ->END
     if not engineering_no_motion_validation_requested:
+        ->END
+    if artemis_id == 0:
+        engineering_no_motion_observer_status = "fallback_missing_artemis_id_during_watch"
+        engineering_no_motion_fallback_available = True
         ->END
 
     engineering_no_motion_observer_ticks = engineering_no_motion_observer_ticks + 1

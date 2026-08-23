@@ -12,6 +12,13 @@ shared drone_contact_profile_route = "not_started"
 shared drone_contact_act2_ready = False
 shared drone_contact_act2_handoff_status = "not_ready"
 shared drone_contact_cultural_packet_sent = False
+shared act1_story_jump_cleanup_barrier_status = "not_run"
+shared act1_story_jump_cleanup_wait_ticks = 0
+shared act1_story_jump_cleanup_drone_01_id = 0
+shared act1_story_jump_cleanup_drone_02_id = 0
+shared act1_story_jump_cleanup_drone_02_fleet_id = 0
+shared act1_story_jump_cleanup_spike_id = 0
+shared act1_story_jump_cleanup_control_id = 0
 
 # Both training drones share one hull constant. The spawn art and the
 # grid_count_grid_data() pre-flight key MUST be the same string: if they drift, the
@@ -1606,6 +1613,115 @@ brain:
     last_checkpoint = "drone_02_live_fire"
     script.write_khovan_startup_trace("[KHOVAN ACT1 DRONE 02 JUMP] seeded Drone 01 complete; spawning live-fire Drone 02")
     await task_schedule(khovan_drone_02_spawn)
+    ->END
+
+=== khovan_drone_01_cleanup ===
+    if drone_01_navproxy_id != 0:
+        sim.delete_navproxy_by_id(drone_01_navproxy_id)
+        drone_01_navproxy_id = 0
+    if drone_01_target_id != 0:
+        drone_01_cleanup_in_progress = True
+        sbs.delete_object(drone_01_target_id)
+    drone_01_active = False
+    drone_01_target_id = 0
+    drone_01_stationary_hold_run_id = drone_01_stationary_hold_run_id + 1
+    drone_01_weapons_damage_run_id = drone_01_weapons_damage_run_id + 1
+    drone_01_stationary_hold_active = False
+    drone_01_weapons_damage_observer_status = "not_started"
+    drone_01_grid_status = "not_started"
+    script.write_khovan_startup_trace("[KHOVAN ACT1 DRONE 01 CLEANUP] cleanup requested")
+    ->END
+
+=== khovan_act1_story_jump_seed_act1_success_cleanup ===
+    # Build the exact successful Act I postconditions for entry into Act II.
+    # This deliberately does not call either normal drill-advance route because
+    # those routes spawn Drone 01 or Drone 02 as their next player-facing beat.
+    await task_schedule(khovan_act1_story_jump_seed_post_tarsis_handoff)
+    await task_schedule(khovan_act1_story_jump_record_engineering_shakedown_complete)
+
+    # Remove every Act I test or combat contact, including the separate fleet
+    # object whose hostile brain otherwise survives its Drone 02 ship.
+    act1_story_jump_cleanup_barrier_status = "cleanup_requested"
+    act1_story_jump_cleanup_wait_ticks = 0
+    act1_story_jump_cleanup_drone_01_id = drone_01_target_id
+    act1_story_jump_cleanup_drone_02_id = drone_02_target_id
+    act1_story_jump_cleanup_drone_02_fleet_id = drone_02_fleet_id
+    act1_story_jump_cleanup_spike_id = drone_target_spike_target_id
+    act1_story_jump_cleanup_control_id = subsys_control_target_id
+    await task_schedule(khovan_drone_01_cleanup)
+    await task_schedule(khovan_drone_02_cleanup)
+    if drone_target_spike_active or drone_target_spike_target_id != 0 or drone_target_spike_navproxy_id != 0:
+        await task_schedule(khovan_drone_contact_fire_cleanup_target_spike)
+    if subsys_control_active or subsys_control_target_id != 0:
+        await task_schedule(khovan_subsys_control_cleanup)
+    jump khovan_act1_story_jump_wait_for_cleanup_settle
+    ->END
+
+=== khovan_act1_story_jump_wait_for_cleanup_settle ===
+    # delete_object() is deferred. Do not claim the post-Act I state until every
+    # captured object id, including Drone 02's fleet brain, has left the engine.
+    await delay_sim(seconds=1)
+    act1_story_jump_cleanup_wait_ticks = act1_story_jump_cleanup_wait_ticks + 1
+    act1_story_jump_cleanup_remaining = False
+    if act1_story_jump_cleanup_drone_01_id != 0 and to_object(act1_story_jump_cleanup_drone_01_id) is not None:
+        act1_story_jump_cleanup_remaining = True
+    if act1_story_jump_cleanup_drone_02_id != 0 and to_object(act1_story_jump_cleanup_drone_02_id) is not None:
+        act1_story_jump_cleanup_remaining = True
+    if act1_story_jump_cleanup_drone_02_fleet_id != 0 and to_object(act1_story_jump_cleanup_drone_02_fleet_id) is not None:
+        act1_story_jump_cleanup_remaining = True
+    if act1_story_jump_cleanup_spike_id != 0 and to_object(act1_story_jump_cleanup_spike_id) is not None:
+        act1_story_jump_cleanup_remaining = True
+    if act1_story_jump_cleanup_control_id != 0 and to_object(act1_story_jump_cleanup_control_id) is not None:
+        act1_story_jump_cleanup_remaining = True
+    if not act1_story_jump_cleanup_remaining:
+        act1_story_jump_cleanup_barrier_status = "settled"
+        await task_schedule(khovan_act1_story_jump_finalize_act1_success)
+        ->END
+    if act1_story_jump_cleanup_wait_ticks >= 5:
+        act1_story_jump_cleanup_barrier_status = "timed_out_prior_object_still_present"
+        script.write_khovan_startup_trace("[KHOVAN ACT1 SUCCESS CLEANUP BLOCKED] prior object remained after bounded cleanup")
+        ->END
+    jump khovan_act1_story_jump_wait_for_cleanup_settle
+    ->END
+
+=== khovan_act1_story_jump_finalize_act1_success ===
+    # Record both drills as successfully completed. These are postconditions,
+    # not active locks: no target remains and production is disabled for Act II.
+    drone_contact_sequence_run_id = drone_contact_sequence_run_id + 1
+    drone_contact_fire_initialized = True
+    drone_contact_production_available = False
+    drone_contact_profile_route = "story_jump_seeded_act1_success"
+    drone_01_scan_complete = True
+    drone_01_hail_complete = True
+    drone_01_shield_frequency_relay_complete = True
+    drone_01_weapons_lock_active = True
+    drone_01_range_band_active = True
+    drone_01_fire_authorized = True
+    drone_01_weapons_hit_count = drone_01_required_weapons_hits
+    drone_01_weapons_disabled = True
+    drone_01_ceasefire_confirmed = True
+    drone_01_status = "story_jump_seeded_controlled_disable_complete_and_cleared"
+    drone_01_scan_fallback_available = False
+    drone_01_hail_fallback_available = False
+    drone_01_shield_relay_fallback_available = False
+    drone_01_weapons_lock_fallback_available = False
+    drone_01_range_fallback_available = False
+    drone_01_stationary_hold_fallback_available = False
+    drone_01_subsystem_hit_fallback_available = False
+    drone_01_ceasefire_fallback_available = False
+    drone_02_destroyed = True
+    drone_02_destruction_source = "story_jump_seeded_success"
+    drone_02_status = "story_jump_seeded_destroyed_act2_ready"
+    drone_contact_act2_ready = True
+    drone_contact_act2_handoff_status = "ready_for_slice07_pivot"
+    drone_contact_sequence_status = "act2_ready"
+    drone_contact_cultural_packet_sent = True
+    if artemis_id != 0:
+        set_science_selection(artemis_id, 0)
+        set_comms_selection(artemis_id, 0)
+        set_weapons_selection(artemis_id, 0)
+    await task_schedule(khovan_act1_release_kestrel_departure_hold)
+    script.write_khovan_startup_trace(f"[KHOVAN ACT1 SUCCESS CLEANUP] prior gates complete; drones, fleets, locks, and test contacts cleared tick={act1_story_jump_cleanup_wait_ticks}")
     ->END
 
 === khovan_drone_02_watch_weapons_subsystem_damage ===

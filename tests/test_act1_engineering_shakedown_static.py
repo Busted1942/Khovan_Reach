@@ -532,6 +532,7 @@ class Act1EngineeringShakedownStaticTests(unittest.TestCase):
         start_body = label_body(engineering, "khovan_act1_engineering_shakedown_start")
         prepare_body = label_body(engineering, "khovan_act1_engineering_shakedown_prepare_after_tarsis")
         complete_seed_body = label_body(engineering, "khovan_act1_story_jump_seed_engineering_shakedown_complete")
+        complete_record_body = label_body(engineering, "khovan_act1_story_jump_record_engineering_shakedown_complete")
         normal_resupply_body = label_body(generator, "khovan_tarsis_complete_mechanical_docking_and_resupply")
         post_tarsis_seed_body = label_body(generator, "khovan_act1_story_jump_seed_post_tarsis_handoff")
 
@@ -543,9 +544,10 @@ class Act1EngineeringShakedownStaticTests(unittest.TestCase):
         self.assertIn("await task_schedule(khovan_act1_engineering_shakedown_prepare_after_tarsis)", normal_resupply_body)
         self.assertIn("await task_schedule(khovan_act1_engineering_shakedown_prepare_after_tarsis)", post_tarsis_seed_body)
         self.assertIn("await task_schedule(khovan_act1_story_jump_seed_post_tarsis_handoff)", complete_seed_body)
-        self.assertIn("engineering_shakedown_complete = True", complete_seed_body)
-        self.assertIn('current_beat = "engineering_shakedown_complete"', complete_seed_body)
-        self.assertIn('last_checkpoint = "engineering_shakedown_complete"', complete_seed_body)
+        self.assertIn("await task_schedule(khovan_act1_story_jump_record_engineering_shakedown_complete)", complete_seed_body)
+        self.assertIn("engineering_shakedown_complete = True", complete_record_body)
+        self.assertIn('current_beat = "engineering_shakedown_complete"', complete_record_body)
+        self.assertIn('last_checkpoint = "engineering_shakedown_complete"', complete_record_body)
         self.assertIn("await task_schedule(khovan_act1_drone_contact_fire_prepare_after_engineering)", complete_seed_body)
 
     def test_player_comms_fallback_route_is_kestrel_owned_and_start_is_undock_triggered(self) -> None:
@@ -721,7 +723,7 @@ class Act1EngineeringShakedownStaticTests(unittest.TestCase):
         )
 
         for label, required in {
-            "khovan_act1_story_jump_seed_engineering_shakedown_complete": [
+            "khovan_act1_story_jump_record_engineering_shakedown_complete": [
                 "engineering_no_motion_confirmed = True",
                 "damcon_rest_cycle_confirmed = True",
                 "damcon_meal_cycle_confirmed = True",

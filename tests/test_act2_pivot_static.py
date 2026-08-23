@@ -139,33 +139,48 @@ class Slice07AGuards(unittest.TestCase):
         body = label_body(read(ACT2_PATH), "khovan_act2_deliver_anderson_orders")
         self.assertIn('last_checkpoint = "post_anderson_orders"', body)
 
-    def test_localization_routes_share_one_completion_label(self) -> None:
-        """Both routes record which one fired - the Slice 05 observer/fallback shape."""
+    def test_first_anderson_acknowledgment_names_the_comms_click_target(self) -> None:
+        body = label_body(read(ACT2_PATH), "khovan_act2_deliver_anderson_orders")
+        objective_line = next(
+            line for line in body.splitlines()
+            if '"objective_id": "act2_anderson_orders"' in line
+        )
+        self.assertIn("command channel is being relayed through Tarsis Station", objective_line)
+        self.assertIn("Have Comms select Tarsis Station", objective_line)
+
+    def test_science_localization_routes_share_one_completion_label(self) -> None:
+        """Automatic Science and GM recovery record which route fired."""
         act2 = read(ACT2_PATH)
         complete = label_body(act2, "khovan_act2_complete_distress_localization")
         self.assertIn("default localization_source", complete)
         self.assertIn("distress_localization_source = localization_source", complete)
         self.assertIn("if distress_localized:", complete)
-        confirm = label_body(act2, "khovan_act2_confirm_distress_localization")
-        self.assertIn('"localization_source": "comms_report_confirmation"', confirm)
+        confirm = label_body(act2, "khovan_act2_gm_confirm_science_localization")
+        self.assertIn('"localization_source": "gm_supervised_science_report"', confirm)
 
-    def test_messages_use_the_guarded_safe_wrapper(self) -> None:
+    def test_player_comms_does_not_report_or_complete_localization(self) -> None:
+        act2 = read(ACT2_PATH)
+        comms_route = act2[act2.index('//comms if has_roles(COMMS_SELECTED_ID, "tarsis_station")'):]
+        comms_route = comms_route[:comms_route.index("=== khovan_act2_initialize_pivot ===")]
+        self.assertNotIn("Report Distress Localization", comms_route)
+        self.assertNotIn("khovan_act2_gm_confirm_science_localization", comms_route)
+        self.assertNotIn("comms_report_confirmation", act2)
+
+    def test_acknowledgment_fictionally_explains_the_next_gate(self) -> None:
+        body = label_body(read(ACT2_PATH), "khovan_act2_acknowledge_orders")
+        self.assertIn("long-range sensor envelope", body)
+        self.assertIn("Science should resolve it", body)
+        self.assertIn("Captain, investigate the contact", body)
+
+    def test_remote_messages_use_the_guarded_lifeform_wrapper(self) -> None:
         """Anderson is a new speaker; the packet names the Slice 04 black-box
         failure as precedent for message-surface problems.
 
-        Updated 2026-08-16: every character send in this file now goes through
-        khovan_lifeform_send, which itself falls back to
-        khovan_reach_send_safe_startup_message when the lifeform is absent - so
-        the guard still holds, one layer down. Anderson transmits from Command
-        and Dillon from Kestrel Yards; neither is aboard, and neither may go out
-        through a bare comms_receive.
+        Anderson and Dillon use the lifeform helper.
         """
         act2 = code_only(read(ACT2_PATH))
         self.assertIn("khovan_lifeform_send", act2)
         self.assertIn('"send_breadcrumb"', act2)
-        # No character send may bypass the helper. comms_receive is still
-        # allowed for the GM-only status readout, which has no NPC speaker.
-        self.assertNotIn("khovan_reach_send_safe_startup_message", act2)
 
         # Each speaker must borrow the station they are actually at. Dillon is
         # at Kestrel Yards, Anderson transmits from Command and has no on-map
@@ -173,18 +188,26 @@ class Slice07AGuards(unittest.TestCase):
         # Asserted per-send rather than file-wide: a file-wide check passes even
         # if one send is wired to the wrong station, which a negative control on
         # 2026-08-16 confirmed.
-        for label in (
-            "khovan_act2_open_distress_localization",
-            "khovan_act2_complete_distress_localization",
-        ):
-            body = label_body(read(ACT2_PATH), label)
-            self.assertIn('"send_sender": "Commander Dillon"', body)
-            self.assertIn('"send_fallback_sender_id": kestrel_yards_id', body)
-            self.assertNotIn("tarsis_station_id", body)
+        dillon = label_body(read(ACT2_PATH), "khovan_act2_open_distress_localization")
+        self.assertIn('"send_sender": "Commander Dillon"', dillon)
+        self.assertIn('"send_fallback_sender_id": kestrel_yards_id', dillon)
+
+        science = label_body(read(ACT2_PATH), "khovan_act2_complete_distress_localization")
+        self.assertNotIn("khovan_reach_send_safe_startup_message", science)
+        self.assertNotIn("Sensor Report", science)
+        self.assertIn('"objective_id": "act2_localized"', science)
+        self.assertIn("Have Science report, then order Comms to hail", science)
+        self.assertNotIn('"send_sender": "Commander Dillon"', science)
 
         anderson = label_body(read(ACT2_PATH), "khovan_act2_deliver_anderson_orders")
         self.assertIn('"send_sender": "Admiral Anderson"', anderson)
         self.assertIn('"send_fallback_sender_id": tarsis_station_id', anderson)
+
+    def test_all_act2_objectives_are_captain_owned(self) -> None:
+        act2 = read(ACT2_PATH)
+        for objective_id in ["act2_anderson_orders", "act2_distress_transit", "act2_localized"]:
+            objective_line = next(line for line in act2.splitlines() if f'"objective_id": "{objective_id}"' in line)
+            self.assertIn('"objective_owner": "Artemis Captain"', objective_line)
 
 
 class DistressProximitySweep(unittest.TestCase):
@@ -197,6 +220,12 @@ class DistressProximitySweep(unittest.TestCase):
     """
 
     def test_sweep_measures_distance_to_a_seeded_source(self) -> None:
+        seed = label_body(read(ACT2_PATH), "khovan_act2_open_distress_localization")
+        self.assertIn("if tarsis_station_id == 0:", seed)
+        self.assertIn("tarsis_object = to_object(tarsis_station_id)", seed)
+        self.assertIn("distress_source_x = tarsis_object.pos.x + distress_source_tarsis_range_m", seed)
+        self.assertIn("distress_source_z = tarsis_object.pos.z", seed)
+        self.assertIn("shared distress_source_tarsis_range_m = 95000", read(ACT2_PATH))
         body = label_body(read(ACT2_PATH), "khovan_act2_watch_distress_proximity")
         self.assertIn("sweep_dx = artemis_object.pos.x - distress_source_x", body)
         self.assertIn("sweep_dz = artemis_object.pos.z - distress_source_z", body)
@@ -224,12 +253,14 @@ class DistressProximitySweep(unittest.TestCase):
         self.assertIn("if artemis_id == 0:", body)
         self.assertIn("if artemis_object is None:", body)
 
-    def test_comms_report_remains_as_the_fallback(self) -> None:
-        """The automatic gate ships with its fallback - AGENTS.md section 4."""
+    def test_gm_science_report_remains_as_the_non_player_fallback(self) -> None:
+        """The automatic gate ships with a GM fallback, never a player Comms shortcut."""
         act2 = read(ACT2_PATH)
+        panel = read("scripts/systems/scenario_control_panel.mast")
         self.assertIn("distress_localization_fallback_available = True", act2)
-        self.assertIn('"localization_source": "comms_report_confirmation"', act2)
+        self.assertIn('"localization_source": "gm_supervised_science_report"', act2)
         self.assertIn('"localization_source": "automatic_proximity_sweep"', act2)
+        self.assertIn('+ "GM: Record Science Signal Fix" khovan_act2_gm_confirm_science_localization', panel)
 
 
 class LifeformRouting(unittest.TestCase):
@@ -302,15 +333,47 @@ class Slice07AJumpPresets(unittest.TestCase):
             self.assertIn(f'jump_id == "{jump_id}"', story_jump)
             self.assertIn(jump_id, story_jump)
 
+    def test_jump_011_and_012_validate_actual_postconditions(self) -> None:
+        story_jump = read("scripts/systems/story_jump_presets.mast")
+        self.assertIn('if act1_story_jump_cleanup_barrier_status == "settled" and anderson_orders_delivered and anderson_orders_ack_status == "pending":', story_jump)
+        self.assertIn('if act1_story_jump_cleanup_barrier_status == "settled" and distress_localized and halcyon_spawned:', story_jump)
+        self.assertIn('story_jump_last_validation_result = "runtime_seed_failed"', story_jump)
+
     def test_seeds_invalidate_act1_timers(self) -> None:
         """A seeded jump must not leave a stale Act I timer running."""
-        body = label_body(read(ACT2_PATH), "khovan_act2_story_jump_seed_anderson_orders")
+        body = label_body(read(ACT2_PATH), "khovan_act2_story_jump_reset_act2_base")
+        self.assertIn("task_schedule(khovan_act1_story_jump_seed_act1_success_cleanup)", body)
         self.assertIn("task_schedule(khovan_act2_invalidate_act1_timers)", body)
+        self.assertLess(
+            body.index("task_schedule(khovan_act1_story_jump_seed_act1_success_cleanup)"),
+            body.index("task_schedule(khovan_act2_invalidate_act1_timers)"),
+            "Act I success seeding starts observers, so final invalidation must follow it",
+        )
 
-    def test_localized_seed_builds_on_the_orders_seed(self) -> None:
+    def test_jump_011_delivers_orders_and_leaves_acknowledgment_pending(self) -> None:
+        act2 = read(ACT2_PATH)
+        body = label_body(act2, "khovan_act2_story_jump_seed_anderson_orders")
+        self.assertIn("task_schedule(khovan_act2_story_jump_reset_act2_base)", body)
+        self.assertIn('if act1_story_jump_cleanup_barrier_status != "settled":', body)
+        self.assertIn('if halcyon_cleanup_barrier_status != "settled":', body)
+        self.assertIn("task_schedule(khovan_act2_deliver_anderson_orders)", body)
+        self.assertNotIn('anderson_orders_ack_status = "acknowledged"', body)
+        deliver = label_body(act2, "khovan_act2_deliver_anderson_orders")
+        self.assertIn('anderson_orders_ack_status = "pending"', deliver)
+        self.assertIn('"objective_id": "act2_anderson_orders"', deliver)
+
+    def test_localized_seed_builds_on_clean_base_without_replaying_orders(self) -> None:
         body = label_body(read(ACT2_PATH), "khovan_act2_story_jump_seed_distress_localized")
-        self.assertIn("task_schedule(khovan_act2_story_jump_seed_anderson_orders)", body)
+        self.assertIn("task_schedule(khovan_act2_story_jump_reset_act2_base)", body)
+        self.assertIn('if act1_story_jump_cleanup_barrier_status != "settled":', body)
+        self.assertIn('if halcyon_cleanup_barrier_status != "settled":', body)
+        self.assertNotIn("task_schedule(khovan_act2_deliver_anderson_orders)", body)
         self.assertIn("distress_localized = True", body)
+        self.assertIn("task_schedule(khovan_halcyon_spawn)", body)
+        self.assertLess(
+            body.index("distress_localized = True"),
+            body.index("task_schedule(khovan_halcyon_spawn)"),
+        )
 
     def test_quick_suite_includes_slice07a_checks(self) -> None:
         runner = read("run_tests.py")
