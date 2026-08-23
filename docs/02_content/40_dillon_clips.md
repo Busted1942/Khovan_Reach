@@ -284,16 +284,15 @@ whole engagement and the lesson of the drill is invisible.
 
 > "Science, her shield levels read live on your panel, so call them out as they come down.
 >
-> Her subsystem integrity does not. That reading is only as fresh as your last scan. A Kralien hull feels an interrogation pulse and baffles the band it came in on, so you get one clean read per band and then she keeps feeding you that same picture no matter what you do to her.
+> Her subsystem integrity is not updated in real time as the enemy ship will only allow you to get a single clean read. If you scan the intel or bio bands, it will update your target's sub-system damage, but only once per scan. Plan your scans well to balance your intel gathering with any sub-system visibility you may need in combat.
 >
-> Pressing the same band again will not help you. Rotate to a band she has not baffled yet and the integrity figures resolve fresh. You have four. Spend them when it counts.
 >
 > A critical hit reaches the subsystem whether her shields are up or not, so do not hold Weapons back waiting on them."
 
 **Delivery notes:**
 
 - Mirrors `drone_01_science_report_request_text` in `scripts/acts/act1_drone_contact_fire.mast`. Keep the two in sync; a static test pins the key phrases.
-- The counter-intrusion framing is not decoration. It maps onto measured engine behavior (2026-08-16: an already-scanned band returns cached figures, an unscanned band re-resolves them), and it is what lets a crew reconstruct the technique under fire when the bare rule would be forgotten.
+- The direct mechanics wording reflects measured engine behavior (2026-08-16: an already-scanned band returns cached figures, an unscanned band re-resolves them) without adding counter-intrusion fiction.
 - The last line exists because the opposite was once taught and was wrong. Do not reintroduce any wording that gates subsystem damage on stripping shields.
 
 ### Step 9 — Ceasefire

@@ -189,10 +189,9 @@ shared drone_02_hostile_warning_text = "Artemis - Captain: Weapons free on Drone
 # to which band ran.
 #
 # The old wording therefore sent Science to do the one thing that provably fails.
-# The fiction below is not decoration - it is what makes the correct technique
-# memorable, and it maps exactly onto the measured behaviour: one clean read per
-# band, rotate to get another.
-shared drone_01_science_report_request_text = "Artemis - Science: Her shield levels read live on your panel, so call them out as they come down.\nArtemis - Science: Subsystem integrity does not. That reading is only as fresh as your last scan. A Kralien hull feels an interrogation pulse and baffles the band it came in on, so you get one clean read per band and then she keeps feeding you that same picture no matter what you do to her.\nArtemis - Science: Pressing the same band again will not help you. Rotate to a band she has not baffled yet and the integrity figures resolve fresh. You have four. Spend them when it counts.\nArtemis - Science: A critical hit reaches the subsystem whether her shields are up or not, so do not hold Weapons back waiting on them."
+# The wording below states the measured limitation directly: a scan offers one
+# clean read, so the crew must spend its available scans deliberately.
+shared drone_01_science_report_request_text = "Artemis - Science: Her shield levels read live on your panel, so call them out as they come down.\nArtemis - Science: Subsystem integrity is not updated in real time as the enemy ship will only allow you to get a single clean read. If you scan the intel or bio bands, it will update your target's sub-system damage, but only once per scan. Plan your scans well to balance your intel gathering with any sub-system visibility you may need in combat.\nArtemis - Science: A critical hit reaches the subsystem whether her shields are up or not, so do not hold Weapons back waiting on them."
 shared drone_01_weapons_crit_technique_text = "Artemis - Captain: Order your ship into battle and disable, but do not destroy, the drone. After success, report back to Commander Dillon at Kestrel Yards."
 shared drone_01_known_marked = False
 shared drone_01_hull_restore_count = 0
@@ -1319,9 +1318,9 @@ shared drone_target_spike_fallback = "If automatic scan, target selection, subsy
     jump khovan_drone_01_watch_weapons_subsystem_damage
 
 === khovan_drone_report_weapons_telemetry ===
-    # Generalized 2026-08-16 so Drone 02 gets the same readout. Both drones carry the
-    # "raider" role, so the stock critical route fires on both; only Khovan's
-    # reporting was Drone 01 only.
+    # Drone 01's guided Drill Two readout. The stock critical route fires on both
+    # drones because both carry the "raider" role, but Drill Three deliberately
+    # gives Drone 02 no percentage narration.
     default telemetry_target_id = drone_01_target_id
     default telemetry_drone_name = "Drone 01"
     # Report Drone 01's real Weapons-array condition on the Comms channel, because
@@ -1660,7 +1659,8 @@ brain:
             rebased_drone_02_damage = current_drone_02_weapons_damage
         drone_02_weapons_damage_baseline = rebased_drone_02_damage
         script.write_khovan_startup_trace(f"[KHOVAN ACT1 DRONE 02 GRID] sole_writer baseline={rebased_drone_02_damage}")
-        await task_schedule(khovan_drone_report_weapons_telemetry, {"telemetry_target_id": drone_02_target_id, "telemetry_drone_name": "Drone 02"})
+        # Drill Three is live fire: this observer retains its internal evidence,
+        # but never narrates Drone 02's percentage over Comms.
     await delay_sim(seconds=1)
     jump khovan_drone_02_watch_weapons_subsystem_damage
 

@@ -1011,13 +1011,10 @@ class Act1DroneContactFireStaticTests(unittest.TestCase):
         self.assertIn('elif jump_id == "drone_02_live_fire":', presets)
 
     def test_telemetry_trace_labels_use_the_drone_name_parameter_everywhere(self) -> None:
-        # Live regression 2026-08-16: the telemetry label was generalized to take
-        # telemetry_drone_name, and the main success-path trace lines were updated to
-        # use it, but the two early-exit skip paths (missing telemetry, non-positive
-        # max_damage) were missed. Every Drone 02 hit was logged as "DRONE 01
-        # TELEMETRY" - the crew-facing Comms message was unaffected since it already
-        # used the parameter, but the trace is how this session settled every
-        # disputed question, and a mislabeled trace is worse than a missing one.
+        # Live regression 2026-08-16: the telemetry label uses its
+        # telemetry_drone_name parameter for every trace path. The trace is how this
+        # session settled every disputed question, and a mislabeled trace is worse
+        # than a missing one.
         drone = read(DRONE_PATH)
         body = code_only(label_body(drone, "khovan_drone_report_weapons_telemetry"))
         self.assertNotIn(
@@ -1084,6 +1081,24 @@ class Act1DroneContactFireStaticTests(unittest.TestCase):
         # and the Kestrel fallback report identically.
         register = code_only(label_body(drone, "khovan_drone_01_register_weapons_hit"))
         self.assertIn("await task_schedule(khovan_drone_report_weapons_telemetry", register)
+
+    def test_drone_02_never_schedules_telemetry_while_drone_01_remains_guided(self) -> None:
+        # Drone 01 is the guided drill, where Dillon's real-value readout is a
+        # training aid. Drone 02 is the unassisted live-fire drill, so no code path
+        # in its watcher may schedule the percentage narration.
+        drone = read(DRONE_PATH)
+        drone_01 = code_only(label_body(drone, "khovan_drone_01_register_weapons_hit"))
+        drone_02 = code_only(label_body(drone, "khovan_drone_02_watch_weapons_subsystem_damage"))
+
+        self.assertIn("await task_schedule(khovan_drone_report_weapons_telemetry", drone_01)
+        self.assertNotIn("khovan_drone_report_weapons_telemetry", drone_02)
+
+        # Removing the player-facing narration must not remove the observer's
+        # bookkeeping or its trace evidence.
+        self.assertIn('drone_02_weapons_damage_observer_status = "weapons_subsystem_damage_increase_observed"', drone_02)
+        self.assertIn('drone_02_grid_status = "stock_crit_sole_writer"', drone_02)
+        self.assertIn("drone_02_weapons_damage_baseline = rebased_drone_02_damage", drone_02)
+        self.assertIn('script.write_khovan_startup_trace(f"[KHOVAN ACT1 DRONE 02 GRID]', drone_02)
 
     def test_no_grid_is_built_and_the_stock_crit_is_the_sole_damage_writer(self) -> None:
         # Concluded 2026-08-16 after two live regressions. Building an interior on a
@@ -1169,7 +1184,7 @@ class Act1DroneContactFireStaticTests(unittest.TestCase):
         # The old assertion actively protected wrong coaching, which is worse than no
         # assertion at all. Pin the technique that works.
         self.assertNotIn("Scan her again after every hit", science_text)
-        self.assertIn("Rotate to a band she has not baffled yet", science_text)
+        self.assertIn("only allow you to get a single clean read", science_text)
 
         # The coaching must teach the DISTINCTION, not just issue an instruction.
         # Shields read live from the shield_val blob key; the subsystem percentages
@@ -1177,12 +1192,11 @@ class Act1DroneContactFireStaticTests(unittest.TestCase):
         # told why learns that internal condition is intelligence with a timestamp,
         # which is the actual model the engine implements.
         self.assertIn("read live", science_text)
-        self.assertIn("as fresh as your last scan", science_text)
+        self.assertIn("not updated in real time", science_text)
 
-        # The in-fiction reason is load-bearing, not flavour: it is what makes
-        # "one clean read per band, then rotate" memorable under fire. A crew that
-        # only has the rule forgets it; a crew that has the reason reconstructs it.
-        self.assertIn("baffles the band it came in on", science_text)
+        # The literal mechanic must still be explicit: the same scan does not
+        # refresh indefinitely, so Science has to plan when to spend a fresh read.
+        self.assertIn("only once per scan", science_text)
 
         # The grid helpers reach the PLAYER's ship - the operator saw their own DAMCON
         # respond to a call aimed at an NPC, and grid_apply_system_damage ends with
