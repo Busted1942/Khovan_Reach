@@ -694,7 +694,9 @@ band she has not baffled yet and the integrity figures resolve fresh.
 
 **There is no scan API to reach for.** `sbs_utils/mock/sbs.py` is the pybind-generated mirror of the engine's entire Python surface (~90 module functions, tagged `### from pybind`). It is a test double — line 6 is `sys.modules["sbs"] = sys.modules[__name__]` — imported only by sbs_utils' own `tests/`, never at runtime, and never by this mission except in two citation comments. Grepping it for `scan` returns exactly one hit: a list of blob key names (`tsnscan`, `tsnstatus`, `tsnintel`, `tsnbio`). No `sbs.science_*`, no invalidate, no re-publish. Caveat worth carrying: a mock can drift from the real binding, so this is strong evidence rather than proof.
 
-**Treat this as a stock engine defect and teach around it.** The refresh path that works is a native in-game action available to any crew in any mission, so the coaching costs nothing and transfers. The in-fiction reason carried in `drone_01_science_report_request_text` — Kralien counter-intrusion baffling, one clean read per band — is load-bearing rather than decorative: it maps exactly onto the measured behaviour, and a crew that has the reason can reconstruct the technique under fire when the rule alone would be forgotten.
+**Treat this as a stock engine defect and teach around it.** The refresh path that works is a native in-game action available to any crew in any mission, so the coaching costs nothing and transfers.
+
+> **Revised 2026-08-17 — the in-fiction framing was dropped.** This section previously said the coaching used a "Kralien counter-intrusion baffling" fiction and called it load-bearing. Operator direction the same week replaced that framing with a literal mechanical description in `drone_01_science_report_request_text`: subsystem integrity gives one clean read per scan, refreshed only by scanning a not-yet-scanned band, so Science should plan scans deliberately. The measured behaviour being taught is unchanged — only the framing is plainer. Do not restore the Kralien-baffling wording; treat the current runtime string as the reference.
 
 The arithmetic behind the display, confirmed by matching observed values against logged blob state:
 
@@ -2054,9 +2056,10 @@ exactly where that gap becomes a crew staring at a stale number.
 Two workarounds were then built on that half-right model and both failed — a
 GM lever writing the engine's `cur_scan_*` keys, and a custom Science console
 button clearing the band keys. Neither moved the panel. Recorded in 7.3 so they
-are not re-attempted. The outcome was to treat it as a stock engine defect, teach
-the native technique (rotate bands), and give it an in-fiction reason so the crew
-can reconstruct it under fire.
+are not re-attempted. The outcome was to treat it as a stock engine defect and
+teach the native technique (rotate bands) directly. An in-fiction reason was
+tried first and later dropped in favor of a literal mechanical description — see
+the 2026-08-17 note in 7.3.
 
 ## 17.11 Correct the record where it was wrong, do not silently rewrite it
 

@@ -875,3 +875,33 @@ CLOSED 2026-08-16: operator authorized; rotation is now prompted-and-still-a-PAS
                 in item 1 (guided drill) and unprompted-to-PASS in item 2
                 (unguided drill), with a debrief-framing note added.
 ```
+
+## Correction to the record (2026-08-17)
+
+The "resolution" note in the LIVE SMOKE 2026-08-16 entry above describes the
+Science coaching as carrying "an in-fiction reason (Kralien counter-intrusion
+baffling: one clean read per band)". That entry is left unedited per this
+project's own rule (cookbook 17.11 - correct the record, do not silently
+rewrite it): it accurately reports what was true and decided that day.
+
+It is no longer current. Operator direction on 2026-08-17 replaced the
+Kralien-baffling fiction in `drone_01_science_report_request_text` with a
+literal mechanical description: subsystem integrity gives one clean read per
+scan, refreshed only by scanning a not-yet-scanned band, so Science should
+plan scans deliberately. The measured behaviour the coaching teaches is
+unchanged - only the framing is plainer. See cookbook 7.3 and 17.10 for the
+current text and the same dated correction.
+
+Same session, a second and independent change: Drone 02 (Drill Three, live
+fire, no step calls) no longer has its weapons-array percentage narrated over
+Comms by Commander Dillon. That telemetry call
+(`khovan_drone_report_weapons_telemetry`) was useful for confirming the
+subsystem-damage mechanic during play-testing, but narrating an exact
+percentage undercuts a drill designed for the crew to read shields/frequency
+unassisted. Drone 01 keeps the narration; it remains an intentional training
+aid in the guided Drill Two. The observer's internal bookkeeping and trace
+line for Drone 02 are unchanged - only the player-facing Comms message
+stopped. Guarded by a new static test,
+`test_drone_02_never_schedules_telemetry_while_drone_01_remains_guided`.
+
+python run_tests.py quick: PASS, 271 checks (12 harness, 259 Python tests).

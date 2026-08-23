@@ -286,7 +286,6 @@ whole engagement and the lesson of the drill is invisible.
 >
 > Her subsystem integrity is not updated in real time as the enemy ship will only allow you to get a single clean read. If you scan the intel or bio bands, it will update your target's sub-system damage, but only once per scan. Plan your scans well to balance your intel gathering with any sub-system visibility you may need in combat.
 >
->
 > A critical hit reaches the subsystem whether her shields are up or not, so do not hold Weapons back waiting on them."
 
 **Delivery notes:**
@@ -305,7 +304,7 @@ Completion line:
 
 ### Step 10 — Verification
 
-> "Step ten. Science and Comms, verify target status. Science — take the confirmation on a band you have not used yet. The one you have been reading is baffled and will tell you what it told you last time."
+> "Step ten. Science and Comms, verify target status. Science — take the confirmation on a band you have not used yet. The one you have been reading only gives you one clean read per scan, and it will not update again."
 
 Completion line:
 
