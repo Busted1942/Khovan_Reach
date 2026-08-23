@@ -23,8 +23,10 @@ Phase A existed to prove is live-confirmed. No further Phase A work.
    `AMBIGUOUS`. A blank check is not a pass.
 2. ACT1-019 through ACT1-024 each have a recorded result in the worksheet.
 3. Drone 01 completes: scan, hail, shield relay, weapons lock, 1-2 km band,
-   15-second stationary hold, authorized subsystem disable in three confirmed
-   manual hits, ceasefire.
+   15-second stationary hold, authorized subsystem disable in one confirmed
+   manual critical hit, ceasefire. (Updated 2026-08-17: this read "three
+   confirmed manual hits" until the 2026-08-16 gate 9 ratification — see the
+   resolved finding below and `drone_01_required_weapons_hits` in the runtime.)
 4. Drone 02 completes on genuine destruction, with `destruction_source`
    attributing the kill to weapons rather than GM cleanup.
 5. `drone_contact_act2_ready` sets, and Slice 07 can read it as the Act II
@@ -275,6 +277,22 @@ Repo/branch assumption: run from `slice06-drone-contact-fire` after `python run_
   **Build-side mitigation applied, not a design change:** `//damage/object` for `khovan_drone_01` now writes `hull_hit_counter` back to `0` on every damage event while `drone_01_active and not drone_01_weapons_disabled`, holding the hull so the three-hit gate can actually be reached. Shields are deliberately left alone — restoring them would block subsystem targeting entirely. Holding stops at `drone_01_weapons_disabled` so the ceasefire/cleanup phase and Drone 02 behave normally. The three-hit gate itself is untouched.
 
   **Operator decision required** on which resolution to keep long term: (a) keep the hull hold, (b) relax gate 9 to a hit count the stock hull can survive, or (c) respawn Drone 01 on `kralien_dreadnought` and accept 4 hull points as the margin. The build side must not pick (b) — that is a design change.
+
+  **RESOLVED 2026-08-16, decision (b).** Gate 9 is now one confirmed critical
+  hit, ratified in `docs/01_design/10_mast_requirements.md` section 8.5 and
+  `docs/01_design/00_scenario_play_guide.md` (both carry dated ratification
+  notes). The deciding argument was independent of the hull-survivability
+  finding above: the stock critical rolls `random.randint(1,20) == 20` **per
+  subsystem-button press**, not per beam hit
+  (`legendarymissions/consoles/manual_weapons.mast:187`), and switching
+  subsystems clears an armed critical (`manual_weapons.mast:169-173`) — so
+  three real hits was never really a survivability question, it was closer to
+  sixty button presses without touching another subsystem. Runtime:
+  `drone_01_required_weapons_hits = 1`
+  (`scripts/acts/act1_drone_contact_fire.mast:79`). The hull-hold mitigation
+  above stays in place regardless — it is what makes even one hit reachable
+  against a two-hullpoint hull without the drone dying to ordinary beam fire
+  first.
 
 - **UNPROVEN, raised 2026-08-09 — writing `hull_hit_counter`.** The key is proven as a *read* (`data/missions/common/dmx.py:59`, `blob.get("hull_hit_counter", 0)`, where it is treated as accumulated hull damage), and the paired shield key `shield_val` is proven as a *write* (`legendarymissions/collisions/collision.mast:54-56`). `set_data_set_value()` itself is cookbook-proven [LIVE] (section 9.1). What is unproven is that writing `hull_hit_counter` back to `0` actually prevents destruction — it may be a display counter the engine does not consult for death.
 

@@ -1,6 +1,9 @@
 # Slice 06 Phase B Playtest Worksheet
 
-Branch/build: `slice06-drone-contact-fire` at `6c59daf`  
+Branch/build: `slice06-drone-contact-fire` at `6c59daf` (updated 2026-08-17: this
+worksheet predates the 2026-08-16 one-hit gate 9 ratification below and the
+Science coaching/Drone 02 telemetry corrections since. Confirm the checked-out
+tip with `git rev-parse HEAD` before the session rather than trusting this pin.)
 Operator: ____________________  Date/time: ____________________  Cosmos build: ____________________
 
 Use one fresh server session for the normal run. Record `PASS`, `FAIL`, or `AMBIGUOUS`—a clean screen with no trace or state evidence is **AMBIGUOUS**, not a pass. Attach screenshots or copy the relevant `tests/live_startup_trace.txt` lines for every completed check.
@@ -73,21 +76,33 @@ Failure or ambiguity to record: early authorization, timer survives movement/res
 
 ## ACT1-022 — Drone 01 Weapons-array disable
 
-Test action: After authorization, use manual targeting on Drone 01’s Weapons array. Apply three confirmed Weapons subsystem hits, then stop firing.
+Test action: After authorization, use manual targeting on Drone 01's Weapons array. Apply one confirmed Weapons subsystem critical hit, then stop firing.
+
+> **Updated 2026-08-17.** This check previously required three confirmed hits.
+> `docs/01_design/10_mast_requirements.md` section 8.5 gate 9 was
+> operator-ratified 2026-08-16 to one confirmed critical hit — the stock
+> critical is `random.randint(1,20) == 20` per subsystem-button press, not per
+> beam hit (`legendarymissions/consoles/manual_weapons.mast:187`), so three
+> hits is roughly sixty presses, and switching subsystems clears an armed
+> critical (`manual_weapons.mast:169-173`). Runtime constant
+> `drone_01_required_weapons_hits = 1`
+> (`scripts/acts/act1_drone_contact_fire.mast:79`). Do not record a clean
+> one-hit disable as FAIL against the old three-hit text — one hit is the
+> current, decided requirement.
 
 Expected outcome:
 
 - [ ] Only a damage event with `MANUAL_SYSTEM = WEAPONS` increments the hit count.
 - [ ] `MANUAL_CRITICAL_HIT` is not required for a valid subsystem hit.
 - [ ] Non-Weapons subsystem hits and generic `system_damage` do not increment the Weapons count.
-- [ ] Hit 1, hit 2, and hit 3 are separately evidenced; exactly the third valid hit sets Weapons disabled.
+- [ ] The one valid hit is evidenced and sets Weapons disabled.
 - [ ] Objective broadcast requests ceasefire; Drone 01 is not complete until ceasefire is confirmed.
 
 Observed result: `PASS / FAIL / AMBIGUOUS`  Notes: ________________________________  
 Hit evidence / `MANUAL_SYSTEM` values: __________________________________________  
 Trace marker / screenshot: _____________________________________________________
 
-Failure or ambiguity to record: count advances on generic damage, fewer/more than three valid hits, signal absent without fallback, or disable occurs before the third hit.
+Failure or ambiguity to record: count advances on generic damage, no valid hit registers, signal absent without fallback, or disable occurs before a confirmed hit.
 
 ## ACT1-023 — Drone 02 genuine destruction and Act-II-ready boundary
 

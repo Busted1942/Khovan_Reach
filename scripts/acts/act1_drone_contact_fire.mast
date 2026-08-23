@@ -71,11 +71,10 @@ shared drone_01_weapons_hit_count = 0
 # critical teaches the lesson the drill exists for; the other two taught
 # patience with a d20.
 #
-# FINDING for the operator, not for the build side to close: design
-# 10_mast_requirements.md section 8.5 gate 9 still reads "three confirmed
-# hits". The doc is design authority and AGENTS.md section 2 forbids editing
-# docs/01_design/ from implementation work - the operator authorized this
-# runtime change and owns the matching doc edit.
+# RESOLVED 2026-08-16: 10_mast_requirements.md section 8.5 gate 9 and
+# 00_scenario_play_guide.md both now carry a dated ratification note matching
+# this constant. The finding this comment used to raise is closed - see
+# tests/SLICE06_VERIFICATION.md for the full resolution record.
 shared drone_01_required_weapons_hits = 1
 # Subsystem-damage observer. Replaces the MANUAL_SYSTEM inventory read that used
 # to drive hit counting - see khovan_drone_01_watch_weapons_subsystem_damage.
