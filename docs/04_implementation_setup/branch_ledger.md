@@ -1,7 +1,43 @@
 # Branch Ledger
 
 Status: lightweight implementation branch ledger
-Last updated: 2026-08-08
+Last updated: 2026-08-17
+
+## Slice 06 subsystem-damage session (2026-08-16 to 2026-08-17)
+
+Role: continued work on `slice06-drone-contact-fire`, same branch as the
+already-built-ahead Slices 07A/07B recorded below.
+
+Resolved the "Science panel always reads 100% on an NPC" question by
+measurement rather than by source-reading (three prior mechanisms had all been
+wrong): the subsystem-integrity readout is a per-band scan cache, refreshed
+only when a not-yet-scanned band is scanned. Two code workarounds (a GM
+scan-refresh lever, a custom Science console tab) were built, failed live, and
+were reverted to vanilla - no mission code ships for the defect. Instead:
+Dillon's Science coaching was corrected, then reworded a second time same
+session from an in-fiction framing to a literal mechanical one, per operator
+direction. Drone 02's weapons-array percentage narration was silenced (Drill
+Three is unassisted live fire; Drone 01 keeps it as a guided-drill aid).
+
+Also landed: `AGENTS.md` section 5 splits live evidence into observed vs.
+measured, forbidding player-facing coaching below measured tier (this session's
+"Scan her again after every hit" defect is the worked example); section 2
+gains a five-field findings-return-path format; `docs/00_project/30_glossary.md`
+added; two `review_gate.py` FAILs left over from this session's own GM-spike
+code and design-doc edit were cleared (`1fe4a61`).
+
+Evidence: `python run_tests.py quick` PASS at 271 checks.
+`python tools/review_gate.py --base master` MECHANIZED PASS, 10 checks, 0
+failures (7 design/content docs carry ratification notes, reported as NOTE).
+**Slice 06 Phase B still has no recorded live-crewed run** -
+`tests/SLICE06_PHASE_B_PLAYTEST_WORKSHEET.md` is unfilled and ACT1-019 through
+ACT1-024 have no result. Today's playtest verified the band-rotation coaching
+specifically (real evidence, narrow scope), not the full worksheet.
+
+Next action: run the Slice 06 Phase B playtest worksheet in one crewed
+session, recording every ACT1-01x check. See `tests/SLICE06_VERIFICATION.md`
+Exit Criteria for the closing conditions. Only after that (and after 07A/07B
+below get their first live run) does merge-back to `master` become in scope.
 
 Purpose: record active/recent Khovan branch roles, evidence, risks, and next actions from observable Git history. Do not treat this file as a substitute for `git log`, `git branch --all`, or source authority in `docs/00_project/00_source_index.md`.
 
